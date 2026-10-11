@@ -1,6 +1,6 @@
 // Cloudflare Email Worker: hands every email sent to the inbound domain to
 // the app's webhook. Set up in docs/email.md. Variables (Settings → Variables):
-//   APP_URL         the app's public address, e.g. https://kakeibo.example.com
+//   APP_URL         the app's public address, e.g. https://wallet.example.com
 //   INBOUND_SECRET  the same value as the app's INBOUND_SECRET (as a secret)
 export default {
   async email(message, env) {

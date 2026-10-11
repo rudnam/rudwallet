@@ -1,6 +1,6 @@
 {
-  "name": "Kakeibo",
-  "short_name": "Kakeibo",
+  "name": "Wallet",
+  "short_name": "Wallet",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

@@ -1,4 +1,4 @@
-module github.com/francis/app-template
+module github.com/rudnam/wallet-app
 
 go 1.26
 

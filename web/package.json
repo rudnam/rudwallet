@@ -1,5 +1,5 @@
 {
-  "name": "app-template-web",
+  "name": "wallet-app-web",
   "private": true,
   "type": "module",
   "scripts": {

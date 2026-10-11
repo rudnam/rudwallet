@@ -12,11 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/francis/app-template/internal/account"
-	"github.com/francis/app-template/internal/config"
-	"github.com/francis/app-template/internal/httpx"
-	"github.com/francis/app-template/internal/inbox"
-	"github.com/francis/app-template/internal/wallet"
+	"github.com/rudnam/wallet-app/internal/account"
+	"github.com/rudnam/wallet-app/internal/config"
+	"github.com/rudnam/wallet-app/internal/httpx"
+	"github.com/rudnam/wallet-app/internal/inbox"
+	"github.com/rudnam/wallet-app/internal/wallet"
 )
 
 func init() {

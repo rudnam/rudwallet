@@ -78,8 +78,7 @@ export function EmailSettings() {
     <div className="card stack" id="email">
       <h2>Email automation</h2>
       <p className="small">
-        Payments you make online or with a QR code don't show up in Google Wallet. Their payment emails do: forward them
-        here and each one becomes a record for you to confirm.
+        Forward your payment emails here and each one becomes a record for you to confirm.
       </p>
 
       {inbox === null ? (

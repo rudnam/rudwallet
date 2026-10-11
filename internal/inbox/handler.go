@@ -9,10 +9,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/francis/app-template/internal/account"
-	"github.com/francis/app-template/internal/db"
-	"github.com/francis/app-template/internal/httpx"
-	"github.com/francis/app-template/internal/inbox/parse"
+	"github.com/rudnam/wallet-app/internal/account"
+	"github.com/rudnam/wallet-app/internal/db"
+	"github.com/rudnam/wallet-app/internal/httpx"
+	"github.com/rudnam/wallet-app/internal/inbox/parse"
 )
 
 // maxEmail is the largest email accepted. Receipts with their HTML are

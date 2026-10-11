@@ -12,9 +12,9 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/francis/app-template/internal/account"
-	"github.com/francis/app-template/internal/db"
-	"github.com/francis/app-template/internal/httpx"
+	"github.com/rudnam/wallet-app/internal/account"
+	"github.com/rudnam/wallet-app/internal/db"
+	"github.com/rudnam/wallet-app/internal/httpx"
 )
 
 const (

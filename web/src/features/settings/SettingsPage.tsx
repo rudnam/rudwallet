@@ -330,9 +330,9 @@ function Import() {
 
   return (
     <div className="card stack" id="import">
-      <h2>Import from Wallet by BudgetBakers</h2>
+      <h2>Import from BudgetBakers</h2>
       <p className="small muted">
-        In Wallet, export your records as CSV (on the web app: Records → Export), then choose the file here. Accounts and
+        In BudgetBakers' Wallet app, export your records as CSV (on the web app: Records → Export), then choose the file here. Accounts and
         categories are matched by name and created when missing. Importing the same file twice adds nothing new.
       </p>
       <label className="field">

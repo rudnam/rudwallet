@@ -9,7 +9,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/francis/app-template/internal/db"
+	"github.com/rudnam/wallet-app/internal/db"
 )
 
 // Filter narrows List. Zero values mean "any".

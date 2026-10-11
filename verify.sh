@@ -4,7 +4,7 @@
 #   ./verify.sh                  everything: go vet, Go tests, browser tests
 #   ./verify.sh go               go vet and Go tests only (unit + HTTP integration)
 #   ./verify.sh e2e [args...]    browser tests only; args go to `playwright test`,
-#                                e.g. ./verify.sh e2e -g notes
+#                                e.g. ./verify.sh e2e -g wallet
 #
 # Needs only Docker. Uses its own Compose project (<folder>-verify) with the
 # database in tmpfs, so it never touches the live stack or its data, and it

@@ -28,7 +28,7 @@ services:
   app:
     # Built from this folder, or pulled from a registry when APP_IMAGE names
     # a published build (see docs/deploy.md, "Deploy a published image").
-    image: ${APP_IMAGE:-app-template:local}
+    image: ${APP_IMAGE:-wallet-app:local}
     build:
       context: .
       args:

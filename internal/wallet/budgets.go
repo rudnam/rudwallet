@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/francis/app-template/internal/db"
+	"github.com/rudnam/wallet-app/internal/db"
 )
 
 func (s *Store) Budgets(ctx context.Context, userID int64) ([]Budget, error) {

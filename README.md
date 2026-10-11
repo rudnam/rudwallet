@@ -1,22 +1,11 @@
-# App Template
+# Wallet
 
-<!-- template:start -->
-> **This is the template.** Start a new app with:
->
-> ```sh
-> scripts/new-app.sh habit-tracker     # creates ../habit-tracker, renamed, verified-ready, first commit made
-> ```
->
-> Everything below is the new app's README; this box is removed from the copy.
-<!-- template:end -->
-
-**Kakeibo** tracks your money: accounts, categories, records, budgets, and a
-monthly overview, much like Wallet by BudgetBakers (and it imports Wallet's CSV
-export). What it adds: **payment emails become records for you.** Forward
-your card's payment emails to your private address and each one waits under
-*To review* with the shop, amount and time filled in. That covers online and QR
-payments too, which Google Wallet notifications miss. Confirming one teaches
-it the shop's category and the card's account. See [docs/email.md](docs/email.md).
+**Wallet** tracks your money: accounts, categories, records, budgets, and a
+monthly overview. Payment emails become records for you: forward your card's
+payment emails to your private address and each one waits under *To review*
+with the shop, amount and time filled in. Confirming one teaches it the shop's
+category and the card's account. See [docs/email.md](docs/email.md). Records
+exported from BudgetBakers' Wallet app (CSV) can be imported.
 
 A Go API, a React frontend, and PostgreSQL, shipped as one Docker image.
 

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/francis/app-template/internal/wallet"
+	"github.com/rudnam/wallet-app/internal/wallet"
 )
 
 func overview(t *testing.T, c *client) wallet.Overview {

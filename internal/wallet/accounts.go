@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/francis/app-template/internal/db"
+	"github.com/rudnam/wallet-app/internal/db"
 )
 
 // balanceSQL is an account's balance from its confirmed records.

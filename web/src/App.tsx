@@ -11,7 +11,7 @@ import { href, useRoute } from './router';
 import { useWallet, WalletProvider } from './wallet';
 
 /** The app's name, shown in the top bar. Also in index.html and the manifest. */
-export const appName = 'Kakeibo';
+export const appName = 'Wallet';
 
 type Session =
   | { status: 'loading' }

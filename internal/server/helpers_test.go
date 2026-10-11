@@ -15,9 +15,9 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"github.com/francis/app-template/internal/config"
-	"github.com/francis/app-template/internal/server"
-	"github.com/francis/app-template/internal/testdb"
+	"github.com/rudnam/wallet-app/internal/config"
+	"github.com/rudnam/wallet-app/internal/server"
+	"github.com/rudnam/wallet-app/internal/testdb"
 )
 
 func init() {

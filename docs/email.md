@@ -49,7 +49,7 @@ the app reachable over HTTPS.
    and redeploy. Settings → Email automation now shows each user's address.
 2. **Create the Worker.** In the Cloudflare dashboard, go to **Workers & Pages → Create → Worker**,
    paste `deploy/email-worker/worker.js`, and deploy. Under **Settings → Variables and Secrets** add
-   `APP_URL` (e.g. `https://kakeibo.example.com`) and `INBOUND_SECRET` (type *Secret*).
+   `APP_URL` (e.g. `https://wallet.example.com`) and `INBOUND_SECRET` (type *Secret*).
 3. **Route the mail.** In the domain's **Email → Email Routing**, enable it for
    `in.example.com` (Cloudflare adds the MX and SPF records), then under **Routing rules →
    Catch-all address** choose **Send to a Worker** and pick the worker.

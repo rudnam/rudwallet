@@ -17,9 +17,9 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/francis/app-template/internal/db"
-	"github.com/francis/app-template/internal/inbox/parse"
-	"github.com/francis/app-template/internal/wallet"
+	"github.com/rudnam/wallet-app/internal/db"
+	"github.com/rudnam/wallet-app/internal/inbox/parse"
+	"github.com/rudnam/wallet-app/internal/wallet"
 )
 
 // AddressPrefix starts every forwarding address: pay-<token>@domain.

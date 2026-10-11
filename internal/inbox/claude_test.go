@@ -12,7 +12,7 @@ import (
 
 	"github.com/anthropics/anthropic-sdk-go/option"
 
-	"github.com/francis/app-template/internal/inbox/parse"
+	"github.com/rudnam/wallet-app/internal/inbox/parse"
 )
 
 // fakeClaude answers like the Messages API with the given JSON text, and

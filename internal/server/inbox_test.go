@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/francis/app-template/internal/config"
-	"github.com/francis/app-template/internal/inbox"
-	"github.com/francis/app-template/internal/wallet"
+	"github.com/rudnam/wallet-app/internal/config"
+	"github.com/rudnam/wallet-app/internal/inbox"
+	"github.com/rudnam/wallet-app/internal/wallet"
 )
 
 const inboundSecret = "test-inbound-secret-0123456789"
