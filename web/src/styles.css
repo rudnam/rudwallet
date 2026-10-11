@@ -38,6 +38,9 @@
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
+  /* Stop mobile browsers enlarging text they think is too small. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -100,6 +103,14 @@ code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; }
 .page-head { display: flex; align-items: flex-end; gap: 12px; padding-top: 8px; }
 .page-head > div { flex: 1; min-width: 0; }
 
+/* Phones: a slightly smaller type scale and tighter spacing, so a screen
+   holds more than a couple of cards. Everything sized in rem follows. */
+@media (max-width: 560px) {
+  :root { font-size: 15px; --space: 14px; }
+  h1 { font-size: 1.75rem; }
+  .card { padding: var(--space); }
+}
+
 /* ---------- Controls ---------- */
 .field { display: flex; flex-direction: column; gap: 6px; font-weight: 500; font-size: 0.9rem; }
 input, select, textarea {
@@ -107,6 +118,8 @@ input, select, textarea {
   padding: 11px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
+/* 16px keeps iOS from zooming in on focus, whatever the root size. */
+@media (max-width: 560px) { input, select { font-size: 16px; } }
 input:hover, select:hover, textarea:hover { border-color: color-mix(in srgb, var(--muted) 50%, var(--border)); }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
 textarea { font-family: ui-monospace, monospace; font-size: 0.8rem; resize: vertical; }
@@ -232,8 +245,9 @@ a.button.secondary:hover { background: var(--sunken); }
 .banner .chev { color: var(--accent); font-size: 1.4rem; line-height: 1; }
 
 .hero { display: flex; flex-direction: column; gap: 4px; padding: 24px; }
+@media (max-width: 560px) { .hero { padding: 18px; } }
 .hero-figure {
-  font-family: var(--serif); font-size: clamp(2.5rem, 11vw, 3.5rem); font-weight: 400; line-height: 1.1;
+  font-family: var(--serif); font-size: clamp(2.25rem, 10vw, 3.5rem); font-weight: 400; line-height: 1.1;
   letter-spacing: -0.02em; overflow-wrap: anywhere; font-variant-numeric: lining-nums tabular-nums;
 }
 .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px; }
@@ -405,6 +419,7 @@ button.bar-row:active:not(:disabled) { transform: none; }
   padding: 0; width: auto; max-width: 100%; font-variant-numeric: tabular-nums;
 }
 .amount-field input:focus { box-shadow: none; }
+@media (max-width: 560px) { .amount-field input { font-size: 2.6rem; } .amount-field .currency { font-size: 1.75rem; } }
 .amount-field input::placeholder { color: color-mix(in srgb, var(--muted) 45%, transparent); }
 
 /* A tap-to-pick grid of categories. */

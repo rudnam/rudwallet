@@ -45,3 +45,9 @@ Without this step, the app opens with a browser address bar.
 - Install on a phone with USB debugging on: `npx @bubblewrap/cli install`.
 - Upload `app-release-bundle.aab` in the Play Console.
 - After changing the web manifest (name, colors, icons), mirror it in `twa-manifest.json`, run `npx @bubblewrap/cli update --skipVersionUpgrade` and build again.
+
+## Icons
+
+`web/public/icon.svg` (full bleed) and `favicon.svg` (rounded) are the source. `./android/icons.sh` redraws every PNG from them: the web icons, `store_icon.png`, and the launcher and splash images in `app/src/main/res`. On Android 8+ the launcher icon is the adaptive one in `mipmap-anydpi-v26/ic_launcher.xml`: the wallet as a vector (`drawable/ic_launcher_foreground.xml`, plus a one-colour `ic_launcher_monochrome.xml` for themed icons) on the clay colour.
+
+`bubblewrap update` replaces all of these with its own versions built from the live site's PNGs. After an update, restore them with `git checkout -- app/src/main/res` (and delete any `ic_maskable.png` it adds), or run `./android/icons.sh`.

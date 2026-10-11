@@ -27,11 +27,11 @@ def twaManifest = [
     name: 'Wallet', // The application name.
     launcherName: 'Wallet', // The name shown on the Android Launcher.
     themeColor: '#F5F3EC', // The color used for the status bar.
-    themeColorDark: '#F5F3EC', // The color used for the dark status bar.
+    themeColorDark: '#1F1E1C', // The color used for the dark status bar.
     navigationColor: '#F5F3EC', // The color used for the navigation bar.
-    navigationColorDark: '#F5F3EC', // The color used for the dark navbar.
+    navigationColorDark: '#1F1E1C', // The color used for the dark navbar.
     navigationDividerColor: '#F5F3EC', // The navbar divider color.
-    navigationDividerColorDark: '#F5F3EC', // The dark navbar divider color.
+    navigationDividerColorDark: '#1F1E1C', // The dark navbar divider color.
     backgroundColor: '#F5F3EC', // The color used for the splash screen background.
     enableNotifications: false, // Set to true to enable notification delegation.
     // Every shortcut must include the following fields:
@@ -57,8 +57,8 @@ android {
         applicationId "com.rudnam.wallet"
         minSdkVersion 24
         targetSdkVersion 36
-        versionCode 1
-        versionName "1"
+        versionCode 2
+        versionName "1.1"
 
         // The name for the application
         resValue "string", "appName", twaManifest.name
