@@ -7,7 +7,7 @@ test('sign up, sign out and sign in again', async ({ page }) => {
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill(PASSWORD);
   await page.getByRole('button', { name: 'Create account' }).click();
-  await expect(page.getByRole('heading', { name: 'Notes' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
@@ -18,7 +18,7 @@ test('sign up, sign out and sign in again', async ({ page }) => {
   await expect(page.getByText(email)).toBeVisible();
 
   await page.reload(); // the session survives a reload
-  await expect(page.getByRole('heading', { name: 'Notes' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
 });
 
 test('a wrong password shows an error', async ({ page }) => {

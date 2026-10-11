@@ -1,14 +1,122 @@
 // Typed client for the Go API. Shapes mirror the Go handlers' JSON.
+// Amounts are whole minor units of the user's currency (see Settings).
 
 export interface Me {
   email: string;
 }
 
-export interface Note {
+export interface Settings {
+  currency: string;
+  /** Decimal places: 0 for JPY (1250 = ¥1,250), 2 for USD (1250 = $12.50). */
+  currency_exponent: number;
+  auto_confirm: boolean;
+  default_account_id: number | null;
+}
+
+export type AccountKind = 'cash' | 'bank' | 'credit_card' | 'e_money' | 'savings' | 'other';
+
+export interface Account {
   id: number;
-  body: string;
+  name: string;
+  kind: AccountKind;
+  initial_balance: number;
+  /** Initial balance plus confirmed records. */
+  balance: number;
+  color: string;
+  archived: boolean;
+}
+
+export type CategoryKind = 'expense' | 'income';
+
+export interface Category {
+  id: number;
+  name: string;
+  kind: CategoryKind;
+  icon: string;
+  color: string;
+}
+
+export type TransactionKind = 'expense' | 'income' | 'transfer';
+
+export interface Transaction {
+  id: number;
+  kind: TransactionKind;
+  amount: number;
+  account_id: number;
+  to_account_id: number | null;
+  category_id: number | null;
   /** ISO 8601 timestamp. */
+  occurred_at: string;
+  payee: string;
+  note: string;
+  /** 'review': created from an email, waiting for the user. */
+  status: 'confirmed' | 'review';
+  source: 'manual' | 'email' | 'import';
+  /** What paid, as the email named it (e.g. a card). */
+  source_label: string;
+  duplicate_of_id: number | null;
   created_at: string;
+}
+
+export type TransactionInput = Pick<
+  Transaction,
+  'kind' | 'amount' | 'account_id' | 'to_account_id' | 'category_id' | 'occurred_at' | 'payee' | 'note'
+> & { status?: Transaction['status'] };
+
+export interface Overview {
+  settings: Settings;
+  accounts: Account[];
+  categories: Category[];
+  review_count: number;
+}
+
+export interface Budget {
+  id: number;
+  name: string;
+  /** null: all expenses. */
+  category_id: number | null;
+  /** Monthly limit. */
+  amount: number;
+}
+
+export interface TransactionFilter {
+  from?: Date;
+  to?: Date;
+  account_id?: number;
+  /** A category ID, or 'none' for uncategorised records. */
+  category_id?: number | 'none';
+  q?: string;
+  status?: Transaction['status'];
+}
+
+export interface InboundEmail {
+  id: number;
+  from: string;
+  subject: string;
+  received_at: string;
+  status: 'payment' | 'ignored' | 'unparsed' | 'forwarding';
+  parser: string;
+  detail: string;
+  body_text: string;
+  confirm_url: string;
+  transaction_id: number | null;
+  dismissed: boolean;
+  duplicate?: boolean;
+}
+
+export interface Inbox {
+  /** Empty when the server has no inbound mail domain configured. */
+  address: string;
+  ai_enabled: boolean;
+  emails: InboundEmail[];
+}
+
+export interface ImportResult {
+  imported: number;
+  duplicates: number;
+  accounts_created: number;
+  categories_created: number;
+  problems: string[];
 }
 
 /** An error response from the API; message is safe to show the user. */
@@ -21,16 +129,29 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+async function request<T>(method: string, path: string, body?: unknown, contentType?: string): Promise<T> {
+  const raw = contentType !== undefined;
   const res = await fetch(path, {
     method,
-    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
+    headers: body === undefined ? undefined : { 'Content-Type': contentType ?? 'application/json' },
+    body: body === undefined ? undefined : raw ? (body as BodyInit) : JSON.stringify(body),
   });
   if (res.status === 204) return undefined as T;
   const data = await res.json().catch(() => null);
   if (!res.ok) throw new ApiError(data?.error ?? res.statusText, res.status);
   return data as T;
+}
+
+function query(f: TransactionFilter): string {
+  const p = new URLSearchParams();
+  if (f.from) p.set('from', f.from.toISOString());
+  if (f.to) p.set('to', f.to.toISOString());
+  if (f.account_id) p.set('account_id', String(f.account_id));
+  if (f.category_id) p.set('category_id', String(f.category_id));
+  if (f.q) p.set('q', f.q);
+  if (f.status) p.set('status', f.status);
+  const s = p.toString();
+  return s ? `?${s}` : '';
 }
 
 export const api = {
@@ -39,9 +160,35 @@ export const api = {
   signIn: (email: string, password: string) => request<Me>('POST', '/api/login', { email, password }),
   signOut: () => request<void>('POST', '/api/logout'),
 
-  notes: () => request<Note[]>('GET', '/api/notes'),
-  createNote: (body: string) => request<Note>('POST', '/api/notes', { body }),
-  deleteNote: (id: number) => request<void>('DELETE', `/api/notes/${id}`),
+  overview: () => request<Overview>('GET', '/api/wallet'),
+  updateSettings: ({ currency, auto_confirm, default_account_id }: Omit<Settings, 'currency_exponent'>) =>
+    request<Settings>('PUT', '/api/settings', { currency, auto_confirm, default_account_id }),
+
+  createAccount: (a: Omit<Account, 'id' | 'balance'>) => request<Account>('POST', '/api/accounts', a),
+  updateAccount: (id: number, a: Omit<Account, 'id' | 'balance'>) => request<Account>('PUT', `/api/accounts/${id}`, a),
+  deleteAccount: (id: number) => request<void>('DELETE', `/api/accounts/${id}`),
+
+  createCategory: (c: Omit<Category, 'id'>) => request<Category>('POST', '/api/categories', c),
+  updateCategory: (id: number, c: Omit<Category, 'id'>) => request<Category>('PUT', `/api/categories/${id}`, c),
+  deleteCategory: (id: number) => request<void>('DELETE', `/api/categories/${id}`),
+
+  transactions: (f: TransactionFilter = {}) => request<Transaction[]>('GET', `/api/transactions${query(f)}`),
+  createTransaction: (t: TransactionInput) => request<Transaction>('POST', '/api/transactions', t),
+  updateTransaction: (id: number, t: TransactionInput) => request<Transaction>('PUT', `/api/transactions/${id}`, t),
+  deleteTransaction: (id: number) => request<void>('DELETE', `/api/transactions/${id}`),
+
+  budgets: () => request<Budget[]>('GET', '/api/budgets'),
+  createBudget: (b: Omit<Budget, 'id'>) => request<Budget>('POST', '/api/budgets', b),
+  updateBudget: (id: number, b: Omit<Budget, 'id'>) => request<Budget>('PUT', `/api/budgets/${id}`, b),
+  deleteBudget: (id: number) => request<void>('DELETE', `/api/budgets/${id}`),
+
+  inbox: () => request<Inbox>('GET', '/api/inbox'),
+  newAddress: () => request<Inbox>('POST', '/api/inbox/address'),
+  uploadEmail: (raw: string) => request<InboundEmail>('POST', '/api/inbox/emails', raw, 'message/rfc822'),
+  dismissEmail: (id: number) => request<void>('POST', `/api/inbox/emails/${id}/dismiss`),
+
+  importBudgetBakers: (csv: string) =>
+    request<ImportResult>('POST', `/api/import/budgetbakers?tz_offset=${new Date().getTimezoneOffset()}`, csv, 'text/csv'),
 };
 
 /** A message to show for any thrown value. */

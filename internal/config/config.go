@@ -35,6 +35,15 @@ type Config struct {
 	// full screen. See android/README.md.
 	AndroidPackage          string
 	AndroidCertFingerprints []string
+	// InboundDomain and InboundSecret turn on the email automation: each
+	// user gets an address @InboundDomain, and the mail provider's hook
+	// calls POST /api/inbound/email with InboundSecret. See docs/email.md.
+	InboundDomain string
+	InboundSecret string
+	// AnthropicAPIKey, when set, lets Claude read payment emails that no
+	// built-in rule knows. AnthropicModel picks the model.
+	AnthropicAPIKey string
+	AnthropicModel  string
 }
 
 // Load reads the configuration through getenv (os.Getenv in production) and
@@ -52,9 +61,19 @@ func Load(getenv func(string) string) (Config, error) {
 		AuthRateLimit:           r.positiveInt("AUTH_RATE_LIMIT", 10),
 		AndroidPackage:          r.str("ANDROID_PACKAGE", ""),
 		AndroidCertFingerprints: r.list("ANDROID_CERT_FINGERPRINTS"),
+		InboundDomain:           strings.ToLower(r.str("INBOUND_DOMAIN", "")),
+		InboundSecret:           r.str("INBOUND_SECRET", ""),
+		AnthropicAPIKey:         r.str("ANTHROPIC_API_KEY", ""),
+		AnthropicModel:          r.str("ANTHROPIC_MODEL", "claude-opus-5-5"),
 	}
 	if (c.AndroidPackage == "") != (len(c.AndroidCertFingerprints) == 0) {
 		r.errs = append(r.errs, errors.New("set both ANDROID_PACKAGE and ANDROID_CERT_FINGERPRINTS, or neither"))
+	}
+	if c.InboundDomain != "" && c.InboundSecret == "" {
+		r.errs = append(r.errs, errors.New("INBOUND_DOMAIN needs INBOUND_SECRET"))
+	}
+	if c.InboundSecret != "" && len(c.InboundSecret) < 24 {
+		r.errs = append(r.errs, errors.New("INBOUND_SECRET must be at least 24 characters"))
 	}
 	return c, errors.Join(r.errs...)
 }

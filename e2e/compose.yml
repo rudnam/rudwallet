@@ -38,6 +38,10 @@ services:
       # Every browser test signs up its own user, all from this one IP.
       AUTH_RATE_LIMIT: "1000"
       LOG_LEVEL: debug
+      # Email automation on, so forwarding addresses show and the tests (and
+      # preview.sh) can deliver mail to the webhook like the provider would.
+      INBOUND_DOMAIN: in.example.test
+      INBOUND_SECRET: e2e-inbound-secret-0123456789
     healthcheck:
       test: ["CMD", "/server", "healthcheck"]
       interval: 1s

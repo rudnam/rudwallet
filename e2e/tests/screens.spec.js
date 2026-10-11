@@ -1,7 +1,35 @@
 // Screenshots of the main screens at phone and desktop width. They land in
 // e2e/test-results/ (and in CI's artifacts), so you can look at a change
 // without running anything. Add your own screens here.
-const { test, expect, signUp } = require('./fixtures');
+const { test, expect, signUp, payPayEmail, deliverEmail, inboxAddress } = require('./fixtures');
+
+/** Fills a fresh account with a believable month, through the API. */
+async function seed(page) {
+  const api = page.request;
+  const overview = await (await api.get('/api/wallet')).json();
+  const cat = (name) => overview.categories.find((c) => c.name === name).id;
+  const cash = overview.accounts[0].id;
+  const card = await (await api.post('/api/accounts', { data: { name: 'PayPay Card', kind: 'credit_card', color: '#d9534f' } })).json();
+  const bank = await (await api.post('/api/accounts', { data: { name: 'MUFG', kind: 'bank', initial_balance: 182000, color: '#3b82c4' } })).json();
+  const now = new Date();
+  const day = (d, h = 12) => new Date(now.getFullYear(), now.getMonth(), Math.min(d, now.getDate()), h).toISOString();
+  const records = [
+    { kind: 'income', amount: 280000, account_id: bank.id, category_id: cat('Salary'), occurred_at: day(1, 9), payee: 'Employer' },
+    { kind: 'expense', amount: 68000, account_id: bank.id, category_id: cat('Housing'), occurred_at: day(1, 10), payee: 'Rent' },
+    { kind: 'expense', amount: 4373, account_id: card.id, category_id: cat('Groceries'), occurred_at: day(3, 17), payee: 'アピタ知立店' },
+    { kind: 'expense', amount: 1820, account_id: card.id, category_id: cat('Food & Drinks'), occurred_at: day(6, 19), payee: '大戸屋 知立店', note: 'Tap to pay' },
+    { kind: 'expense', amount: 429, account_id: card.id, category_id: cat('Food & Drinks'), occurred_at: day(7, 7), payee: 'セブン－イレブン' },
+    { kind: 'expense', amount: 1430, account_id: cash, category_id: cat('Food & Drinks'), occurred_at: day(8, 20), payee: 'コメダ珈琲店' },
+    { kind: 'expense', amount: 6800, account_id: card.id, category_id: cat('Bills & Utilities'), occurred_at: day(9, 9), payee: 'Chubu Electric' },
+    { kind: 'expense', amount: 1025, account_id: card.id, category_id: cat('Health'), occurred_at: day(10, 20), payee: 'スギ薬局 大曽根店' },
+    { kind: 'transfer', amount: 20000, account_id: bank.id, to_account_id: cash, occurred_at: day(2, 11) },
+  ];
+  for (const r of records) expect((await api.post('/api/transactions', { data: r })).status()).toBe(201);
+  await api.post('/api/budgets', { data: { name: 'Eating out', category_id: cat('Food & Drinks'), amount: 5000 } });
+  await api.post('/api/budgets', { data: { name: 'Everything', category_id: null, amount: 120000 } });
+  // One payment from an email, waiting for review.
+  await deliverEmail(api, await inboxAddress(page), payPayEmail({ merchant: 'IKEAオンライン', yen: 4994, when: new Date(), id: `screens-${Date.now()}-${Math.random()}` }));
+}
 
 for (const [name, viewport] of [
   ['phone', { width: 390, height: 844 }],
@@ -9,20 +37,43 @@ for (const [name, viewport] of [
 ]) {
   test(`screens at ${name} width`, async ({ page }) => {
     await page.setViewportSize(viewport);
-    const shot = (label) => page.screenshot({ path: test.info().outputPath(`${name}-${label}.png`), fullPage: true });
+    const shot = async (label) => {
+      // Nothing may overflow sideways.
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      expect(overflow, `${label} overflows sideways`).toBeLessThanOrEqual(0);
+      await page.screenshot({ path: test.info().outputPath(`${name}-${label}.png`), fullPage: true });
+    };
 
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
     await shot('1-sign-in');
 
     await signUp(page);
-    await page.getByLabel('New note').fill('A note with a fairly long line of text, to check that it wraps');
-    await page.getByRole('button', { name: 'Add' }).click();
-    await expect(page.getByRole('listitem')).toHaveCount(1);
-    await shot('2-notes');
+    await seed(page);
+    await page.reload();
+    await expect(page.getByRole('link', { name: /1 payment from email/ })).toBeVisible();
+    await expect(page.getByRole('list', { name: 'Spending by category' })).toBeVisible();
+    await shot('2-overview');
 
-    // Nothing may overflow sideways.
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-    expect(overflow).toBeLessThanOrEqual(0);
+    await page.goto('/#/review');
+    await expect(page.getByRole('listitem', { name: 'IKEAオンライン' })).toBeVisible();
+    await shot('3-review');
+
+    await page.goto('/#/records');
+    await expect(page.getByRole('button', { name: /Rent/ })).toBeVisible();
+    await shot('4-records');
+
+    await page.getByRole('button', { name: 'Add record' }).click();
+    await expect(page.getByRole('dialog', { name: 'New record' })).toBeVisible();
+    await shot('5-new-record');
+    await page.keyboard.press('Escape');
+
+    await page.goto('/#/budgets');
+    await expect(page.getByRole('list', { name: 'Budgets' })).toBeVisible();
+    await shot('6-budgets');
+
+    await page.goto('/#/settings');
+    await expect(page.getByTestId('inbox-address')).toBeVisible();
+    await shot('7-settings');
   });
 }

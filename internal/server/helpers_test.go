@@ -103,3 +103,24 @@ func get(t *testing.T, url string) (*http.Response, string) {
 	body, _ := io.ReadAll(resp.Body)
 	return resp, string(body)
 }
+
+// send posts a raw body of the given content type, with extra headers.
+func (c *client) send(path, contentType string, body []byte, headers map[string]string, out any) int {
+	c.t.Helper()
+	req, _ := http.NewRequest("POST", c.base+path, bytes.NewReader(body))
+	req.Header.Set("Content-Type", contentType)
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+	resp, err := c.http.Do(req)
+	if err != nil {
+		c.t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if out != nil {
+		if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+			c.t.Fatalf("POST %s: decode: %v", path, err)
+		}
+	}
+	return resp.StatusCode
+}

@@ -1,6 +1,6 @@
 {
-  "name": "App Template",
-  "short_name": "App Template",
+  "name": "Kakeibo",
+  "short_name": "Kakeibo",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

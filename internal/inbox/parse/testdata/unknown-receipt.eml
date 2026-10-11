@@ -1,0 +1,8 @@
+From: Example Shop <orders@shop.example>
+To: user@example.com
+Subject: Your order #1234 receipt
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Date: Sun, 11 Oct 2026 07:00:00 +0000
+
+Thanks for your order! Total charged: 2,500 JPY to your card ending 1234.
