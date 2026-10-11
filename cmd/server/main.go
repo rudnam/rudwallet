@@ -13,10 +13,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/francis/app-template/internal/config"
-	"github.com/francis/app-template/internal/db"
-	"github.com/francis/app-template/internal/server"
-	"github.com/francis/app-template/web"
+	"github.com/rudnam/wallet-app/internal/config"
+	"github.com/rudnam/wallet-app/internal/db"
+	"github.com/rudnam/wallet-app/internal/server"
+	"github.com/rudnam/wallet-app/web"
 )
 
 // version is set at build time (-ldflags "-X main.version=...").

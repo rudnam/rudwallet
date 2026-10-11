@@ -12,10 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/francis/app-template/internal/account"
-	"github.com/francis/app-template/internal/config"
-	"github.com/francis/app-template/internal/httpx"
-	"github.com/francis/app-template/internal/notes"
+	"github.com/rudnam/wallet-app/internal/account"
+	"github.com/rudnam/wallet-app/internal/config"
+	"github.com/rudnam/wallet-app/internal/httpx"
+	"github.com/rudnam/wallet-app/internal/inbox"
+	"github.com/rudnam/wallet-app/internal/wallet"
 )
 
 func init() {
@@ -40,7 +41,15 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 		AttemptsPerMinute: cfg.AuthRateLimit,
 	}, account.NewStore(conn))
 	accounts.Register(mux)
-	notes.NewHandler(notes.NewStore(conn)).Register(mux, accounts.RequireUser)
+	walletStore := wallet.NewStore(conn)
+	wallet.NewHandler(walletStore).Register(mux, accounts.RequireUser)
+	var reader inbox.Extractor
+	if cfg.AnthropicAPIKey != "" {
+		reader = inbox.NewClaudeExtractor(cfg.AnthropicAPIKey, cfg.AnthropicModel)
+	}
+	inboxStore := inbox.NewStore(conn)
+	inbox.NewHandler(inbox.Config{Domain: cfg.InboundDomain, Secret: cfg.InboundSecret}, inboxStore,
+		inbox.NewService(inboxStore, walletStore, reader)).Register(mux, accounts.RequireUser)
 
 	// Unknown API paths get a JSON 404 rather than the web page.
 	mux.Handle("/api/", httpx.HandlerFunc(func(http.ResponseWriter, *http.Request) error {

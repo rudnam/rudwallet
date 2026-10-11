@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/francis/app-template/internal/db"
+	"github.com/rudnam/wallet-app/internal/db"
 )
 
 var errEmailTaken = errors.New("email already registered")

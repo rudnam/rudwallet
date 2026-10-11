@@ -3,7 +3,7 @@ package server_test
 import (
 	"testing"
 
-	"github.com/francis/app-template/internal/config"
+	"github.com/rudnam/wallet-app/internal/config"
 )
 
 func TestAuthFlow(t *testing.T) {

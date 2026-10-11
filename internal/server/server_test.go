@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/francis/app-template/internal/config"
+	"github.com/rudnam/wallet-app/internal/config"
 )
 
 func TestHealth(t *testing.T) {
@@ -35,8 +35,8 @@ func TestServesWebApp(t *testing.T) {
 		wantStatus                int
 	}{
 		{"/", "<title>App</title>", "no-cache", 200},
-		{"/notes/42", "<title>App</title>", "no-cache", 200}, // client-side route
-		{"/assets", "<title>App</title>", "no-cache", 200},   // no directory listings
+		{"/records", "<title>App</title>", "no-cache", 200}, // client-side route
+		{"/assets", "<title>App</title>", "no-cache", 200},  // no directory listings
 		{"/assets/app-1.js", "console.log", "immutable", 200},
 		{"/assets/missing.js", "404", "", 404},
 	}

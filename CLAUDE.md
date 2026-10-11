@@ -1,13 +1,13 @@
 # Notes for AI agents
 
-Go API (`internal/`, one package per feature), PostgreSQL, and a React + TypeScript frontend (`web/src/`, built by Vite into `web/dist/` and embedded in the binary). README.md explains the layout and how to add a feature; follow the `notes` example.
+Go API (`internal/`, one package per feature), PostgreSQL, and a React + TypeScript frontend (`web/src/`, built by Vite into `web/dist/` and embedded in the binary). README.md explains the layout and how to add a feature; follow `internal/wallet` or `internal/inbox`.
 
 ## Verify your work before calling it done
 
 ```sh
 ./verify.sh                 # everything: go vet, all Go tests, browser tests
 ./verify.sh go              # Go only
-./verify.sh e2e -g notes    # browser tests only; extra args go to `playwright test`
+./verify.sh e2e -g wallet   # browser tests only; extra args go to `playwright test`
 ```
 
 - It needs only Docker. It builds the working tree, runs it against a throwaway database, and tears everything down. It ends with `VERIFY PASSED` or `VERIFY FAILED`.

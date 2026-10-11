@@ -1,5 +1,5 @@
 {
-  "name": "app-template-e2e",
+  "name": "wallet-app-e2e",
   "private": true,
   "description": "Browser tests. Run them with ../verify.sh, not directly.",
   "devDependencies": {

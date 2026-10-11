@@ -11,7 +11,7 @@ import (
 
 	"github.com/lib/pq"
 
-	"github.com/francis/app-template/internal/db"
+	"github.com/rudnam/wallet-app/internal/db"
 )
 
 // Open connects to TEST_DATABASE_URL, applies the migrations and empties
