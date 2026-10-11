@@ -95,9 +95,22 @@ for (const [name, viewport] of [
     await shot('9-edit-account');
     await page.keyboard.press('Escape');
 
+    await page.goto('/#/settings?section=import');
+    const p = (n) => String(n).padStart(2, '0');
+    const now = new Date();
+    const csv = [
+      '取引日,出金金額（円）,入金金額（円）,海外出金金額,通貨,変換レート（円）,利用国,取引内容,取引先,取引方法,支払い区分,利用者,取引番号',
+      `${now.getFullYear()}/${p(now.getMonth() + 1)}/01 12:00,"1,200",-,-,-,-,-,支払い,ローソン,PayPay残高,-,本人,s-001`,
+      `${now.getFullYear()}/${p(now.getMonth() + 1)}/01 12:05,"1,280",-,-,-,-,-,支払い,お店,PayPayカード,一回払い,本人,s-002`,
+      `${now.getFullYear()}/${p(now.getMonth() + 1)}/01 09:00,-,"5,000",-,-,-,-,チャージ,MUFG,三菱UFJ銀行,-,本人,s-003`,
+    ].join('\n');
+    await page.getByLabel('PayPay CSV file').setInputFiles({ name: 'paypay.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+    await expect(page.getByRole('button', { name: 'Import 3 payments' })).toBeVisible();
+    await shot('10-import-paypay');
+
     await page.goto('/#/settings');
     await page.getByRole('button', { name: 'Delete account' }).click();
     await expect(page.getByRole('dialog', { name: 'Delete account' })).toBeVisible();
-    await shot('10-delete-account');
+    await shot('11-delete-account');
   });
 }

@@ -54,6 +54,7 @@ func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) ht
 	route("DELETE /api/budgets/{id}", h.deleteBudget)
 
 	route("POST /api/import/budgetbakers", h.importBudgetBakers)
+	route("POST /api/import/paypay", h.importPayPay)
 }
 
 func userID(r *http.Request) int64 { return account.UserFrom(r).ID }
@@ -518,22 +519,14 @@ func (h *Handler) deleteBudget(w http.ResponseWriter, r *http.Request) error {
 
 // ---------- Import ----------
 
-// importBudgetBakers takes the CSV file as the request body. Requiring the
-// text/csv type means a form on another site cannot send it.
+// importBudgetBakers takes the CSV file as the request body.
 // tz_offset is the browser's Date.getTimezoneOffset(), in minutes.
 func (h *Handler) importBudgetBakers(w http.ResponseWriter, r *http.Request) error {
-	if mt, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type")); mt != "text/csv" {
-		return httpx.Errorf(http.StatusUnsupportedMediaType, "Content-Type must be text/csv")
-	}
 	offset, _ := strconv.Atoi(r.URL.Query().Get("tz_offset"))
 	if offset < -14*60 || offset > 14*60 {
 		offset = 0
 	}
-	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxImport))
-	var tooBig *http.MaxBytesError
-	if errors.As(err, &tooBig) {
-		return httpx.Errorf(http.StatusRequestEntityTooLarge, "the file is over %d MB", maxImport>>20)
-	}
+	data, err := readCSV(w, r)
 	if err != nil {
 		return err
 	}
@@ -543,4 +536,52 @@ func (h *Handler) importBudgetBakers(w http.ResponseWriter, r *http.Request) err
 	}
 	httpx.WriteJSON(w, http.StatusOK, res)
 	return nil
+}
+
+// importPayPay takes a PayPay transaction history CSV as the request body.
+// With ?preview=1 it only reads the file and suggests an account for each
+// way of paying in it. Otherwise it imports, sending each way of paying to
+// the account given as ?account=<id>:<取引方法> (0, or none: the suggestion).
+func (h *Handler) importPayPay(w http.ResponseWriter, r *http.Request) error {
+	data, err := readCSV(w, r)
+	if err != nil {
+		return err
+	}
+	if r.URL.Query().Get("preview") == "1" {
+		p, err := h.store.PreviewPayPay(r.Context(), userID(r), data)
+		if err := storeErr(err, "record"); err != nil {
+			return err
+		}
+		httpx.WriteJSON(w, http.StatusOK, p)
+		return nil
+	}
+	accounts := map[string]int64{}
+	for _, v := range r.URL.Query()["account"] {
+		idText, method, ok := strings.Cut(v, ":")
+		id, err := strconv.ParseInt(idText, 10, 64)
+		if !ok || err != nil || id < 0 {
+			return httpx.Errorf(http.StatusBadRequest, "account must be <id>:<payment method>")
+		}
+		accounts[method] = id
+	}
+	res, err := h.store.ImportPayPay(r.Context(), userID(r), data, accounts)
+	if err := storeErr(err, "account"); err != nil {
+		return err
+	}
+	httpx.WriteJSON(w, http.StatusOK, res)
+	return nil
+}
+
+// readCSV reads an uploaded CSV file. Requiring the text/csv type means a
+// form on another site cannot send it.
+func readCSV(w http.ResponseWriter, r *http.Request) ([]byte, error) {
+	if mt, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type")); mt != "text/csv" {
+		return nil, httpx.Errorf(http.StatusUnsupportedMediaType, "Content-Type must be text/csv")
+	}
+	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxImport))
+	var tooBig *http.MaxBytesError
+	if errors.As(err, &tooBig) {
+		return nil, httpx.Errorf(http.StatusRequestEntityTooLarge, "the file is over %d MB", maxImport>>20)
+	}
+	return data, err
 }

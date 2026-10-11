@@ -1,7 +1,7 @@
 // Settings: a short menu; each entry opens its own page (?section=…), with
 // a way back. Email automation, accounts, categories, currency, and import.
 import { useState, type FormEvent, type ReactNode } from 'react';
-import { api, errorMessage, type Me, type Account, type AccountKind, type Category, type ImportResult } from '../../api';
+import { api, errorMessage, type Me, type Account, type AccountKind, type Category, type ImportResult, type PayPayPreview } from '../../api';
 import { CategoryIcon, glyphKey, glyphs, Icon, icons } from '../../components/Icon';
 import { Dialog } from '../../components/Dialog';
 import { amountInput, parseAmount } from '../../money';
@@ -27,7 +27,7 @@ const sections: { id: string; label: string; title: string; glyph: string }[] = 
   { id: 'accounts', label: 'Accounts', title: 'Accounts', glyph: 'bank' },
   { id: 'categories', label: 'Categories', title: 'Categories', glyph: 'other' },
   { id: 'general', label: 'Currency', title: 'Currency', glyph: 'money' },
-  { id: 'import', label: 'Import', title: 'Import from BudgetBakers', glyph: 'school' },
+  { id: 'import', label: 'Import', title: 'Import records', glyph: 'school' },
 ];
 
 export function SettingsPage({
@@ -69,7 +69,7 @@ export function SettingsPage({
     accounts: `${active} ${active === 1 ? 'account' : 'accounts'}`,
     categories: `${w.categories.length} categories`,
     general: w.settings.currency,
-    import: 'BudgetBakers',
+    import: 'PayPay, BudgetBakers',
   };
   return (
     <section className="stack loose">
@@ -536,6 +536,180 @@ function General() {
 // ---------- Import ----------
 
 function Import() {
+  return (
+    <>
+      <PayPayImport />
+      <BudgetBakersImport />
+    </>
+  );
+}
+
+/** What an import did, in one sentence. */
+function ImportSummary({ result }: { result: ImportResult }) {
+  return (
+    <div className="notice" role="status">
+      Imported {result.imported} records
+      {result.duplicates > 0 && `, skipped ${result.duplicates} already imported`}
+      {result.matched > 0 && `, skipped ${result.matched} already recorded from emails or by hand`}
+      {result.accounts_created > 0 && `, created ${result.accounts_created} accounts`}
+      {result.categories_created > 0 && `, created ${result.categories_created} categories`}.
+      {result.problems.length > 0 && (
+        <ul className="small">
+          {result.problems.map((p) => (
+            <li key={p}>{p}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** English names for the ways of paying PayPay lists most often. */
+const payPayMethodNames: Record<string, string> = {
+  PayPay残高: 'PayPay balance',
+  PayPayカード: 'PayPay Card',
+  PayPayクレジット: 'PayPay Credit',
+  PayPayポイント: 'PayPay Points',
+};
+
+const shortDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+
+/**
+ * PayPay's transaction history: the file is read first, then each way of
+ * paying in it (balance, card, a bank for charges) gets an account, with
+ * the app's best guess picked, before anything is recorded.
+ */
+function PayPayImport() {
+  const w = useWallet();
+  const [csv, setCsv] = useState('');
+  const [preview, setPreview] = useState<PayPayPreview | null>(null);
+  const [choice, setChoice] = useState<Record<string, number>>({});
+  const [result, setResult] = useState<ImportResult | null>(null);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [fileKey, setFileKey] = useState(0);
+
+  function reset() {
+    setCsv('');
+    setPreview(null);
+    setFileKey((k) => k + 1);
+  }
+
+  async function read(file: File) {
+    setBusy(true);
+    setError('');
+    setResult(null);
+    try {
+      const text = await file.text();
+      const p = await api.previewPayPay(text);
+      setCsv(text);
+      setPreview(p);
+      setChoice(Object.fromEntries(p.methods.map((m) => [m.method, m.account_id ?? 0])));
+    } catch (err) {
+      setError(errorMessage(err));
+      setFileKey((k) => k + 1);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      setResult(await api.importPayPay(csv, choice));
+      reset();
+      await w.refresh();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const accounts = w.accounts.filter((a) => !a.archived || Object.values(choice).includes(a.id));
+  return (
+    <div className="card stack">
+      <h2>PayPay</h2>
+      <p className="small muted">
+        In the PayPay app, open 取引履歴 (transaction history), tap the download button, pick a period of up to a year, and save the CSV file.
+        Payments already recorded from their emails are skipped, and importing an overlapping period adds each payment once.
+      </p>
+      {!preview && (
+        <label className="field">
+          PayPay CSV file
+          <input key={fileKey} type="file" accept=".csv,text/csv" disabled={busy} onChange={(e) => e.target.files?.[0] && read(e.target.files[0])} />
+        </label>
+      )}
+      {preview && preview.records === 0 && (
+        <>
+          <p>There are no payments in this file.</p>
+          <div className="row end">
+            <button type="button" className="secondary" onClick={reset}>
+              Choose another file
+            </button>
+          </div>
+        </>
+      )}
+      {preview && preview.records > 0 && (
+        <form className="stack" onSubmit={submit}>
+          <p>
+            {preview.records} {preview.records === 1 ? 'payment' : 'payments'}
+            {preview.from && preview.to && (shortDate(preview.from) === shortDate(preview.to) ? ` on ${shortDate(preview.from)}` : `, ${shortDate(preview.from)} to ${shortDate(preview.to)}`)}. Choose where each way of paying is
+            recorded:
+          </p>
+          {preview.methods.map((m) => (
+            <label key={m.method} className="field">
+              <span>
+                {m.method}
+                {payPayMethodNames[m.method] && <span className="muted"> · {payPayMethodNames[m.method]}</span>}
+                <span className="muted small"> · {m.count} {m.count === 1 ? 'record' : 'records'}</span>
+              </span>
+              <select value={choice[m.method]} onChange={(e) => setChoice({ ...choice, [m.method]: Number(e.target.value) })}>
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+                {!accounts.some((a) => a.name.toLowerCase() === m.new_name.toLowerCase()) && (
+                  <option value={0}>New account: {m.new_name}</option>
+                )}
+              </select>
+            </label>
+          ))}
+          {preview.problems.length > 0 && (
+            <div className="notice warn small">
+              These rows can't be read and will be left out:
+              <ul>
+                {preview.problems.map((p) => (
+                  <li key={p}>{p}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <div className="row end">
+            <button type="button" className="secondary" onClick={reset} disabled={busy}>
+              Cancel
+            </button>
+            <button type="submit" disabled={busy}>
+              {busy ? 'Importing…' : `Import ${preview.records} ${preview.records === 1 ? 'payment' : 'payments'}`}
+            </button>
+          </div>
+        </form>
+      )}
+      {busy && !preview && <p className="muted">Reading the file…</p>}
+      {error && (
+        <p role="alert" className="error">
+          {error}
+        </p>
+      )}
+      {result && <ImportSummary result={result} />}
+    </div>
+  );
+}
+
+function BudgetBakersImport() {
   const w = useWallet();
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState('');
@@ -557,6 +731,7 @@ function Import() {
 
   return (
     <div className="card stack">
+      <h2>BudgetBakers</h2>
       <p className="small muted">
         In BudgetBakers' Wallet app, export your records as CSV (on the web app: Records → Export), then choose the file here. Accounts and
         categories are matched by name and created when missing. Importing the same file twice adds nothing new.
@@ -571,21 +746,7 @@ function Import() {
           {error}
         </p>
       )}
-      {result && (
-        <div className="notice" role="status">
-          Imported {result.imported} records
-          {result.duplicates > 0 && `, skipped ${result.duplicates} already imported`}
-          {result.accounts_created > 0 && `, created ${result.accounts_created} accounts`}
-          {result.categories_created > 0 && `, created ${result.categories_created} categories`}.
-          {result.problems.length > 0 && (
-            <ul className="small">
-              {result.problems.map((p) => (
-                <li key={p}>{p}</li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
+      {result && <ImportSummary result={result} />}
     </div>
   );
 }

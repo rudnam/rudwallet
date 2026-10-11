@@ -3,6 +3,7 @@ package server_test
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -249,6 +250,101 @@ func TestImportBudgetBakers(t *testing.T) {
 	}
 	if code := c.send("/api/import/budgetbakers", "text/csv", []byte("a,b\n1,2"), nil, nil); code != 400 {
 		t.Errorf("not a Wallet export: %d", code)
+	}
+}
+
+func TestImportPayPay(t *testing.T) {
+	ts := newTestServer(t)
+	c, other := newClient(t, ts), newClient(t, ts)
+	c.signup("a@example.com")
+	other.signup("b@example.com")
+	cash := overview(t, c).Accounts[0].ID
+	var card wallet.Account
+	if code := c.do("POST", "/api/accounts", map[string]any{"name": "PayPay Gold", "kind": "credit_card"}, &card); code != 201 {
+		t.Fatalf("create account: %d", code)
+	}
+	// Already recorded from its email: the import must not add it again.
+	emailed := map[string]any{"kind": "expense", "amount": 1280, "account_id": card.ID,
+		"occurred_at": time.Date(2026, 10, 2, 3, 4, 0, 0, time.UTC), "payee": "SEVEN-ELEVEN"}
+	if code := c.do("POST", "/api/transactions", emailed, nil); code != 201 {
+		t.Fatalf("create record: %d", code)
+	}
+
+	csv := strings.Join([]string{
+		"取引日,出金金額（円）,入金金額（円）,海外出金金額,通貨,変換レート（円）,利用国,取引内容,取引先,取引方法,支払い区分,利用者,取引番号",
+		"2026/10/01 08:15,\"1,200\",-,-,-,-,-,支払い,ローソン,PayPay残高,-,本人,00001",
+		"2026/10/02 12:05,\"1,280\",-,-,-,-,-,支払い,お店,PayPayカード,一回払い,本人,00002",
+		"2026/10/03 09:00,-,\"5,000\",-,-,-,-,チャージ,PayPay銀行,PayPay銀行,-,本人,00003",
+		"2026/10/04 18:00,\"3,000\",-,20,USD,150.00,US,支払い,お店,PayPayカード,一回払い,本人,00004",
+		"2026/10/05 10:00,-,15,-,-,-,-,ポイント、残高の獲得,PayPay,PayPayポイント,-,本人,lp-00005",
+		"2026/10/06 10:00,abc,-,-,-,-,-,支払い,ローソン,PayPay残高,-,本人,00006",
+	}, "\n")
+
+	var p wallet.PayPayPreview
+	if code := c.send("/api/import/paypay?preview=1", "text/csv", []byte(csv), nil, &p); code != 200 {
+		t.Fatalf("preview: %d", code)
+	}
+	suggested := map[string]wallet.PayPayMethod{}
+	for _, m := range p.Methods {
+		suggested[m.Method] = m
+	}
+	if p.Records != 5 || len(p.Problems) != 1 || len(p.Methods) != 4 {
+		t.Errorf("preview %+v", p)
+	}
+	if m := suggested["PayPayカード"]; m.Count != 2 || m.AccountID == nil || *m.AccountID != card.ID {
+		t.Errorf("PayPayカード should go to the PayPay card account: %+v", m)
+	}
+	if m := suggested["PayPay残高"]; m.Count != 2 || m.AccountID != nil || m.NewName != "PayPay" || m.NewKind != "e_money" {
+		t.Errorf("PayPay残高 should get a new PayPay account (a payment and a charge): %+v", m)
+	}
+
+	if code := c.send("/api/import/paypay?account="+url.QueryEscape(strconv.FormatInt(cash, 10)+":PayPayポイント"), "text/csv", []byte(csv), nil, nil); code != 200 {
+		t.Fatalf("import: %d", code)
+	}
+	var res wallet.ImportResult
+	c.send("/api/import/paypay", "text/csv", []byte(csv), nil, &res)
+	if res.Imported != 0 || res.Duplicates != 4 || res.Matched != 1 {
+		t.Errorf("re-import %+v (want 4 already imported, 1 already recorded)", res)
+	}
+
+	var list []wallet.Transaction
+	c.do("GET", "/api/transactions", nil, &list)
+	byKey := map[string]wallet.Transaction{}
+	for _, r := range list {
+		byKey[fmt.Sprintf("%s %d", r.Kind, r.Amount)] = r
+	}
+	if len(list) != 5 {
+		t.Errorf("want the emailed record and 4 imported, got %d: %+v", len(list), list)
+	}
+	lawson := byKey["expense 1200"]
+	if lawson.Payee != "ローソン" || !lawson.OccurredAt.Equal(time.Date(2026, 9, 30, 23, 15, 0, 0, time.UTC)) {
+		t.Errorf("payment: %+v (08:15 JST = 23:15 UTC the day before)", lawson)
+	}
+	charge := byKey["transfer 5000"]
+	if charge.ToAccountID == nil || *charge.ToAccountID != lawson.AccountID || charge.AccountID == lawson.AccountID {
+		t.Errorf("a charge moves money from the bank to the PayPay account: %+v", charge)
+	}
+	if abroad := byKey["expense 3000"]; abroad.AccountID != card.ID || abroad.Payee != "" || abroad.Note != "USD 20 at 150.00 (US)" {
+		t.Errorf("card payment abroad: %+v", abroad)
+	}
+	if points := byKey["income 15"]; points.AccountID != cash {
+		t.Errorf("points go to the chosen account: %+v", points)
+	}
+
+	// The choice is remembered.
+	c.send("/api/import/paypay?preview=1", "text/csv", []byte(csv), nil, &p)
+	for _, m := range p.Methods {
+		if m.AccountID == nil {
+			t.Errorf("no account remembered for %s", m.Method)
+		}
+	}
+
+	otherCash := overview(t, other).Accounts[0].ID
+	if code := c.send("/api/import/paypay?account="+url.QueryEscape(strconv.FormatInt(otherCash, 10)+":PayPay残高"), "text/csv", []byte(csv), nil, nil); code != 404 {
+		t.Errorf("another user's account: %d, want 404", code)
+	}
+	if code := c.send("/api/import/paypay", "text/csv", []byte("a,b\n1,2"), nil, nil); code != 400 {
+		t.Errorf("not a PayPay export: %d", code)
 	}
 }
 

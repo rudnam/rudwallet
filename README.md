@@ -4,8 +4,9 @@
 monthly overview. Payment emails become records for you: forward your card's
 payment emails to your private address and each one waits under *To review*
 with the shop, amount and time filled in. Confirming one teaches it the shop's
-category and the card's account. See [docs/email.md](docs/email.md). Records
-exported from BudgetBakers' Wallet app (CSV) can be imported.
+category and the card's account. See [docs/email.md](docs/email.md). PayPay's
+transaction history (CSV, from the PayPay app) and records exported from
+BudgetBakers' Wallet app (CSV) can be imported.
 
 A Go API, a React frontend, and PostgreSQL, shipped as one Docker image.
 
@@ -116,7 +117,7 @@ The code is split by **feature**: each one owns its SQL, HTTP handlers and page.
 | `internal/httpx/` | HTTP plumbing every feature shares: handlers that return errors, JSON in and out, middleware (security headers, CSRF origin check, logging, panic recovery), rate limiting. |
 | `internal/account/` | Feature: sign-up, sign-in (password or Google), sessions, email confirmation, account deletion, and the `RequireUser` middleware. |
 | `internal/mailer/` | Sends the app's own emails over SMTP. |
-| `internal/wallet/` | Feature: accounts, categories, records, budgets, settings, and the BudgetBakers CSV import. |
+| `internal/wallet/` | Feature: accounts, categories, records, budgets, settings, and the PayPay and BudgetBakers CSV imports. |
 | `internal/inbox/` | Feature: email automation. Forwarding addresses, the inbound webhook, and turning emails into records (`parse/` reads emails and knows the senders; `claude.go` is the AI fallback). |
 | `internal/server/` | Wires the features into one handler; serves the web app. Its tests run the whole API against a real database. |
 | `internal/testdb/` | Gives integration tests an empty, migrated database. |
@@ -153,7 +154,9 @@ Follow `internal/wallet` or `internal/inbox`; a feature is about five files:
 | GET | `/api/transactions` | user | Records, newest first. Query: `from`, `to` (RFC 3339), `account_id`, `category_id` (or `none`), `q`, `status` |
 | POST, PUT, DELETE | `/api/transactions[/{id}]` | user | Records: `{kind, amount, account_id, to_account_id, category_id, occurred_at, payee, note, status}`. Confirming an emailed record learns its shop and card. |
 | GET, POST, PUT, DELETE | `/api/budgets[/{id}]` | user | Monthly budgets: `{name, category_id, amount}` |
-| POST | `/api/import/budgetbakers` | user | Body: the CSV (`text/csv`). `{imported, duplicates, accounts_created, categories_created, problems}` |
+| POST | `/api/import/budgetbakers` | user | Body: the CSV (`text/csv`). `{imported, duplicates, matched, accounts_created, categories_created, problems}` |
+| POST | `/api/import/paypay?preview=1` | user | Body: PayPay's 取引履歴 CSV (`text/csv`). `{records, from, to, methods, problems}`: each way of paying (取引方法) with a suggested account |
+| POST | `/api/import/paypay` | user | Body: the same CSV. Query: `account=<id>:<取引方法>` per way of paying (`0`: a new account). Returns the import result; `matched` counts payments already recorded from emails or by hand |
 | GET | `/api/inbox` | user | `{address, ai_enabled, emails}` |
 | POST | `/api/inbox/address` | user | A new forwarding address |
 | POST | `/api/inbox/emails` | user | Body: a raw email (`message/rfc822`), processed as if forwarded |

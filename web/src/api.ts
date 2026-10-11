@@ -123,8 +123,27 @@ export interface Inbox {
 export interface ImportResult {
   imported: number;
   duplicates: number;
+  /** Rows already recorded another way, e.g. from their email (PayPay only). */
+  matched: number;
   accounts_created: number;
   categories_created: number;
+  problems: string[];
+}
+
+/** One way of paying in a PayPay export, and the account suggested for it (null: a new one). */
+export interface PayPayMethod {
+  method: string;
+  count: number;
+  account_id: number | null;
+  new_name: string;
+  new_kind: AccountKind;
+}
+
+export interface PayPayPreview {
+  records: number;
+  from: string | null;
+  to: string | null;
+  methods: PayPayMethod[];
   problems: string[];
 }
 
@@ -202,6 +221,13 @@ export const api = {
 
   importBudgetBakers: (csv: string) =>
     request<ImportResult>('POST', `/api/import/budgetbakers?tz_offset=${new Date().getTimezoneOffset()}`, csv, 'text/csv'),
+  previewPayPay: (csv: string) => request<PayPayPreview>('POST', '/api/import/paypay?preview=1', csv, 'text/csv'),
+  /** accounts maps each payment method to an account ID, or 0 for a new account. */
+  importPayPay: (csv: string, accounts: Record<string, number>) => {
+    const p = new URLSearchParams();
+    for (const [method, id] of Object.entries(accounts)) p.append('account', `${id}:${method}`);
+    return request<ImportResult>('POST', `/api/import/paypay?${p}`, csv, 'text/csv');
+  },
 };
 
 /** A message to show for any thrown value. */

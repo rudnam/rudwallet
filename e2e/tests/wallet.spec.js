@@ -109,11 +109,11 @@ test('import records exported from Wallet by BudgetBakers', async ({ page }) => 
     `Cash;Groceries;JPY;-2480.00;-2480.00;Expenses;CASH;Cash;;${today};;;;0;false;Aeon;;1000;false`,
     `Rakuten Bank;Salary;JPY;250000.00;250000.00;Income;TRANSFER;Transfer;;${today};;;;0;false;;;5000;false`,
   ].join('\n');
-  await page.getByLabel('CSV file').setInputFiles({ name: 'records.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+  await page.getByLabel('CSV file', { exact: true }).setInputFiles({ name: 'records.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
   await expect(page.getByRole('status')).toContainText('Imported 2 records, created 1 accounts');
 
   // The same file again adds nothing.
-  await page.getByLabel('CSV file').setInputFiles({ name: 'records.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+  await page.getByLabel('CSV file', { exact: true }).setInputFiles({ name: 'records.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
   await expect(page.getByRole('status')).toContainText('Imported 0 records, skipped 2 already imported');
   await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
   await page.getByRole('link', { name: /Accounts/ }).click();
@@ -182,3 +182,37 @@ test('categories wear line icons, and a new one can pick its own', async ({ page
   // No emoji anywhere on the page.
   expect(await page.locator('main').innerText()).not.toMatch(/\p{Extended_Pictographic}/u);
 });
+
+test('import PayPay transaction history', async ({ page }) => {
+  await signUp(page);
+  const card = await (await page.request.post('/api/accounts', { data: { name: 'PayPay Card', kind: 'credit_card' } })).json();
+  const now = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  const day = `${now.getFullYear()}/${p(now.getMonth() + 1)}/${p(now.getDate())}`;
+  // This one arrived by email already; the import must skip it.
+  const emailed = { kind: 'expense', amount: 1280, account_id: card.id, occurred_at: `${day.replaceAll('/', '-')}T12:05:00+09:00`, payee: 'SEVEN-ELEVEN' };
+  expect((await page.request.post('/api/transactions', { data: emailed })).status()).toBe(201);
+
+  await page.goto('/#/settings?section=import');
+  await page.getByLabel('PayPay CSV file').setInputFiles({ name: 'paypay.csv', mimeType: 'text/csv', buffer: Buffer.from(payPayCsv(day)) });
+  await expect(page.getByText(/^3 payments/)).toBeVisible();
+  await expect(page.getByLabel(/^PayPayカード/)).toHaveValue(String(card.id));
+  await expect(page.getByLabel(/^PayPay残高/).locator('option:checked')).toHaveText('New account: PayPay');
+  await expect(page.getByLabel(/^PayPay銀行/).locator('option:checked')).toHaveText('New account: PayPay銀行');
+  await page.getByRole('button', { name: 'Import 3 payments' }).click();
+  await expect(page.getByRole('status')).toContainText('Imported 2 records, skipped 1 already recorded from emails or by hand, created 2 accounts');
+
+  await page.goto('/#/records');
+  await expect(page.getByRole('button', { name: /ローソン, -¥1,200/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /SEVEN-ELEVEN/ })).toHaveCount(1);
+});
+
+/** A PayPay 取引履歴 export: a balance payment, a card payment, and a charge from the bank. */
+function payPayCsv(day) {
+  return [
+    '取引日,出金金額（円）,入金金額（円）,海外出金金額,通貨,変換レート（円）,利用国,取引内容,取引先,取引方法,支払い区分,利用者,取引番号',
+    `${day} 12:00,"1,200",-,-,-,-,-,支払い,ローソン,PayPay残高,-,本人,e2e-001`,
+    `${day} 12:05,"1,280",-,-,-,-,-,支払い,お店,PayPayカード,一回払い,本人,e2e-002`,
+    `${day} 09:00,-,"5,000",-,-,-,-,チャージ,PayPay銀行,PayPay銀行,-,本人,e2e-003`,
+  ].join('\n');
+}
