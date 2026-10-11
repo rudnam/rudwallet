@@ -156,7 +156,7 @@ Follow `internal/wallet` or `internal/inbox`; a feature is about five files:
 | POST, PUT, DELETE | `/api/transactions[/{id}]` | user | Records: `{kind, amount, account_id, to_account_id, category_id, occurred_at, payee, note, status}`. Confirming an emailed record learns its shop and card. |
 | GET, POST, PUT, DELETE | `/api/budgets[/{id}]` | user | Monthly budgets: `{name, category_id, amount}` |
 | POST | `/api/import/budgetbakers` | user | Body: the CSV (`text/csv`). `{imported, duplicates, matched, accounts_created, categories_created, problems}` |
-| POST | `/api/import/paypay?preview=1` | user | Body: PayPay's 取引履歴 CSV (`text/csv`). `{records, from, to, methods, problems}`: each way of paying (取引方法) with a suggested account |
+| POST | `/api/import/paypay?preview=1` | user | Body: PayPay's 取引履歴 CSV (`text/csv`), Japanese or English. `{records, from, to, methods, problems}`: each way of paying (取引方法) with a suggested account |
 | POST | `/api/import/paypay` | user | Body: the same CSV. Query: `account=<id>:<取引方法>` per way of paying (`0`: a new account). Returns the import result; `matched` counts payments already recorded from emails or by hand |
 | GET | `/api/inbox` | user | `{address, ai_enabled, emails}` |
 | POST | `/api/inbox/address` | user | A new forwarding address |
