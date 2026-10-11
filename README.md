@@ -119,6 +119,7 @@ The code is split by **feature**: each one owns its SQL, HTTP handlers and page.
 | `internal/mailer/` | Sends the app's own emails over SMTP. |
 | `internal/wallet/` | Feature: accounts, categories, records, budgets, settings, and the PayPay and BudgetBakers CSV imports. |
 | `internal/inbox/` | Feature: email automation. Forwarding addresses, the inbound webhook, and turning emails into records (`parse/` reads emails and knows the senders; `claude.go` is the AI fallback). |
+| `internal/widget/` | Feature: the month summary the Android home screen widgets draw. |
 | `internal/server/` | Wires the features into one handler; serves the web app. Its tests run the whole API against a real database. |
 | `internal/testdb/` | Gives integration tests an empty, migrated database. |
 | `web/src/` | The React app: `api.ts` (typed API client), `App.tsx` (sign-in gate and navigation), `wallet.tsx` (shared accounts and categories), `components/`, and `features/<name>/` pages. |
@@ -162,6 +163,7 @@ Follow `internal/wallet` or `internal/inbox`; a feature is about five files:
 | POST | `/api/inbox/emails` | user | Body: a raw email (`message/rfc822`), processed as if forwarded |
 | POST | `/api/inbox/emails/{id}/dismiss` | user | `204` |
 | POST | `/api/inbound/email` | `INBOUND_SECRET` | For the mail provider: raw email body, recipient in `X-Inbound-To`. `404` for unknown addresses. |
+| GET | `/api/widget` | user | For the Android widgets. Query: `from`, `to` (RFC 3339). `{currency, currency_exponent, spent, balance, budget, budgets, review_count}` |
 | GET | `/healthz` | – | `{status: "ok", version}` if the database is reachable, else `503` |
 
 Errors are `{"error": "message"}` with a matching status code. Requests that change data must come from the site itself (the `Origin` check), and the session cookie is `HttpOnly` and `SameSite=Lax`.
