@@ -134,6 +134,9 @@ button.link {
 button.link:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 8%, transparent); }
 button.link.danger { color: var(--danger); }
 button.link.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 8%, transparent); }
+button.danger:not(.link) { background: var(--danger); color: var(--surface); }
+button.danger:not(.link):hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 88%, var(--text)); }
+a.button.secondary:hover { background: var(--sunken); }
 
 /* ---------- Signed out ---------- */
 .splash { min-height: 100dvh; display: grid; place-items: center; padding: 24px var(--space); }
@@ -145,6 +148,10 @@ button.link.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--d
 .auth .card { padding: 24px; }
 .auth .card h1 { font-size: 1.5rem; }
 .auth .card button[type='submit'] { margin-top: 4px; padding: 12px; }
+.auth .google { padding: 11px; gap: 10px; font-weight: 500; }
+.google-mark { width: 18px; height: 18px; flex: none; }
+.or { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 0.875rem; }
+.or::before, .or::after { content: ''; flex: 1; border-top: 1px solid var(--border); }
 
 /* ---------- Shell: bottom tabs on phones, a sidebar on wide screens ---------- */
 .shell .page { padding-bottom: 140px; }
@@ -354,6 +361,8 @@ button.bar-row:active:not(:disabled) { transform: none; }
   background: var(--accent-soft); color: var(--accent); font-size: 1.8rem; margin-bottom: 4px;
 }
 .notice { background: var(--sunken); border-radius: var(--radius-sm); padding: 10px 14px; margin: 0; }
+.confirm-email { display: flex; align-items: center; gap: 10px; margin-bottom: var(--space); }
+.confirm-email .inline-icon { flex: none; }
 .notice.warn { background: color-mix(in srgb, var(--status-warning) 16%, var(--surface)); }
 .notice-card { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
 

@@ -17,3 +17,7 @@ android/**/build/
 android/.gradle/
 *.keystore
 *.jks
+android/signing-key.txt
+android/*.apk
+android/*.aab
+android/*.idsig

@@ -89,6 +89,20 @@ All settings are environment variables (read in `internal/config`).
 | `INBOUND_DOMAIN`, `INBOUND_SECRET` | empty | Turn on email automation: users get `pay-<token>@INBOUND_DOMAIN`, and the mail provider's hook calls `POST /api/inbound/email` with the secret (24+ characters). See [docs/email.md](docs/email.md). |
 | `ANTHROPIC_API_KEY` | empty | Let Claude read payment emails from senders without a built-in rule. |
 | `ANTHROPIC_MODEL` | `claude-opus-5-5` | The model for that. |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | empty | Show "Continue with Google" on the sign-in page. Needs `PUBLIC_ORIGIN`. See [Sign in with Google](#sign-in-with-google). |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `MAIL_FROM` | empty, `587` | Email a link to confirm each new account's address (port 587 with STARTTLS, or 465). `MAIL_FROM` is e.g. `Wallet <no-reply@example.com>`. Needs `PUBLIC_ORIGIN`. Without these, nobody is asked to confirm. |
+
+### Sign in with Google
+
+1. In the [Google Cloud console](https://console.cloud.google.com/apis/credentials), create a project, set up the OAuth consent screen (External; it asks only for the email address, so Google doesn't need to verify the app), then create an **OAuth client ID** of type *Web application*.
+2. Add the authorized redirect URI `https://<your domain>/api/auth/google/callback`, the same origin as `PUBLIC_ORIGIN`.
+3. Put the client ID and secret in `.env` as `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`, and redeploy.
+
+A Google sign-in uses the account with the same email if there is one. If that account's email was never confirmed, its password stops working and its other sessions end, because whoever set the password never proved they own the address.
+
+### Confirming email addresses
+
+With the `SMTP_*` settings, new accounts get an email with a link, and the app shows a reminder until it's opened. People can keep using the app meanwhile. Signing in with Google counts as confirmed. Any SMTP provider works (Resend, Amazon SES, Postmark, or a Gmail account with an app password).
 
 ## How the code is organized
 
@@ -100,7 +114,8 @@ The code is split by **feature**: each one owns its SQL, HTTP handlers and page.
 | `internal/config/` | Reads and validates every setting from the environment. |
 | `internal/db/` | Connection pool, migrations (`migrations/*.sql`, embedded), shared errors. |
 | `internal/httpx/` | HTTP plumbing every feature shares: handlers that return errors, JSON in and out, middleware (security headers, CSRF origin check, logging, panic recovery), rate limiting. |
-| `internal/account/` | Feature: sign-up, sign-in, sessions, and the `RequireUser` middleware. |
+| `internal/account/` | Feature: sign-up, sign-in (password or Google), sessions, email confirmation, account deletion, and the `RequireUser` middleware. |
+| `internal/mailer/` | Sends the app's own emails over SMTP. |
 | `internal/wallet/` | Feature: accounts, categories, records, budgets, settings, and the BudgetBakers CSV import. |
 | `internal/inbox/` | Feature: email automation. Forwarding addresses, the inbound webhook, and turning emails into records (`parse/` reads emails and knows the senders; `claude.go` is the AI fallback). |
 | `internal/server/` | Wires the features into one handler; serves the web app. Its tests run the whole API against a real database. |
@@ -125,7 +140,12 @@ Follow `internal/wallet` or `internal/inbox`; a feature is about five files:
 |---|---|---|---|
 | POST | `/api/signup`, `/api/login` | – | `{email}` and a session cookie. Body `{email, password}`. |
 | POST | `/api/logout` | – | `204` |
-| GET | `/api/me` | user | `{email}` |
+| GET | `/api/me` | user | `{email, has_password, confirm_email}` |
+| DELETE | `/api/me` | user | `204`. Deletes the account and all its data. Body `{password}`, or `{email}` for accounts without a password. |
+| GET | `/api/auth/options` | – | `{google}`: which ways to sign in exist |
+| GET | `/api/auth/google`, `/api/auth/google/callback` | – | Sign in with Google (redirects) |
+| GET | `/api/verify-email?token=` | – | The link in a confirmation email; redirects to the app |
+| POST | `/api/verify-email` | user | `204`. Sends the confirmation email again. |
 | GET | `/api/wallet` | user | `{settings, accounts, categories, review_count}`. Creates default categories and a Cash account on first call. |
 | PUT | `/api/settings` | user | `{currency, auto_confirm, default_account_id}`. The currency is fixed once records exist (`409`). |
 | POST, PUT, DELETE | `/api/accounts[/{id}]` | user | Accounts: `{name, kind, initial_balance, color, archived}` |

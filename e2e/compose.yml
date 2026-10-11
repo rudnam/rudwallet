@@ -32,6 +32,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      mail:
+        condition: service_started
     environment:
       DATABASE_URL: postgres://app:verify@db:5432/app?sslmode=disable
       COOKIE_SECURE: "false"
@@ -42,11 +44,26 @@ services:
       # preview.sh) can deliver mail to the webhook like the provider would.
       INBOUND_DOMAIN: in.example.test
       INBOUND_SECRET: e2e-inbound-secret-0123456789
+      # Links in emails point here; preview.yml changes it to localhost.
+      PUBLIC_ORIGIN: http://server:8080
+      # Sign in with Google shows, with a client Google doesn't know: the
+      # tests stop at the redirect (the Go tests cover the rest).
+      GOOGLE_CLIENT_ID: e2e-client.apps.googleusercontent.com
+      GOOGLE_CLIENT_SECRET: e2e-client-secret
+      # Confirmation emails go to the mail catcher below.
+      SMTP_HOST: mail
+      SMTP_PORT: "1025"
+      MAIL_FROM: Wallet <no-reply@example.test>
     healthcheck:
       test: ["CMD", "/server", "healthcheck"]
       interval: 1s
       timeout: 3s
       retries: 30
+
+  # Catches the app's outgoing email. Tests read it through its API;
+  # preview.sh shows its inbox at http://localhost:8025.
+  mail:
+    image: axllent/mailpit:v1.27
 
   # go vet plus every Go test, including the HTTP integration tests.
   gotest:
@@ -78,6 +95,7 @@ services:
     environment:
       HOME: /tmp
       BASE_URL: http://server:8080
+      MAIL_API: http://mail:8025
     volumes:
       - .:/e2e
 

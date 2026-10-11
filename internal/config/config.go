@@ -6,8 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/mail"
 	"strconv"
 	"strings"
+
+	"github.com/rudnam/wallet-app/internal/mailer"
 )
 
 type Config struct {
@@ -44,6 +47,23 @@ type Config struct {
 	// built-in rule knows. AnthropicModel picks the model.
 	AnthropicAPIKey string
 	AnthropicModel  string
+	// GoogleClientID and GoogleClientSecret turn on Sign in with Google.
+	// They need PublicOrigin, which gives the callback address.
+	GoogleClientID     string
+	GoogleClientSecret string
+	// GoogleAuthURL and GoogleTokenURL are not read from the environment;
+	// tests point them at a fake Google. Empty means Google's own.
+	GoogleAuthURL, GoogleTokenURL string
+	// SMTPHost and the rest, when set, send the app's own emails: a link
+	// to confirm each new account's address. They need PublicOrigin.
+	SMTPHost     string
+	SMTPPort     int
+	SMTPUsername string
+	SMTPPassword string
+	MailFrom     string
+	// Mailer is not read from the environment; tests set a fake. When nil,
+	// one is built from the SMTP settings.
+	Mailer mailer.Sender
 }
 
 // Load reads the configuration through getenv (os.Getenv in production) and
@@ -65,6 +85,13 @@ func Load(getenv func(string) string) (Config, error) {
 		InboundSecret:           r.str("INBOUND_SECRET", ""),
 		AnthropicAPIKey:         r.str("ANTHROPIC_API_KEY", ""),
 		AnthropicModel:          r.str("ANTHROPIC_MODEL", "claude-opus-5-5"),
+		GoogleClientID:          r.str("GOOGLE_CLIENT_ID", ""),
+		GoogleClientSecret:      r.str("GOOGLE_CLIENT_SECRET", ""),
+		SMTPHost:                r.str("SMTP_HOST", ""),
+		SMTPPort:                r.positiveInt("SMTP_PORT", 587),
+		SMTPUsername:            r.str("SMTP_USERNAME", ""),
+		SMTPPassword:            r.str("SMTP_PASSWORD", ""),
+		MailFrom:                r.str("MAIL_FROM", ""),
 	}
 	if (c.AndroidPackage == "") != (len(c.AndroidCertFingerprints) == 0) {
 		r.errs = append(r.errs, errors.New("set both ANDROID_PACKAGE and ANDROID_CERT_FINGERPRINTS, or neither"))
@@ -74,6 +101,20 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 	if c.InboundSecret != "" && len(c.InboundSecret) < 24 {
 		r.errs = append(r.errs, errors.New("INBOUND_SECRET must be at least 24 characters"))
+	}
+	if (c.GoogleClientID == "") != (c.GoogleClientSecret == "") {
+		r.errs = append(r.errs, errors.New("set both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, or neither"))
+	}
+	if c.GoogleClientID != "" && c.PublicOrigin == "" {
+		r.errs = append(r.errs, errors.New("GOOGLE_CLIENT_ID needs PUBLIC_ORIGIN, e.g. https://app.example.com"))
+	}
+	if c.SMTPHost != "" {
+		if _, err := mail.ParseAddress(c.MailFrom); err != nil {
+			r.errs = append(r.errs, errors.New("SMTP_HOST needs MAIL_FROM, e.g. Wallet <no-reply@example.com>"))
+		}
+		if c.PublicOrigin == "" {
+			r.errs = append(r.errs, errors.New("SMTP_HOST needs PUBLIC_ORIGIN, which the emailed links point to"))
+		}
 	}
 	return c, errors.Join(r.errs...)
 }

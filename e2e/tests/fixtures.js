@@ -10,10 +10,10 @@ const test = base.test.extend({
     page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
     page.on('console', (m) => {
       // The browser logs every 4xx response as an error, but some are expected:
-      // a 401 from /api/me means nobody is signed in, and a 400, 401 or 409
-      // (e.g. a bad sign-in, or a refused change) is shown in the form. Tests
-      // assert on what the user sees.
-      if (m.type() === 'error' && !/status of 40[019] /.test(m.text())) errors.push('console: ' + m.text());
+      // a 401 from /api/me means nobody is signed in, and a 400, 401, 403 or
+      // 409 (e.g. a bad sign-in, a wrong password, or a refused change) is
+      // shown in the form. Tests assert on what the user sees.
+      if (m.type() === 'error' && !/status of 40[0139] /.test(m.text())) errors.push('console: ' + m.text());
     });
     await use(page);
     base.expect(errors, 'errors in the browser').toEqual([]);
@@ -36,9 +36,28 @@ async function signUp(page) {
   const email = uniqueEmail();
   const res = await page.request.post('/api/signup', { data: { email, password: PASSWORD } });
   base.expect(res.status(), await res.text()).toBe(201);
+  // Open the emailed link, so screens look as they do for a settled account.
+  await page.request.get(await confirmationLink(page.request, email));
   await page.goto('/');
   await base.expect(page.getByText('Total balance')).toBeVisible();
   return email;
+}
+
+const MAIL_API = process.env.MAIL_API || 'http://mail:8025'; // the mail catcher in e2e/compose.yml
+
+/** The newest confirmation link the app emailed to "to", read from the mail catcher. */
+async function confirmationLink(request, to) {
+  let text = '';
+  await base
+    .expect(async () => {
+      const found = await (await request.get(`${MAIL_API}/api/v1/search?query=${encodeURIComponent(`to:"${to}"`)}`)).json();
+      base.expect(found.messages.length).toBeGreaterThan(0);
+      text = (await (await request.get(`${MAIL_API}/api/v1/message/${found.messages[0].ID}`)).json()).Text;
+    })
+    .toPass({ timeout: 10_000 });
+  const link = text.match(/https?:\/\/\S+\/api\/verify-email\?token=[\w-]+/);
+  base.expect(link, text).not.toBeNull();
+  return link[0];
 }
 
 const INBOUND_SECRET = 'e2e-inbound-secret-0123456789'; // matches e2e/compose.yml
@@ -83,4 +102,4 @@ async function inboxAddress(page) {
   return (await res.json()).address;
 }
 
-module.exports = { test, expect: base.expect, signUp, uniqueEmail, PASSWORD, payPayEmail, deliverEmail, inboxAddress };
+module.exports = { test, expect: base.expect, signUp, uniqueEmail, PASSWORD, confirmationLink, payPayEmail, deliverEmail, inboxAddress };

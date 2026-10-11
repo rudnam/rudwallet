@@ -8,8 +8,9 @@ import { HomePage } from './features/home/HomePage';
 import { RecordsPage } from './features/records/RecordsPage';
 import { ReviewPage } from './features/review/ReviewPage';
 import { SettingsPage } from './features/settings/SettingsPage';
+import { initialNotice, type Notice } from './notice';
 import { href, navigate, useRoute } from './router';
-import { ToastProvider } from './toast';
+import { ToastProvider, useToast } from './toast';
 import { useWallet, WalletProvider } from './wallet';
 
 /** The app's name, shown in the sidebar and on the sign-in screen. Also in index.html and the manifest. */
@@ -17,7 +18,7 @@ export const appName = 'Wallet';
 
 type Session =
   | { status: 'loading' }
-  | { status: 'signed-out' }
+  | { status: 'signed-out'; notice?: Notice | null }
   | { status: 'signed-in'; me: Me }
   | { status: 'error'; message: string };
 
@@ -31,7 +32,7 @@ export function App() {
       .catch((err) =>
         setSession(
           err instanceof ApiError && err.status === 401
-            ? { status: 'signed-out' }
+            ? { status: 'signed-out', notice: initialNotice }
             : { status: 'error', message: errorMessage(err) },
         ),
       );
@@ -39,15 +40,23 @@ export function App() {
 
   async function signOut() {
     await api.signOut();
+    signedOut();
+  }
+
+  function signedOut(notice?: Notice) {
     navigate('home'); // the next person to sign in starts at Home
-    setSession({ status: 'signed-out' });
+    setSession({ status: 'signed-out', notice });
   }
 
   if (session.status === 'signed-in') {
     return (
       <ToastProvider>
         <WalletProvider>
-          <Shell me={session.me} onSignOut={signOut} />
+          <Shell
+            me={session.me}
+            onSignOut={signOut}
+            onDeleted={() => signedOut({ message: 'Your account and everything in it were deleted.', ok: true })}
+          />
         </WalletProvider>
       </ToastProvider>
     );
@@ -67,12 +76,15 @@ export function App() {
             <span className="auth-name">{appName}</span>
             <p>Your money, quietly kept in order.</p>
           </div>
-          <AuthForm onSignedIn={(me) => setSession({ status: 'signed-in', me })} />
+          <AuthForm notice={session.notice} onSignedIn={(me) => setSession({ status: 'signed-in', me })} />
         </div>
       )}
     </main>
   );
 }
+
+/** The notice the app opened with is shown once, not on every sign-in. */
+let noticeShown = false;
 
 const pages = [
   { page: 'home', label: 'Home', icon: icons.home },
@@ -82,9 +94,15 @@ const pages = [
   { page: 'settings', label: 'Settings', icon: icons.settings },
 ];
 
-function Shell({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
+function Shell({ me, onSignOut, onDeleted }: { me: Me; onSignOut: () => void; onDeleted: () => void }) {
   const route = useRoute();
   const w = useWallet();
+  const toast = useToast();
+  // e.g. "Your email address is confirmed" after opening the emailed link.
+  useEffect(() => {
+    if (initialNotice && !noticeShown) toast(initialNotice.message);
+    noticeShown = true;
+  }, [toast]);
   const [adding, setAdding] = useState(false);
   // Bumped after adding a record, so the page reloads its data.
   const [version, setVersion] = useState(0);
@@ -114,7 +132,7 @@ function Shell({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
       page = <BudgetsPage />;
       break;
     case 'settings':
-      page = <SettingsPage route={route} me={me} onSignOut={onSignOut} />;
+      page = <SettingsPage route={route} me={me} onSignOut={onSignOut} onDeleted={onDeleted} />;
       break;
     default:
       page = <HomePage onAdd={() => setAdding(true)} />;
@@ -151,12 +169,49 @@ function Shell({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
         </span>
       </nav>
       <main className="page" key={`${route.page}-${version}`}>
+        {me.confirm_email && <ConfirmEmail email={me.email} />}
         {page}
       </main>
       <button type="button" className="fab" aria-label="Add record" onClick={() => setAdding(true)}>
         <Plus />
       </button>
       {adding && <TransactionForm onClose={() => setAdding(false)} onSaved={() => setVersion((v) => v + 1)} />}
+    </div>
+  );
+}
+
+/** A reminder to open the link we emailed, with a way to send it again. */
+function ConfirmEmail({ email }: { email: string }) {
+  const [state, setState] = useState<'idle' | 'sending' | 'sent' | string>('idle');
+  async function resend() {
+    setState('sending');
+    try {
+      await api.resendConfirmation();
+      setState('sent');
+    } catch (err) {
+      setState(errorMessage(err));
+    }
+  }
+  return (
+    <div className="notice confirm-email">
+      <Icon d={icons.mail} className="inline-icon" />
+      <span className="grow">
+        {state === 'sent' ? (
+          <>
+            Sent. Check your inbox at <strong>{email}</strong>.
+          </>
+        ) : (
+          <>
+            Confirm your email: open the link we sent to <strong>{email}</strong>.
+          </>
+        )}
+        {state !== 'idle' && state !== 'sending' && state !== 'sent' && <span className="error block small">{state}</span>}
+      </span>
+      {state !== 'sent' && (
+        <button type="button" className="link" disabled={state === 'sending'} onClick={resend}>
+          Send again
+        </button>
+      )}
     </div>
   );
 }

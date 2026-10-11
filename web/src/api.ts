@@ -3,6 +3,15 @@
 
 export interface Me {
   email: string;
+  /** False for accounts that only sign in with Google. */
+  has_password: boolean;
+  /** The server emailed a link to confirm the address, and it hasn't been opened yet. */
+  confirm_email: boolean;
+}
+
+/** The ways this server offers to sign in. */
+export interface AuthOptions {
+  google: boolean;
 }
 
 export interface Settings {
@@ -159,6 +168,10 @@ export const api = {
   signUp: (email: string, password: string) => request<Me>('POST', '/api/signup', { email, password }),
   signIn: (email: string, password: string) => request<Me>('POST', '/api/login', { email, password }),
   signOut: () => request<void>('POST', '/api/logout'),
+  authOptions: () => request<AuthOptions>('GET', '/api/auth/options'),
+  resendConfirmation: () => request<void>('POST', '/api/verify-email'),
+  /** Deletes the account and everything in it. Confirm with the password, or for a Google-only account, the email. */
+  deleteMe: (confirm: { password: string } | { email: string }) => request<void>('DELETE', '/api/me', confirm),
 
   overview: () => request<Overview>('GET', '/api/wallet'),
   updateSettings: ({ currency, auto_confirm, default_account_id }: Omit<Settings, 'currency_exponent'>) =>

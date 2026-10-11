@@ -16,12 +16,14 @@ import (
 	"github.com/rudnam/wallet-app/internal/config"
 	"github.com/rudnam/wallet-app/internal/httpx"
 	"github.com/rudnam/wallet-app/internal/inbox"
+	"github.com/rudnam/wallet-app/internal/mailer"
 	"github.com/rudnam/wallet-app/internal/wallet"
 )
 
 func init() {
-	// The runtime image has no /etc/mime.types, and Go doesn't know this one.
+	// The runtime image has no /etc/mime.types, and Go doesn't know these.
 	mime.AddExtensionType(".webmanifest", "application/manifest+json")
+	mime.AddExtensionType(".ico", "image/x-icon")
 }
 
 // New returns the app's complete HTTP handler. static is the built web app;
@@ -34,11 +36,29 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 	}
 
 	// Features
+	var google *account.GoogleConfig
+	if cfg.GoogleClientID != "" {
+		google = &account.GoogleConfig{
+			ClientID:     cfg.GoogleClientID,
+			ClientSecret: cfg.GoogleClientSecret,
+			RedirectURL:  cfg.PublicOrigin + "/api/auth/google/callback",
+			AuthURL:      cfg.GoogleAuthURL,
+			TokenURL:     cfg.GoogleTokenURL,
+		}
+	}
+	sender := cfg.Mailer
+	if sender == nil && cfg.SMTPHost != "" {
+		sender = &mailer.SMTP{Host: cfg.SMTPHost, Port: cfg.SMTPPort, Username: cfg.SMTPUsername,
+			Password: cfg.SMTPPassword, From: cfg.MailFrom}
+	}
 	accounts := account.NewHandler(account.Config{
 		SecureCookies:     cfg.SecureCookies,
 		TrustProxy:        cfg.TrustProxy,
 		AllowSignup:       cfg.AllowSignup,
 		AttemptsPerMinute: cfg.AuthRateLimit,
+		Google:            google,
+		Mail:              sender,
+		PublicOrigin:      cfg.PublicOrigin,
 	}, account.NewStore(conn))
 	accounts.Register(mux)
 	walletStore := wallet.NewStore(conn)

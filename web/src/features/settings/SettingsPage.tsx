@@ -30,7 +30,18 @@ const sections: { id: string; label: string; title: string; glyph: string }[] = 
   { id: 'import', label: 'Import', title: 'Import from BudgetBakers', glyph: 'school' },
 ];
 
-export function SettingsPage({ route, me, onSignOut }: { route: Route; me: Me; onSignOut: () => void }) {
+export function SettingsPage({
+  route,
+  me,
+  onSignOut,
+  onDeleted,
+}: {
+  route: Route;
+  me: Me;
+  onSignOut: () => void;
+  onDeleted: () => void;
+}) {
+  const [deleting, setDeleting] = useState(false);
   const w = useWallet();
   const open = sections.find((s) => s.id === route.params.get('section'));
 
@@ -91,7 +102,71 @@ export function SettingsPage({ route, me, onSignOut }: { route: Route; me: Me; o
           Sign out
         </button>
       </div>
+      <div className="row end">
+        <button type="button" className="link danger" onClick={() => setDeleting(true)}>
+          Delete account
+        </button>
+      </div>
+      {deleting && <DeleteAccount me={me} onClose={() => setDeleting(false)} onDeleted={onDeleted} />}
     </section>
+  );
+}
+
+/**
+ * Deleting the account: says plainly what goes, and asks for the password
+ * (or, for an account that signs in with Google, the email typed out).
+ */
+function DeleteAccount({ me, onClose, onDeleted }: { me: Me; onClose: () => void; onDeleted: () => void }) {
+  const [value, setValue] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      await api.deleteMe(me.has_password ? { password: value } : { email: value });
+      onDeleted();
+    } catch (err) {
+      setError(errorMessage(err));
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog title="Delete account" onClose={onClose}>
+      <form className="stack" onSubmit={submit}>
+        <p className="muted">
+          This deletes <strong>{me.email}</strong> and everything in it: accounts, records, budgets, categories and your forwarding
+          address. It can't be undone.
+        </p>
+        <label className="field">
+          {me.has_password ? 'Your password' : 'Type your email to confirm'}
+          <input
+            type={me.has_password ? 'password' : 'email'}
+            autoComplete={me.has_password ? 'current-password' : 'off'}
+            placeholder={me.has_password ? undefined : me.email}
+            required
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+          />
+        </label>
+        {error && (
+          <p role="alert" className="error">
+            {error}
+          </p>
+        )}
+        <div className="row end">
+          <button type="button" className="link" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="submit" className="danger" disabled={busy}>
+            Delete everything
+          </button>
+        </div>
+      </form>
+    </Dialog>
   );
 }
 

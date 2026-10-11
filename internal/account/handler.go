@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/mail"
 	"strings"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/rudnam/wallet-app/internal/db"
 	"github.com/rudnam/wallet-app/internal/httpx"
+	"github.com/rudnam/wallet-app/internal/mailer"
 )
 
 const sessionCookie = "session"
@@ -29,6 +31,12 @@ type Config struct {
 	// AttemptsPerMinute limits sign-in and sign-up attempts per client IP.
 	AttemptsPerMinute int
 	SessionTTL        time.Duration
+	// Google, if set, turns on Sign in with Google.
+	Google *GoogleConfig
+	// Mail, if set, sends a link to confirm each new account's email.
+	// PublicOrigin is where those links point, e.g. https://app.example.com.
+	Mail         mailer.Sender
+	PublicOrigin string
 }
 
 type Handler struct {
@@ -45,6 +53,14 @@ func NewHandler(cfg Config, st *Store) *Handler {
 	if cfg.AttemptsPerMinute <= 0 {
 		cfg.AttemptsPerMinute = 10
 	}
+	if g := cfg.Google; g != nil {
+		if g.AuthURL == "" {
+			g.AuthURL = googleAuthURL
+		}
+		if g.TokenURL == "" {
+			g.TokenURL = googleTokenURL
+		}
+	}
 	return &Handler{cfg: cfg, store: st, limit: httpx.NewRateLimiter(cfg.AttemptsPerMinute, time.Minute), now: time.Now}
 }
 
@@ -53,6 +69,14 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.Handle("POST /api/login", h.rateLimited(h.login))
 	mux.Handle("POST /api/logout", httpx.HandlerFunc(h.logout))
 	mux.Handle("GET /api/me", h.RequireUser(httpx.HandlerFunc(h.me)))
+	mux.Handle("DELETE /api/me", h.RequireUser(h.rateLimited(h.deleteMe)))
+	mux.HandleFunc("GET /api/verify-email", h.verifyEmail)
+	mux.Handle("POST /api/verify-email", h.RequireUser(h.rateLimited(h.resendConfirmation)))
+	mux.Handle("GET /api/auth/options", httpx.HandlerFunc(h.options))
+	if h.cfg.Google != nil {
+		mux.HandleFunc("GET /api/auth/google", h.googleStart)
+		mux.HandleFunc("GET /api/auth/google/callback", h.googleCallback)
+	}
 }
 
 // ---------- Middleware for other features ----------
@@ -98,6 +122,14 @@ type credentials struct {
 
 type meResponse struct {
 	Email string `json:"email"`
+	// HasPassword is false for accounts that only sign in with Google.
+	HasPassword bool `json:"has_password"`
+	// ConfirmEmail asks the person to open the link we emailed them.
+	ConfirmEmail bool `json:"confirm_email"`
+}
+
+func (h *Handler) meFor(u User) meResponse {
+	return meResponse{Email: u.Email, HasPassword: u.HasPassword, ConfirmEmail: h.cfg.Mail != nil && !u.EmailVerified}
 }
 
 func (h *Handler) rateLimited(fn httpx.HandlerFunc) httpx.HandlerFunc {
@@ -147,7 +179,13 @@ func (h *Handler) signup(w http.ResponseWriter, r *http.Request) error {
 	if err := h.startSession(w, r, id); err != nil {
 		return err
 	}
-	httpx.WriteJSON(w, http.StatusCreated, meResponse{Email: email})
+	if h.cfg.Mail != nil {
+		// Not fatal: the app offers to send the link again.
+		if err := h.sendConfirmation(r.Context(), id, email); err != nil {
+			slog.ErrorContext(r.Context(), "send confirmation email", "user", id, "err", err)
+		}
+	}
+	httpx.WriteJSON(w, http.StatusCreated, h.meFor(User{ID: id, Email: email, HasPassword: true}))
 	return nil
 }
 
@@ -173,6 +211,10 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	if hash == "" { // signs in with Google only
+		burnTime(in.Password)
+		return wrong
+	}
 	ok, err := CheckPassword(hash, in.Password)
 	if err != nil {
 		return fmt.Errorf("user %d: %w", u.ID, err)
@@ -184,7 +226,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) error {
 	if err := h.startSession(w, r, u.ID); err != nil {
 		return err
 	}
-	httpx.WriteJSON(w, http.StatusOK, meResponse{Email: u.Email})
+	httpx.WriteJSON(w, http.StatusOK, h.meFor(u))
 	return nil
 }
 
@@ -229,6 +271,43 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (h *Handler) me(w http.ResponseWriter, r *http.Request) error {
-	httpx.WriteJSON(w, http.StatusOK, meResponse{Email: UserFrom(r).Email})
+	httpx.WriteJSON(w, http.StatusOK, h.meFor(UserFrom(r)))
+	return nil
+}
+
+// deleteMe deletes the account and everything in it. It asks for the
+// password again or, for an account without one, the email typed out, so a
+// session left open somewhere can't do it by accident.
+func (h *Handler) deleteMe(w http.ResponseWriter, r *http.Request) error {
+	u := UserFrom(r)
+	var in struct {
+		Password string `json:"password"`
+		Email    string `json:"email"`
+	}
+	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
+		return err
+	}
+	if u.HasPassword {
+		hash, err := h.store.passwordHash(r.Context(), u.ID)
+		if err != nil {
+			return err
+		}
+		if len(in.Password) > MaxPasswordLen {
+			return httpx.Errorf(http.StatusForbidden, "the password is incorrect")
+		}
+		if ok, err := CheckPassword(hash, in.Password); err != nil {
+			return fmt.Errorf("user %d: %w", u.ID, err)
+		} else if !ok {
+			return httpx.Errorf(http.StatusForbidden, "the password is incorrect")
+		}
+	} else if !strings.EqualFold(strings.TrimSpace(in.Email), u.Email) {
+		return httpx.Errorf(http.StatusBadRequest, "type your email address to confirm")
+	}
+	if err := h.store.deleteUser(r.Context(), u.ID); err != nil {
+		return err
+	}
+	slog.InfoContext(r.Context(), "account deleted", "user", u.ID)
+	h.clearCookie(w)
+	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

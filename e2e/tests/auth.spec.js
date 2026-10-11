@@ -1,4 +1,4 @@
-const { test, expect, uniqueEmail, PASSWORD } = require('./fixtures');
+const { test, expect, signUp, uniqueEmail, PASSWORD, confirmationLink } = require('./fixtures');
 
 test('sign up, sign out and sign in again', async ({ page }) => {
   const email = uniqueEmail();
@@ -11,7 +11,7 @@ test('sign up, sign out and sign in again', async ({ page }) => {
 
   // Signing out lives at the bottom of Settings, next to who you are.
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Settings' }).click();
-  await expect(page.getByRole('main').getByText(email)).toBeVisible();
+  await expect(page.locator('.card.me')).toContainText(email);
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
 
@@ -30,4 +30,79 @@ test('a wrong password shows an error', async ({ page }) => {
   await page.getByLabel('Password').fill('not the password');
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByRole('alert')).toHaveText('email or password is incorrect');
+});
+
+test('a new account is asked to confirm its email, and the emailed link does it', async ({ page }) => {
+  const email = uniqueEmail();
+  await page.goto('/');
+  await page.getByRole('button', { name: 'New here? Create an account' }).click();
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill(PASSWORD);
+  await page.getByRole('button', { name: 'Create account' }).click();
+  const reminder = page.getByText('Confirm your email: open the link we sent to');
+  await expect(reminder).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath('confirm-email-reminder.png'), fullPage: true });
+
+  const first = await confirmationLink(page.request, email);
+  await page.getByRole('button', { name: 'Send again' }).click();
+  await expect(page.getByText('Sent. Check your inbox at')).toBeVisible();
+  await expect.poll(() => confirmationLink(page.request, email)).not.toBe(first);
+
+  // Only the newest link works.
+  await page.goto(first);
+  await expect(page.getByText('Total balance')).toBeVisible();
+  await expect(page.locator('.toast')).toHaveText('That confirmation link has expired or was already used.');
+  await page.goto(await confirmationLink(page.request, email));
+  await expect(page.locator('.toast')).toHaveText('Your email address is confirmed.');
+  await expect(page).toHaveURL(/^[^?]*$/); // the notice is taken out of the address
+  await expect(reminder).toBeHidden();
+});
+
+test('Continue with Google sends the browser to Google', async ({ page }) => {
+  // Google itself is out of reach here; the Go tests play its part.
+  await page.route('https://accounts.google.com/**', (route) => route.fulfill({ body: 'Google' }));
+  await page.goto('/');
+  const toGoogle = page.waitForRequest((r) => r.url().startsWith('https://accounts.google.com/'));
+  await page.getByRole('link', { name: 'Continue with Google' }).click();
+  const url = new URL((await toGoogle).url());
+  expect(url.searchParams.get('scope')).toBe('openid email');
+  expect(url.searchParams.get('client_id')).toBe('e2e-client.apps.googleusercontent.com');
+  expect(url.searchParams.get('redirect_uri')).toBe('http://server:8080/api/auth/google/callback');
+});
+
+test('a failed Google sign-in says why on the sign-in page', async ({ page }) => {
+  await page.goto('/api/auth/google/callback?error=access_denied');
+  await expect(page.getByRole('alert')).toHaveText('Google sign-in was cancelled.');
+  await expect(page).toHaveURL(/^[^?]*$/);
+});
+
+test('delete the account from Settings', async ({ page }) => {
+  const email = await signUp(page);
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Settings' }).click();
+  await page.getByRole('button', { name: 'Delete account' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Delete account' });
+  await expect(dialog).toContainText(email);
+
+  await dialog.getByLabel('Your password').fill('not the password');
+  await dialog.getByRole('button', { name: 'Delete everything' }).click();
+  await expect(dialog.getByRole('alert')).toHaveText('the password is incorrect');
+
+  await dialog.getByLabel('Your password').fill(PASSWORD);
+  await dialog.getByRole('button', { name: 'Delete everything' }).click();
+  await expect(page.getByRole('status')).toHaveText('Your account and everything in it were deleted.');
+
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill(PASSWORD);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page.getByRole('alert')).toHaveText('email or password is incorrect');
+});
+
+test('the browser tab shows the app icon', async ({ page }) => {
+  await page.goto('/');
+  for (const icon of await page.locator('link[rel="icon"]').all()) {
+    const res = await page.request.get(await icon.getAttribute('href'));
+    expect(res.status()).toBe(200);
+    expect(res.headers()['content-type']).toMatch(/^image\//);
+  }
+  expect((await page.request.get('/favicon.ico')).headers()['content-type']).toBe('image/x-icon');
 });

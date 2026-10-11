@@ -46,6 +46,7 @@ for (const [name, viewport] of [
 
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Continue with Google' })).toBeVisible();
     await shot('1-sign-in');
 
     await signUp(page);
@@ -92,5 +93,11 @@ for (const [name, viewport] of [
     await page.getByRole('button', { name: 'Edit account PayPay Card' }).click();
     await expect(page.getByRole('dialog', { name: 'Edit account' })).toBeVisible();
     await shot('9-edit-account');
+    await page.keyboard.press('Escape');
+
+    await page.goto('/#/settings');
+    await page.getByRole('button', { name: 'Delete account' }).click();
+    await expect(page.getByRole('dialog', { name: 'Delete account' })).toBeVisible();
+    await shot('10-delete-account');
   });
 }

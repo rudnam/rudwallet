@@ -88,4 +88,5 @@ fi
 
 printf '\n\033[1mPreview of %s is running at %s\033[0m\n' "$APP_VERSION" "$url"
 echo "Sign in as preview@example.com / preview-password"
+echo "Emails the app sends (e.g. confirmation links): http://localhost:${PREVIEW_MAIL_PORT:-8025}"
 echo "Logs: ./preview.sh logs    Stop: ./preview.sh down"

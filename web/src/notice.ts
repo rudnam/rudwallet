@@ -1,0 +1,38 @@
+// Messages the server sends back in the address after a redirect: from
+// Google sign-in (?signin_error=…) and from the link in a confirmation email
+// (?email=…). Read once when the app loads, then removed from the address so
+// a reload doesn't show them again.
+
+export interface Notice {
+  message: string;
+  ok: boolean;
+}
+
+const signinErrors: Record<string, string> = {
+  cancelled: 'Google sign-in was cancelled.',
+  expired: 'That sign-in attempt expired. Please try again.',
+  closed: "This server isn't taking new accounts.",
+  unverified: "Your Google account's email address isn't verified with Google.",
+  linked: 'An account with this email is already linked to a different Google account.',
+  busy: 'Too many attempts. Wait a minute and try again.',
+  failed: "Couldn't sign in with Google. Please try again.",
+};
+
+const emailResults: Record<string, Notice> = {
+  confirmed: { message: 'Your email address is confirmed.', ok: true },
+  expired: { message: 'That confirmation link has expired or was already used.', ok: false },
+  failed: { message: "Couldn't confirm your email. Please try again.", ok: false },
+};
+
+function take(): Notice | null {
+  const params = new URLSearchParams(location.search);
+  const signin = params.get('signin_error');
+  const email = params.get('email');
+  if (signin === null && email === null) return null;
+  history.replaceState(null, '', location.pathname + location.hash);
+  if (signin !== null) return { message: signinErrors[signin] ?? signinErrors.failed, ok: false };
+  return emailResults[email ?? ''] ?? emailResults.failed;
+}
+
+/** The notice the app was opened with, if any. */
+export const initialNotice = take();
