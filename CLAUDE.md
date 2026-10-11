@@ -36,3 +36,5 @@ The user reviews changes by looking at them, not by deploying them. When you cha
 
 - Containers can't reach a server started in WSL, and `--network host` means the Docker VM, not WSL. Run things in Docker, as the scripts do.
 - Playwright's browsers can't launch directly on this host (missing system libraries). Use `./verify.sh e2e`.
+
+In Claude Code cloud sessions, `.claude/hooks/session-start.sh` starts Docker, makes the base images trust the sandbox's TLS proxy, and sets `DOCKER_BUILDKIT=0` so builds use those images. The scripts then work as above.
