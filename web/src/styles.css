@@ -67,6 +67,8 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); }
+/* In the Android app the page runs under the status bar (index.html asks for viewport-fit=cover); elsewhere these are 0. */
+body { padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); }
 h1, h2, h3 { font-family: var(--serif); font-weight: 400; letter-spacing: -0.01em; margin: 0; }
 h1 { font-size: 2rem; line-height: 1.15; }
 h2 { font-size: 1.25rem; }
@@ -318,6 +320,7 @@ button.bar-row:active:not(:disabled) { transform: none; }
   background: none; color: var(--text); font-weight: 400; border-radius: 0; border: 0; white-space: normal;
 }
 .record:hover:not(:disabled) { background: var(--sunken); }
+li.record:hover:not(:disabled) { background: none; } /* a row to read, not to tap */
 .record:active:not(:disabled) { transform: none; }
 .record-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-weight: 500; overflow-wrap: anywhere; }
 .record .grow { display: flex; flex-direction: column; gap: 1px; }

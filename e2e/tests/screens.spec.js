@@ -108,6 +108,10 @@ for (const [name, viewport] of [
     await expect(page.getByRole('button', { name: 'Import 3 payments' })).toBeVisible();
     await shot('10-import-paypay');
 
+    await page.goto('/#/settings?section=widgets');
+    await expect(page.getByRole('list', { name: 'Widgets' })).toBeVisible();
+    await shot('10-settings-widgets');
+
     await page.goto('/#/settings');
     await page.getByRole('button', { name: 'Delete account' }).click();
     await expect(page.getByRole('dialog', { name: 'Delete account' })).toBeVisible();

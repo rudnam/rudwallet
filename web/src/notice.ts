@@ -8,7 +8,8 @@ export interface Notice {
   ok: boolean;
 }
 
-const signinErrors: Record<string, string> = {
+/** What went wrong with Google sign-in, by the server's reason code. */
+export const signinErrors: Record<string, string> = {
   cancelled: 'Google sign-in was cancelled.',
   expired: 'That sign-in attempt expired. Please try again.',
   closed: "This server isn't taking new accounts.",

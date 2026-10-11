@@ -8,6 +8,7 @@ import { amountInput, parseAmount } from '../../money';
 import { href, type Route } from '../../router';
 import { useToast } from '../../toast';
 import { useWallet } from '../../wallet';
+import { WidgetSettings } from './WidgetSettings';
 import { EmailSettings } from './EmailSettings';
 
 /** Each kind of account: what to call it, its icon and colour, and names people often use. */
@@ -28,6 +29,7 @@ const sections: { id: string; label: string; title: string; glyph: string }[] = 
   { id: 'categories', label: 'Categories', title: 'Categories', glyph: 'other' },
   { id: 'general', label: 'Currency', title: 'Currency', glyph: 'money' },
   { id: 'import', label: 'Import', title: 'Import records', glyph: 'school' },
+  { id: 'widgets', label: 'Home screen widgets', title: 'Home screen widgets', glyph: 'phone' },
 ];
 
 export function SettingsPage({
@@ -59,6 +61,7 @@ export function SettingsPage({
         {open.id === 'categories' && <Categories />}
         {open.id === 'general' && <General />}
         {open.id === 'import' && <Import />}
+        {open.id === 'widgets' && <WidgetSettings />}
       </section>
     );
   }
@@ -70,6 +73,7 @@ export function SettingsPage({
     categories: `${w.categories.length} categories`,
     general: w.settings.currency,
     import: 'PayPay, BudgetBakers',
+    widgets: 'Android',
   };
   return (
     <section className="stack loose">

@@ -8,7 +8,8 @@ import { HomePage } from './features/home/HomePage';
 import { RecordsPage } from './features/records/RecordsPage';
 import { ReviewPage } from './features/review/ReviewPage';
 import { SettingsPage } from './features/settings/SettingsPage';
-import { initialNotice, type Notice } from './notice';
+import { onAppLinks } from './native';
+import { initialNotice, signinErrors, type Notice } from './notice';
 import { href, navigate, useRoute } from './router';
 import { ToastProvider, useToast } from './toast';
 import { useWallet, WalletProvider } from './wallet';
@@ -24,6 +25,26 @@ type Session =
 
 export function App() {
   const [session, setSession] = useState<Session>({ status: 'loading' });
+
+  // In the Android app: Google sign-in coming back from the browser, and
+  // widgets opening a page.
+  useEffect(
+    () =>
+      onAppLinks({
+        onAuth: (result) => {
+          if ('error' in result) {
+            setSession({ status: 'signed-out', notice: { message: signinErrors[result.error] ?? signinErrors.failed, ok: false } });
+            return;
+          }
+          api.appToken(result.code, result.verifier).then(
+            (me) => setSession({ status: 'signed-in', me }),
+            (err) => setSession({ status: 'signed-out', notice: { message: errorMessage(err), ok: false } }),
+          );
+        },
+        onOpen: (page) => navigate(page),
+      }),
+    [],
+  );
 
   useEffect(() => {
     api
@@ -76,7 +97,7 @@ export function App() {
             <span className="auth-name">{appName}</span>
             <p>Your money, quietly kept in order.</p>
           </div>
-          <AuthForm notice={session.notice} onSignedIn={(me) => setSession({ status: 'signed-in', me })} />
+          <AuthForm key={session.notice?.message} notice={session.notice} onSignedIn={(me) => setSession({ status: 'signed-in', me })} />
         </div>
       )}
     </main>
@@ -108,6 +129,13 @@ function Shell({ me, onSignOut, onDeleted }: { me: Me; onSignOut: () => void; on
   const [version, setVersion] = useState(0);
   const { refresh } = w;
   const current = pages.some((p) => p.page === route.page) ? route.page : 'home';
+
+  // The Android widget's New record button opens #/add.
+  useEffect(() => {
+    if (route.page !== 'add') return;
+    history.replaceState(null, '', href('home'));
+    setAdding(true);
+  }, [route]);
 
   // Emails arrive while the app is open: reload balances and the review
   // count on every page change and whenever the app comes back into view.

@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, errorMessage, type Me } from '../api';
+import { isApp, startGoogleSignIn } from '../native';
 import type { Notice } from '../notice';
 
 type Mode = 'sign-in' | 'sign-up';
@@ -45,8 +46,16 @@ export function AuthForm({ onSignedIn, notice }: { onSignedIn: (me: Me) => void;
       )}
       {google && (
         <>
-          {/* A plain link: the server redirects to Google and back. */}
-          <a className="button secondary google" href="/api/auth/google">
+          {/* A plain link: the server redirects to Google and back. The Android app uses the phone's browser instead. */}
+          <a
+            className="button secondary google"
+            href="/api/auth/google"
+            onClick={(e) => {
+              if (!isApp) return;
+              e.preventDefault();
+              startGoogleSignIn().catch((err) => setError(errorMessage(err)));
+            }}
+          >
             <GoogleMark />
             Continue with Google
           </a>

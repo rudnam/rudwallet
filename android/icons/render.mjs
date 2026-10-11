@@ -20,8 +20,6 @@ const jobs = [
 for (const [d, x] of Object.entries(densities)) {
   // Launchers before Android 8 show this as is; later ones use the adaptive icon.
   jobs.push([`${res}/mipmap-${d}/ic_launcher.png`, rounded, 48 * x, 0.92]);
-  // Shown centred on the cream background while the site loads.
-  jobs.push([`${res}/drawable-${d}/splash.png`, rounded, 300 * x, 0.36]);
 }
 
 const browser = await chromium.launch();

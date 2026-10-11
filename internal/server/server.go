@@ -18,6 +18,7 @@ import (
 	"github.com/rudnam/wallet-app/internal/inbox"
 	"github.com/rudnam/wallet-app/internal/mailer"
 	"github.com/rudnam/wallet-app/internal/wallet"
+	"github.com/rudnam/wallet-app/internal/widget"
 )
 
 func init() {
@@ -59,6 +60,7 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 		Google:            google,
 		Mail:              sender,
 		PublicOrigin:      cfg.PublicOrigin,
+		AppScheme:         cfg.AndroidPackage,
 	}, account.NewStore(conn))
 	accounts.Register(mux)
 	walletStore := wallet.NewStore(conn)
@@ -70,6 +72,7 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 	inboxStore := inbox.NewStore(conn)
 	inbox.NewHandler(inbox.Config{Domain: cfg.InboundDomain, Secret: cfg.InboundSecret}, inboxStore,
 		inbox.NewService(inboxStore, walletStore, reader)).Register(mux, accounts.RequireUser)
+	widget.NewHandler(walletStore).Register(mux, accounts.RequireUser)
 
 	// Unknown API paths get a JSON 404 rather than the web page.
 	mux.Handle("/api/", httpx.HandlerFunc(func(http.ResponseWriter, *http.Request) error {
@@ -81,6 +84,7 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 		httpx.LogRequests,
 		httpx.Recover,
 		httpx.SecurityHeaders,
+		httpx.AllowApp,
 		httpx.CheckOrigin(cfg.PublicOrigin),
 	)
 }

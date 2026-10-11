@@ -46,6 +46,9 @@ services:
       INBOUND_SECRET: e2e-inbound-secret-0123456789
       # Links in emails point here; preview.yml changes it to localhost.
       PUBLIC_ORIGIN: http://server:8080
+      # The Android app's package, which Google sign-in in the app returns to.
+      ANDROID_PACKAGE: com.rudnam.wallet
+      ANDROID_CERT_FINGERPRINTS: "00:11:22:33"
       # Sign in with Google shows, with a client Google doesn't know: the
       # tests stop at the redirect (the Go tests cover the rest).
       GOOGLE_CLIENT_ID: e2e-client.apps.googleusercontent.com

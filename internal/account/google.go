@@ -57,13 +57,19 @@ func (h *Handler) options(w http.ResponseWriter, r *http.Request) error {
 }
 
 // googleStart sends the browser to Google, remembering in a short-lived
-// cookie what the callback needs to check that the answer is for us.
+// cookie what the callback needs to check that the answer is for us. With
+// app_challenge, the Android app started it (see app.go).
 func (h *Handler) googleStart(w http.ResponseWriter, r *http.Request) {
 	g := h.cfg.Google
 	state, nonce, verifier := randomString(), randomString(), randomString()
+	app := r.URL.Query().Get("app_challenge")
+	if app != "" && (h.cfg.AppScheme == "" || appChallenge(app) == nil) {
+		httpx.WriteError(w, http.StatusBadRequest, "this server can't sign in the app with Google")
+		return
+	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     googleCookie,
-		Value:    state + "." + nonce + "." + verifier,
+		Value:    state + "." + nonce + "." + verifier + "." + app,
 		Path:     "/api/auth/google",
 		MaxAge:   600,
 		HttpOnly: true,
@@ -85,12 +91,21 @@ func (h *Handler) googleStart(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, g.AuthURL+"?"+q.Encode(), http.StatusFound)
 }
 
-// googleCallback finishes the sign-in and sends the browser back to the app,
-// with ?signin_error=<reason> if it failed. The page knows the wording.
+// googleCallback finishes the sign-in and sends the browser back to the web
+// app, or to the Android app with a code, with signin_error=<reason> if it
+// failed. The page knows the wording.
 func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
-	reason, err := h.googleSignIn(w, r)
+	reason, appCode, app, err := h.googleSignIn(w, r)
 	if err != nil {
 		slog.ErrorContext(r.Context(), "google sign-in", "err", err)
+	}
+	if app {
+		q := url.Values{"code": {appCode}}
+		if reason != "" {
+			q = url.Values{"signin_error": {reason}}
+		}
+		http.Redirect(w, r, h.appRedirect(q), http.StatusFound)
+		return
 	}
 	target := "/"
 	if reason != "" {
@@ -100,58 +115,72 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 }
 
 // googleSignIn returns a reason code for the page when sign-in fails, and
-// an error too when the failure is ours and worth logging.
-func (h *Handler) googleSignIn(w http.ResponseWriter, r *http.Request) (reason string, err error) {
-	if !h.limit.Allow(httpx.ClientIP(r, h.cfg.TrustProxy), h.now()) {
-		return "busy", nil
-	}
+// an error too when the failure is ours and worth logging. When the Android
+// app started it (app is true), it returns a one-time code for the app
+// instead of starting a session here.
+func (h *Handler) googleSignIn(w http.ResponseWriter, r *http.Request) (reason, appCode string, app bool, err error) {
 	q := r.URL.Query()
 	c, cookieErr := r.Cookie(googleCookie)
 	http.SetCookie(w, &http.Cookie{
 		Name: googleCookie, Value: "", Path: "/api/auth/google", MaxAge: -1,
 		HttpOnly: true, Secure: h.cfg.SecureCookies, SameSite: http.SameSiteLaxMode,
 	})
-	if q.Get("error") == "access_denied" {
-		return "cancelled", nil
-	}
 	var parts []string
 	if cookieErr == nil {
 		parts = strings.Split(c.Value, ".")
 	}
-	if len(parts) != 3 || subtle.ConstantTimeCompare([]byte(parts[0]), []byte(q.Get("state"))) != 1 || q.Get("code") == "" {
-		return "expired", nil // stale tab, a second click, or someone else's link
+	var challenge []byte
+	if len(parts) == 4 && parts[3] != "" {
+		challenge, app = appChallenge(parts[3]), true
+	}
+	if !h.limit.Allow(httpx.ClientIP(r, h.cfg.TrustProxy), h.now()) {
+		return "busy", "", app, nil
+	}
+	if q.Get("error") == "access_denied" {
+		return "cancelled", "", app, nil
+	}
+	if len(parts) != 4 || subtle.ConstantTimeCompare([]byte(parts[0]), []byte(q.Get("state"))) != 1 || q.Get("code") == "" ||
+		(app && challenge == nil) {
+		return "expired", "", app, nil // stale tab, a second click, or someone else's link
 	}
 	nonce, verifier := parts[1], parts[2]
 
 	claims, err := h.googleExchange(r.Context(), q.Get("code"), verifier)
 	if err != nil {
-		return "failed", err
+		return "failed", "", app, err
 	}
 	if claims.Nonce != nonce {
-		return "failed", errors.New("id token nonce does not match")
+		return "failed", "", app, errors.New("id token nonce does not match")
 	}
 	if !claims.EmailVerified {
-		return "unverified", nil
+		return "unverified", "", app, nil
 	}
 	email, err := normalizeEmail(claims.Email)
 	if err != nil {
-		return "failed", fmt.Errorf("unusable email from google: %q", claims.Email)
+		return "failed", "", app, fmt.Errorf("unusable email from google: %q", claims.Email)
 	}
 
 	id, err := h.googleUser(r.Context(), claims.Sub, email)
 	if errors.Is(err, errSignupClosed) {
-		return "closed", nil
+		return "closed", "", app, nil
 	}
 	if errors.Is(err, errOtherGoogle) {
-		return "linked", nil
+		return "linked", "", app, nil
 	}
 	if err != nil {
-		return "failed", err
+		return "failed", "", app, err
 	}
-	if err := h.startSession(w, r, id); err != nil {
-		return "failed", err
+	if app {
+		appCode, err = h.store.createAppCode(r.Context(), id, challenge, h.now().Add(appCodeTTL))
+		if err != nil {
+			return "failed", "", app, err
+		}
+		return "", appCode, app, nil
 	}
-	return "", nil
+	if _, err := h.startSession(w, r, id); err != nil {
+		return "failed", "", app, err
+	}
+	return "", "", app, nil
 }
 
 var (

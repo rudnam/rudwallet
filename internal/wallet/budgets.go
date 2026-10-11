@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/rudnam/wallet-app/internal/db"
 )
@@ -66,4 +67,26 @@ func (s *Store) UpdateBudget(ctx context.Context, userID int64, b Budget) (Budge
 
 func (s *Store) DeleteBudget(ctx context.Context, userID, id int64) error {
 	return rowsChanged(s.db.ExecContext(ctx, `DELETE FROM budgets WHERE user_id = $1 AND id = $2`, userID, id))
+}
+
+// Spending sums confirmed expenses in [from, to) by category; uncategorised
+// ones are under 0.
+func (s *Store) Spending(ctx context.Context, userID int64, from, to time.Time) (map[int64]int64, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT coalesce(category_id, 0), sum(amount) FROM transactions
+		WHERE user_id = $1 AND kind = 'expense' AND status = 'confirmed' AND occurred_at >= $2 AND occurred_at < $3
+		GROUP BY 1`, userID, from, to)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[int64]int64{}
+	for rows.Next() {
+		var cat, sum int64
+		if err := rows.Scan(&cat, &sum); err != nil {
+			return nil, err
+		}
+		out[cat] = sum
+	}
+	return out, rows.Err()
 }

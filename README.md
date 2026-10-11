@@ -14,7 +14,7 @@ A Go API, a React frontend, and PostgreSQL, shipped as one Docker image.
 - **Frontend:** React + TypeScript, bundled by Vite and embedded in the Go binary. Installable as a PWA.
 - **Database:** PostgreSQL. Migrations are embedded SQL files, applied on startup.
 - **Packaging:** one small, non-root Docker image (under 20 MB) with no shell.
-- **Android:** the same site, packaged as an app (see [android/README.md](android/README.md)).
+- **Android:** the same web app, packaged with Capacitor, plus native home screen widgets: this month, budgets, and a New record button (see [android/README.md](android/README.md)).
 
 ## Quick start
 
@@ -86,7 +86,7 @@ All settings are environment variables (read in `internal/config`).
 | `PUBLIC_ORIGIN` | empty | The site's public address, e.g. `https://app.example.com`. Accepted by the CSRF check even if a proxy changes `Host`. |
 | `ALLOW_SIGNUP` | `true` | Set `false` to stop new accounts being created. |
 | `AUTH_RATE_LIMIT` | `10` | Sign-in and sign-up attempts per minute per client IP. |
-| `ANDROID_PACKAGE`, `ANDROID_CERT_FINGERPRINTS` | empty | Publish `/.well-known/assetlinks.json` for the Android app. See [android/README.md](android/README.md). |
+| `ANDROID_PACKAGE`, `ANDROID_CERT_FINGERPRINTS` | empty | The Android app's package, which Sign in with Google in the app returns to, and its signing keys, published in `/.well-known/assetlinks.json`. See [android/README.md](android/README.md). |
 | `INBOUND_DOMAIN`, `INBOUND_SECRET` | empty | Turn on email automation: users get `pay-<token>@INBOUND_DOMAIN`, and the mail provider's hook calls `POST /api/inbound/email` with the secret (24+ characters). See [docs/email.md](docs/email.md). |
 | `ANTHROPIC_API_KEY` | empty | Let Claude read payment emails from senders without a built-in rule. |
 | `ANTHROPIC_MODEL` | `claude-opus-5-5` | The model for that. |

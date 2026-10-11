@@ -1,8 +1,8 @@
 // Package account handles sign-up, sign-in and sessions, and provides the
 // RequireUser middleware that other features put in front of their routes.
 //
-// Sessions are random tokens in an HttpOnly cookie; the database keeps only
-// their hashes. Any app instance can serve any request, so the app scales
+// Sessions are random tokens in an HttpOnly cookie (or, for the Android
+// app, a bearer token: see app.go); the database keeps only their hashes. Any app instance can serve any request, so the app scales
 // out without sticky sessions.
 package account
 
@@ -37,6 +37,9 @@ type Config struct {
 	// PublicOrigin is where those links point, e.g. https://app.example.com.
 	Mail         mailer.Sender
 	PublicOrigin string
+	// AppScheme is the Android app's package, whose URL scheme Google
+	// sign-in sends the app back to. Empty turns that off.
+	AppScheme string
 }
 
 type Handler struct {
@@ -73,6 +76,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/verify-email", h.verifyEmail)
 	mux.Handle("POST /api/verify-email", h.RequireUser(h.rateLimited(h.resendConfirmation)))
 	mux.Handle("GET /api/auth/options", httpx.HandlerFunc(h.options))
+	mux.Handle("POST /api/auth/app-token", h.rateLimited(h.appToken))
 	if h.cfg.Google != nil {
 		mux.HandleFunc("GET /api/auth/google", h.googleStart)
 		mux.HandleFunc("GET /api/auth/google/callback", h.googleCallback)
@@ -83,17 +87,31 @@ func (h *Handler) Register(mux *http.ServeMux) {
 
 type ctxKey struct{}
 
+// sessionToken returns the request's session token: the app's bearer
+// token, else the browser's cookie, else "".
+func sessionToken(r *http.Request) string {
+	if t := bearerToken(r); t != "" {
+		return t
+	}
+	if c, err := r.Cookie(sessionCookie); err == nil {
+		return c.Value
+	}
+	return ""
+}
+
 // RequireUser answers 401 unless the request has a valid session, and makes
 // the user available to next through UserFrom.
 func (h *Handler) RequireUser(next http.Handler) http.Handler {
 	return httpx.HandlerFunc(func(w http.ResponseWriter, r *http.Request) error {
-		c, err := r.Cookie(sessionCookie)
-		if err != nil || c.Value == "" {
+		token := sessionToken(r)
+		if token == "" {
 			return httpx.Errorf(http.StatusUnauthorized, "sign in required")
 		}
-		u, err := h.store.userBySession(r.Context(), hashToken(c.Value))
+		u, err := h.store.userBySession(r.Context(), hashToken(token))
 		if errors.Is(err, db.ErrNotFound) {
-			h.clearCookie(w)
+			if bearerToken(r) == "" {
+				h.clearCookie(w)
+			}
 			return httpx.Errorf(http.StatusUnauthorized, "session expired; sign in again")
 		}
 		if err != nil {
@@ -126,6 +144,8 @@ type meResponse struct {
 	HasPassword bool `json:"has_password"`
 	// ConfirmEmail asks the person to open the link we emailed them.
 	ConfirmEmail bool `json:"confirm_email"`
+	// Token is the new session's token, for the Android app only.
+	Token string `json:"token,omitempty"`
 }
 
 func (h *Handler) meFor(u User) meResponse {
@@ -176,7 +196,8 @@ func (h *Handler) signup(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	if err := h.startSession(w, r, id); err != nil {
+	token, err := h.startSession(w, r, id)
+	if err != nil {
 		return err
 	}
 	if h.cfg.Mail != nil {
@@ -185,7 +206,9 @@ func (h *Handler) signup(w http.ResponseWriter, r *http.Request) error {
 			slog.ErrorContext(r.Context(), "send confirmation email", "user", id, "err", err)
 		}
 	}
-	httpx.WriteJSON(w, http.StatusCreated, h.meFor(User{ID: id, Email: email, HasPassword: true}))
+	me := h.meFor(User{ID: id, Email: email, HasPassword: true})
+	me.Token = token
+	httpx.WriteJSON(w, http.StatusCreated, me)
 	return nil
 }
 
@@ -223,21 +246,33 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) error {
 		return wrong
 	}
 	_ = h.store.deleteExpiredSessions(r.Context()) // housekeeping; failure is harmless
-	if err := h.startSession(w, r, u.ID); err != nil {
-		return err
-	}
-	httpx.WriteJSON(w, http.StatusOK, h.meFor(u))
-	return nil
-}
-
-func (h *Handler) startSession(w http.ResponseWriter, r *http.Request, userID int64) error {
-	token, hash, err := newSessionToken()
+	token, err := h.startSession(w, r, u.ID)
 	if err != nil {
 		return err
 	}
-	expires := h.now().Add(h.cfg.SessionTTL)
+	me := h.meFor(u)
+	me.Token = token
+	httpx.WriteJSON(w, http.StatusOK, me)
+	return nil
+}
+
+// startSession signs the user in: the browser gets a cookie, and the
+// Android app gets the token back, to put in the response.
+func (h *Handler) startSession(w http.ResponseWriter, r *http.Request, userID int64) (appToken string, err error) {
+	token, hash, err := newSessionToken()
+	if err != nil {
+		return "", err
+	}
+	ttl := h.cfg.SessionTTL
+	if fromApp(r) {
+		ttl = appSessionTTL
+	}
+	expires := h.now().Add(ttl)
 	if err := h.store.createSession(r.Context(), userID, hash, expires); err != nil {
-		return err
+		return "", err
+	}
+	if fromApp(r) {
+		return token, nil
 	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookie,
@@ -249,7 +284,7 @@ func (h *Handler) startSession(w http.ResponseWriter, r *http.Request, userID in
 		Secure:   h.cfg.SecureCookies,
 		SameSite: http.SameSiteLaxMode,
 	})
-	return nil
+	return "", nil
 }
 
 func (h *Handler) clearCookie(w http.ResponseWriter) {
@@ -260,8 +295,8 @@ func (h *Handler) clearCookie(w http.ResponseWriter) {
 }
 
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) error {
-	if c, err := r.Cookie(sessionCookie); err == nil && c.Value != "" {
-		if err := h.store.deleteSession(r.Context(), hashToken(c.Value)); err != nil {
+	if token := sessionToken(r); token != "" {
+		if err := h.store.deleteSession(r.Context(), hashToken(token)); err != nil {
 			return err
 		}
 	}

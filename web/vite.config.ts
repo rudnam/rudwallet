@@ -10,6 +10,7 @@ export default defineConfig({
       // (for `go vet` and the Go tests). A committed dist/.gitkeep guarantees
       // that; put it back after Vite empties the folder.
       name: 'keep-dist-placeholder',
+      apply: (_, env) => env.mode !== 'android', // that build goes to dist-android/
       closeBundle() {
         writeFileSync('dist/.gitkeep', '');
       },

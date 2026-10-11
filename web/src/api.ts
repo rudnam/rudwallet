@@ -1,5 +1,6 @@
 // Typed client for the Go API. Shapes mirror the Go handlers' JSON.
 // Amounts are whole minor units of the user's currency (see Settings).
+import { appHeaders, saveSession, server } from './native';
 
 export interface Me {
   email: string;
@@ -7,6 +8,8 @@ export interface Me {
   has_password: boolean;
   /** The server emailed a link to confirm the address, and it hasn't been opened yet. */
   confirm_email: boolean;
+  /** A new session's token, given to the Android app only (see native.ts). */
+  token?: string;
 }
 
 /** The ways this server offers to sign in. */
@@ -159,9 +162,9 @@ export class ApiError extends Error {
 
 async function request<T>(method: string, path: string, body?: unknown, contentType?: string): Promise<T> {
   const raw = contentType !== undefined;
-  const res = await fetch(path, {
+  const res = await fetch(server + path, {
     method,
-    headers: body === undefined ? undefined : { 'Content-Type': contentType ?? 'application/json' },
+    headers: { ...(body === undefined ? {} : { 'Content-Type': contentType ?? 'application/json' }), ...appHeaders() },
     body: body === undefined ? undefined : raw ? (body as BodyInit) : JSON.stringify(body),
   });
   if (res.status === 204) return undefined as T;
@@ -182,15 +185,30 @@ function query(f: TransactionFilter): string {
   return s ? `?${s}` : '';
 }
 
+/** In the Android app, keeps the token a sign-in returned. */
+async function signedIn(me: Promise<Me>): Promise<Me> {
+  const m = await me;
+  if (m.token) await saveSession(m.token);
+  return m;
+}
+
 export const api = {
   me: () => request<Me>('GET', '/api/me'),
-  signUp: (email: string, password: string) => request<Me>('POST', '/api/signup', { email, password }),
-  signIn: (email: string, password: string) => request<Me>('POST', '/api/login', { email, password }),
-  signOut: () => request<void>('POST', '/api/logout'),
+  signUp: (email: string, password: string) => signedIn(request<Me>('POST', '/api/signup', { email, password })),
+  signIn: (email: string, password: string) => signedIn(request<Me>('POST', '/api/login', { email, password })),
+  /** Finishes Google sign-in in the Android app (see native.ts). */
+  appToken: (code: string, verifier: string) => signedIn(request<Me>('POST', '/api/auth/app-token', { code, verifier })),
+  signOut: async () => {
+    await request<void>('POST', '/api/logout');
+    await saveSession('');
+  },
   authOptions: () => request<AuthOptions>('GET', '/api/auth/options'),
   resendConfirmation: () => request<void>('POST', '/api/verify-email'),
   /** Deletes the account and everything in it. Confirm with the password, or for a Google-only account, the email. */
-  deleteMe: (confirm: { password: string } | { email: string }) => request<void>('DELETE', '/api/me', confirm),
+  deleteMe: async (confirm: { password: string } | { email: string }) => {
+    await request<void>('DELETE', '/api/me', confirm);
+    await saveSession('');
+  },
 
   overview: () => request<Overview>('GET', '/api/wallet'),
   updateSettings: ({ currency, auto_confirm, default_account_id }: Omit<Settings, 'currency_exponent'>) =>
