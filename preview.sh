@@ -17,7 +17,8 @@ cd "$(dirname "$0")"
 
 PW_VERSION=unused   # e2e/compose.yml needs it set; the preview runs no tests
 PREVIEW_PORT=${PREVIEW_PORT:-8081}
-export PW_VERSION PREVIEW_PORT
+DOCKER_BUILDKIT=1   # for the Dockerfile's build cache, even if the environment says not to
+export PW_VERSION PREVIEW_PORT DOCKER_BUILDKIT
 unset COMPOSE_FILE COMPOSE_PROJECT_NAME   # keep the live stack's .env out of this
 
 project=${PWD##*/}; project=${project,,}-preview
