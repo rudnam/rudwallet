@@ -8,8 +8,9 @@
 #
 # Needs only Docker. Uses its own Compose project (<folder>-verify) with the
 # database in tmpfs, so it never touches the live stack or its data, and it
-# tears everything down when it exits. Screenshots of failed browser tests
-# land in e2e/test-results/.
+# tears everything down when it exits, except the Go module and build caches,
+# which it keeps so the next run compiles only what changed. Screenshots of
+# failed browser tests land in e2e/test-results/.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -24,20 +25,31 @@ esac
 PW_VERSION=$(sed -n 's/.*"@playwright\/test": *"\([0-9.]*\)".*/\1/p' e2e/package.json)
 : "${PW_VERSION:?could not read the @playwright/test version from e2e/package.json}"
 HOST_UID=$(id -u) HOST_GID=$(id -g)
-export PW_VERSION HOST_UID HOST_GID
+# BuildKit, for the Dockerfile's build cache (even if the environment says not to).
+DOCKER_BUILDKIT=1
+export PW_VERSION HOST_UID HOST_GID DOCKER_BUILDKIT
 # Keep the live stack's .env (COMPOSE_FILE etc.) out of this.
 unset COMPOSE_FILE COMPOSE_PROJECT_NAME
 
 project=${PWD##*/}; project=${project,,}-verify
 dc() { docker compose -p "$project" -f e2e/compose.yml "$@"; }
-trap 'dc --profile go --profile e2e down --volumes --remove-orphans --timeout 1 >/dev/null 2>&1 || true' EXIT
+# No --volumes: the database is in tmpfs, and the Go caches should stay.
+golog=''
+trap 'dc --profile go --profile e2e down --remove-orphans --timeout 1 >/dev/null 2>&1 || true; rm -f "$golog"' EXIT
 
 status=0
 step() { printf '\n\033[1m== %s\033[0m\n' "$*"; }
+gostep="Go: vet and tests (with integration tests)"
 
-if [[ $mode == all || $mode == go ]]; then
-  step "Go: vet and tests (with integration tests)"
+if [[ $mode == go ]]; then
+  step "$gostep"
   dc --profile go run --rm gotest || status=1
+elif [[ $mode == all ]]; then
+  # The Go tests use their own database (app_test), so they run while the app
+  # builds and the browser tests run. Their output is shown when they finish.
+  dc up -d --wait db >/dev/null 2>&1 || true
+  golog=$(mktemp)
+  dc --profile go run --rm gotest >"$golog" 2>&1 & gopid=$!
 fi
 
 if [[ $mode == all || $mode == e2e ]]; then
@@ -52,6 +64,12 @@ if [[ $mode == all || $mode == e2e ]]; then
     dc logs server db | tail -40
     status=1
   fi
+fi
+
+if [[ $mode == all ]]; then
+  step "$gostep"
+  wait "$gopid" || status=1
+  cat "$golog"
 fi
 
 if [[ $status == 0 ]]; then step "VERIFY PASSED"; else step "VERIFY FAILED"; fi

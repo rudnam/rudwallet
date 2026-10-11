@@ -42,4 +42,4 @@ On the user's machine (WSL + Docker Desktop):
 - Containers can't reach a server started in WSL, and `--network host` means the Docker VM, not WSL. Run things in Docker, as the scripts do.
 - Playwright's browsers can't launch directly on this host (missing system libraries). Use `./verify.sh e2e`.
 
-In Claude Code cloud sessions, `.claude/hooks/session-start.sh` starts Docker, makes the base images trust the sandbox's TLS proxy, and sets `DOCKER_BUILDKIT=0` so builds use those images. The scripts then work as above. If Docker isn't running, run the hook again (`CLAUDE_CODE_REMOTE=true CLAUDE_PROJECT_DIR=$PWD .claude/hooks/session-start.sh`).
+In Claude Code cloud sessions, `.claude/hooks/session-start.sh` starts Docker, and makes the base images trust the sandbox's TLS proxy. It also sets `DOCKER_BUILDKIT=0`, which the scripts override: BuildKit uses those local images as long as the Dockerfile has no `# syntax=` line, so don't add one. The scripts then work as above. If Docker isn't running, run the hook again (`CLAUDE_CODE_REMOTE=true CLAUDE_PROJECT_DIR=$PWD .claude/hooks/session-start.sh`).
