@@ -78,3 +78,12 @@ export function toLocalInput(d: Date): string {
   const p = (n: number) => String(n).padStart(2, '0');
   return `${dayKey(d)}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
+
+/** The currency's sign as the user's locale writes it: "¥", "$", "€". */
+export function currencySymbol(s: Pick<Settings, 'currency'>): string {
+  return (
+    new Intl.NumberFormat(undefined, { style: 'currency', currency: s.currency })
+      .formatToParts(0)
+      .find((p) => p.type === 'currency')?.value ?? s.currency
+  );
+}

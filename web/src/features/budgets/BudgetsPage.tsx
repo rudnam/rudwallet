@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { api, errorMessage, type Budget } from '../../api';
 import { Meter } from '../../components/charts';
 import { Dialog } from '../../components/Dialog';
+import { CategoryIcon, Icon, icons } from '../../components/Icon';
 import { addMonths, amountInput, formatMonth, monthStart, parseAmount } from '../../money';
 import { useRecords } from '../../useRecords';
 import { useWallet } from '../../wallet';
@@ -23,13 +24,15 @@ export function BudgetsPage() {
 
   return (
     <section className="stack">
-      <div className="row">
-        <h1 className="grow">Budgets</h1>
-        <button type="button" onClick={() => setEditing('new')}>
+      <header className="page-head">
+        <div>
+          <span className="eyebrow">{formatMonth(month)}</span>
+          <h1>Budgets</h1>
+        </div>
+        <button type="button" className="secondary" onClick={() => setEditing('new')}>
           New budget
         </button>
-      </div>
-      <p className="muted">{formatMonth(month)}</p>
+      </header>
       {error && (
         <p role="alert" className="error">
           {error}
@@ -39,8 +42,14 @@ export function BudgetsPage() {
         <p className="muted">Loading…</p>
       ) : budgets.length === 0 ? (
         <div className="card stack empty">
-          <p>No budgets yet.</p>
+          <span className="empty-mark" aria-hidden="true">
+            <Icon d={icons.budgets} className="glyph" />
+          </span>
+          <h2>No budgets yet</h2>
           <p className="muted small">Set a monthly limit for a category, or for all your spending, and watch it fill up.</p>
+          <button type="button" onClick={() => setEditing('new')}>
+            Create a budget
+          </button>
         </div>
       ) : (
         <ul className="list" aria-label="Budgets">
@@ -49,8 +58,17 @@ export function BudgetsPage() {
             return (
               <li key={b.id} className="card stack tight">
                 <div className="row">
-                  <strong className="grow">{b.name}</strong>
-                  <span className="muted small">{c ? `${c.icon} ${c.name}` : 'All spending'}</span>
+                  {c ? (
+                    <CategoryIcon icon={c.icon} name={c.name} color={c.color} />
+                  ) : (
+                    <span className="cat-icon" aria-hidden="true">
+                      <Icon d={icons.budgets} className="glyph" />
+                    </span>
+                  )}
+                  <span className="grow">
+                    <strong className="block">{b.name}</strong>
+                    <span className="muted small">{c ? c.name : 'All spending'}</span>
+                  </span>
                   <button type="button" className="link" aria-label={`Edit budget ${b.name}`} onClick={() => setEditing(b)}>
                     Edit
                   </button>
@@ -121,7 +139,7 @@ function BudgetForm({ budget, onClose, onSaved }: { budget?: Budget; onClose: ()
               .filter((c) => c.kind === 'expense')
               .map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.icon} {c.name}
+                  {c.name}
                 </option>
               ))}
           </select>

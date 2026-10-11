@@ -2,13 +2,13 @@ const { test, expect, signUp } = require('./fixtures');
 
 test('add, edit and delete a record', async ({ page }) => {
   await signUp(page);
-  await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+  await expect(page.getByText('Total balance')).toBeVisible();
   await expect(page.getByText('No spending recorded this month yet.')).toBeVisible();
 
   await page.getByRole('button', { name: 'Add record' }).click();
   const dialog = page.getByRole('dialog', { name: 'New record' });
   await dialog.getByLabel('Amount (JPY)').fill('1,200');
-  await dialog.getByLabel('Category').selectOption({ label: '🍜 Food & Drinks' });
+  await dialog.getByRole('radio', { name: 'Food & Drinks' }).check();
   await dialog.getByLabel('Payee').fill('Ramen Taro');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();
@@ -43,11 +43,13 @@ test('add, edit and delete a record', async ({ page }) => {
 test('a new account, a transfer, and a budget that runs over', async ({ page }) => {
   await signUp(page);
   await page.goto('/#/settings');
+  await page.getByRole('link', { name: /Accounts/ }).click();
   await page.getByRole('button', { name: 'Add account' }).click();
   const acct = page.getByRole('dialog', { name: 'New account' });
-  await acct.getByLabel('Name').fill('MUFG');
-  await acct.getByLabel('Starting balance (JPY)').fill('50000');
-  await acct.getByRole('button', { name: 'Save' }).click();
+  await acct.getByRole('radio', { name: 'Bank account' }).check();
+  await acct.getByRole('button', { name: 'MUFG' }).click();
+  await acct.getByLabel('Balance today (JPY)').fill('50000');
+  await acct.getByRole('button', { name: 'Add account' }).click();
   await expect(page.getByRole('list', { name: 'Accounts' })).toContainText('MUFG');
 
   // Withdraw cash: a transfer changes both balances but not the total.
@@ -68,7 +70,7 @@ test('a new account, a transfer, and a budget that runs over', async ({ page }) 
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Budgets' }).click();
   await page.getByRole('button', { name: 'New budget' }).click();
   const b = page.getByRole('dialog', { name: 'New budget' });
-  await b.getByLabel('Category').selectOption({ label: '🍜 Food & Drinks' });
+  await b.getByLabel('Category').selectOption({ label: 'Food & Drinks' });
   await b.getByLabel('Monthly limit (JPY)').fill('1000');
   await b.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('list', { name: 'Budgets' })).toContainText('¥1,000 left');
@@ -76,7 +78,7 @@ test('a new account, a transfer, and a budget that runs over', async ({ page }) 
   await page.getByRole('button', { name: 'Add record' }).click();
   const lunch = page.getByRole('dialog', { name: 'New record' });
   await lunch.getByLabel('Amount (JPY)').fill('1200');
-  await lunch.getByLabel('Category').selectOption({ label: '🍜 Food & Drinks' });
+  await lunch.getByRole('radio', { name: 'Food & Drinks' }).check();
   await lunch.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('list', { name: 'Budgets' })).toContainText('Over by ¥200');
 });
@@ -109,12 +111,74 @@ test('import records exported from Wallet by BudgetBakers', async ({ page }) => 
   ].join('\n');
   await page.getByLabel('CSV file').setInputFiles({ name: 'records.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
   await expect(page.getByRole('status')).toContainText('Imported 2 records, created 1 accounts');
-  await expect(page.getByRole('list', { name: 'Accounts' })).toContainText('Rakuten Bank');
 
   // The same file again adds nothing.
   await page.getByLabel('CSV file').setInputFiles({ name: 'records.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
   await expect(page.getByRole('status')).toContainText('Imported 0 records, skipped 2 already imported');
+  await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
+  await page.getByRole('link', { name: /Accounts/ }).click();
+  await expect(page.getByRole('list', { name: 'Accounts' })).toContainText('Rakuten Bank');
 
   await page.goto('/#/records');
   await expect(page.getByRole('button', { name: /Aeon, -¥2,480/ })).toBeVisible();
+});
+
+test('a new user is walked through setting up, and daily adding remembers things', async ({ page }) => {
+  await signUp(page);
+  const setup = page.getByLabel('Get set up');
+  await expect(setup).toContainText('0 of 3');
+  await expect(setup).toContainText('Amounts are in JPY');
+
+  // Pick the kind, tap a suggested name, and say what's owed on the card.
+  await setup.getByRole('button', { name: 'Add account' }).click();
+  const acct = page.getByRole('dialog', { name: 'New account' });
+  await expect(acct.getByLabel('Name', { exact: true })).toHaveCount(0); // asks the kind first
+  await acct.getByRole('radio', { name: 'Credit card' }).check();
+  await acct.getByRole('button', { name: 'PayPay Card' }).click();
+  await expect(acct.getByLabel('Name', { exact: true })).toHaveValue('PayPay Card');
+  await acct.getByLabel('Owed today (JPY)').fill('12000');
+  await acct.getByRole('button', { name: 'Add account' }).click();
+  await expect(page.getByText('Added PayPay Card')).toBeVisible();
+  await expect(setup).toContainText('1 of 3');
+  await expect(page.getByRole('list', { name: 'Accounts' })).toContainText('-¥12,000');
+
+  // The first record, on the card.
+  await page.getByRole('button', { name: 'Add record' }).click();
+  let rec = page.getByRole('dialog', { name: 'New record' });
+  await rec.getByLabel('Amount (JPY)').fill('640');
+  await rec.getByRole('radio', { name: 'Food & Drinks' }).check();
+  await rec.getByLabel('Payee').fill('Matsuya');
+  await rec.getByLabel('Account').selectOption({ label: 'PayPay Card' });
+  await rec.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText('Added ¥640')).toBeVisible();
+
+  // Next time: the card is preselected, and the payee brings its category.
+  await page.getByRole('button', { name: 'Add record' }).click();
+  rec = page.getByRole('dialog', { name: 'New record' });
+  await expect(rec.getByLabel('Account').locator('option:checked')).toHaveText('PayPay Card');
+  await rec.getByLabel('Amount (JPY)').fill('720');
+  await expect(rec.locator('#payees option[value="Matsuya"]')).toHaveCount(1);
+  await rec.getByLabel('Payee').fill('Matsuya');
+  await expect(rec.getByRole('radio', { name: 'Food & Drinks' })).toBeChecked();
+
+  // Hiding the checklist keeps it hidden.
+  await page.keyboard.press('Escape');
+  await setup.getByRole('button', { name: 'Hide' }).click();
+  await page.reload();
+  await expect(page.getByText('Total balance')).toBeVisible();
+  await expect(page.getByLabel('Get set up')).toHaveCount(0);
+});
+
+test('categories wear line icons, and a new one can pick its own', async ({ page }) => {
+  await signUp(page);
+  await page.goto('/#/settings?section=categories');
+  await page.getByRole('button', { name: 'Add category' }).click();
+  const dialog = page.getByRole('dialog', { name: 'New category' });
+  await dialog.getByLabel('Name').fill('Cafés');
+  await dialog.getByRole('radio', { name: 'Coffee' }).check();
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  const chip = page.getByRole('button', { name: 'Edit category Cafés' });
+  await expect(chip.locator('svg')).toHaveCount(1);
+  // No emoji anywhere on the page.
+  expect(await page.locator('main').innerText()).not.toMatch(/\p{Extended_Pictographic}/u);
 });

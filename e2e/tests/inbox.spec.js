@@ -25,7 +25,7 @@ test('a forwarded PayPay email becomes a record to review, and teaches its categ
   const item = page.getByRole('listitem', { name: 'IKEAオンライン' });
   await expect(item).toContainText('-¥4,994');
   await expect(item).toContainText('PayPayカード ゴールド（Visa）');
-  await item.getByLabel('Category for IKEAオンライン').selectOption({ label: '🛍️ Shopping' });
+  await item.getByLabel('Category for IKEAオンライン').selectOption({ label: 'Shopping' });
   await item.getByRole('button', { name: 'Confirm' }).click();
   await expect(page.getByText('All caught up.')).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Main' }).getByLabel(/to review/)).toHaveCount(0);
@@ -33,14 +33,14 @@ test('a forwarded PayPay email becomes a record to review, and teaches its categ
   // It now counts, and is marked as recorded from an email.
   await page.goto('/#/records');
   const row = page.getByRole('button', { name: /IKEAオンライン, -¥4,994/ });
-  await expect(row).toContainText('✉ auto');
+  await expect(row).toContainText('Email');
   await expect(row).toContainText('Shopping');
 
   // The next purchase there arrives with the category already filled in.
   await deliverEmail(page.request, to, payPayEmail({ merchant: 'IKEAオンライン', yen: 1290, when: new Date(), id: `ikea2-${run}` }));
   await page.goto('/#/review');
   await expect(page.getByLabel('Category for IKEAオンライン')).toHaveValue(/\d+/);
-  await expect(page.getByLabel('Category for IKEAオンライン').locator('option:checked')).toHaveText('🛍️ Shopping');
+  await expect(page.getByLabel('Category for IKEAオンライン').locator('option:checked')).toHaveText('Shopping');
 
   // With auto-confirm on, a known shop goes straight in.
   await page.goto('/#/settings?section=email');

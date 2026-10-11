@@ -1,12 +1,13 @@
 // Small, dependency-free charts. One series each, so one validated chart
 // colour (--chart); status colours appear only in meters, always with an
 // icon and words. Values are written out in text, so nothing is colour-only.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Icon, icons } from './Icon';
 
 export interface BarItem {
   key: string | number;
   label: string;
-  icon: string;
+  icon: ReactNode;
   amount: number;
 }
 
@@ -29,7 +30,7 @@ export function CategoryBars({
         const content = (
           <>
             <span className="bar-label">
-              <span aria-hidden="true">{i.icon}</span> {i.label}
+              {i.icon} {i.label}
             </span>
             <span className="bar-track" aria-hidden="true">
               <span className="bar-fill" style={{ width: `${Math.max((i.amount / max) * 100, 1)}%` }} />
@@ -158,11 +159,17 @@ export function Meter({ spent, limit, format }: { spent: number; limit: number; 
   const pct = limit > 0 ? spent / limit : 0;
   const state = pct > 1 ? 'over' : pct >= 0.8 ? 'warn' : 'ok';
   const status =
-    state === 'over'
-      ? `⛔ Over by ${format(spent - limit)}`
-      : state === 'warn'
-        ? `⚠ ${format(limit - spent)} left`
-        : `${format(limit - spent)} left`;
+    state === 'over' ? (
+      <>
+        <Icon d={icons.stop} className="inline-icon" /> Over by {format(spent - limit)}
+      </>
+    ) : state === 'warn' ? (
+      <>
+        <Icon d={icons.warning} className="inline-icon" /> {format(limit - spent)} left
+      </>
+    ) : (
+      `${format(limit - spent)} left`
+    );
   return (
     <div className={`meter ${state}`}>
       <div

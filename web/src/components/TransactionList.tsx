@@ -2,6 +2,7 @@
 import type { Transaction } from '../api';
 import { dayKey, formatDay, formatTime } from '../money';
 import { useWallet } from '../wallet';
+import { CategoryIcon, Icon, icons } from './Icon';
 
 export function TransactionList({
   records,
@@ -23,7 +24,7 @@ export function TransactionList({
   }
 
   return (
-    <div className="stack tight" aria-label={label} role="list">
+    <div className="stack days" aria-label={label} role="list">
       {days.map((day) => {
         const net = day.items.reduce((sum, t) => sum + signed(t), 0);
         return (
@@ -71,16 +72,20 @@ function Row({ t, onOpen }: { t: Transaction; onOpen: (t: Transaction) => void }
   return (
     <li>
       <button type="button" className="record" onClick={() => onOpen(t)} aria-label={`${title}, ${amount}`}>
-        <span className="cat-icon" aria-hidden="true">
-          {t.kind === 'transfer' ? '⇄' : (cat?.icon ?? '•')}
-        </span>
+        {t.kind === 'transfer' ? (
+          <span className="cat-icon" aria-hidden="true">
+            <Icon d={icons.transfer} className="glyph" />
+          </span>
+        ) : (
+          <CategoryIcon icon={cat?.icon} name={cat?.name} color={cat?.color} />
+        )}
         <span className="grow">
           <span className="record-title">
             {title}
             {t.status === 'review' && <span className="badge">To review</span>}
             {t.source === 'email' && t.status === 'confirmed' && (
               <span className="badge quiet" title="Recorded from an email">
-                ✉ auto
+                <Icon d={icons.mail} className="inline-icon" /> Email
               </span>
             )}
           </span>

@@ -6,14 +6,16 @@ import { TransactionForm } from '../../components/TransactionForm';
 import { TransactionList } from '../../components/TransactionList';
 import { addMonths, daysInMonth, formatCompact, monthStart } from '../../money';
 import { href, navigate } from '../../router';
+import { CategoryIcon, Icon, icons } from '../../components/Icon';
+import { AccountForm } from '../settings/SettingsPage';
 import { useRecords } from '../../useRecords';
 import { useWallet } from '../../wallet';
 
-export function HomePage() {
+export function HomePage({ onAdd }: { onAdd: () => void }) {
   const w = useWallet();
   const [month] = useState(() => monthStart(new Date()));
   const { records, reload } = useRecords({ from: month, to: addMonths(month, 1) });
-  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [budgets, setBudgets] = useState<Budget[] | null>(null);
   const [open, setOpen] = useState<Transaction | null>(null);
 
   useEffect(() => {
@@ -23,26 +25,42 @@ export function HomePage() {
   const confirmed = (records ?? []).filter((t) => t.status === 'confirmed');
   const spent = sum(confirmed.filter((t) => t.kind === 'expense'));
   const income = sum(confirmed.filter((t) => t.kind === 'income'));
-  const total = w.accounts.filter((a) => !a.archived).reduce((s, a) => s + a.balance, 0);
+  const accounts = w.accounts.filter((a) => !a.archived);
+  const total = accounts.reduce((s, a) => s + a.balance, 0);
   const byCategory = spendingByCategory(confirmed, w);
   const daily = new Array<number>(daysInMonth(month)).fill(0);
   for (const t of confirmed) if (t.kind === 'expense') daily[new Date(t.occurred_at).getDate() - 1] += t.amount;
 
   return (
-    <section className="stack">
-      <h1>Overview</h1>
+    <section className="stack loose">
+      <header className="page-head">
+        <div>
+          <span className="eyebrow">
+            {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+          </span>
+          <h1>{greeting()}</h1>
+        </div>
+      </header>
 
       {w.review_count > 0 && (
         <a className="banner" href={href('review')}>
-          <span aria-hidden="true">✉</span>
+          <span className="banner-icon" aria-hidden="true">
+            <Icon d={icons.review} />
+          </span>
           <span className="grow">
             <strong>
               {w.review_count} {w.review_count === 1 ? 'payment' : 'payments'} from email
-            </strong>{' '}
-            waiting for review
+            </strong>
+            <span className="muted small block">Waiting for a quick check</span>
           </span>
-          <span aria-hidden="true">›</span>
+          <span className="chev" aria-hidden="true">
+            ›
+          </span>
         </a>
+      )}
+
+      {records !== null && budgets !== null && (
+        <SetUp hasRecords={(records ?? []).length > 0} hasBudget={budgets.length > 0} />
       )}
 
       <div className="card hero">
@@ -50,25 +68,25 @@ export function HomePage() {
         <span className="hero-figure">{w.money(total)}</span>
         <div className="tiles">
           <Tile label="Spent this month" value={w.money(spent)} />
-          <Tile label="Income" value={w.money(income)} />
+          <Tile label="Income" value={w.money(income)} className="income" />
           <Tile label="Net" value={w.money(income - spent, true)} />
         </div>
       </div>
 
       <div className="accounts" aria-label="Accounts" role="list">
-        {w.accounts
-          .filter((a) => !a.archived)
-          .map((a) => (
-            <a key={a.id} role="listitem" className="card account-card" href={href('records', { account: a.id })}>
+        {accounts.map((a) => (
+          <a key={a.id} role="listitem" className="card account-card" href={href('records', { account: a.id })}>
+            <span className="row">
               <span className="swatch" style={{ background: a.color }} aria-hidden="true" />
-              <span className="muted small">{a.name}</span>
-              <strong>{w.money(a.balance)}</strong>
-            </a>
-          ))}
+              <span className="muted small ellipsis">{a.name}</span>
+            </span>
+            <strong>{w.money(a.balance)}</strong>
+          </a>
+        ))}
       </div>
 
       <div className="card stack">
-        <h2>Spending this month</h2>
+        <h2>Where it went in {month.toLocaleDateString(undefined, { month: 'long' })}</h2>
         {byCategory.length === 0 ? (
           <p className="muted">No spending recorded this month yet.</p>
         ) : (
@@ -93,10 +111,10 @@ export function HomePage() {
         )}
       </div>
 
-      {budgets.length > 0 && (
+      {budgets && budgets.length > 0 && (
         <div className="card stack">
-          <div className="row">
-            <h2 className="grow">Budgets</h2>
+          <div className="section-head">
+            <h2>Budgets</h2>
             <a href={href('budgets')}>All budgets</a>
           </div>
           {budgets.map((b) => (
@@ -109,14 +127,19 @@ export function HomePage() {
       )}
 
       <div className="stack">
-        <div className="row">
-          <h2 className="grow">Latest records</h2>
+        <div className="section-head">
+          <h2>Latest records</h2>
           <a href={href('records')}>All records</a>
         </div>
         {records === null ? (
           <p className="muted">Loading…</p>
         ) : records.length === 0 ? (
-          <p className="muted">Nothing yet this month. Add a record with the + button.</p>
+          <div className="card stack empty">
+            <p className="muted">Nothing recorded this month yet.</p>
+            <button type="button" className="secondary" onClick={onAdd}>
+              Add a record
+            </button>
+          </div>
         ) : (
           <TransactionList records={records.slice(0, 6)} onOpen={setOpen} label="Latest records" />
         )}
@@ -127,11 +150,104 @@ export function HomePage() {
   );
 }
 
-function Tile({ label, value }: { label: string; value: string }) {
+function greeting(): string {
+  const h = new Date().getHours();
+  return h < 5 ? 'Good evening' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+}
+
+const setupDoneKey = 'wallet:setup-dismissed';
+
+/**
+ * The first things a new user does, ticked off as they go: their real
+ * accounts, email forwarding and a budget. Hidden once done or dismissed.
+ */
+function SetUp({ hasRecords, hasBudget }: { hasRecords: boolean; hasBudget: boolean }) {
+  const w = useWallet();
+  const [hidden, setHidden] = useState(() => localStorage.getItem(setupDoneKey) === '1');
+  const [forwarding, setForwarding] = useState<boolean | null>(null);
+  const [addingAccount, setAddingAccount] = useState(false);
+
+  useEffect(() => {
+    if (!hidden) api.inbox().then((i) => setForwarding(i.emails.length > 0), () => setForwarding(false));
+  }, [hidden]);
+
+  const steps = [
+    {
+      done: w.accounts.length > 1,
+      title: 'Add your accounts',
+      detail: 'Your bank, cards and e-money, with what’s in them today.',
+      action: (
+        <button type="button" className="link" onClick={() => setAddingAccount(true)}>
+          Add account
+        </button>
+      ),
+    },
+    {
+      done: !!forwarding,
+      title: 'Forward your payment emails',
+      detail: 'Card alerts become records by themselves.',
+      action: <a href={href('settings', { section: 'email' })}>Set up</a>,
+    },
+    {
+      done: hasBudget,
+      title: 'Set a monthly budget',
+      detail: 'See at a glance how much is left.',
+      action: <a href={href('budgets')}>Add budget</a>,
+    },
+  ];
+  const left = steps.filter((s) => !s.done).length;
+  if (hidden || forwarding === null || left === 0) return null;
+
+  return (
+    <div className="card stack setup" aria-label="Get set up">
+      <div className="section-head">
+        <h2>Get set up</h2>
+        <span className="muted small">
+          {steps.length - left} of {steps.length}
+        </span>
+        <button
+          type="button"
+          className="link"
+          onClick={() => {
+            localStorage.setItem(setupDoneKey, '1');
+            setHidden(true);
+          }}
+        >
+          Hide
+        </button>
+      </div>
+      <ol className="setup-steps">
+        {steps.map((s) => (
+          <li key={s.title} className={s.done ? 'done' : ''}>
+            <span className="setup-mark" aria-hidden="true">
+              {s.done && <Icon d={icons.check} className="inline-icon" />}
+            </span>
+            <span className="grow">
+              <strong>{s.title}</strong>
+              {s.done && <span className="sr-only"> (done)</span>}
+              <span className="muted small block">{s.detail}</span>
+            </span>
+            {!s.done && s.action}
+          </li>
+        ))}
+      </ol>
+      {!hasRecords && (
+        <p className="muted small">
+          Amounts are in {w.settings.currency}. <a href={href('settings', { section: 'general' })}>Change currency</a> before
+          your first record. Coming from BudgetBakers?{' '}
+          <a href={href('settings', { section: 'import' })}>Import your history</a>.
+        </p>
+      )}
+      {addingAccount && <AccountForm onClose={() => setAddingAccount(false)} />}
+    </div>
+  );
+}
+
+function Tile({ label, value, className }: { label: string; value: string; className?: string }) {
   return (
     <div className="tile">
       <span className="muted small">{label}</span>
-      <strong>{value}</strong>
+      <strong className={className}>{value}</strong>
     </div>
   );
 }
@@ -150,7 +266,12 @@ export function spendingByCategory(list: Transaction[], w: ReturnType<typeof use
   return [...totals.entries()]
     .map(([k, amount]) => {
       const c = k === 'none' ? undefined : w.category(k);
-      return { key: k, label: c?.name ?? 'No category', icon: c?.icon ?? '•', amount };
+      return {
+        key: k,
+        label: c?.name ?? 'No category',
+        icon: <CategoryIcon icon={c?.icon} name={c?.name} color={c?.color} size="small" />,
+        amount,
+      };
     })
     .sort((a, b) => b.amount - a.amount);
 }

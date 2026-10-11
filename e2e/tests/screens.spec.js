@@ -49,6 +49,14 @@ for (const [name, viewport] of [
     await shot('1-sign-in');
 
     await signUp(page);
+    await expect(page.getByLabel('Get set up')).toBeVisible();
+    await shot('2-welcome');
+    await page.getByLabel('Get set up').getByRole('button', { name: 'Add account' }).click();
+    await page.getByRole('dialog', { name: 'New account' }).getByRole('radio', { name: 'Credit card' }).check();
+    await page.getByRole('dialog', { name: 'New account' }).getByRole('button', { name: 'PayPay Card' }).click();
+    await shot('2-new-account');
+    await page.keyboard.press('Escape');
+
     await seed(page);
     await page.reload();
     await expect(page.getByRole('link', { name: /1 payment from email/ })).toBeVisible();
@@ -73,7 +81,16 @@ for (const [name, viewport] of [
     await shot('6-budgets');
 
     await page.goto('/#/settings');
-    await expect(page.getByTestId('inbox-address')).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Settings sections' })).toBeVisible();
     await shot('7-settings');
+
+    await page.getByRole('link', { name: /Email automation/ }).click();
+    await expect(page.getByTestId('inbox-address')).toBeVisible();
+    await shot('8-settings-email');
+
+    await page.goto('/#/settings?section=accounts');
+    await page.getByRole('button', { name: 'Edit account PayPay Card' }).click();
+    await expect(page.getByRole('dialog', { name: 'Edit account' })).toBeVisible();
+    await shot('9-edit-account');
   });
 }

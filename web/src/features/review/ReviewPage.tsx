@@ -7,6 +7,8 @@ import { TransactionForm } from '../../components/TransactionForm';
 import { formatDay, formatTime } from '../../money';
 import { href } from '../../router';
 import { useRecords } from '../../useRecords';
+import { Icon, icons } from '../../components/Icon';
+import { useToast } from '../../toast';
 import { useWallet } from '../../wallet';
 
 export function ReviewPage() {
@@ -36,8 +38,13 @@ export function ReviewPage() {
 
   const empty = records !== null && records.length === 0 && emails.length === 0;
   return (
-    <section className="stack">
-      <h1>To review</h1>
+    <section className="stack loose">
+      <header className="stack tight">
+        <h1>To review</h1>
+        <p className="muted lede">
+          Payments read from your emails. Pick a category and confirm; next time it's remembered.
+        </p>
+      </header>
       {error && (
         <p role="alert" className="error">
           {error}
@@ -45,10 +52,10 @@ export function ReviewPage() {
       )}
       {empty && (
         <div className="card stack empty">
-          <span className="big" aria-hidden="true">
-            ✓
+          <span className="empty-mark" aria-hidden="true">
+            <Icon d={icons.check} className="glyph" />
           </span>
-          <p>All caught up.</p>
+          <h2>All caught up.</h2>
           <p className="muted small">
             Payments from forwarded emails appear here. <a href={href('settings', { section: 'email' })}>Set up email automation</a>
           </p>
@@ -93,6 +100,9 @@ export function ReviewPage() {
       {emails.filter((e) => e.status === 'unparsed').length > 0 && (
         <>
           <h2>Emails that need you</h2>
+          <p className="muted small lede">
+            These couldn't be read automatically. Add them yourself, or set them aside.
+          </p>
           <ul className="list" aria-label="Unread emails">
             {emails
               .filter((e) => e.status === 'unparsed')
@@ -139,6 +149,7 @@ export function ReviewPage() {
 /** One payment: pick a category and confirm in place, or open it to edit. */
 function ReviewItem({ t, onEdit, onDone }: { t: Transaction; onEdit: () => void; onDone: () => void }) {
   const w = useWallet();
+  const toast = useToast();
   const [categoryId, setCategoryId] = useState<number | null>(t.category_id);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -164,6 +175,7 @@ function ReviewItem({ t, onEdit, onDone }: { t: Transaction; onEdit: () => void;
         status: 'confirmed',
       });
       await w.refresh();
+      toast(`Confirmed ${title}`);
       onDone();
     } catch (err) {
       setError(errorMessage(err));
@@ -181,14 +193,14 @@ function ReviewItem({ t, onEdit, onDone }: { t: Transaction; onEdit: () => void;
             {t.source_label ? ` · ${t.source_label}` : ''}
           </span>
         </span>
-        <strong className={`amount ${t.kind}`}>
+        <strong className={`amount review-amount ${t.kind}`}>
           {t.amount > 0 ? w.money(t.kind === 'income' ? t.amount : -t.amount, true) : 'Amount?'}
         </strong>
       </div>
       {t.note && <span className="small muted">{t.note}</span>}
       {t.duplicate_of_id && (
         <span className="notice warn small" role="status">
-          ⚠ Possible duplicate: you already have a record of this amount around this time.
+          <Icon d={icons.warning} className="inline-icon" /> Possible duplicate: you already have a record of this amount around this time.
         </span>
       )}
       <div className="row wrap">
@@ -202,7 +214,7 @@ function ReviewItem({ t, onEdit, onDone }: { t: Transaction; onEdit: () => void;
             .filter((c) => c.kind === t.kind)
             .map((c) => (
               <option key={c.id} value={c.id}>
-                {c.icon} {c.name}
+                {c.name}
               </option>
             ))}
         </select>

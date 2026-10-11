@@ -37,7 +37,7 @@ async function signUp(page) {
   const res = await page.request.post('/api/signup', { data: { email, password: PASSWORD } });
   base.expect(res.status(), await res.text()).toBe(201);
   await page.goto('/');
-  await base.expect(page.getByText(email)).toBeVisible();
+  await base.expect(page.getByText('Total balance')).toBeVisible();
   return email;
 }
 

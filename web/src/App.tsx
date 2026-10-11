@@ -1,16 +1,18 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { api, ApiError, errorMessage, type Me } from './api';
 import { AuthForm } from './components/AuthForm';
+import { Icon, icons, Logo, Plus } from './components/Icon';
 import { TransactionForm } from './components/TransactionForm';
 import { BudgetsPage } from './features/budgets/BudgetsPage';
 import { HomePage } from './features/home/HomePage';
 import { RecordsPage } from './features/records/RecordsPage';
 import { ReviewPage } from './features/review/ReviewPage';
 import { SettingsPage } from './features/settings/SettingsPage';
-import { href, useRoute } from './router';
+import { href, navigate, useRoute } from './router';
+import { ToastProvider } from './toast';
 import { useWallet, WalletProvider } from './wallet';
 
-/** The app's name, shown in the top bar. Also in index.html and the manifest. */
+/** The app's name, shown in the sidebar and on the sign-in screen. Also in index.html and the manifest. */
 export const appName = 'Wallet';
 
 type Session =
@@ -37,71 +39,57 @@ export function App() {
 
   async function signOut() {
     await api.signOut();
+    navigate('home'); // the next person to sign in starts at Home
     setSession({ status: 'signed-out' });
   }
 
-  return (
-    <>
-      <header className="topbar">
-        <span className="brand">{appName}</span>
-        {session.status === 'signed-in' && (
-          <span className="account">
-            <span className="muted">{session.me.email}</span>
-            <button className="link" onClick={signOut}>
-              Sign out
-            </button>
-          </span>
-        )}
-      </header>
-      {session.status === 'signed-in' ? (
+  if (session.status === 'signed-in') {
+    return (
+      <ToastProvider>
         <WalletProvider>
-          <Shell />
+          <Shell me={session.me} onSignOut={signOut} />
         </WalletProvider>
-      ) : (
-        <main className="page">
-          {session.status === 'loading' && <p className="muted">Loading…</p>}
-          {session.status === 'error' && (
-            <p role="alert" className="error">
-              Could not reach the server: {session.message}
-            </p>
-          )}
-          {session.status === 'signed-out' && (
-            <AuthForm onSignedIn={(me) => setSession({ status: 'signed-in', me })} />
-          )}
-        </main>
-      )}
-    </>
-  );
-}
-
-/** A 24px line icon; paths drawn on a 24-unit grid. */
-function Icon({ d }: { d: string }) {
+      </ToastProvider>
+    );
+  }
   return (
-    <svg className="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
-      <path d={d} />
-    </svg>
+    <main className="splash">
+      {session.status === 'loading' && <p className="muted">Loading…</p>}
+      {session.status === 'error' && (
+        <p role="alert" className="error">
+          Could not reach the server: {session.message}
+        </p>
+      )}
+      {session.status === 'signed-out' && (
+        <div className="auth">
+          <div className="auth-brand">
+            <Logo />
+            <span className="auth-name">{appName}</span>
+            <p>Your money, quietly kept in order.</p>
+          </div>
+          <AuthForm onSignedIn={(me) => setSession({ status: 'signed-in', me })} />
+        </div>
+      )}
+    </main>
   );
 }
 
-const pages: { page: string; label: string; icon: ReactNode }[] = [
-  { page: 'home', label: 'Home', icon: <Icon d="M3 11l9-7 9 7M5 9.5V20h5v-6h4v6h5V9.5" /> },
-  { page: 'records', label: 'Records', icon: <Icon d="M4 6h16M4 12h16M4 18h10" /> },
-  { page: 'review', label: 'Review', icon: <Icon d="M3 6h18v12H3zM3 7l9 6 9-6" /> },
-  { page: 'budgets', label: 'Budgets', icon: <Icon d="M12 3a9 9 0 1 0 9 9h-9zM15 3.5A9 9 0 0 1 20.5 9H15z" /> },
-  {
-    page: 'settings',
-    label: 'Settings',
-    icon: <Icon d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" />,
-  },
+const pages = [
+  { page: 'home', label: 'Home', icon: icons.home },
+  { page: 'records', label: 'Records', icon: icons.records },
+  { page: 'review', label: 'Review', icon: icons.review },
+  { page: 'budgets', label: 'Budgets', icon: icons.budgets },
+  { page: 'settings', label: 'Settings', icon: icons.settings },
 ];
 
-function Shell() {
+function Shell({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
   const route = useRoute();
   const w = useWallet();
   const [adding, setAdding] = useState(false);
   // Bumped after adding a record, so the page reloads its data.
   const [version, setVersion] = useState(0);
   const { refresh } = w;
+  const current = pages.some((p) => p.page === route.page) ? route.page : 'home';
 
   // Emails arrive while the app is open: reload balances and the review
   // count on every page change and whenever the app comes back into view.
@@ -115,7 +103,7 @@ function Shell() {
   }, [refresh]);
 
   let page;
-  switch (route.page) {
+  switch (current) {
     case 'records':
       page = <RecordsPage route={route} />;
       break;
@@ -126,23 +114,30 @@ function Shell() {
       page = <BudgetsPage />;
       break;
     case 'settings':
-      page = <SettingsPage route={route} />;
+      page = <SettingsPage route={route} me={me} onSignOut={onSignOut} />;
       break;
     default:
-      page = <HomePage />;
+      page = <HomePage onAdd={() => setAdding(true)} />;
   }
 
   return (
     <div className="shell">
       <nav className="nav" aria-label="Main">
+        <a className="nav-brand" href={href('home')}>
+          <Logo />
+          {appName}
+        </a>
+        <button type="button" className="nav-add" aria-label="Add record" onClick={() => setAdding(true)}>
+          <Plus /> New record
+        </button>
         {pages.map((p) => (
           <a
             key={p.page}
             href={href(p.page)}
-            className={route.page === p.page || (p.page === 'home' && !pages.some((x) => x.page === route.page)) ? 'on' : ''}
-            aria-current={route.page === p.page ? 'page' : undefined}
+            className={current === p.page ? 'nav-link on' : 'nav-link'}
+            aria-current={current === p.page ? 'page' : undefined}
           >
-            {p.icon}
+            <Icon d={p.icon} />
             <span>{p.label}</span>
             {p.page === 'review' && w.review_count > 0 && (
               <span className="count" aria-label={`${w.review_count} to review`}>
@@ -151,16 +146,17 @@ function Shell() {
             )}
           </a>
         ))}
+        <span className="nav-foot ellipsis" title={me.email}>
+          {me.email}
+        </span>
       </nav>
       <main className="page" key={`${route.page}-${version}`}>
         {page}
       </main>
       <button type="button" className="fab" aria-label="Add record" onClick={() => setAdding(true)}>
-        +
+        <Plus />
       </button>
-      {adding && (
-        <TransactionForm onClose={() => setAdding(false)} onSaved={() => setVersion((v) => v + 1)} />
-      )}
+      {adding && <TransactionForm onClose={() => setAdding(false)} onSaved={() => setVersion((v) => v + 1)} />}
     </div>
   );
 }

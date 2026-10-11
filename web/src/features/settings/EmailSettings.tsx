@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { api, errorMessage, type InboundEmail, type Inbox } from '../../api';
 import { formatDay, formatTime } from '../../money';
+import { Icon, icons } from '../../components/Icon';
 import { href } from '../../router';
 import { useWallet } from '../../wallet';
 
@@ -75,8 +76,7 @@ export function EmailSettings() {
   }
 
   return (
-    <div className="card stack" id="email">
-      <h2>Email automation</h2>
+    <div className="card stack">
       <p className="small">
         Forward your payment emails here and each one becomes a record for you to confirm.
       </p>
@@ -90,7 +90,7 @@ export function EmailSettings() {
             <code data-testid="inbox-address">{inbox.address}</code>
             <div className="row">
               <button type="button" onClick={() => copy(inbox.address, 'address')}>
-                {copied === 'address' ? 'Copied ✓' : 'Copy address'}
+                {copied === 'address' ? 'Copied' : 'Copy address'}
               </button>
               <button type="button" className="link" onClick={newAddress}>
                 Get a new address
@@ -110,7 +110,7 @@ export function EmailSettings() {
             <li>
               Search Gmail for (tap to copy):
               <button type="button" className="code-button" onClick={() => copy(gmailFilter, 'filter')}>
-                <code>{gmailFilter}</code> {copied === 'filter' ? '✓' : '⧉'}
+                <code>{gmailFilter}</code> <Icon d={copied === 'filter' ? icons.check : icons.copy} className="inline-icon" />
               </button>
               Open the search options (☰), click <strong>Create filter</strong>, tick{' '}
               <strong>Forward it to</strong>, and pick your address.

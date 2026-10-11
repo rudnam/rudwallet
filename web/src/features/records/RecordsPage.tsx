@@ -45,7 +45,7 @@ export function RecordsPage({ route }: { route: Route }) {
   return (
     <section className="stack">
       <h1>Records</h1>
-      <div className="month-picker">
+      <div className="card month-picker">
         <button type="button" className="link" aria-label="Previous month" onClick={() => set({ month: ym(addMonths(month, -1)) })}>
           ‹
         </button>
@@ -68,7 +68,7 @@ export function RecordsPage({ route }: { route: Route }) {
           <option value="none">No category</option>
           {w.categories.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.icon} {c.name}
+              {c.name}
             </option>
           ))}
         </select>
@@ -83,7 +83,7 @@ export function RecordsPage({ route }: { route: Route }) {
           <input type="search" aria-label="Search records" placeholder="Search payee or note" value={q} onChange={(e) => setQ(e.target.value)} />
         </form>
       </div>
-      <div className="tiles">
+      <div className="card tiles summary">
         <div className="tile">
           <span className="muted small">Spent</span>
           <strong>{w.money(out)}</strong>
@@ -105,7 +105,9 @@ export function RecordsPage({ route }: { route: Route }) {
       {records === null ? (
         <p className="muted">Loading…</p>
       ) : records.length === 0 ? (
-        <p className="muted">No records match.</p>
+        <div className="card stack empty">
+          <p className="muted">No records match.</p>
+        </div>
       ) : (
         <TransactionList records={records} onOpen={setOpen} />
       )}
