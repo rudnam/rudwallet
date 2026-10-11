@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -28,9 +29,52 @@ import (
 //	2024/06/03 11:28,1000,-,-,-,-,-,支払い,〇〇カレー,PayPay残高,-,本人,123456789012345
 //
 // 取引方法 is what paid (PayPay残高, PayPayカード, a bank for a charge…);
-// each one maps to an account the user picks.
+// each one maps to an account the user picks. A payment split over several
+// methods lists each with its share: PayPayポイント（686円）、PayPayカード（4,794円）.
+//
+// With the app in English the export has English headers and values:
+//
+//	Date & Time,Amount Outgoing (Yen),Amount Incoming (Yen),Amount Outgoing Overseas,Currency,Exchange Rate (Yen),Country Paid In,Transaction Type,Business Name,Method,Payment Option,User,Transaction ID
+//	2026/10/11 09:55:15,"5,480",-,-,-,-,-,Payment,Yahoo!ショッピング,"PayPay Point (686yen), Credit VISA 8602 (4,794yen)",-,-,05089832727741308928
+//
+// The English headers are read as their Japanese ones, and PayPay's own
+// balance and points as PayPay残高 and PayPayポイント, so an account chosen
+// for them is remembered whichever language the export is in.
 
 var jst = time.FixedZone("JST", 9*60*60)
+
+// payPayEnglish maps the English export's headers, without their unit, to
+// the Japanese ones.
+var payPayEnglish = map[string]string{
+	"Date & Time":              "取引日",
+	"Amount Outgoing":          "出金金額",
+	"Amount Incoming":          "入金金額",
+	"Amount Outgoing Overseas": "海外出金金額",
+	"Currency":                 "通貨",
+	"Exchange Rate":            "変換レート",
+	"Country Paid In":          "利用国",
+	"Transaction Type":         "取引内容",
+	"Business Name":            "取引先",
+	"Method":                   "取引方法",
+	"Payment Option":           "支払い区分",
+	"User":                     "利用者",
+	"Transaction ID":           "取引番号",
+}
+
+// payPayMethodsJa names PayPay's own ways of paying as the Japanese export does.
+var payPayMethodsJa = map[string]string{
+	"PayPay Balance": payPayBalance,
+	"PayPay Point":   "PayPayポイント",
+	"PayPay Points":  "PayPayポイント",
+}
+
+// payPaySplit matches one share of a payment split over several methods,
+// "PayPay Point (686yen)" or "PayPayポイント（686円）", with the separator after it.
+var payPaySplit = regexp.MustCompile(`\s*([^,、]+?)\s*[（(]([\d,]+)\s*(?:yen|円)[）)]\s*(?:[,、]|$)`)
+
+// cardDigits finds the last digits of a card in a method, e.g. 8602 in
+// "PayPay Card Gold VISA 8602".
+var cardDigits = regexp.MustCompile(`(\d{4})$`)
 
 // payPayBalance is the 取引方法 of payments from the PayPay balance, which
 // charges (チャージ) move money into.
@@ -121,6 +165,7 @@ func (s *Store) ImportPayPay(ctx context.Context, userID int64, data []byte, acc
 		return res, err
 	}
 	account := map[string]int64{}
+	created := map[string]int64{} // new accounts by name, which methods can share
 	for _, m := range methods {
 		id := accounts[m.Method]
 		if _, ok := owned[strconv.FormatInt(id, 10)]; id != 0 && !ok {
@@ -130,6 +175,9 @@ func (s *Store) ImportPayPay(ctx context.Context, userID int64, data []byte, acc
 			id = *m.AccountID
 		}
 		if id == 0 {
+			id = created[m.NewName]
+		}
+		if id == 0 {
 			err := tx.QueryRowContext(ctx,
 				`INSERT INTO wallet_accounts (user_id, name, kind) VALUES ($1, $2, $3)
 				 ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
@@ -137,6 +185,7 @@ func (s *Store) ImportPayPay(ctx context.Context, userID int64, data []byte, acc
 			if err != nil {
 				return res, err
 			}
+			created[m.NewName] = id
 			res.AccountsCreated++
 		}
 		account[m.Method] = id
@@ -265,17 +314,34 @@ func (s *Store) payPayMethods(ctx context.Context, userID int64, rows []payPayRo
 		return nil
 	}
 
+	// A card is listed by its last digits, as "PayPay Card VISA 6385" when
+	// paid with the PayPay Card and "Credit VISA 6385" when charged to it as
+	// a credit card: both are suggested the same new account.
+	cardName := map[string]string{}
+	for _, m := range order {
+		if d := cardDigits.FindString(m); d != "" && isCard(m) && (cardName[d] == "" || isPayPayCard(m)) {
+			cardName[d] = "Card " + d
+			if isPayPayCard(m) {
+				cardName[d] = "PayPay Card " + d
+			}
+		}
+	}
+
 	methods := []PayPayMethod{}
 	for _, m := range order {
 		pm := PayPayMethod{Method: m, Count: counts[m]}
+		digits := cardDigits.FindString(m)
+		lower := strings.ToLower(m)
 		switch {
 		case strings.Contains(m, "残高"):
 			pm.NewName, pm.NewKind = "PayPay", "e_money"
-		case strings.Contains(m, "カード") || strings.Contains(m, "クレジット"):
+		case isCard(m) && digits != "":
+			pm.NewName, pm.NewKind = cardName[digits], "credit_card"
+		case isCard(m):
 			pm.NewName, pm.NewKind = "PayPay Card", "credit_card"
 		case strings.Contains(m, "ポイント"):
 			pm.NewName, pm.NewKind = "PayPay Points", "e_money"
-		case strings.Contains(m, "銀行"):
+		case strings.Contains(m, "銀行") || strings.Contains(lower, "bank"):
 			pm.NewName, pm.NewKind = clip(m, maxName), "bank"
 		default:
 			pm.NewName, pm.NewKind = clip(m, maxName), "other"
@@ -284,6 +350,11 @@ func (s *Store) payPayMethods(ctx context.Context, userID int64, rows []payPayRo
 			pm.AccountID = &id
 		} else if id := find("", false, m, pm.NewName); id != nil {
 			pm.AccountID = id
+		} else if pm.NewKind == "credit_card" && digits != "" && find(pm.NewKind, true, digits) != nil {
+			// e.g. a card account called "Gold 8602" for "Credit VISA 8602".
+			pm.AccountID = find(pm.NewKind, true, digits)
+		} else if pm.NewKind == "credit_card" && strings.Contains(lower, "gold") && find(pm.NewKind, true, "gold") != nil {
+			pm.AccountID = find(pm.NewKind, true, "gold")
 		} else if pm.NewKind != "other" {
 			// e.g. a card account called "PayPay Gold" for PayPayカード.
 			pm.AccountID = find(pm.NewKind, true, "paypay", m)
@@ -291,6 +362,16 @@ func (s *Store) payPayMethods(ctx context.Context, userID int64, rows []payPayRo
 		methods = append(methods, pm)
 	}
 	return methods, nil
+}
+
+func isCard(m string) bool {
+	lower := strings.ToLower(m)
+	return strings.Contains(m, "カード") || strings.Contains(m, "クレジット") ||
+		strings.Contains(lower, "card") || strings.Contains(lower, "credit")
+}
+
+func isPayPayCard(m string) bool {
+	return strings.Contains(m, "PayPayカード") || strings.Contains(strings.ToLower(m), "paypay card")
 }
 
 func loadRules(ctx context.Context, s *Store, userID int64, into map[string]int64) error {
@@ -340,6 +421,9 @@ func readPayPay(data []byte, res *ImportResult) ([]payPayRow, error) {
 		if j := strings.IndexAny(h, "（("); j > 0 {
 			h = strings.TrimSpace(h[:j])
 		}
+		if ja, ok := payPayEnglish[h]; ok {
+			h = ja
+		}
 		col[h] = i
 	}
 	for _, need := range []string{"取引日", "出金金額", "入金金額", "取引方法"} {
@@ -387,36 +471,35 @@ func readPayPay(data []byte, res *ImportResult) ([]payPayRow, error) {
 			continue
 		}
 		what := get(rec, "取引内容")
-		row := payPayRow{when: when, payee: clip(get(rec, "取引先"), maxName), method: clip(get(rec, "取引方法"), maxName)}
+		row := payPayRow{when: when, payee: clip(get(rec, "取引先"), maxName)}
 		switch {
 		case out > 0 && in == 0:
 			row.kind, row.amount = "expense", out
 		case in > 0 && out == 0:
 			row.kind, row.amount = "income", in
-			if strings.Contains(what, "チャージ") && row.method != payPayBalance {
-				row.kind = "transfer"
-			}
 		default:
 			problem(line, "no amount, or both paid and received")
 			continue
 		}
-		if row.method == "" {
-			row.method = payPayBalance
-		}
 		if row.payee == "お店" { // a physical PayPay Card doesn't name the shop
 			row.payee = ""
 		}
+		charge := strings.Contains(what, "チャージ") || strings.EqualFold(what, "Top-Up")
 
 		var note []string
-		if what != "" && what != "支払い" {
+		if what != "" && what != "支払い" && what != "Payment" {
 			note = append(note, what)
 		}
-		if plan := get(rec, "支払い区分"); plan != "" && plan != "一回払い" && plan != "ー回払い" {
+		if plan := get(rec, "支払い区分"); plan != "" && plan != "一回払い" && plan != "ー回払い" && plan != "One-time Payment" {
 			note = append(note, plan)
 		}
 		if abroad, cur := get(rec, "海外出金金額"), get(rec, "通貨"); abroad != "" && cur != "" {
 			n := cur + " " + abroad
-			if rate := get(rec, "変換レート"); rate != "" {
+			if rate := get(rec, "変換レート"); rate != "" && cur != "JPY" {
+				// 164.36400000 as 164.364, keeping two decimals.
+				for dot := strings.Index(rate, "."); dot >= 0 && len(rate)-dot > 3 && strings.HasSuffix(rate, "0"); {
+					rate = rate[:len(rate)-1]
+				}
 				n += " at " + rate
 			}
 			if country := get(rec, "利用国"); country != "" {
@@ -427,17 +510,77 @@ func readPayPay(data []byte, res *ImportResult) ([]payPayRow, error) {
 		row.note = clip(strings.Join(note, ". "), maxText)
 
 		// The 取引番号 identifies the payment; a payment split over several
-		// rows (e.g. points and balance) shares it, so count repeats.
+		// methods (e.g. points and card) shares it, so count repeats.
 		id := get(rec, "取引番号")
 		if id == "" {
 			sum := sha256.Sum256([]byte(strings.Join(rec, "\x1f")))
 			id = hex.EncodeToString(sum[:12])
 		}
-		seen[id]++
-		row.key = fmt.Sprintf("pp:%s:%d", id, seen[id])
-		rows = append(rows, row)
+		parts, ok := payPayMethodParts(get(rec, "取引方法"), row.amount)
+		if !ok {
+			problem(line, "the amounts paid by each method don't add up to %d", row.amount)
+			continue
+		}
+		for _, p := range parts {
+			r := row
+			r.method, r.amount = p.method, p.amount
+			if charge && r.kind == "income" && r.method != payPayBalance {
+				r.kind = "transfer"
+			}
+			seen[id]++
+			r.key = fmt.Sprintf("pp:%s:%d", id, seen[id])
+			rows = append(rows, r)
+		}
 	}
 	return rows, nil
+}
+
+type payPayPart struct {
+	method string
+	amount int64
+}
+
+// payPayMethodParts splits a 取引方法 into each method and the amount it
+// paid. A single method pays the whole total; shares that don't add up to
+// the total are not ok.
+func payPayMethodParts(s string, total int64) ([]payPayPart, bool) {
+	name := func(m string) string {
+		if ja, ok := payPayMethodsJa[m]; ok {
+			return ja
+		}
+		if m == "" {
+			return payPayBalance
+		}
+		return clip(m, maxName)
+	}
+	all := payPaySplit.FindAllStringSubmatchIndex(s, -1)
+	if len(all) < 2 {
+		return []payPayPart{{name(s), total}}, true
+	}
+	var parts []payPayPart
+	var sum int64
+	end := 0
+	for _, m := range all {
+		if m[0] != end { // text between shares: not a list of shares
+			return []payPayPart{{name(s), total}}, true
+		}
+		end = m[1]
+		n, err := yen(s[m[4]:m[5]])
+		if err != nil {
+			return nil, false
+		}
+		if n > 0 {
+			parts = append(parts, payPayPart{name(s[m[2]:m[3]]), n})
+		}
+		sum += n
+	}
+	if end != len(s) {
+		return []payPayPart{{name(s), total}}, true
+	}
+	if sum != total {
+		return nil, false
+	}
+	return parts, true
 }
 
 func yen(s string) (int64, error) {

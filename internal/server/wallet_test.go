@@ -348,6 +348,88 @@ func TestImportPayPay(t *testing.T) {
 	}
 }
 
+// With the PayPay app in English, the export's headers and values are in
+// English, and a payment split over points and a card is one row.
+func TestImportPayPayEnglish(t *testing.T) {
+	ts := newTestServer(t)
+	c := newClient(t, ts)
+	c.signup("a@example.com")
+	var gold wallet.Account
+	if code := c.do("POST", "/api/accounts", map[string]any{"name": "Gold 8602", "kind": "credit_card"}, &gold); code != 201 {
+		t.Fatalf("create account: %d", code)
+	}
+
+	csv := "\xEF\xBB\xBF" + strings.Join([]string{
+		"Date & Time,Amount Outgoing (Yen),Amount Incoming (Yen),Amount Outgoing Overseas,Currency,Exchange Rate (Yen),Country Paid In,Transaction Type,Business Name,Method,Payment Option,User,Transaction ID",
+		"2026/10/11 13:21:44,\"4,994\",-,-,-,-,-,Payment,IKEAオンライン,PayPay Card Gold VISA 8602,One-time Payment,Personal Use,PPCD_A_01",
+		"2026/10/11 09:55:15,\"5,480\",-,-,-,-,-,Payment,Yahoo!ショッピング,\"PayPay Point (686yen), Credit VISA 8602 (4,794yen)\",-,-,0502",
+		"2026/10/10 09:55:16,-,50,-,-,-,-,\"Points, Balance Earned\",Yahoo!ショッピング,PayPay Point,-,-,lp-03",
+		"2026/10/03 07:52:47,\"3,616\",-,22,USD,164.36400000,US,Payment,ANTHROPIC* CLAUDE SUB,PayPay Card VISA 6385,One-time Payment,Personal Use,PPCD_A_04",
+		"2026/10/02 08:00:00,\"1,000\",-,-,-,-,-,Payment,ローソン,Credit VISA 6385,-,-,0505",
+		"2026/09/28 14:44:38,-,\"4,000\",-,-,-,-,Top-Up,PayPay,三菱ＵＦＪ銀行 *****44,-,-,0506",
+		"2026/09/28 14:45:14,\"3,000\",-,-,-,-,-,Money Sent,サミー,PayPay Balance,-,-,0507",
+		"2026/09/27 10:00:00,\"1,000\",-,-,-,-,-,Payment,ローソン,\"PayPay Point (1yen), Credit VISA 6385 (2yen)\",-,-,0508",
+	}, "\r\n")
+
+	var p wallet.PayPayPreview
+	if code := c.send("/api/import/paypay?preview=1", "text/csv", []byte(csv), nil, &p); code != 200 {
+		t.Fatalf("preview: %d", code)
+	}
+	suggested := map[string]wallet.PayPayMethod{}
+	for _, m := range p.Methods {
+		suggested[m.Method] = m
+	}
+	if p.Records != 8 || len(p.Problems) != 1 {
+		t.Errorf("preview %+v (want 8 records, the split payment counted twice, and 1 that doesn't add up)", p)
+	}
+	for _, m := range []string{"PayPay Card Gold VISA 8602", "Credit VISA 8602"} {
+		if s := suggested[m]; s.AccountID == nil || *s.AccountID != gold.ID {
+			t.Errorf("%s should go to the card ending 8602: %+v", m, s)
+		}
+	}
+	for _, m := range []string{"PayPay Card VISA 6385", "Credit VISA 6385"} {
+		if s := suggested[m]; s.NewName != "PayPay Card 6385" || s.NewKind != "credit_card" {
+			t.Errorf("%s should get a new account for the card ending 6385: %+v", m, s)
+		}
+	}
+	if s := suggested["PayPayポイント"]; s.Count != 2 || s.NewName != "PayPay Points" {
+		t.Errorf("PayPay Point is read as PayPayポイント: %+v", s)
+	}
+	if s := suggested["PayPay残高"]; s.Count != 2 || s.NewName != "PayPay" {
+		t.Errorf("PayPay Balance is read as PayPay残高 (a payment and a top-up): %+v", s)
+	}
+
+	var res wallet.ImportResult
+	if code := c.send("/api/import/paypay", "text/csv", []byte(csv), nil, &res); code != 200 {
+		t.Fatalf("import: %d", code)
+	}
+	if res.Imported != 8 || res.AccountsCreated != 4 {
+		t.Errorf("import %+v (want 8 imported; accounts PayPay, PayPay Points, PayPay Card 6385, and the bank)", res)
+	}
+
+	var list []wallet.Transaction
+	c.do("GET", "/api/transactions", nil, &list)
+	byKey := map[string]wallet.Transaction{}
+	for _, r := range list {
+		byKey[fmt.Sprintf("%s %d", r.Kind, r.Amount)] = r
+	}
+	if r := byKey["expense 4794"]; r.AccountID != gold.ID || r.Payee != "Yahoo!ショッピング" {
+		t.Errorf("the card's share of a split payment: %+v", r)
+	}
+	if r, ok := byKey["expense 686"]; !ok || r.AccountID == gold.ID {
+		t.Errorf("the points' share of a split payment: %+v", r)
+	}
+	if r := byKey["expense 3616"]; r.Note != "USD 22 at 164.364 (US)" || byKey["expense 1000"].AccountID != r.AccountID {
+		t.Errorf("both ways of paying with the card ending 6385 go to one account: %+v, %+v", r, byKey["expense 1000"])
+	}
+	if r := byKey["transfer 4000"]; r.ToAccountID == nil || *r.ToAccountID != byKey["expense 3000"].AccountID {
+		t.Errorf("a top-up moves money from the bank to the PayPay account: %+v", r)
+	}
+	if r := byKey["income 50"]; r.Note != "Points, Balance Earned" || r.AccountID != byKey["expense 686"].AccountID {
+		t.Errorf("points earned: %+v", r)
+	}
+}
+
 func TestWalletNeedsSignIn(t *testing.T) {
 	ts := newTestServer(t)
 	c := newClient(t, ts)
