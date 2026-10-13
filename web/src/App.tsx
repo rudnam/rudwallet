@@ -8,6 +8,7 @@ import { HomePage } from './features/home/HomePage';
 import { RecordsPage } from './features/records/RecordsPage';
 import { ReviewPage } from './features/review/ReviewPage';
 import { SettingsPage } from './features/settings/SettingsPage';
+import { StatsPage } from './features/stats/StatsPage';
 import { onAppLinks } from './native';
 import { initialNotice, signinErrors, type Notice } from './notice';
 import { href, navigate, useRoute } from './router';
@@ -110,6 +111,7 @@ let noticeShown = false;
 const pages = [
   { page: 'home', label: 'Home', icon: icons.home },
   { page: 'records', label: 'Records', icon: icons.records },
+  { page: 'stats', label: 'Stats', icon: icons.stats },
   { page: 'review', label: 'Review', icon: icons.review },
   { page: 'budgets', label: 'Budgets', icon: icons.budgets },
   { page: 'settings', label: 'Settings', icon: icons.settings },
@@ -152,6 +154,9 @@ function Shell({ me, onSignOut, onDeleted }: { me: Me; onSignOut: () => void; on
   switch (current) {
     case 'records':
       page = <RecordsPage route={route} />;
+      break;
+    case 'stats':
+      page = <StatsPage route={route} />;
       break;
     case 'review':
       page = <ReviewPage />;

@@ -14,14 +14,14 @@ import { useWallet } from '../../wallet';
 export function ReviewPage() {
   const w = useWallet();
   const { records, reload } = useRecords({ status: 'review' });
-  const [emails, setEmails] = useState<InboundEmail[]>([]);
+  const [emails, setEmails] = useState<InboundEmail[]>(() => needsUser(api.seen.inbox()?.emails ?? []));
   const [open, setOpen] = useState<Transaction | null>(null);
   const [addFrom, setAddFrom] = useState<InboundEmail | null>(null);
   const [error, setError] = useState('');
 
   const loadEmails = useCallback(() => {
     api.inbox().then(
-      (i) => setEmails(i.emails.filter((e) => !e.dismissed && (e.status === 'unparsed' || e.status === 'forwarding'))),
+      (i) => setEmails(needsUser(i.emails)),
       (err) => setError(errorMessage(err)),
     );
   }, []);
@@ -234,4 +234,9 @@ function ReviewItem({ t, onEdit, onDone }: { t: Transaction; onEdit: () => void;
       )}
     </li>
   );
+}
+
+/** Emails the app couldn't act on by itself, and the user hasn't dismissed. */
+function needsUser(emails: InboundEmail[]): InboundEmail[] {
+  return emails.filter((e) => !e.dismissed && (e.status === 'unparsed' || e.status === 'forwarding'));
 }

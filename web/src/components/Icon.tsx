@@ -14,6 +14,10 @@ export function Icon({ d, className = 'nav-icon' }: { d: string; className?: str
 export const icons = {
   home: 'M3 11l9-7 9 7M5 9.5V20h5v-6h4v6h5V9.5',
   records: 'M4 6h16M4 12h16M4 18h10',
+  stats: 'M4 20h16M7 16v-4M12 16V6M17 16v-7',
+  up: 'M4 17l6-6 4 4 6-7M15 8h5v5',
+  down: 'M4 7l6 6 4-4 6 7M15 16h5v-5',
+  level: 'M4 12h16M15 7l5 5-5 5',
   review: 'M3 6h18v12H3zM3 7l9 6 9-6',
   budgets: 'M12 3a9 9 0 1 0 9 9h-9zM15 3.5A9 9 0 0 1 20.5 9H15z',
   settings:

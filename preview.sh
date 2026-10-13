@@ -11,7 +11,8 @@
 #   ./preview.sh down             stop the preview and delete its data
 #
 # Then open http://localhost:8081 (PREVIEW_PORT changes it) and sign in as
-# preview@example.com / preview-password. Each start begins from a fresh database.
+# preview@example.com / preview-password. Each start begins from a fresh database
+# with six months of sample records (e2e/seed) and a few emails to review.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -69,9 +70,14 @@ curl -fsS -o /dev/null -H 'Content-Type: application/json' -H "Origin: $url" \
   -d '{"email":"preview@example.com","password":"preview-password"}' "$url/api/signup" ||
   echo "(could not create the preview user; it may exist in the restored backup)"
 
-# On a fresh database, deliver a few sample payment emails to the preview
-# user, as the mail provider would, so there is something to review.
+# On a fresh database, fill the preview user with six months of sample
+# records, accounts and budgets, dated in this machine's time zone, and
+# deliver a few sample payment emails, as the mail provider would, so there
+# is something to review.
 if [[ -z $restore ]]; then
+  PREVIEW_TZ=${TZ:-$(cat /etc/timezone 2>/dev/null || readlink /etc/localtime 2>/dev/null | sed 's|.*zoneinfo/||' || true)}
+  export PREVIEW_TZ=${PREVIEW_TZ:-UTC}
+  dc --profile seed run --rm seed || echo "(could not add sample records)"
   jar=$(mktemp)
   curl -fsS -o /dev/null -c "$jar" -H 'Content-Type: application/json' -H "Origin: $url" \
     -d '{"email":"preview@example.com","password":"preview-password"}' "$url/api/login" || true

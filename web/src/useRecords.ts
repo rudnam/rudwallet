@@ -1,11 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, errorMessage, type Transaction, type TransactionFilter } from './api';
 
-/** Loads records for a filter; reload() after changes. */
+/**
+ * Loads records for a filter; reload() after changes. Records loaded for the
+ * same filter before show at once, so going back to a page doesn't flash
+ * "Loading…" and empty totals; the fresh list replaces them.
+ */
 export function useRecords(filter: TransactionFilter) {
-  const [records, setRecords] = useState<Transaction[] | null>(null);
-  const [error, setError] = useState('');
   const key = JSON.stringify(filter);
+  const [records, setRecords] = useState<Transaction[] | null>(() => api.seen.transactions(filter) ?? null);
+  const [error, setError] = useState('');
+  const [shown, setShown] = useState(key);
+  if (shown !== key) {
+    setShown(key);
+    const seen = api.seen.transactions(filter);
+    if (seen) setRecords(seen);
+  }
 
   const reload = useCallback(async () => {
     try {

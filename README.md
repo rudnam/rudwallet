@@ -1,7 +1,7 @@
 # Wallet
 
-**Wallet** tracks your money: accounts, categories, records, budgets, and a
-monthly overview. Payment emails become records for you: forward your card's
+**Wallet** tracks your money: accounts, categories, records, budgets, a
+monthly overview, and stats over any period with trends. Payment emails become records for you: forward your card's
 payment emails to your private address and each one waits under *To review*
 with the shop, amount and time filled in. Confirming one teaches it the shop's
 category and the card's account. See [docs/email.md](docs/email.md). In the
@@ -32,7 +32,7 @@ docker compose up -d --build    # http://localhost:8080
 | Command | What it does | When |
 |---|---|---|
 | `./verify.sh` | Go vet, Go unit and integration tests, and browser tests, in throwaway containers | Before every commit or deploy. CI runs it too. |
-| `./preview.sh` | Builds the working tree (or `--ref <branch>`) and runs it privately at http://localhost:8081 with a fresh database | To **see** a change, e.g. what an AI just did, before deploying it |
+| `./preview.sh` | Builds the working tree (or `--ref <branch>`) and runs it privately at http://localhost:8081 with a fresh database of sample data | To **see** a change, e.g. what an AI just did, before deploying it |
 | `docker compose up -d --build` | Builds and (re)starts the real stack | To deploy |
 
 ### Previewing a change before you deploy it
@@ -44,7 +44,7 @@ docker compose up -d --build    # http://localhost:8080
 ./preview.sh down                     # stop it and delete its data
 ```
 
-Sign in as `preview@example.com` / `preview-password`. The preview runs exactly the image production would run, in its own Compose project with its own database, so it cannot touch the live app or its data. `/healthz` shows which version you are looking at.
+Sign in as `preview@example.com` / `preview-password`. A fresh preview comes with six months of sample records, accounts and budgets (`e2e/seed`) and a few payment emails to review. The preview runs exactly the image production would run, in its own Compose project with its own database, so it cannot touch the live app or its data. `/healthz` shows which version you are looking at.
 
 You can also skip running anything: `./verify.sh` saves screenshots of the main screens at phone and desktop width in `e2e/test-results/`, and CI attaches them to every push and pull request as the `e2e-results` artifact.
 
@@ -157,6 +157,8 @@ Follow `internal/wallet` or `internal/inbox`; a feature is about five files:
 | POST, PUT, DELETE | `/api/categories[/{id}]` | user | Categories: `{name, kind, icon, color}` |
 | GET | `/api/transactions` | user | Records, newest first. Query: `from`, `to` (RFC 3339), `account_id`, `category_id` (or `none`), `q`, `status` |
 | POST, PUT, DELETE | `/api/transactions[/{id}]` | user | Records: `{kind, amount, account_id, to_account_id, category_id, occurred_at, payee, note, status}`. Confirming an emailed record learns its shop and card. |
+| POST | `/api/transactions/bulk` | user | Changes many records at once. Body `{ids, action}`: `delete`, `categorize` with `category_id` (`null` clears it; only records of the category's kind change, never transfers), or `move` with `account_id`. Up to 2000 IDs. `{changed, skipped}` |
+| GET | `/api/stats` | user | Confirmed income and expenses over a period (transfers count as neither). Query: `from`, `to` (RFC 3339, up to 20 years apart), `tz` (IANA zone for grouping days, default `UTC`), `account_id`. `{spent, income, categories: [{category_id, kind, amount, count}], days: [{day, spent, income}]}` |
 | GET, POST, PUT, DELETE | `/api/budgets[/{id}]` | user | Monthly budgets: `{name, category_id, amount}` |
 | POST | `/api/import/budgetbakers` | user | Body: the CSV (`text/csv`). `{imported, duplicates, matched, accounts_created, categories_created, problems}` |
 | POST | `/api/import/paypay?preview=1` | user | Body: PayPay's 取引履歴 CSV (`text/csv`), Japanese or English. `{records, from, to, methods, problems}`: each way of paying (取引方法) with a suggested account |

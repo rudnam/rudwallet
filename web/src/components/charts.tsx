@@ -16,15 +16,17 @@ export function CategoryBars({
   items,
   format,
   onSelect,
+  label = 'Spending by category',
 }: {
   items: BarItem[];
   format: (n: number) => string;
   onSelect?: (key: BarItem['key']) => void;
+  label?: string;
 }) {
   const max = Math.max(...items.map((i) => i.amount), 1);
   const total = items.reduce((s, i) => s + i.amount, 0);
   return (
-    <ul className="bars" aria-label="Spending by category">
+    <ul className="bars" aria-label={label}>
       {items.map((i) => {
         const share = total ? Math.round((i.amount / total) * 100) : 0;
         const content = (
@@ -41,7 +43,7 @@ export function CategoryBars({
           </>
         );
         return (
-          <li key={i.key} title={`${i.label}: ${format(i.amount)} (${share}% of spending)`}>
+          <li key={i.key} title={`${i.label}: ${format(i.amount)} (${share}% of the total)`}>
             {onSelect ? (
               <button type="button" className="bar-row" onClick={() => onSelect(i.key)}>
                 {content}
@@ -56,17 +58,27 @@ export function CategoryBars({
   );
 }
 
-/** Spending per day of a month, with a tooltip on hover or focus. */
+/**
+ * Spending per day of a month (or per any step: tick and the labels say
+ * which), with a tooltip on hover or focus.
+ */
 export function DailyColumns({
   values,
   labelFor,
   format,
   compact,
+  tick,
+  label = 'Spending per day this month',
+  hint = 'Point at a day to see its spending.',
 }: {
   values: number[];
-  labelFor: (dayIndex: number) => string;
+  labelFor: (index: number) => string;
   format: (n: number) => string;
   compact: (n: number) => string;
+  /** The axis label under column i, or null for none. Default: day numbers. */
+  tick?: (index: number, slotWidth: number) => string | null;
+  label?: string;
+  hint?: string;
 }) {
   const [hover, setHover] = useState<number | null>(null);
   // Drawn at its real width, so text stays readable on a phone.
@@ -91,7 +103,7 @@ export function DailyColumns({
 
   return (
     <div className="columns" ref={box}>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Spending per day this month">
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label}>
         {ticks.map((t) => (
           <g key={t}>
             <line className="grid" x1={left} x2={W} y1={y(t)} y2={y(t)} />
@@ -106,11 +118,16 @@ export function DailyColumns({
           return (
             <g key={i}>
               {v > 0 && <path className={hover === i ? 'col on' : 'col'} d={roundedTop(x, y(v), barW, h, Math.min(4, barW / 2))} />}
-              {(i === 0 || (i + 1) % (slot < 14 ? 10 : 5) === 0) && (
-                <text className="tick" x={left + i * slot + slot / 2} y={H - 4} textAnchor="middle">
-                  {i + 1}
-                </text>
-              )}
+              {(() => {
+                const t = tick ? tick(i, slot) : i === 0 || (i + 1) % (slot < 14 ? 10 : 5) === 0 ? String(i + 1) : null;
+                return (
+                  t !== null && (
+                    <text className="tick" x={left + i * slot + slot / 2} y={H - 4} textAnchor="middle">
+                      {t}
+                    </text>
+                  )
+                );
+              })()}
               {/* Hit target: the whole slot, taller than the mark. */}
               <rect
                 className="hit"
@@ -135,7 +152,7 @@ export function DailyColumns({
             <strong>{labelFor(hover)}</strong> {format(values[hover])}
           </>
         ) : (
-          <span className="muted">Point at a day to see its spending.</span>
+          <span className="muted">{hint}</span>
         )}
       </p>
     </div>

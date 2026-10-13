@@ -101,6 +101,31 @@ export interface TransactionFilter {
   status?: Transaction['status'];
 }
 
+/** One change to many records at once. */
+export type BulkChange = { ids: number[] } & (
+  | { action: 'delete' }
+  /** category_id null clears it; only records of the category's kind change, never transfers. */
+  | { action: 'categorize'; category_id: number | null }
+  /** For a transfer, the account it comes from. */
+  | { action: 'move'; account_id: number }
+);
+
+/** How many of the chosen records changed; the rest didn't fit the change. */
+export interface BulkResult {
+  changed: number;
+  skipped: number;
+}
+
+/** Confirmed income and expenses over a period; transfers count as neither. */
+export interface Stats {
+  spent: number;
+  income: number;
+  /** Totals per category and kind, largest first. */
+  categories: { category_id: number | null; kind: 'expense' | 'income'; amount: number; count: number }[];
+  /** Totals per day (YYYY-MM-DD, in the time zone asked for), oldest first. Days without records are left out. */
+  days: { day: string; spent: number; income: number }[];
+}
+
 export interface InboundEmail {
   id: number;
   from: string;
@@ -175,17 +200,33 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * The last answer to each GET, so a page seen before shows at once while it
+ * reloads (see api.seen). Any change (POST, PUT, DELETE, signing in or out
+ * included) empties it, so it never shows what the change made out of date,
+ * or another person's data.
+ */
+const lastSeen = new Map<string, unknown>();
+
 async function request<T>(method: string, path: string, body?: unknown, contentType?: string): Promise<T> {
-  const raw = contentType !== undefined;
-  const res = await fetch(server + path, {
-    method,
-    headers: { ...(body === undefined ? {} : { 'Content-Type': contentType ?? 'application/json' }), ...appHeaders() },
-    body: body === undefined ? undefined : raw ? (body as BodyInit) : JSON.stringify(body),
-  });
-  if (res.status === 204) return undefined as T;
-  const data = await res.json().catch(() => null);
-  if (!res.ok) throw new ApiError(data?.error ?? res.statusText, res.status);
-  return data as T;
+  const changes = method !== 'GET';
+  if (changes) lastSeen.clear();
+  try {
+    const raw = contentType !== undefined;
+    const res = await fetch(server + path, {
+      method,
+      headers: { ...(body === undefined ? {} : { 'Content-Type': contentType ?? 'application/json' }), ...appHeaders() },
+      body: body === undefined ? undefined : raw ? (body as BodyInit) : JSON.stringify(body),
+    });
+    if (res.status === 204) return undefined as T;
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new ApiError(data?.error ?? res.statusText, res.status);
+    if (!changes) lastSeen.set(path, data);
+    return data as T;
+  } finally {
+    // A GET that was under way during the change may have stored an old answer.
+    if (changes) lastSeen.clear();
+  }
 }
 
 function query(f: TransactionFilter): string {
@@ -241,6 +282,13 @@ export const api = {
   createTransaction: (t: TransactionInput) => request<Transaction>('POST', '/api/transactions', t),
   updateTransaction: (id: number, t: TransactionInput) => request<Transaction>('PUT', `/api/transactions/${id}`, t),
   deleteTransaction: (id: number) => request<void>('DELETE', `/api/transactions/${id}`),
+  bulkTransactions: (change: BulkChange) => request<BulkResult>('POST', '/api/transactions/bulk', change),
+
+  stats: (from: Date, to: Date, accountId?: number) => {
+    const p = new URLSearchParams({ from: from.toISOString(), to: to.toISOString(), tz: Intl.DateTimeFormat().resolvedOptions().timeZone });
+    if (accountId) p.set('account_id', String(accountId));
+    return request<Stats>('GET', `/api/stats?${p}`);
+  },
 
   budgets: () => request<Budget[]>('GET', '/api/budgets'),
   createBudget: (b: Omit<Budget, 'id'>) => request<Budget>('POST', '/api/budgets', b),
@@ -253,6 +301,13 @@ export const api = {
   dismissEmail: (id: number) => request<void>('POST', `/api/inbox/emails/${id}/dismiss`),
 
   notifications: () => request<{ notifications: PaymentNotification[] }>('GET', '/api/notifications'),
+
+  /** What the same call last returned, if nothing has changed since; show it while the call reloads. */
+  seen: {
+    transactions: (f: TransactionFilter = {}) => lastSeen.get(`/api/transactions${query(f)}`) as Transaction[] | undefined,
+    budgets: () => lastSeen.get('/api/budgets') as Budget[] | undefined,
+    inbox: () => lastSeen.get('/api/inbox') as Inbox | undefined,
+  },
 
   importBudgetBakers: (csv: string) =>
     request<ImportResult>('POST', `/api/import/budgetbakers?tz_offset=${new Date().getTimezoneOffset()}`, csv, 'text/csv'),

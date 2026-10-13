@@ -15,7 +15,7 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
   const w = useWallet();
   const [month] = useState(() => monthStart(new Date()));
   const { records, reload } = useRecords({ from: month, to: addMonths(month, 1) });
-  const [budgets, setBudgets] = useState<Budget[] | null>(null);
+  const [budgets, setBudgets] = useState<Budget[] | null>(() => api.seen.budgets() ?? null);
   const [open, setOpen] = useState<Transaction | null>(null);
 
   useEffect(() => {
@@ -86,7 +86,10 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
       </div>
 
       <div className="card stack">
-        <h2>Where it went in {month.toLocaleDateString(undefined, { month: 'long' })}</h2>
+        <div className="section-head">
+          <h2>Where it went in {month.toLocaleDateString(undefined, { month: 'long' })}</h2>
+          <a href={href('stats')}>More stats</a>
+        </div>
         {byCategory.length === 0 ? (
           <p className="muted">No spending recorded this month yet.</p>
         ) : (
@@ -164,7 +167,10 @@ const setupDoneKey = 'wallet:setup-dismissed';
 function SetUp({ hasRecords, hasBudget }: { hasRecords: boolean; hasBudget: boolean }) {
   const w = useWallet();
   const [hidden, setHidden] = useState(() => localStorage.getItem(setupDoneKey) === '1');
-  const [forwarding, setForwarding] = useState<boolean | null>(null);
+  const [forwarding, setForwarding] = useState<boolean | null>(() => {
+    const seen = api.seen.inbox();
+    return seen ? seen.emails.length > 0 : null;
+  });
   const [addingAccount, setAddingAccount] = useState(false);
 
   useEffect(() => {
