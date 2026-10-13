@@ -24,7 +24,7 @@ You need Docker. Node is only needed for frontend hot reload.
 
 ```sh
 cp .env.example .env            # the defaults run it on this machine only
-docker compose up -d --build    # http://localhost:8080
+docker compose up -d --build    # http://localhost:8080 (the app is at /app/)
 ```
 
 ## The three commands
@@ -53,7 +53,7 @@ You can also skip running anything: `./verify.sh` saves screenshots of the main 
 With the local stack running (Quick start), start Vite's dev server. It forwards `/api` to `localhost:8080`:
 
 ```sh
-cd web && npm install && npm run dev  # http://localhost:5173
+cd web && npm install && npm run dev  # http://localhost:5173 (the introduction page is /landing.html)
 ```
 
 After Go changes, run `docker compose up -d --build` again.
@@ -127,9 +127,10 @@ The code is split by **feature**: each one owns its SQL, HTTP handlers and page.
 | `internal/ai/` | Feature: Claude with the user's own API key. Stores the key encrypted (`seal.go`), and suggests categories for uncategorised records (`claude.go`). |
 | `internal/mcp/` | Feature: the MCP server at `/mcp`, so Claude Desktop, Claude Code and other MCP clients can read and tidy a user's records, with access tokens made in Settings. |
 | `internal/widget/` | Feature: the month summary the Android home screen widgets draw. |
-| `internal/server/` | Wires the features into one handler; serves the web app. Its tests run the whole API against a real database. |
+| `internal/server/` | Wires the features into one handler; serves the introduction page at `/` and the web app at `/app/`. Its tests run the whole API against a real database. |
 | `internal/testdb/` | Gives integration tests an empty, migrated database. |
-| `web/src/` | The React app: `api.ts` (typed API client), `App.tsx` (sign-in gate and navigation), `wallet.tsx` (shared accounts and categories), `components/`, and `features/<name>/` pages. |
+| `web/landing.html`, `web/src/landing.*` | The introduction page at `/`: plain HTML in the app's styles. It sends links meant for the app (`/#/records`, `/?email=…`) and installs from before the app moved on to `/app/`. |
+| `web/src/` | The React app (`web/index.html`, served at `/app/`): `api.ts` (typed API client), `App.tsx` (sign-in gate and navigation), `wallet.tsx` (shared accounts and categories), `components/`, and `features/<name>/` pages. |
 | `e2e/` | Playwright browser tests, and the throwaway stack that `verify.sh` and `preview.sh` use. |
 | `deploy/` | Swappable ways to expose the app (local, Cloudflare Tunnel, Caddy), and `email-worker/` for inbound mail. |
 
@@ -181,6 +182,7 @@ Follow `internal/wallet` or `internal/inbox`; a feature is about five files:
 | GET, POST, DELETE | `/api/mcp/tokens[/{id}]` | user | Access tokens for MCP clients: `{id, name, created_at, last_used_at}`. `POST {name}` also returns the `token`, once. |
 | POST | `/mcp` | MCP token | The MCP server (Streamable HTTP, JSON responses only). `Authorization: Bearer <token>`. Tools: `get_overview`, `list_records`, `list_uncategorized_payees`, `categorize_payees`, `set_record_category`, `create_category`, `spending_by_category`. |
 | GET | `/api/widget` | user | For the Android widgets. Query: `from`, `to` (RFC 3339). `{currency, currency_exponent, spent, balance, budget, budgets, review_count}` |
+| GET | `/`, `/app/` | – | The introduction page; the web app, which also answers every path under `/app/` |
 | GET | `/healthz` | – | `{status: "ok", version}` if the database is reachable, else `503` |
 
 Errors are `{"error": "message"}` with a matching status code. Requests that change data must come from the site itself (the `Origin` check), and the session cookie is `HttpOnly` and `SameSite=Lax`.

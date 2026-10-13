@@ -15,12 +15,12 @@ test('the web app is installable: manifest and icons are served', async ({ reque
 });
 
 test('client-side routes load the app', async ({ page }) => {
-  await page.goto('/some/deep/link');
+  await page.goto('/app/some/deep/link');
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
 });
 
 test('the bundled fonts load: PT Serif for headings, Inter for text', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
   const loaded = await page.evaluate(async () => {
     await document.fonts.ready;

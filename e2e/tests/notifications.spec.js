@@ -25,13 +25,13 @@ test('a Google Wallet payment waits for review, once', async ({ page }) => {
   const id = `notify-${Date.now()}-${Math.random()}`;
   await deliverEmail(api, await inboxAddress(page), payPayEmail({ merchant: 'ローソン', yen: 550, when: new Date(when + 60_000), id }));
 
-  await page.goto('/');
+  await page.goto('/app/');
   await expect(page.getByRole('link', { name: /1 payment to review/ })).toBeVisible();
-  await page.goto('/#/review');
+  await page.goto('/app/#/review');
   await expect(page.getByRole('listitem', { name: 'Lawson' })).toContainText('Google Wallet · Visa ••1234');
   await expect(page.getByRole('listitem', { name: 'ローソン' })).toHaveCount(0);
 
-  await page.goto('/#/settings');
+  await page.goto('/app/#/settings');
   await page.getByRole('link', { name: /Payment notifications/ }).click();
   await expect(page.getByText('This works in the Wallet app for Android')).toBeVisible();
   const list = page.getByRole('list', { name: 'Recent notifications' });

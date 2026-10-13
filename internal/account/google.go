@@ -107,9 +107,9 @@ func (h *Handler) googleCallback(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, h.appRedirect(q), http.StatusFound)
 		return
 	}
-	target := "/"
+	target := "/app/"
 	if reason != "" {
-		target = "/?signin_error=" + reason
+		target = "/app/?signin_error=" + reason
 	}
 	http.Redirect(w, r, target, http.StatusFound)
 }

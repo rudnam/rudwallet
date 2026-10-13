@@ -2,7 +2,7 @@ const { test, expect, signUp, uniqueEmail, PASSWORD, confirmationLink } = requir
 
 test('sign up, sign out and sign in again', async ({ page }) => {
   const email = uniqueEmail();
-  await page.goto('/');
+  await page.goto('/app/');
   await page.getByRole('button', { name: 'New here? Create an account' }).click();
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill(PASSWORD);
@@ -25,7 +25,7 @@ test('sign up, sign out and sign in again', async ({ page }) => {
 });
 
 test('a wrong password shows an error', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   await page.getByLabel('Email').fill(uniqueEmail());
   await page.getByLabel('Password').fill('not the password');
   await page.getByRole('button', { name: 'Sign in' }).click();
@@ -34,7 +34,7 @@ test('a wrong password shows an error', async ({ page }) => {
 
 test('a new account is asked to confirm its email, and the emailed link does it', async ({ page }) => {
   const email = uniqueEmail();
-  await page.goto('/');
+  await page.goto('/app/');
   await page.getByRole('button', { name: 'New here? Create an account' }).click();
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill(PASSWORD);
@@ -61,7 +61,7 @@ test('a new account is asked to confirm its email, and the emailed link does it'
 test('Continue with Google sends the browser to Google', async ({ page }) => {
   // Google itself is out of reach here; the Go tests play its part.
   await page.route('https://accounts.google.com/**', (route) => route.fulfill({ body: 'Google' }));
-  await page.goto('/');
+  await page.goto('/app/');
   const toGoogle = page.waitForRequest((r) => r.url().startsWith('https://accounts.google.com/'));
   await page.getByRole('link', { name: 'Continue with Google' }).click();
   const url = new URL((await toGoogle).url());
@@ -98,7 +98,7 @@ test('delete the account from Settings', async ({ page }) => {
 });
 
 test('the browser tab shows the app icon', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/app/');
   for (const icon of await page.locator('link[rel="icon"]').all()) {
     const res = await page.request.get(await icon.getAttribute('href'));
     expect(res.status()).toBe(200);

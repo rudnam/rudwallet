@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wallet: your money, quietly kept in order</title>
+<meta name="description" content="Track accounts, budgets and spending. Payment emails and Google Wallet notifications become records for you.">
+<meta name="theme-color" content="#f5f3ec" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1f1e1c" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<!-- The site's introduction, served at /. The app itself is at /app/ (index.html). -->
+<script type="module" src="/src/landing.ts"></script>
+</head>
+<body class="landing">
+<header class="landing-bar">
+  <a class="landing-brand" href="/">
+    <svg class="logo" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#c96442"/><rect x="112" y="160" width="288" height="200" rx="36" fill="#f5f3ec"/><path d="M112 212h288" stroke="#c96442" stroke-width="22"/><circle cx="338" cy="292" r="20" fill="#c96442"/></svg>
+    Wallet
+  </a>
+  <a class="button secondary" href="/app/">Sign in</a>
+</header>
+
+<main>
+  <section class="landing-hero">
+    <div class="landing-pitch">
+      <h1>Your money, quietly kept in order.</h1>
+      <p class="landing-lead">Wallet keeps your accounts, records and budgets in one place, and writes most records for you: a card payment email or a Google Wallet notification becomes a record with the shop, amount and time filled in.</p>
+      <div class="row wrap">
+        <a class="button" href="/app/">Get started</a>
+        <span class="muted small">Sign in, or create an account in a minute.</span>
+      </div>
+    </div>
+
+    <!-- A still of the app's overview, drawn with the app's own styles. -->
+    <div class="landing-still" aria-hidden="true">
+      <div class="card stack tight">
+        <span class="eyebrow">Total balance</span>
+        <span class="landing-figure">¥312,480</span>
+        <span class="muted small">This month: ¥84,170 out · ¥280,000 in</span>
+      </div>
+      <div class="card landing-review">
+        <span class="landing-dot"></span>
+        <div class="grow">
+          <strong>IKEAオンライン</strong>
+          <span class="muted small block">From a payment email · waiting for review</span>
+        </div>
+        <span class="landing-amount">−¥4,994</span>
+      </div>
+      <div class="card stack tight">
+        <div class="row"><span class="grow">Eating out</span><span class="muted small">¥3,679 of ¥5,000</span></div>
+        <div class="landing-meter"><span></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="landing-features" aria-labelledby="features">
+    <h2 id="features">What it does</h2>
+    <ul class="landing-grid">
+      <li class="card">
+        <h3>Payment emails become records</h3>
+        <p>Forward your card's payment emails to your private address. Each one waits under <em>To review</em>, and confirming it teaches Wallet the shop's category and the card's account.</p>
+      </li>
+      <li class="card">
+        <h3>Google Wallet, on Android</h3>
+        <p>The Android app reads Google Wallet's payment notifications. A payment reported by both an email and a notification is recorded once.</p>
+      </li>
+      <li class="card">
+        <h3>Budgets and a monthly overview</h3>
+        <p>See where the month stands at a glance: balances across accounts, spending by category, and how much of each budget is left.</p>
+      </li>
+      <li class="card">
+        <h3>Stats over any period</h3>
+        <p>Pick a week, a month, a year or your own dates, and see how your spending moves from month to month.</p>
+      </li>
+      <li class="card">
+        <h3>Bring your history</h3>
+        <p>Import PayPay's transaction history, or records exported from BudgetBakers' Wallet app, as CSV files.</p>
+      </li>
+      <li class="card">
+        <h3>Claude, with your own key</h3>
+        <p>Add an Anthropic API key to have Claude suggest categories for uncategorised records, or connect Claude Desktop and other MCP apps to your records.</p>
+      </li>
+    </ul>
+  </section>
+
+  <section class="landing-close card">
+    <h2>Start keeping track</h2>
+    <p class="muted">It runs in your browser, installs like an app, and is on Android with home screen widgets.</p>
+    <a class="button" href="/app/">Open Wallet</a>
+  </section>
+</main>
+
+<footer class="landing-foot muted small">Wallet</footer>
+</body>
+</html>

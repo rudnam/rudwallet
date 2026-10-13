@@ -4,7 +4,7 @@ test('a forwarded PayPay email becomes a record to review, and teaches its categ
   await signUp(page);
 
   // Settings shows the private forwarding address and the Gmail steps.
-  await page.goto('/#/settings?section=email');
+  await page.goto('/app/#/settings?section=email');
   const address = page.getByTestId('inbox-address');
   await expect(address).toHaveText(/^pay-[a-z0-9]+@in\.example\.test$/);
   await expect(page.getByText('Add a forwarding address')).toBeVisible();
@@ -14,7 +14,7 @@ test('a forwarded PayPay email becomes a record to review, and teaches its categ
   const run = Date.now();
   await deliverEmail(page.request, to, payPayEmail({ merchant: 'IKEAオンライン', yen: 4994, when: new Date(), id: `ikea-${run}` }));
 
-  await page.goto('/#/');
+  await page.goto('/app/#/');
   const banner = page.getByRole('link', { name: /1 payment to review/ });
   await expect(banner).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Main' }).getByLabel('1 to review')).toBeVisible();
@@ -31,30 +31,30 @@ test('a forwarded PayPay email becomes a record to review, and teaches its categ
   await expect(page.getByRole('navigation', { name: 'Main' }).getByLabel(/to review/)).toHaveCount(0);
 
   // It now counts, and is marked as recorded from an email.
-  await page.goto('/#/records');
+  await page.goto('/app/#/records');
   const row = page.getByRole('button', { name: /IKEAオンライン, -¥4,994/ });
   await expect(row).toContainText('Email');
   await expect(row).toContainText('Shopping');
 
   // The next purchase there arrives with the category already filled in.
   await deliverEmail(page.request, to, payPayEmail({ merchant: 'IKEAオンライン', yen: 1290, when: new Date(), id: `ikea2-${run}` }));
-  await page.goto('/#/review');
+  await page.goto('/app/#/review');
   await expect(page.getByLabel('Category for IKEAオンライン')).toHaveValue(/\d+/);
   await expect(page.getByLabel('Category for IKEAオンライン').locator('option:checked')).toHaveText('Shopping');
 
   // With auto-confirm on, a known shop goes straight in.
-  await page.goto('/#/settings?section=email');
+  await page.goto('/app/#/settings?section=email');
   const saved = page.waitForResponse((r) => r.url().endsWith('/api/settings') && r.request().method() === 'PUT');
   await page.getByLabel('Confirm payments automatically when the shop\'s category is already known').check();
   expect((await saved).status()).toBe(200);
   await deliverEmail(page.request, to, payPayEmail({ merchant: 'IKEAオンライン', yen: 799, when: new Date(), id: `ikea3-${run}` }));
-  await page.goto('/#/records');
+  await page.goto('/app/#/records');
   await expect(page.getByRole('button', { name: /IKEAオンライン, -¥799/ })).not.toContainText('To review');
 });
 
 test('test the automation by pasting an email', async ({ page }) => {
   await signUp(page);
-  await page.goto('/#/settings?section=email');
+  await page.goto('/app/#/settings?section=email');
   await page.getByText('Test with an email').click();
   await page.getByLabel('Email source').fill(
     payPayEmail({ merchant: 'セブン－イレブン', yen: 429, when: new Date(), id: `paste-${Date.now()}` }),
@@ -81,7 +81,7 @@ test('emails without a rule wait for the user', async ({ page }) => {
     'Thanks for your order! Total charged: 2,500 JPY.',
   ].join('\r\n');
   await deliverEmail(page.request, to, raw);
-  await page.goto('/#/review');
+  await page.goto('/app/#/review');
   const email = page.getByRole('list', { name: 'Unread emails' }).getByRole('listitem');
   await expect(email).toContainText('Your order receipt');
   await email.getByRole('button', { name: 'Add as record' }).click();

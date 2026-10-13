@@ -65,5 +65,5 @@ func (h *Handler) verifyEmail(w http.ResponseWriter, r *http.Request) {
 		slog.ErrorContext(r.Context(), "verify email", "err", err)
 		result = "failed"
 	}
-	http.Redirect(w, r, "/?email="+result, http.StatusFound)
+	http.Redirect(w, r, "/app/?email="+result, http.StatusFound)
 }
