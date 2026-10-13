@@ -31,9 +31,12 @@ email without committing it:
 PARSE_REAL_EMAIL=~/Downloads/message.eml go test -run TestRealEmail -v ./internal/inbox/parse
 ```
 
-The same email delivered twice is recorded once (matched by `Message-ID`). A payment
-with the same amount within a day of a record from somewhere else (e.g. one typed in
-by hand) is flagged as a possible duplicate and never auto-confirmed.
+The same email delivered twice is recorded once (matched by `Message-ID`). If the
+Android app already reported the payment from Google Wallet's notification (same
+amount, within 15 minutes, see `internal/notify`), the email joins that record instead
+of adding one, and gives it the card's account if it's still waiting for review. A
+payment with the same amount within a day of a record from somewhere else (e.g. one
+typed in by hand) is flagged as a possible duplicate and never auto-confirmed.
 
 ## Turning it on
 

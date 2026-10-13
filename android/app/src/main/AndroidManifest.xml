@@ -69,6 +69,18 @@
                 android:resource="@xml/widget_new_record_info" />
         </receiver>
 
+        <!-- Reads payment apps' notifications once the user gives notification
+             access (java/com/rudnam/wallet/notify). -->
+        <service
+            android:name=".notify.PaymentListener"
+            android:label="@string/notify_listener_label"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

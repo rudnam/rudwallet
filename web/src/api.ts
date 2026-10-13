@@ -61,10 +61,10 @@ export interface Transaction {
   occurred_at: string;
   payee: string;
   note: string;
-  /** 'review': created from an email, waiting for the user. */
+  /** 'review': created from an email or a notification, waiting for the user. */
   status: 'confirmed' | 'review';
-  source: 'manual' | 'email' | 'import';
-  /** What paid, as the email named it (e.g. a card). */
+  source: 'manual' | 'email' | 'import' | 'notification';
+  /** What paid, as the email or notification named it (e.g. a card). */
   source_label: string;
   duplicate_of_id: number | null;
   created_at: string;
@@ -139,6 +139,21 @@ export interface InboundEmail {
   transaction_id: number | null;
   dismissed: boolean;
   duplicate?: boolean;
+}
+
+/** A payment app's notification the Android app sent, and what became of it. */
+export interface PaymentNotification {
+  id: number;
+  package: string;
+  /** The app's name, e.g. 'Google Wallet'. */
+  app: string;
+  title: string;
+  text: string;
+  posted_at: string;
+  /** 'matched': the payment was already recorded (e.g. from its email), so nothing was added. */
+  status: 'payment' | 'matched' | 'ignored' | 'unparsed';
+  detail: string;
+  transaction_id: number | null;
 }
 
 export interface Inbox {
@@ -284,6 +299,8 @@ export const api = {
   newAddress: () => request<Inbox>('POST', '/api/inbox/address'),
   uploadEmail: (raw: string) => request<InboundEmail>('POST', '/api/inbox/emails', raw, 'message/rfc822'),
   dismissEmail: (id: number) => request<void>('POST', `/api/inbox/emails/${id}/dismiss`),
+
+  notifications: () => request<{ notifications: PaymentNotification[] }>('GET', '/api/notifications'),
 
   /** What the same call last returned, if nothing has changed since; show it while the call reloads. */
   seen: {

@@ -41,6 +41,16 @@ async function seed(page) {
   await api.post('/api/budgets', { data: { name: 'Everything', category_id: null, amount: 120000 } });
   // One payment from an email, waiting for review.
   await deliverEmail(api, await inboxAddress(page), payPayEmail({ merchant: 'IKEAオンライン', yen: 4994, when: new Date(), id: `screens-${Date.now()}-${Math.random()}` }));
+  // The phone's notifications: the same payment (matched to the email) and one that isn't a payment.
+  const wallet = 'com.google.android.apps.walletnfcrel';
+  await api.post('/api/notifications', {
+    data: {
+      notifications: [
+        { package: wallet, when: Date.now() - 3600_000, title: 'Google Wallet', text: 'Visa •••• 1234 is ready to use' },
+        { package: wallet, when: Date.now(), title: 'IKEA', text: '¥4,994 with Visa •••• 1234' },
+      ],
+    },
+  });
 }
 
 for (const [name, viewport] of [
@@ -73,7 +83,7 @@ for (const [name, viewport] of [
 
     await seed(page);
     await page.reload();
-    await expect(page.getByRole('link', { name: /1 payment from email/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /1 payment to review/ })).toBeVisible();
     await expect(page.getByRole('list', { name: 'Spending by category' })).toBeVisible();
     await shot('2-overview');
 
@@ -136,6 +146,10 @@ for (const [name, viewport] of [
     await page.goto('/#/settings?section=widgets');
     await expect(page.getByRole('list', { name: 'Widgets' })).toBeVisible();
     await shot('10-settings-widgets');
+
+    await page.goto('/#/settings?section=notifications');
+    await expect(page.getByRole('list', { name: 'Recent notifications' })).toBeVisible();
+    await shot('10-settings-notifications');
 
     await page.goto('/#/settings');
     await page.getByRole('button', { name: 'Delete account' }).click();

@@ -17,6 +17,7 @@ import (
 	"github.com/rudnam/wallet-app/internal/httpx"
 	"github.com/rudnam/wallet-app/internal/inbox"
 	"github.com/rudnam/wallet-app/internal/mailer"
+	"github.com/rudnam/wallet-app/internal/notify"
 	"github.com/rudnam/wallet-app/internal/wallet"
 	"github.com/rudnam/wallet-app/internal/widget"
 )
@@ -72,6 +73,8 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 	inboxStore := inbox.NewStore(conn)
 	inbox.NewHandler(inbox.Config{Domain: cfg.InboundDomain, Secret: cfg.InboundSecret}, inboxStore,
 		inbox.NewService(inboxStore, walletStore, reader)).Register(mux, accounts.RequireUser)
+	notifyStore := notify.NewStore(conn)
+	notify.NewHandler(notifyStore, notify.NewService(notifyStore, walletStore)).Register(mux, accounts.RequireUser)
 	widget.NewHandler(walletStore).Register(mux, accounts.RequireUser)
 
 	// Unknown API paths get a JSON 404 rather than the web page.

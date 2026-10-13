@@ -4,7 +4,9 @@
 monthly overview, and stats over any period with trends. Payment emails become records for you: forward your card's
 payment emails to your private address and each one waits under *To review*
 with the shop, amount and time filled in. Confirming one teaches it the shop's
-category and the card's account. See [docs/email.md](docs/email.md). PayPay's
+category and the card's account. See [docs/email.md](docs/email.md). In the
+Android app, Google Wallet's payment notifications do the same, and a payment
+reported both ways is recorded once. PayPay's
 transaction history (CSV, from the PayPay app) and records exported from
 BudgetBakers' Wallet app (CSV) can be imported.
 
@@ -14,7 +16,7 @@ A Go API, a React frontend, and PostgreSQL, shipped as one Docker image.
 - **Frontend:** React + TypeScript, bundled by Vite and embedded in the Go binary. Installable as a PWA.
 - **Database:** PostgreSQL. Migrations are embedded SQL files, applied on startup.
 - **Packaging:** one small, non-root Docker image (under 20 MB) with no shell.
-- **Android:** the same web app, packaged with Capacitor, plus native home screen widgets: this month, budgets, and a New record button (see [android/README.md](android/README.md)).
+- **Android:** the same web app, packaged with Capacitor, plus native home screen widgets (this month, budgets, and a New record button) and a reader for Google Wallet's payment notifications (see [android/README.md](android/README.md)).
 
 ## Quick start
 
@@ -119,6 +121,7 @@ The code is split by **feature**: each one owns its SQL, HTTP handlers and page.
 | `internal/mailer/` | Sends the app's own emails over SMTP. |
 | `internal/wallet/` | Feature: accounts, categories, records, budgets, settings, and the PayPay and BudgetBakers CSV imports. |
 | `internal/inbox/` | Feature: email automation. Forwarding addresses, the inbound webhook, and turning emails into records (`parse/` reads emails and knows the senders; `claude.go` is the AI fallback). |
+| `internal/notify/` | Feature: payment notifications the Android app sends (Google Wallet), read into records (`parse.go` knows the apps). A payment already recorded from its email, an import or by hand is matched, not added. |
 | `internal/widget/` | Feature: the month summary the Android home screen widgets draw. |
 | `internal/server/` | Wires the features into one handler; serves the web app. Its tests run the whole API against a real database. |
 | `internal/testdb/` | Gives integration tests an empty, migrated database. |
@@ -165,6 +168,8 @@ Follow `internal/wallet` or `internal/inbox`; a feature is about five files:
 | POST | `/api/inbox/emails` | user | Body: a raw email (`message/rfc822`), processed as if forwarded |
 | POST | `/api/inbox/emails/{id}/dismiss` | user | `204` |
 | POST | `/api/inbound/email` | `INBOUND_SECRET` | For the mail provider: raw email body, recipient in `X-Inbound-To`. `404` for unknown addresses. |
+| GET | `/api/notifications` | user | `{notifications}`: the latest payment notifications and what each became (`payment`, `matched`, `ignored`, `unparsed`) |
+| POST | `/api/notifications` | user | For the Android app. Body `{notifications: [{package, when, title, text}]}` (`when` in ms, at most 50). Returns `{notifications}` in the same order; one sent before is marked `duplicate` |
 | GET | `/api/widget` | user | For the Android widgets. Query: `from`, `to` (RFC 3339). `{currency, currency_exponent, spent, balance, budget, budgets, review_count}` |
 | GET | `/healthz` | – | `{status: "ok", version}` if the database is reachable, else `503` |
 
