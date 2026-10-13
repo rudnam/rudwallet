@@ -1,6 +1,6 @@
-// Payments read from emails, waiting for the user: confirm them (which
-// teaches the app the shop's category and the card's account), fix them, or
-// handle emails it couldn't read.
+// Payments read from emails and phone notifications, waiting for the user:
+// confirm them (which teaches the app the shop's category and the card's
+// account), fix them, or handle emails it couldn't read.
 import { useCallback, useEffect, useState } from 'react';
 import { api, errorMessage, type InboundEmail, type Transaction } from '../../api';
 import { TransactionForm } from '../../components/TransactionForm';
@@ -42,7 +42,7 @@ export function ReviewPage() {
       <header className="stack tight">
         <h1>To review</h1>
         <p className="muted lede">
-          Payments read from your emails. Pick a category and confirm; next time it's remembered.
+          Payments read from your emails and your phone's notifications. Pick a category and confirm; next time it's remembered.
         </p>
       </header>
       {error && (
@@ -57,7 +57,9 @@ export function ReviewPage() {
           </span>
           <h2>All caught up.</h2>
           <p className="muted small">
-            Payments from forwarded emails appear here. <a href={href('settings', { section: 'email' })}>Set up email automation</a>
+            Payments from forwarded emails and Google Wallet appear here. Set up{' '}
+            <a href={href('settings', { section: 'email' })}>email automation</a> or{' '}
+            <a href={href('settings', { section: 'notifications' })}>payment notifications</a>.
           </p>
         </div>
       )}

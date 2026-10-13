@@ -174,7 +174,7 @@ func (s *Store) Create(ctx context.Context, userID int64, t Transaction) (Transa
 }
 
 // Update saves the user's edits. When they confirm or correct a record that
-// came from an email, the merchant's category and the card's account are
+// came from an email or a notification, the merchant's category and the card's account are
 // remembered for next time.
 func (s *Store) Update(ctx context.Context, userID int64, t Transaction) (Transaction, error) {
 	old, err := s.Get(ctx, userID, t.ID)
@@ -201,7 +201,7 @@ func (s *Store) Update(ctx context.Context, userID int64, t Transaction) (Transa
 	if err != nil {
 		return t, err
 	}
-	if old.Source == "email" && updated.Status == "confirmed" {
+	if (old.Source == "email" || old.Source == "notification") && updated.Status == "confirmed" {
 		if err := s.learn(ctx, userID, updated); err != nil {
 			return updated, err
 		}
@@ -250,33 +250,54 @@ func PayeeKey(payee string) string {
 	return strings.TrimRight(strings.Join(strings.Fields(b.String()), " "), "*・ ")
 }
 
-// ---------- Records from emails ----------
+// ---------- Records from emails and notifications ----------
 
-// EmailPayment is a payment read from an email, ready to record.
-type EmailPayment struct {
+// Payment is a payment read from an email or a phone notification, ready to
+// record.
+type Payment struct {
 	Amount     int64
 	Currency   string
 	Refund     bool
 	Merchant   string
 	OccurredAt time.Time
-	Source     string
-	Note       string
+	// Source names what paid (e.g. the card), so the account can be learned.
+	Source string
+	Note   string
 }
 
-// CreateFromEmail records an emailed payment. It picks the account learned
-// for the card (else the default account, else the first one) and the
-// category learned for the merchant. The record waits for review unless the
-// user turned on auto-confirm and the category is known. A record with the
-// same amount within a day is flagged as a possible duplicate, and never
-// confirmed automatically.
-func (s *Store) CreateFromEmail(ctx context.Context, userID int64, p EmailPayment) (Transaction, error) {
+// SameMoment is how far apart two reports of one payment can be: a card's
+// email and the phone's notification both arrive within minutes of paying.
+const SameMoment = 15 * time.Minute
+
+// CreateFromEmail records an emailed payment, unless the phone already
+// reported it: a record from a notification for the same amount within
+// SameMoment, which no other email claimed, is returned instead (matched),
+// and gets the card's account if it is still waiting for review.
+func (s *Store) CreateFromEmail(ctx context.Context, userID int64, p Payment) (t Transaction, matched bool, err error) {
+	return s.createPayment(ctx, userID, p, "email")
+}
+
+// CreateFromNotification records a payment from a phone notification,
+// unless it was already recorded another way (its email, an import, or by
+// hand): that record is returned instead (matched). Each record matches at
+// most one notification, so two equal payments in a row stay two.
+func (s *Store) CreateFromNotification(ctx context.Context, userID int64, p Payment) (t Transaction, matched bool, err error) {
+	return s.createPayment(ctx, userID, p, "notification")
+}
+
+// createPayment picks the account learned for the card (else the default
+// account, else the first one) and the category learned for the merchant.
+// The record waits for review unless the user turned on auto-confirm and the
+// category is known. A record with the same amount within a day is flagged
+// as a possible duplicate, and never confirmed automatically.
+func (s *Store) createPayment(ctx context.Context, userID int64, p Payment, source string) (Transaction, bool, error) {
 	st, err := s.Settings(ctx, userID)
 	if err != nil {
-		return Transaction{}, err
+		return Transaction{}, false, err
 	}
 	t := Transaction{
 		Kind: "expense", Amount: p.Amount, OccurredAt: p.OccurredAt, Payee: p.Merchant, Note: p.Note,
-		Status: "review", Source: "email", SourceLabel: p.Source,
+		Status: "review", Source: source, SourceLabel: p.Source,
 	}
 	if p.Refund {
 		t.Kind = "income"
@@ -291,13 +312,26 @@ func (s *Store) CreateFromEmail(ctx context.Context, userID int64, p EmailPaymen
 		t.Amount = 0
 	}
 
-	if t.AccountID, err = s.emailAccount(ctx, userID, p.Source, st); err != nil {
-		return t, err
+	learned, err := s.learnedAccount(ctx, userID, p.Source)
+	if err != nil {
+		return t, false, err
+	}
+	if same, ok, err := s.samePayment(ctx, userID, t, source, learned); err != nil || ok {
+		return same, ok, err
+	}
+
+	switch {
+	case learned != nil:
+		t.AccountID = *learned
+	default:
+		if t.AccountID, err = s.defaultAccount(ctx, userID, st); err != nil {
+			return t, false, err
+		}
 	}
 	if t.Kind == "expense" {
 		t.CategoryID, err = s.ruleCategory(ctx, userID, p.Merchant)
 		if err != nil {
-			return t, err
+			return t, false, err
 		}
 	}
 
@@ -306,38 +340,91 @@ func (s *Store) CreateFromEmail(ctx context.Context, userID int64, p EmailPaymen
 		`SELECT id FROM transactions
 		 WHERE user_id = $1 AND kind = $2 AND amount = $3 AND amount > 0
 		   AND occurred_at BETWEEN $4::timestamptz - interval '1 day' AND $4::timestamptz + interval '1 day'
-		   -- Two alerts from the same card are two payments (the same email
-		   -- twice is caught by its Message-ID): compare with other sources.
-		   AND NOT (source = 'email' AND source_label = $5)
+		   -- Two alerts about the same card are two payments (the same alert
+		   -- twice is caught before this): compare with other sources.
+		   AND NOT (source = $5 AND source_label = $6)
 		 ORDER BY abs(extract(epoch FROM occurred_at - $4::timestamptz)) LIMIT 1`,
-		userID, t.Kind, t.Amount, t.OccurredAt, t.SourceLabel).Scan(&dup)
+		userID, t.Kind, t.Amount, t.OccurredAt, source, t.SourceLabel).Scan(&dup)
 	switch {
 	case err == nil:
 		t.DuplicateOfID = &dup
 	case !errors.Is(err, sql.ErrNoRows):
-		return t, err
+		return t, false, err
 	}
 	if st.AutoConfirm && t.CategoryID != nil && t.DuplicateOfID == nil && t.Amount > 0 {
 		t.Status = "confirmed"
 	}
-	return s.Create(ctx, userID, t)
+	t, err = s.Create(ctx, userID, t)
+	return t, false, err
 }
 
-func (s *Store) emailAccount(ctx context.Context, userID int64, source string, st Settings) (int64, error) {
-	var id int64
-	if source != "" {
-		err := s.db.QueryRowContext(ctx,
-			`SELECT account_id FROM source_rules WHERE user_id = $1 AND source = $2`, userID, source).Scan(&id)
-		if err == nil {
-			return id, nil
-		}
-		if !errors.Is(err, sql.ErrNoRows) {
-			return 0, err
+// samePayment finds the record of this payment reported the other way: for
+// an email, a notification's record no email has claimed; for a
+// notification, any record no notification has claimed. It must have the
+// same amount, within SameMoment. A record the user already confirmed must
+// also be in the account learned for this card, if there is one.
+func (s *Store) samePayment(ctx context.Context, userID int64, t Transaction, source string, learned *int64) (Transaction, bool, error) {
+	if t.Amount <= 0 {
+		return t, false, nil
+	}
+	var other string
+	switch source {
+	case "email":
+		other = `source = 'notification' AND NOT EXISTS (SELECT 1 FROM inbound_emails e WHERE e.transaction_id = transactions.id)`
+	case "notification":
+		other = `source <> 'notification' AND NOT EXISTS (SELECT 1 FROM payment_notifications n WHERE n.transaction_id = transactions.id)`
+	default:
+		return t, false, nil
+	}
+	same, err := scanTx(s.db.QueryRowContext(ctx,
+		`SELECT `+txColumns+` FROM transactions
+		 WHERE user_id = $1 AND kind = $2 AND amount = $3
+		   AND occurred_at BETWEEN $4::timestamptz - $5::interval AND $4::timestamptz + $5::interval
+		   AND (status = 'review' OR $6::bigint IS NULL OR account_id = $6)
+		   AND `+other+`
+		 ORDER BY abs(extract(epoch FROM occurred_at - $4::timestamptz)), id LIMIT 1`,
+		userID, t.Kind, t.Amount, t.OccurredAt, fmt.Sprintf("%d seconds", int(SameMoment.Seconds())), learned))
+	if errors.Is(err, sql.ErrNoRows) {
+		return t, false, nil
+	}
+	if err != nil {
+		return t, false, err
+	}
+	// The card's email knows which account paid better than the phone does.
+	if source == "email" && same.Status == "review" && learned != nil && same.AccountID != *learned {
+		same, err = scanTx(s.db.QueryRowContext(ctx,
+			`UPDATE transactions SET account_id = $3 WHERE user_id = $1 AND id = $2 RETURNING `+txColumns,
+			userID, same.ID, *learned))
+		if err != nil {
+			return same, false, err
 		}
 	}
+	return same, true, nil
+}
+
+// learnedAccount is the account the user chose for a card before, or nil.
+func (s *Store) learnedAccount(ctx context.Context, userID int64, source string) (*int64, error) {
+	if source == "" {
+		return nil, nil
+	}
+	var id int64
+	err := s.db.QueryRowContext(ctx,
+		`SELECT account_id FROM source_rules WHERE user_id = $1 AND source = $2`, userID, source).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &id, nil
+}
+
+// defaultAccount is where payments from an unknown card go.
+func (s *Store) defaultAccount(ctx context.Context, userID int64, st Settings) (int64, error) {
 	if st.DefaultAccountID != nil {
 		return *st.DefaultAccountID, nil
 	}
+	var id int64
 	err := s.db.QueryRowContext(ctx,
 		`SELECT id FROM wallet_accounts WHERE user_id = $1 ORDER BY archived, id LIMIT 1`, userID).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {

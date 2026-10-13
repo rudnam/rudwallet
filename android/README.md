@@ -40,6 +40,15 @@ Three widgets, written natively (Java, framework APIs only) in `app/src/main/jav
 
 They read `GET /api/widget` with the app's session, so they work once the app is signed in, and say so when it isn't. Taps open the app at a page through `com.rudnam.wallet://open/<page>`. They update about every 30 minutes (Android's minimum for `updatePeriodMillis`), whenever the app goes to the background, and on sign-in and sign-out; offline, they keep the last figures.
 
+## Payment notifications
+
+`app/src/main/java/com/rudnam/wallet/notify` reads Google Wallet's payment notifications. The user turns it on in Settings › Payment notifications, which opens Android's notification access page; until then Android doesn't run it.
+
+- `PaymentListener` is a `NotificationListenerService`. It sees every notification but keeps only those from the apps in its `APPS` list (Google Wallet), so nothing else leaves the phone. To add an app, add its package there and a rule in `internal/notify/parse.go`.
+- `Outbox` keeps them in SharedPreferences and sends them to `POST /api/notifications` with the app's session: at once, with the next notification, or when the app is next left (up to 7 days, 200 notifications). Sending one twice is harmless.
+- The server reads the text (so a change in Google Wallet's wording needs only a server deploy) and records each payment once: a notification sent again is recognised by its app and time, and a payment already recorded from its email, an import or by hand is matched, not added.
+- An APK installed outside the Play Store gets *restricted settings* on Android 13+: the notification access switch is greyed out until App info › ⋮ › Allow restricted settings.
+
 ## Icons
 
 `web/public/icon.svg` (full bleed) and `favicon.svg` (rounded) are the source. `./android/icons.sh` redraws every PNG from them: the web icons, `store_icon.png`, and the launcher icons for Android 7 and older in `app/src/main/res/mipmap-*`. On Android 8+ the launcher icon is the adaptive one in `mipmap-anydpi-v26/ic_launcher.xml`: the wallet as a vector (`drawable/ic_launcher_foreground.xml`, plus a one-colour `ic_launcher_monochrome.xml` for themed icons) on the clay colour. The splash screen shows the same vector on the paper colour (`values/styles.xml`).

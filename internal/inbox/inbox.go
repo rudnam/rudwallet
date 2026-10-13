@@ -206,7 +206,7 @@ func (s *Service) Receive(ctx context.Context, userID int64, raw []byte) (Email,
 	switch r.Kind {
 	case parse.KindPayment:
 		p := r.Payment
-		t, err := s.wallet.CreateFromEmail(ctx, userID, wallet.EmailPayment{
+		t, matched, err := s.wallet.CreateFromEmail(ctx, userID, wallet.Payment{
 			Amount: p.Amount, Currency: p.Currency, Refund: p.Refund, Merchant: p.Merchant,
 			OccurredAt: p.OccurredAt, Source: p.Source, Note: p.Note,
 		})
@@ -214,6 +214,9 @@ func (s *Service) Receive(ctx context.Context, userID int64, raw []byte) (Email,
 			return e, err
 		}
 		e.TransactionID, e.BodyText = &t.ID, ""
+		if matched {
+			e.Detail = "The phone already reported this payment, so it is recorded once."
+		}
 	case parse.KindIgnored:
 		e.BodyText = ""
 	case parse.KindForwarding:

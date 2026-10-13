@@ -15,7 +15,7 @@ test('a forwarded PayPay email becomes a record to review, and teaches its categ
   await deliverEmail(page.request, to, payPayEmail({ merchant: 'IKEAオンライン', yen: 4994, when: new Date(), id: `ikea-${run}` }));
 
   await page.goto('/#/');
-  const banner = page.getByRole('link', { name: /1 payment from email/ });
+  const banner = page.getByRole('link', { name: /1 payment to review/ });
   await expect(banner).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Main' }).getByLabel('1 to review')).toBeVisible();
   await banner.click();

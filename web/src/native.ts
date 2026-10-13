@@ -17,7 +17,14 @@ export const server: string = isApp ? (import.meta.env.VITE_SERVER ?? '') : '';
 /** Redraws the home screen widgets (android/…/widget/WidgetsPlugin.java). */
 const widgets = registerPlugin<{ refresh(): Promise<void> }>('Widgets');
 
-// Kept in Capacitor's preferences, which the widgets read too.
+/** Payment notifications (android/…/notify): the listener sends them to the server itself. */
+const paymentNotifications = registerPlugin<{
+  status(): Promise<{ enabled: boolean }>;
+  openSettings(): Promise<void>;
+  flush(): Promise<void>;
+}>('PaymentNotifications');
+
+// Kept in Capacitor's preferences, which the widgets and the notification listener read too.
 const sessionKey = 'session';
 const serverKey = 'server';
 let token = '';
@@ -44,6 +51,27 @@ export async function saveSession(t: string): Promise<void> {
   if (t) await Preferences.set({ key: sessionKey, value: t });
   else await Preferences.remove({ key: sessionKey });
   refreshWidgets();
+  if (t) flushNotifications();
+}
+
+/** Whether the app may read payment notifications; null on the web. */
+export async function notificationAccess(): Promise<boolean | null> {
+  if (!isApp) return null;
+  try {
+    return (await paymentNotifications.status()).enabled;
+  } catch {
+    return null; // an app build from before payment notifications
+  }
+}
+
+/** Opens Android's notification access page at Wallet's switch. */
+export function openNotificationAccess(): Promise<void> {
+  return paymentNotifications.openSettings();
+}
+
+/** Sends payment notifications the phone kept while offline or signed out. */
+function flushNotifications(): void {
+  if (isApp) paymentNotifications.flush().catch(() => {});
 }
 
 /** Asks the widgets to redraw, e.g. after the user changed something. */
@@ -107,8 +135,12 @@ export function onAppLinks(handlers: {
       if (l?.url) void handle(l.url);
     });
   }
-  // Leaving the app is a good moment to bring the widgets up to date.
-  const pause = CapApp.addListener('pause', refreshWidgets);
+  // Leaving the app is a good moment to bring the widgets up to date, and
+  // to send notifications that waited for the network.
+  const pause = CapApp.addListener('pause', () => {
+    refreshWidgets();
+    flushNotifications();
+  });
   return () => {
     listener.then((l) => l.remove());
     pause.then((l) => l.remove());

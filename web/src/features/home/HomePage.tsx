@@ -49,7 +49,7 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
           </span>
           <span className="grow">
             <strong>
-              {w.review_count} {w.review_count === 1 ? 'payment' : 'payments'} from email
+              {w.review_count} {w.review_count === 1 ? 'payment' : 'payments'} to review
             </strong>
             <span className="muted small block">Waiting for a quick check</span>
           </span>

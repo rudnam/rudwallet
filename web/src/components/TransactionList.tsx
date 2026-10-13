@@ -88,6 +88,11 @@ function Row({ t, onOpen }: { t: Transaction; onOpen: (t: Transaction) => void }
                 <Icon d={icons.mail} className="inline-icon" /> Email
               </span>
             )}
+            {t.source === 'notification' && t.status === 'confirmed' && (
+              <span className="badge quiet" title="Recorded from a payment notification">
+                Phone
+              </span>
+            )}
           </span>
           <span className="muted small">{sub}</span>
         </span>
