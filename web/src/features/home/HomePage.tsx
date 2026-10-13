@@ -15,7 +15,7 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
   const w = useWallet();
   const [month] = useState(() => monthStart(new Date()));
   const { records, reload } = useRecords({ from: month, to: addMonths(month, 1) });
-  const [budgets, setBudgets] = useState<Budget[] | null>(null);
+  const [budgets, setBudgets] = useState<Budget[] | null>(() => api.seen.budgets() ?? null);
   const [open, setOpen] = useState<Transaction | null>(null);
 
   useEffect(() => {
@@ -167,7 +167,10 @@ const setupDoneKey = 'wallet:setup-dismissed';
 function SetUp({ hasRecords, hasBudget }: { hasRecords: boolean; hasBudget: boolean }) {
   const w = useWallet();
   const [hidden, setHidden] = useState(() => localStorage.getItem(setupDoneKey) === '1');
-  const [forwarding, setForwarding] = useState<boolean | null>(null);
+  const [forwarding, setForwarding] = useState<boolean | null>(() => {
+    const seen = api.seen.inbox();
+    return seen ? seen.emails.length > 0 : null;
+  });
   const [addingAccount, setAddingAccount] = useState(false);
 
   useEffect(() => {

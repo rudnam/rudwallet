@@ -19,7 +19,7 @@ const statusText: Record<InboundEmail['status'], string> = {
 
 export function EmailSettings() {
   const w = useWallet();
-  const [inbox, setInbox] = useState<Inbox | null>(null);
+  const [inbox, setInbox] = useState<Inbox | null>(() => api.seen.inbox() ?? null);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState('');
   const [raw, setRaw] = useState('');
