@@ -4,7 +4,7 @@ const { test, expect } = require('./fixtures');
 test('the introduction page leads to the app', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Your money, quietly kept in order.' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'What it does' })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Features' })).toBeVisible();
   await page.getByRole('link', { name: 'Get started' }).click();
   await expect(page).toHaveURL(/\/app\/$/);
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();

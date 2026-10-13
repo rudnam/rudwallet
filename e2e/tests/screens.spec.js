@@ -68,7 +68,7 @@ for (const [name, viewport] of [
     };
 
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'What it does' })).toBeVisible();
+    await expect(page.getByRole('list', { name: 'Features' })).toBeVisible();
     await shot('0-landing');
 
     await page.goto('/app/');
