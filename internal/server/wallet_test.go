@@ -449,3 +449,168 @@ func TestCrossOriginWritesAreRefused(t *testing.T) {
 		t.Errorf("cross-origin POST: %d, want 403", code)
 	}
 }
+
+func TestStats(t *testing.T) {
+	ts := newTestServer(t)
+	alice, bob := newClient(t, ts), newClient(t, ts)
+	alice.signup("alice@example.com")
+	bob.signup("bob@example.com")
+	o := overview(t, alice)
+	cash := o.Accounts[0].ID
+	food := categoryID(t, o, "Food & Drinks")
+	salary := categoryID(t, o, "Salary")
+	var bank wallet.Account
+	alice.do("POST", "/api/accounts", map[string]any{"name": "Bank", "kind": "bank"}, &bank)
+
+	// 23:30 UTC on Oct 1 is already Oct 2 in Tokyo.
+	day := func(d, h int) time.Time { return time.Date(2026, 10, d, h, 30, 0, 0, time.UTC) }
+	for _, r := range []map[string]any{
+		{"kind": "expense", "amount": 1000, "account_id": cash, "category_id": food, "occurred_at": day(1, 3)},
+		{"kind": "expense", "amount": 500, "account_id": cash, "category_id": food, "occurred_at": day(1, 23)},
+		{"kind": "expense", "amount": 300, "account_id": bank.ID, "occurred_at": day(5, 3)},
+		{"kind": "income", "amount": 9000, "account_id": bank.ID, "category_id": salary, "occurred_at": day(5, 3)},
+		{"kind": "transfer", "amount": 7000, "account_id": bank.ID, "to_account_id": cash, "occurred_at": day(5, 3)},
+		{"kind": "expense", "amount": 50000, "account_id": cash, "occurred_at": day(20, 3)}, // outside the period
+	} {
+		if code := alice.do("POST", "/api/transactions", r, nil); code != 201 {
+			t.Fatalf("create %v: %d", r, code)
+		}
+	}
+
+	path := func(extra string) string {
+		return "/api/stats?from=" + url.QueryEscape(day(1, 0).Format(time.RFC3339)) +
+			"&to=" + url.QueryEscape(day(10, 0).Format(time.RFC3339)) + extra
+	}
+	var st wallet.Stats
+	if code := alice.do("GET", path("&tz=Asia/Tokyo"), nil, &st); code != 200 {
+		t.Fatalf("GET stats: %d", code)
+	}
+	if st.Spent != 1800 || st.Income != 9000 {
+		t.Errorf("spent %d, income %d; want 1800 and 9000 (no transfers)", st.Spent, st.Income)
+	}
+	if len(st.Categories) != 3 || st.Categories[0].Amount != 9000 || *st.Categories[1].CategoryID != food ||
+		st.Categories[1].Amount != 1500 || st.Categories[1].Count != 2 || st.Categories[2].CategoryID != nil {
+		t.Errorf("categories %+v", st.Categories)
+	}
+	days := fmt.Sprint(st.Days)
+	if want := "[{2026-10-01 1000 0} {2026-10-02 500 0} {2026-10-05 300 9000}]"; days != want {
+		t.Errorf("days in Tokyo %s, want %s", days, want)
+	}
+	alice.do("GET", path(""), nil, &st)
+	if want := "[{2026-10-01 1500 0} {2026-10-05 300 9000}]"; fmt.Sprint(st.Days) != want {
+		t.Errorf("days in UTC %s, want %s", fmt.Sprint(st.Days), want)
+	}
+	alice.do("GET", path(fmt.Sprintf("&account_id=%d", bank.ID)), nil, &st)
+	if st.Spent != 300 || st.Income != 9000 {
+		t.Errorf("bank only: spent %d, income %d", st.Spent, st.Income)
+	}
+
+	// Bob sees none of it.
+	if code := bob.do("GET", path(""), nil, &st); code != 200 || st.Spent != 0 || len(st.Days) != 0 {
+		t.Errorf("bob: %d %+v", code, st)
+	}
+
+	for _, bad := range []string{
+		"/api/stats",
+		path("&tz=Mars/Olympus"),
+		path("&account_id=x"),
+		"/api/stats?from=2026-10-10T00:00:00Z&to=2026-10-01T00:00:00Z",
+		"/api/stats?from=1990-01-01T00:00:00Z&to=2026-10-01T00:00:00Z",
+	} {
+		if code := alice.do("GET", bad, nil, nil); code != 400 {
+			t.Errorf("GET %s: %d, want 400", bad, code)
+		}
+	}
+}
+
+func TestBulkRecords(t *testing.T) {
+	ts := newTestServer(t)
+	alice, bob := newClient(t, ts), newClient(t, ts)
+	alice.signup("alice@example.com")
+	bob.signup("bob@example.com")
+	o := overview(t, alice)
+	cash := o.Accounts[0].ID
+	food := categoryID(t, o, "Food & Drinks")
+	salary := categoryID(t, o, "Salary")
+	var bank wallet.Account
+	alice.do("POST", "/api/accounts", map[string]any{"name": "Bank", "kind": "bank"}, &bank)
+	now := time.Now()
+	create := func(c *client, r map[string]any) int64 {
+		t.Helper()
+		var tx wallet.Transaction
+		if code := c.do("POST", "/api/transactions", r, &tx); code != 201 {
+			t.Fatalf("create %v: %d", r, code)
+		}
+		return tx.ID
+	}
+	lunch := create(alice, map[string]any{"kind": "expense", "amount": 900, "account_id": cash, "occurred_at": now})
+	dinner := create(alice, map[string]any{"kind": "expense", "amount": 2000, "account_id": cash, "category_id": food, "occurred_at": now})
+	pay := create(alice, map[string]any{"kind": "income", "amount": 9000, "account_id": cash, "occurred_at": now})
+	toBank := create(alice, map[string]any{"kind": "transfer", "amount": 500, "account_id": cash, "to_account_id": bank.ID, "occurred_at": now})
+	bobs := create(bob, map[string]any{"kind": "expense", "amount": 1, "account_id": overview(t, bob).Accounts[0].ID, "occurred_at": now})
+
+	bulk := func(body map[string]any) (int, wallet.BulkResult) {
+		var res wallet.BulkResult
+		return alice.do("POST", "/api/transactions/bulk", body, &res), res
+	}
+	get := func(id int64) wallet.Transaction {
+		var list []wallet.Transaction
+		alice.do("GET", "/api/transactions", nil, &list)
+		for _, tx := range list {
+			if tx.ID == id {
+				return tx
+			}
+		}
+		return wallet.Transaction{}
+	}
+	all := []int64{lunch, dinner, pay, toBank, bobs}
+
+	// An expense category fits only the expenses; Bob's record is out of reach.
+	if code, res := bulk(map[string]any{"ids": all, "action": "categorize", "category_id": food}); code != 200 || res.Changed != 2 || res.Skipped != 3 {
+		t.Errorf("categorize: %d %+v", code, res)
+	}
+	if c := get(lunch).CategoryID; c == nil || *c != food {
+		t.Errorf("lunch category %v", c)
+	}
+	if code, res := bulk(map[string]any{"ids": []int64{pay}, "action": "categorize", "category_id": salary}); code != 200 || res.Changed != 1 {
+		t.Errorf("categorize income: %d %+v", code, res)
+	}
+	// No category: everything but the transfer.
+	if code, res := bulk(map[string]any{"ids": all, "action": "categorize", "category_id": nil}); code != 200 || res.Changed != 3 {
+		t.Errorf("uncategorize: %d %+v", code, res)
+	}
+	if get(dinner).CategoryID != nil {
+		t.Error("dinner still has a category")
+	}
+
+	// Moving to the bank leaves the transfer into the bank alone.
+	if code, res := bulk(map[string]any{"ids": all, "action": "move", "account_id": bank.ID}); code != 200 || res.Changed != 3 {
+		t.Errorf("move: %d %+v", code, res)
+	}
+	if get(lunch).AccountID != bank.ID || get(toBank).AccountID != cash {
+		t.Errorf("after move: lunch in %d, transfer from %d", get(lunch).AccountID, get(toBank).AccountID)
+	}
+
+	for _, bad := range []map[string]any{
+		{"ids": []int64{}, "action": "delete"},
+		{"ids": all, "action": "explode"},
+		{"ids": all, "action": "categorize", "category_id": categoryID(t, overview(t, bob), "Salary")},
+		{"ids": all, "action": "move", "account_id": overview(t, bob).Accounts[0].ID},
+	} {
+		if code, _ := bulk(bad); code != 400 {
+			t.Errorf("%v: %d, want 400", bad, code)
+		}
+	}
+
+	// Duplicates count once.
+	if code, res := bulk(map[string]any{"ids": append(all, lunch), "action": "delete"}); code != 200 || res.Changed != 4 || res.Skipped != 1 {
+		t.Errorf("delete: %d %+v", code, res)
+	}
+	var list []wallet.Transaction
+	if alice.do("GET", "/api/transactions", nil, &list); len(list) != 0 {
+		t.Errorf("alice has %d records left", len(list))
+	}
+	if bob.do("GET", "/api/transactions", nil, &list); len(list) != 1 {
+		t.Errorf("bob has %d records, want 1", len(list))
+	}
+}

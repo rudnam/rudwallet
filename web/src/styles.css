@@ -310,6 +310,14 @@ button.bar-row:active:not(:disabled) { transform: none; }
 .filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .filters .search { grid-column: 1 / -1; }
 @media (min-width: 800px) { .filters { grid-template-columns: 1fr 1fr 1.5fr; } .filters .search { grid-column: auto; } }
+/* Choosing records: a bar of actions that stays in view. */
+.bulk-bar {
+  position: sticky; top: 8px; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  padding: 10px 14px; box-shadow: var(--shadow-lift);
+}
+.bulk-bar .bulk-count { font-weight: 600; font-variant-numeric: tabular-nums; }
+.bulk-actions { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; width: 100%; }
+.bulk-actions select { min-width: 0; }
 .day-head { display: flex; justify-content: space-between; padding: 0 4px 6px; color: var(--muted); font-size: 0.8rem; font-weight: 600; letter-spacing: 0.02em; }
 .day-head span:last-child { font-variant-numeric: tabular-nums; }
 .days { gap: 18px; }
@@ -322,6 +330,10 @@ button.bar-row:active:not(:disabled) { transform: none; }
 .record:hover:not(:disabled) { background: var(--sunken); }
 li.record:hover:not(:disabled) { background: none; } /* a row to read, not to tap */
 .record:active:not(:disabled) { transform: none; }
+.record.selectable { cursor: pointer; }
+.record.selectable:hover { background: var(--sunken); }
+.record.selectable.on { background: var(--accent-soft); }
+.record.selectable input { flex: none; width: 18px; height: 18px; margin: 0; }
 .record-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-weight: 500; overflow-wrap: anywhere; }
 .record .grow { display: flex; flex-direction: column; gap: 1px; }
 .cat-icon {
@@ -406,6 +418,7 @@ li.record:hover:not(:disabled) { background: none; } /* a row to read, not to ta
   display: grid; grid-template-columns: repeat(3, 1fr); padding: 3px; gap: 2px;
   background: var(--sunken); border-radius: 999px;
 }
+.segmented.four { grid-template-columns: repeat(4, 1fr); }
 .segmented label { text-align: center; padding: 7px; cursor: pointer; font-weight: 500; font-size: 0.9rem; border-radius: 999px; color: var(--muted); transition: background 0.15s, color 0.15s; }
 .segmented label.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow); font-weight: 600; }
 .segmented input, .chip-pick input { position: absolute; opacity: 0; width: 1px; height: 1px; }
@@ -478,6 +491,25 @@ button.chip.on { background: var(--accent-soft); border-color: var(--accent); fo
 .field .muted.small { font-weight: 400; }
 .tiles.summary { margin-top: 0; padding: 14px 18px; border-top: 1px solid var(--border); }
 .card.month-picker { padding: 8px; }
+.month-picker button.link:disabled { opacity: 0.3; }
+.range-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px 14px; }
+.range-picker label { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.range-picker input { width: 100%; min-width: 0; }
+
+/* Trends: a verdict on the period's spending, then the categories that moved. */
+.trend-verdict { display: flex; align-items: center; gap: 12px; }
+.trend-mark {
+  display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; flex: none;
+  background: var(--sunken); color: var(--muted);
+}
+.trend-mark .nav-icon { width: 20px; height: 20px; }
+.trend-verdict.more .trend-mark { background: color-mix(in srgb, var(--status-critical) 14%, transparent); color: var(--status-critical); }
+.trend-verdict.less .trend-mark { background: color-mix(in srgb, var(--status-good) 14%, transparent); color: var(--status-good); }
+.trends h3 { margin: 0; font-weight: 600; font-family: inherit; }
+.movers { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.movers li { display: flex; align-items: center; gap: 10px; padding: 8px 0; min-width: 0; }
+.movers li + li { border-top: 1px solid var(--border); }
+.mover-figures { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .lede { margin: 0; }
 .chip > .cat-icon.small { margin-left: -6px; }
 .icon-pick label, .chip-pick label { position: relative; }

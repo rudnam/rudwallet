@@ -9,3 +9,19 @@ services:
   mail:
     ports:
       - "127.0.0.1:${PREVIEW_MAIL_PORT:-8025}:8025"
+  # Fills the preview account with months of sample records (e2e/seed).
+  seed:
+    image: golang:1.26-alpine
+    profiles: [seed]
+    working_dir: /src
+    depends_on:
+      server:
+        condition: service_healthy
+    environment:
+      CGO_ENABLED: "0"
+      TZ: ${PREVIEW_TZ:-UTC}
+    volumes:
+      - ..:/src:ro
+      - gomod:/go/pkg/mod
+      - gobuild:/root/.cache/go-build
+    command: ["go", "run", "./e2e/seed", "-url", "http://server:8080"]

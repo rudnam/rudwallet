@@ -8,10 +8,15 @@ export function TransactionList({
   records,
   onOpen,
   label = 'Records',
+  selected,
+  onToggle,
 }: {
   records: Transaction[];
   onOpen: (t: Transaction) => void;
   label?: string;
+  /** While choosing records: the chosen IDs. Rows become checkboxes. */
+  selected?: Set<number>;
+  onToggle?: (t: Transaction) => void;
 }) {
   const w = useWallet();
   const days: { key: string; date: Date; items: Transaction[] }[] = [];
@@ -35,7 +40,7 @@ export function TransactionList({
             </div>
             <ul className="list card flush">
               {day.items.map((t) => (
-                <Row key={t.id} t={t} onOpen={onOpen} />
+                <Row key={t.id} t={t} onOpen={onOpen} selected={selected?.has(t.id)} onToggle={selected && onToggle} />
               ))}
             </ul>
           </section>
@@ -51,7 +56,17 @@ export function signed(t: Transaction): number {
   return t.kind === 'income' ? t.amount : -t.amount;
 }
 
-function Row({ t, onOpen }: { t: Transaction; onOpen: (t: Transaction) => void }) {
+function Row({
+  t,
+  onOpen,
+  selected,
+  onToggle,
+}: {
+  t: Transaction;
+  onOpen: (t: Transaction) => void;
+  selected?: boolean;
+  onToggle?: (t: Transaction) => void;
+}) {
   const w = useWallet();
   const cat = w.category(t.category_id);
   const account = w.account(t.account_id);
@@ -69,9 +84,8 @@ function Row({ t, onOpen }: { t: Transaction; onOpen: (t: Transaction) => void }
   const amount =
     t.kind === 'transfer' ? w.money(t.amount) : w.money(t.kind === 'income' ? t.amount : -t.amount, true);
 
-  return (
-    <li>
-      <button type="button" className="record" onClick={() => onOpen(t)} aria-label={`${title}, ${amount}`}>
+  const content = (
+    <>
         {t.kind === 'transfer' ? (
           <span className="cat-icon" aria-hidden="true">
             <Icon d={icons.transfer} className="glyph" />
@@ -92,7 +106,21 @@ function Row({ t, onOpen }: { t: Transaction; onOpen: (t: Transaction) => void }
           <span className="muted small">{sub}</span>
         </span>
         <span className={`amount ${t.kind}`}>{t.amount === 0 && t.status === 'review' ? 'Amount?' : amount}</span>
-      </button>
+    </>
+  );
+
+  return (
+    <li>
+      {onToggle ? (
+        <label className={selected ? 'record selectable on' : 'record selectable'}>
+          <input type="checkbox" checked={!!selected} onChange={() => onToggle(t)} aria-label={`${title}, ${amount}`} />
+          {content}
+        </label>
+      ) : (
+        <button type="button" className="record" onClick={() => onOpen(t)} aria-label={`${title}, ${amount}`}>
+          {content}
+        </button>
+      )}
     </li>
   );
 }

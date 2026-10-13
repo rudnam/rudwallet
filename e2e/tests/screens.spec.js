@@ -25,6 +25,18 @@ async function seed(page) {
     { kind: 'transfer', amount: 20000, account_id: bank.id, to_account_id: cash, occurred_at: day(2, 11) },
   ];
   for (const r of records) expect((await api.post('/api/transactions', { data: r })).status()).toBe(201);
+  // Earlier months, for the trends on Stats.
+  const earlier = [1, 2, 3].flatMap((ago) => {
+    const at = (d, h) => new Date(now.getFullYear(), now.getMonth() - ago, Math.min(d, now.getDate()), h).toISOString();
+    return [
+      { kind: 'income', amount: 280000, account_id: bank.id, category_id: cat('Salary'), occurred_at: at(1, 9), payee: 'Employer' },
+      { kind: 'expense', amount: 68000, account_id: bank.id, category_id: cat('Housing'), occurred_at: at(1, 10), payee: 'Rent' },
+      { kind: 'expense', amount: 3000 + ago * 900, account_id: card.id, category_id: cat('Groceries'), occurred_at: at(3, 17), payee: 'アピタ知立店' },
+      { kind: 'expense', amount: 1200 * ago, account_id: card.id, category_id: cat('Food & Drinks'), occurred_at: at(6, 19), payee: '大戸屋 知立店' },
+      { kind: 'expense', amount: 6800, account_id: card.id, category_id: cat('Bills & Utilities'), occurred_at: at(9, 9), payee: 'Chubu Electric' },
+    ];
+  });
+  for (const res of await Promise.all(earlier.map((r) => api.post('/api/transactions', { data: r })))) expect(res.status()).toBe(201);
   await api.post('/api/budgets', { data: { name: 'Eating out', category_id: cat('Food & Drinks'), amount: 5000 } });
   await api.post('/api/budgets', { data: { name: 'Everything', category_id: null, amount: 120000 } });
   // One payment from an email, waiting for review.
@@ -36,6 +48,7 @@ for (const [name, viewport] of [
   ['desktop', { width: 1280, height: 800 }],
 ]) {
   test(`screens at ${name} width`, async ({ page }) => {
+    test.slow(); // every main screen, twice over
     await page.setViewportSize(viewport);
     const shot = async (label) => {
       // Nothing may overflow sideways.
@@ -64,6 +77,13 @@ for (const [name, viewport] of [
     await expect(page.getByRole('list', { name: 'Spending by category' })).toBeVisible();
     await shot('2-overview');
 
+    await page.goto('/#/stats');
+    await expect(page.getByLabel('Trends')).toBeVisible();
+    await shot('2-stats');
+    await page.getByText('Year', { exact: true }).click();
+    await expect(page.getByRole('img', { name: 'Spending per month' })).toBeVisible();
+    await shot('2-stats-year');
+
     await page.goto('/#/review');
     await expect(page.getByRole('listitem', { name: 'IKEAオンライン' })).toBeVisible();
     await shot('3-review');
@@ -71,6 +91,11 @@ for (const [name, viewport] of [
     await page.goto('/#/records');
     await expect(page.getByRole('button', { name: /Rent/ })).toBeVisible();
     await shot('4-records');
+    await page.getByRole('button', { name: 'Select' }).click();
+    await page.getByRole('checkbox', { name: /Rent/ }).check();
+    await page.getByRole('checkbox', { name: /Chubu Electric/ }).check();
+    await shot('4-records-select');
+    await page.getByRole('button', { name: 'Done' }).click();
 
     await page.getByRole('button', { name: 'Add record' }).click();
     await expect(page.getByRole('dialog', { name: 'New record' })).toBeVisible();

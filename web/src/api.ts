@@ -101,6 +101,31 @@ export interface TransactionFilter {
   status?: Transaction['status'];
 }
 
+/** One change to many records at once. */
+export type BulkChange = { ids: number[] } & (
+  | { action: 'delete' }
+  /** category_id null clears it; only records of the category's kind change, never transfers. */
+  | { action: 'categorize'; category_id: number | null }
+  /** For a transfer, the account it comes from. */
+  | { action: 'move'; account_id: number }
+);
+
+/** How many of the chosen records changed; the rest didn't fit the change. */
+export interface BulkResult {
+  changed: number;
+  skipped: number;
+}
+
+/** Confirmed income and expenses over a period; transfers count as neither. */
+export interface Stats {
+  spent: number;
+  income: number;
+  /** Totals per category and kind, largest first. */
+  categories: { category_id: number | null; kind: 'expense' | 'income'; amount: number; count: number }[];
+  /** Totals per day (YYYY-MM-DD, in the time zone asked for), oldest first. Days without records are left out. */
+  days: { day: string; spent: number; income: number }[];
+}
+
 export interface InboundEmail {
   id: number;
   from: string;
@@ -242,6 +267,13 @@ export const api = {
   createTransaction: (t: TransactionInput) => request<Transaction>('POST', '/api/transactions', t),
   updateTransaction: (id: number, t: TransactionInput) => request<Transaction>('PUT', `/api/transactions/${id}`, t),
   deleteTransaction: (id: number) => request<void>('DELETE', `/api/transactions/${id}`),
+  bulkTransactions: (change: BulkChange) => request<BulkResult>('POST', '/api/transactions/bulk', change),
+
+  stats: (from: Date, to: Date, accountId?: number) => {
+    const p = new URLSearchParams({ from: from.toISOString(), to: to.toISOString(), tz: Intl.DateTimeFormat().resolvedOptions().timeZone });
+    if (accountId) p.set('account_id', String(accountId));
+    return request<Stats>('GET', `/api/stats?${p}`);
+  },
 
   budgets: () => request<Budget[]>('GET', '/api/budgets'),
   createBudget: (b: Omit<Budget, 'id'>) => request<Budget>('POST', '/api/budgets', b),
