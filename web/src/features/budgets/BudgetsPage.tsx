@@ -13,7 +13,7 @@ export function BudgetsPage() {
   const w = useWallet();
   const [month] = useState(() => monthStart(new Date()));
   const { records } = useRecords({ from: month, to: addMonths(month, 1), status: 'confirmed' });
-  const [budgets, setBudgets] = useState<Budget[] | null>(null);
+  const [budgets, setBudgets] = useState<Budget[] | null>(() => api.seen.budgets() ?? null);
   const [editing, setEditing] = useState<Budget | 'new' | null>(null);
   const [error, setError] = useState('');
 
