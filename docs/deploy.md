@@ -88,6 +88,7 @@ Settings for the ECS task:
 | `TRUST_PROXY` | `true`: the load balancer adds the client's IP as the last `X-Forwarded-For` entry |
 | `PUBLIC_ORIGIN` | `https://your-domain` |
 | `COOKIE_SECURE` | `true` (the default) |
+| `SECRETS_KEY` | 32+ random characters, injected as a secret: it encrypts users' saved API keys |
 
 - **Health check:** point the target group at `/healthz`. The container health check can be `["CMD", "/server", "healthcheck"]`.
 - **Network:** tasks and RDS in private subnets. Only the load balancer is public, and RDS only accepts connections from the tasks' security group.

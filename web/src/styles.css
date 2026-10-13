@@ -170,6 +170,9 @@ a.button.secondary:hover { background: var(--sunken); }
 
 /* ---------- Shell: bottom tabs on phones, a sidebar on wide screens ---------- */
 .shell .page { padding-bottom: 140px; }
+/* On phones the nav is a bar along the bottom: whatever is scrolled into
+   view (a focused field, a button) stops above it, not under it. */
+@media (max-width: 799px) { html { scroll-padding-bottom: 96px; } }
 .nav {
   position: fixed; inset: auto 0 0 0; z-index: 10; display: flex; justify-content: space-around;
   background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(16px) saturate(1.4);
@@ -559,3 +562,16 @@ button.chip.on { background: var(--accent-soft); border-color: var(--accent); fo
 }
 .chip-pick .swatch-pick label.on { border-color: transparent; }
 .menu-row > .grow { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- Claude ---------- */
+.align-end { align-self: flex-end; }
+.code-button pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: ui-monospace, monospace; }
+/* A payee and the category Claude suggests for it. */
+.suggestion { display: grid; grid-template-columns: auto 1fr minmax(150px, 200px); align-items: center; gap: 12px; padding: 12px 16px; }
+.suggestion .grow { display: flex; flex-direction: column; gap: 1px; }
+@media (max-width: 560px) {
+  .suggestion { grid-template-columns: auto 1fr; }
+  .suggestion select { grid-column: 1 / -1; }
+}
+.key-row { justify-content: space-between; row-gap: 4px; }
+.nowrap { white-space: nowrap; }

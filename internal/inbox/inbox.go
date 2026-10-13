@@ -168,12 +168,23 @@ func clip(s string, n int) string {
 type Service struct {
 	store  *Store
 	wallet *wallet.Store
-	// ai reads emails no rule knows; nil when no API key is configured.
+	// ai reads emails no rule knows; nil when the server has no API key.
 	ai Extractor
+	// userAI, when the server has no key, gives a reader using the user's
+	// own key (see internal/ai), or nil if they have none.
+	userAI func(ctx context.Context, userID int64) (Extractor, error)
 }
 
-func NewService(st *Store, w *wallet.Store, ai Extractor) *Service {
-	return &Service{store: st, wallet: w, ai: ai}
+func NewService(st *Store, w *wallet.Store, ai Extractor, userAI func(context.Context, int64) (Extractor, error)) *Service {
+	return &Service{store: st, wallet: w, ai: ai, userAI: userAI}
+}
+
+// reader returns who reads this user's emails that no rule knows, or nil.
+func (s *Service) reader(ctx context.Context, userID int64) (Extractor, error) {
+	if s.ai != nil || s.userAI == nil {
+		return s.ai, nil
+	}
+	return s.userAI(ctx, userID)
 }
 
 // Receive processes one raw email for a user. Receiving the same email
@@ -191,11 +202,15 @@ func (s *Service) Receive(ctx context.Context, userID int64, raw []byte) (Email,
 
 	r := parse.Classify(m)
 	if r.Kind == parse.KindUnknown {
+		ai, err := s.reader(ctx, userID)
+		if err != nil {
+			return e, err
+		}
 		switch {
-		case s.ai == nil:
-			r.Detail = "No rule for this sender yet. Add the payment yourself, or turn on the AI reader."
+		case ai == nil:
+			r.Detail = "No rule for this sender yet. Add the payment yourself, or add a Claude API key in Settings so the AI reader can read emails like this."
 		default:
-			if r, err = s.ai.Extract(ctx, m); err != nil {
+			if r, err = ai.Extract(ctx, m); err != nil {
 				slog.WarnContext(ctx, "AI email reader failed", "err", err, "from", m.From)
 				r = parse.Result{Kind: parse.KindUnknown, Parser: "ai", Detail: "The AI reader couldn't read this email. Add the payment yourself."}
 			}

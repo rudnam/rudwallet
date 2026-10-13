@@ -12,6 +12,7 @@ import { useWallet } from '../../wallet';
 import { WidgetSettings } from './WidgetSettings';
 import { EmailSettings } from './EmailSettings';
 import { NotificationSettings } from './NotificationSettings';
+import { ClaudeSettings } from './ClaudeSettings';
 
 /** Each kind of account: what to call it, its icon and colour, and names people often use. */
 export const accountKinds: Record<AccountKind, { label: string; glyph: string; color: string; names: string[] }> = {
@@ -28,6 +29,7 @@ const swatches = ['#c8463d', '#d97757', '#b08a3e', '#4f8a4c', '#2a8a8a', '#3b6ea
 const sections: { id: string; label: string; title: string; glyph: string }[] = [
   { id: 'email', label: 'Email automation', title: 'Email automation', glyph: 'mail' },
   { id: 'notifications', label: 'Payment notifications', title: 'Payment notifications', glyph: 'card' },
+  { id: 'claude', label: 'Claude', title: 'Claude', glyph: 'spark' },
   { id: 'accounts', label: 'Accounts', title: 'Accounts', glyph: 'bank' },
   { id: 'categories', label: 'Categories', title: 'Categories', glyph: 'other' },
   { id: 'general', label: 'Currency', title: 'Currency', glyph: 'money' },
@@ -61,6 +63,7 @@ export function SettingsPage({
         </header>
         {open.id === 'email' && <EmailSettings />}
         {open.id === 'notifications' && <NotificationSettings />}
+        {open.id === 'claude' && <ClaudeSettings />}
         {open.id === 'accounts' && <Accounts />}
         {open.id === 'categories' && <Categories />}
         {open.id === 'general' && <General />}
@@ -73,6 +76,7 @@ export function SettingsPage({
   const active = w.accounts.filter((a) => !a.archived).length;
   const summary: Record<string, string> = {
     email: w.settings.auto_confirm ? 'Auto-confirm on' : '',
+    claude: 'Sort, connect apps',
     accounts: `${active} ${active === 1 ? 'account' : 'accounts'}`,
     categories: `${w.categories.length} categories`,
     general: w.settings.currency,
@@ -88,7 +92,7 @@ export function SettingsPage({
             <li key={s.id}>
               <a className="menu-row" href={href('settings', { section: s.id })}>
                 <span className="cat-icon" aria-hidden="true">
-                  <Icon d={s.id === 'email' ? icons.mail : glyphs[s.glyph].d} className="glyph" />
+                  <Icon d={s.glyph in icons ? icons[s.glyph as keyof typeof icons] : glyphs[s.glyph].d} className="glyph" />
                 </span>
                 <span className="grow">{s.label}</span>
                 <span className="muted small">{summary[s.id]}</span>
@@ -561,6 +565,12 @@ function ImportSummary({ result }: { result: ImportResult }) {
       {result.matched > 0 && `, skipped ${result.matched} already recorded from emails or by hand`}
       {result.accounts_created > 0 && `, created ${result.accounts_created} accounts`}
       {result.categories_created > 0 && `, created ${result.categories_created} categories`}.
+      {result.imported > 0 && (
+        <>
+          {' '}
+          Records without a category can be <a href={href('organize')}>sorted by Claude</a>.
+        </>
+      )}
       {result.problems.length > 0 && (
         <ul className="small">
           {result.problems.map((p) => (

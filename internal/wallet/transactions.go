@@ -308,7 +308,7 @@ func (s *Store) createPayment(ctx context.Context, userID int64, p Payment, sour
 	if p.Currency != "" && !strings.EqualFold(p.Currency, st.Currency) {
 		// No exchange rates here: the user enters what it cost in their currency.
 		t.Note = strings.TrimSpace(fmt.Sprintf("Charged %s %s. Enter the amount in %s. %s",
-			formatMinor(p.Amount, p.Currency), strings.ToUpper(p.Currency), st.Currency, t.Note))
+			FormatMinor(p.Amount, p.Currency), strings.ToUpper(p.Currency), st.Currency, t.Note))
 		t.Amount = 0
 	}
 
@@ -458,7 +458,8 @@ func (s *Store) ruleCategory(ctx context.Context, userID int64, merchant string)
 	return &id, nil
 }
 
-func formatMinor(amount int64, currency string) string {
+// FormatMinor writes whole minor units as a plain decimal, e.g. 1250 USD as "12.50".
+func FormatMinor(amount int64, currency string) string {
 	exp := CurrencyExponent(currency)
 	if exp == 0 {
 		return fmt.Sprint(amount)

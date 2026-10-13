@@ -123,6 +123,12 @@ export function EmailSettings() {
             {inbox.ai_enabled
               ? ' Receipts from other shops are read by the AI reader, so you can forward those too.'
               : ' Other senders need a rule; until then they wait for you under To review.'}
+            {!inbox.ai_enabled && (
+              <>
+                {' '}
+                Or <a href={href('settings', { section: 'claude' })}>add your Claude key</a> and Claude reads them.
+              </>
+            )}
           </p>
         </>
       ) : (

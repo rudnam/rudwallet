@@ -5,6 +5,7 @@ import { Icon, icons, Logo, Plus } from './components/Icon';
 import { TransactionForm } from './components/TransactionForm';
 import { BudgetsPage } from './features/budgets/BudgetsPage';
 import { HomePage } from './features/home/HomePage';
+import { OrganizePage } from './features/organize/OrganizePage';
 import { RecordsPage } from './features/records/RecordsPage';
 import { ReviewPage } from './features/review/ReviewPage';
 import { SettingsPage } from './features/settings/SettingsPage';
@@ -117,6 +118,9 @@ const pages = [
   { page: 'settings', label: 'Settings', icon: icons.settings },
 ];
 
+/** Pages outside the main navigation, and the entry they belong under. */
+const subpages: Record<string, string> = { organize: 'settings' };
+
 function Shell({ me, onSignOut, onDeleted }: { me: Me; onSignOut: () => void; onDeleted: () => void }) {
   const route = useRoute();
   const w = useWallet();
@@ -130,7 +134,8 @@ function Shell({ me, onSignOut, onDeleted }: { me: Me; onSignOut: () => void; on
   // Bumped after adding a record, so the page reloads its data.
   const [version, setVersion] = useState(0);
   const { refresh } = w;
-  const current = pages.some((p) => p.page === route.page) ? route.page : 'home';
+  const current = pages.some((p) => p.page === route.page) || route.page in subpages ? route.page : 'home';
+  const navPage = subpages[current] ?? current;
 
   // The Android widget's New record button opens #/add.
   useEffect(() => {
@@ -164,6 +169,9 @@ function Shell({ me, onSignOut, onDeleted }: { me: Me; onSignOut: () => void; on
     case 'budgets':
       page = <BudgetsPage />;
       break;
+    case 'organize':
+      page = <OrganizePage />;
+      break;
     case 'settings':
       page = <SettingsPage route={route} me={me} onSignOut={onSignOut} onDeleted={onDeleted} />;
       break;
@@ -185,8 +193,8 @@ function Shell({ me, onSignOut, onDeleted }: { me: Me; onSignOut: () => void; on
           <a
             key={p.page}
             href={href(p.page)}
-            className={current === p.page ? 'nav-link on' : 'nav-link'}
-            aria-current={current === p.page ? 'page' : undefined}
+            className={navPage === p.page ? 'nav-link on' : 'nav-link'}
+            aria-current={navPage === p.page ? 'page' : undefined}
           >
             <Icon d={p.icon} />
             <span>{p.label}</span>

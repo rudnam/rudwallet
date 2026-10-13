@@ -1,0 +1,101 @@
+package mcp
+
+import (
+	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"database/sql"
+	"encoding/base64"
+	"errors"
+	"time"
+
+	"github.com/rudnam/wallet-app/internal/db"
+)
+
+// tokenPrefix marks the app's MCP tokens, so a leaked one is recognisable.
+const tokenPrefix = "wmcp_"
+
+// maxTokens per user: one per device or app is plenty.
+const maxTokens = 20
+
+// Store keeps MCP access tokens; only their SHA-256 hashes are stored.
+type Store struct{ db *sql.DB }
+
+func NewStore(conn *sql.DB) *Store { return &Store{db: conn} }
+
+type Token struct {
+	ID         int64      `json:"id"`
+	Name       string     `json:"name"`
+	CreatedAt  time.Time  `json:"created_at"`
+	LastUsedAt *time.Time `json:"last_used_at"`
+}
+
+func hash(token string) []byte {
+	h := sha256.Sum256([]byte(token))
+	return h[:]
+}
+
+var errTooMany = errors.New("too many tokens")
+
+// Create makes a token and returns it; it can't be read again later.
+func (s *Store) Create(ctx context.Context, userID int64, name string) (Token, string, error) {
+	var n int
+	if err := s.db.QueryRowContext(ctx, `SELECT count(*) FROM mcp_tokens WHERE user_id = $1`, userID).Scan(&n); err != nil {
+		return Token{}, "", err
+	}
+	if n >= maxTokens {
+		return Token{}, "", errTooMany
+	}
+	b := make([]byte, 32)
+	rand.Read(b)
+	secret := tokenPrefix + base64.RawURLEncoding.EncodeToString(b)
+	t := Token{Name: name}
+	err := s.db.QueryRowContext(ctx,
+		`INSERT INTO mcp_tokens (token_hash, user_id, name) VALUES ($1, $2, $3) RETURNING id, created_at`,
+		hash(secret), userID, name).Scan(&t.ID, &t.CreatedAt)
+	return t, secret, err
+}
+
+func (s *Store) List(ctx context.Context, userID int64) ([]Token, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT id, name, created_at, last_used_at FROM mcp_tokens WHERE user_id = $1 ORDER BY id`, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []Token{}
+	for rows.Next() {
+		var t Token
+		var used sql.NullTime
+		if err := rows.Scan(&t.ID, &t.Name, &t.CreatedAt, &used); err != nil {
+			return nil, err
+		}
+		if used.Valid {
+			t.LastUsedAt = &used.Time
+		}
+		out = append(out, t)
+	}
+	return out, rows.Err()
+}
+
+func (s *Store) Delete(ctx context.Context, userID, id int64) error {
+	res, err := s.db.ExecContext(ctx, `DELETE FROM mcp_tokens WHERE user_id = $1 AND id = $2`, userID, id)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return db.ErrNotFound
+	}
+	return nil
+}
+
+// User finds whose token this is, and notes that it was used.
+func (s *Store) User(ctx context.Context, token string) (int64, error) {
+	var userID int64
+	err := s.db.QueryRowContext(ctx,
+		`UPDATE mcp_tokens SET last_used_at = now() WHERE token_hash = $1 RETURNING user_id`, hash(token)).Scan(&userID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, db.ErrNotFound
+	}
+	return userID, err
+}

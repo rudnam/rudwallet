@@ -150,6 +150,27 @@ for (const [name, viewport] of [
     await page.goto('/#/settings?section=notifications');
     await expect(page.getByRole('list', { name: 'Recent notifications' })).toBeVisible();
     await shot('10-settings-notifications');
+    // Claude: add a key (e2e/fake-claude.js accepts this one), connect an app, sort records.
+    await page.goto('/#/settings?section=claude');
+    await expect(page.getByLabel('Anthropic API key')).toBeVisible();
+    await shot('12-settings-claude');
+    await page.getByLabel('Anthropic API key').fill('sk-ant-e2e-good-key-0000');
+    await page.getByRole('button', { name: 'Save key' }).click();
+    await expect(page.getByText('Key ending in 0000')).toBeVisible();
+    await page.getByLabel('New connection').fill('Claude Desktop');
+    await page.getByRole('button', { name: 'Make a token' }).click();
+    await expect(page.getByTestId('mcp-token')).toBeVisible();
+    await page.getByText('How to connect').click();
+    await shot('13-settings-claude-connected');
+
+    const overview = await (await page.request.get('/api/wallet')).json();
+    for (const [payee, amount] of [['セブン－イレブン 刈谷店', 540], ['セブン－イレブン 刈谷店', 312], ['スギ薬局 知立店', 1980], ['JR東海 定期', 15200], ['合同会社ミステリー', 3300]]) {
+      await page.request.post('/api/transactions', { data: { kind: 'expense', amount, account_id: overview.accounts[0].id, occurred_at: new Date().toISOString(), payee } });
+    }
+    await page.goto('/#/organize');
+    await page.getByRole('button', { name: 'Suggest categories' }).click();
+    await expect(page.getByRole('list', { name: 'Suggested categories' }).getByRole('listitem')).toHaveCount(4);
+    await shot('14-sort-records');
 
     await page.goto('/#/settings');
     await page.getByRole('button', { name: 'Delete account' }).click();
