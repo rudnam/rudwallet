@@ -216,3 +216,44 @@ function payPayCsv(day) {
     `${day} 09:00,-,"5,000",-,-,-,-,チャージ,PayPay銀行,PayPay銀行,-,本人,e2e-003`,
   ].join('\n');
 }
+
+test('choose records to recategorise, move and delete them together', async ({ page }) => {
+  await signUp(page);
+  const api = page.request;
+  const overview = await (await api.get('/api/wallet')).json();
+  const cash = overview.accounts[0].id;
+  await api.post('/api/accounts', { data: { name: 'Bank', kind: 'bank' } });
+  const at = new Date().toISOString();
+  for (const [payee, kind] of [['Bakery', 'expense'], ['Cafe', 'expense'], ['Kiosk', 'expense'], ['Refund', 'income']])
+    expect((await api.post('/api/transactions', { data: { kind, amount: 500, account_id: cash, occurred_at: at, payee } })).status()).toBe(201);
+
+  await page.goto('/#/records');
+  await page.getByRole('button', { name: 'Select' }).click();
+  const bar = page.getByRole('region', { name: 'Chosen records' });
+  await expect(bar).toContainText('Choose records');
+
+  // An expense category fits the expenses; the refund stays as it was.
+  await page.getByRole('checkbox', { name: /Bakery/ }).check();
+  await page.getByRole('checkbox', { name: /Refund/ }).check();
+  await expect(bar).toContainText('2 chosen');
+  await bar.getByLabel('Set category').selectOption({ label: 'Food & Drinks' });
+  await expect(page.getByText('Recategorised 1 record. 1 didn’t fit and stayed as they were.')).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: /Bakery/ })).toBeChecked();
+
+  // Move every record to the bank.
+  await bar.getByRole('button', { name: 'Choose all 4' }).click();
+  await bar.getByLabel('Move to account').selectOption({ label: 'Bank' });
+  await expect(page.getByText('Moved 4 records.')).toBeVisible();
+  await page.getByRole('button', { name: 'Done' }).click();
+  await expect(page.getByRole('button', { name: /Bakery/ })).toContainText('Food & Drinks · Bank');
+
+  // Delete two.
+  await page.getByRole('button', { name: 'Select' }).click();
+  await page.getByRole('checkbox', { name: /Cafe/ }).check();
+  await page.getByRole('checkbox', { name: /Kiosk/ }).check();
+  page.once('dialog', (d) => d.accept());
+  await bar.getByRole('button', { name: 'Delete' }).click();
+  await expect(page.getByText('Deleted 2 records.')).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: /Cafe/ })).toHaveCount(0);
+  await expect(page.getByRole('checkbox', { name: /Bakery/ })).toBeVisible();
+});

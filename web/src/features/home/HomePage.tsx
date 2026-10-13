@@ -86,7 +86,10 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
       </div>
 
       <div className="card stack">
-        <h2>Where it went in {month.toLocaleDateString(undefined, { month: 'long' })}</h2>
+        <div className="section-head">
+          <h2>Where it went in {month.toLocaleDateString(undefined, { month: 'long' })}</h2>
+          <a href={href('stats')}>More stats</a>
+        </div>
         {byCategory.length === 0 ? (
           <p className="muted">No spending recorded this month yet.</p>
         ) : (
