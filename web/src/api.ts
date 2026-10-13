@@ -190,6 +190,52 @@ export interface PayPayPreview {
   problems: string[];
 }
 
+/** The user's Claude features. The key itself is never sent back. */
+export interface AIStatus {
+  /** False when the server has no SECRETS_KEY to encrypt keys with. */
+  can_save: boolean;
+  has_key: boolean;
+  /** The saved key can't be decrypted any more (the server's secret changed): add it again. */
+  key_unreadable: boolean;
+  /** The key's last four characters. */
+  key_hint: string;
+  /** Confirmed records without a category, which Claude can sort. */
+  uncategorized: number;
+}
+
+/** A payee's uncategorised records, and the category Claude suggests (null: none fits). */
+export interface CategorySuggestion {
+  payee: string;
+  kind: CategoryKind;
+  count: number;
+  total: number;
+  note: string;
+  category_id: number | null;
+}
+
+export interface CategorySuggestions {
+  suggestions: CategorySuggestion[];
+  /** Payees after this batch. */
+  remaining: number;
+}
+
+/** Files a payee's uncategorised records under a category. */
+export interface PayeeCategory {
+  payee: string;
+  kind: CategoryKind;
+  category_id: number;
+}
+
+/** An access token for an MCP client such as Claude Desktop. */
+export interface MCPToken {
+  id: number;
+  name: string;
+  created_at: string;
+  last_used_at: string | null;
+  /** The token itself, only in the answer that created it. */
+  token?: string;
+}
+
 /** An error response from the API; message is safe to show the user. */
 export class ApiError extends Error {
   constructor(
@@ -308,6 +354,18 @@ export const api = {
     budgets: () => lastSeen.get('/api/budgets') as Budget[] | undefined,
     inbox: () => lastSeen.get('/api/inbox') as Inbox | undefined,
   },
+
+  ai: () => request<AIStatus>('GET', '/api/ai'),
+  /** Saves the user's Anthropic API key, after Claude accepts it. */
+  setAIKey: (key: string) => request<AIStatus>('PUT', '/api/ai/key', { key }),
+  deleteAIKey: () => request<void>('DELETE', '/api/ai/key'),
+  /** Claude's suggestions for the next batch of uncategorised payees, after skipping offset of them. */
+  suggestCategories: (offset = 0) => request<CategorySuggestions>('POST', `/api/ai/categorize?offset=${offset}`),
+  applyCategories: (items: PayeeCategory[]) => request<{ updated: number }>('POST', '/api/ai/categorize/apply', { items }),
+
+  mcpTokens: () => request<MCPToken[]>('GET', '/api/mcp/tokens'),
+  createMCPToken: (name: string) => request<MCPToken>('POST', '/api/mcp/tokens', { name }),
+  deleteMCPToken: (id: number) => request<void>('DELETE', `/api/mcp/tokens/${id}`),
 
   importBudgetBakers: (csv: string) =>
     request<ImportResult>('POST', `/api/import/budgetbakers?tz_offset=${new Date().getTimezoneOffset()}`, csv, 'text/csv'),

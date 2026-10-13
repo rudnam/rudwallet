@@ -5,7 +5,9 @@ package server
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"io/fs"
+	"log/slog"
 	"mime"
 	"net/http"
 	"path"
@@ -13,10 +15,12 @@ import (
 	"time"
 
 	"github.com/rudnam/wallet-app/internal/account"
+	"github.com/rudnam/wallet-app/internal/ai"
 	"github.com/rudnam/wallet-app/internal/config"
 	"github.com/rudnam/wallet-app/internal/httpx"
 	"github.com/rudnam/wallet-app/internal/inbox"
 	"github.com/rudnam/wallet-app/internal/mailer"
+	"github.com/rudnam/wallet-app/internal/mcp"
 	"github.com/rudnam/wallet-app/internal/notify"
 	"github.com/rudnam/wallet-app/internal/wallet"
 	"github.com/rudnam/wallet-app/internal/widget"
@@ -66,16 +70,35 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 	accounts.Register(mux)
 	walletStore := wallet.NewStore(conn)
 	wallet.NewHandler(walletStore).Register(mux, accounts.RequireUser)
+	model := cfg.AnthropicModel
+	if model == "" {
+		model = config.DefaultAnthropicModel
+	}
+	aiStore := ai.NewStore(conn, cfg.SecretsKey)
+	ai.NewHandler(aiStore, walletStore, model).Register(mux, accounts.RequireUser)
 	var reader inbox.Extractor
 	if cfg.AnthropicAPIKey != "" {
-		reader = inbox.NewClaudeExtractor(cfg.AnthropicAPIKey, cfg.AnthropicModel)
+		reader = inbox.NewClaudeExtractor(cfg.AnthropicAPIKey, model)
+	}
+	// Without a server key, each user's emails are read with their own key.
+	userReader := func(ctx context.Context, userID int64) (inbox.Extractor, error) {
+		key, err := aiStore.Key(ctx, userID)
+		if errors.Is(err, ai.ErrUnreadable) {
+			slog.WarnContext(ctx, "a user's API key can't be decrypted; has SECRETS_KEY changed?", "user", userID)
+			return nil, nil
+		}
+		if key == "" || err != nil {
+			return nil, err
+		}
+		return inbox.NewClaudeExtractor(key, model, ai.KeyOptions(key)...), nil
 	}
 	inboxStore := inbox.NewStore(conn)
 	inbox.NewHandler(inbox.Config{Domain: cfg.InboundDomain, Secret: cfg.InboundSecret}, inboxStore,
-		inbox.NewService(inboxStore, walletStore, reader)).Register(mux, accounts.RequireUser)
+		inbox.NewService(inboxStore, walletStore, reader, userReader)).Register(mux, accounts.RequireUser)
 	notifyStore := notify.NewStore(conn)
 	notify.NewHandler(notifyStore, notify.NewService(notifyStore, walletStore)).Register(mux, accounts.RequireUser)
 	widget.NewHandler(walletStore).Register(mux, accounts.RequireUser)
+	mcp.NewHandler(mcp.NewStore(conn), walletStore, version).Register(mux, accounts.RequireUser)
 
 	// Unknown API paths get a JSON 404 rather than the web page.
 	mux.Handle("/api/", httpx.HandlerFunc(func(http.ResponseWriter, *http.Request) error {

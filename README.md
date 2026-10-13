@@ -12,7 +12,7 @@ BudgetBakers' Wallet app (CSV) can be imported.
 
 A Go API, a React frontend, and PostgreSQL, shipped as one Docker image.
 
-- **Backend:** Go, standard library plus a PostgreSQL driver (`github.com/lib/pq`) and the Anthropic SDK (for the optional AI email reader).
+- **Backend:** Go, standard library plus a PostgreSQL driver (`github.com/lib/pq`) and the Anthropic SDK (for the optional Claude features).
 - **Frontend:** React + TypeScript, bundled by Vite and embedded in the Go binary. Installable as a PWA.
 - **Database:** PostgreSQL. Migrations are embedded SQL files, applied on startup.
 - **Packaging:** one small, non-root Docker image (under 20 MB) with no shell.
@@ -90,8 +90,10 @@ All settings are environment variables (read in `internal/config`).
 | `AUTH_RATE_LIMIT` | `10` | Sign-in and sign-up attempts per minute per client IP. |
 | `ANDROID_PACKAGE`, `ANDROID_CERT_FINGERPRINTS` | empty | The Android app's package, which Sign in with Google in the app returns to, and its signing keys, published in `/.well-known/assetlinks.json`. See [android/README.md](android/README.md). |
 | `INBOUND_DOMAIN`, `INBOUND_SECRET` | empty | Turn on email automation: users get `pay-<token>@INBOUND_DOMAIN`, and the mail provider's hook calls `POST /api/inbound/email` with the secret (24+ characters). See [docs/email.md](docs/email.md). |
-| `ANTHROPIC_API_KEY` | empty | Let Claude read payment emails from senders without a built-in rule. |
-| `ANTHROPIC_MODEL` | `claude-opus-5-5` | The model for that. |
+| `ANTHROPIC_API_KEY` | empty | Let Claude read payment emails from senders without a built-in rule, for every user. Without it, users who add their own key in Settings → Claude get this for themselves. |
+| `ANTHROPIC_MODEL` | `claude-opus-5-5` | The model for that, and for the Claude features users turn on with their own key. |
+| `SECRETS_KEY` | empty | Encrypts what users save in the app: their Claude API keys (AES-256-GCM). 32+ characters, e.g. `openssl rand -base64 32`. Without it, users can't save a key. Keep it out of backups of the database, and don't change it: keys saved under an old one can't be read, and users are asked to add them again. |
+| `ANTHROPIC_BASE_URL` | Anthropic's API | Where Claude is reached. The browser tests point it at a fake (`e2e/fake-claude.js`). |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | empty | Show "Continue with Google" on the sign-in page. Needs `PUBLIC_ORIGIN`. See [Sign in with Google](#sign-in-with-google). |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `MAIL_FROM` | empty, `587` | Email a link to confirm each new account's address (port 587 with STARTTLS, or 465). `MAIL_FROM` is e.g. `Wallet <no-reply@example.com>`. Needs `PUBLIC_ORIGIN`. Without these, nobody is asked to confirm. |
 
@@ -122,6 +124,8 @@ The code is split by **feature**: each one owns its SQL, HTTP handlers and page.
 | `internal/wallet/` | Feature: accounts, categories, records, budgets, settings, and the PayPay and BudgetBakers CSV imports. |
 | `internal/inbox/` | Feature: email automation. Forwarding addresses, the inbound webhook, and turning emails into records (`parse/` reads emails and knows the senders; `claude.go` is the AI fallback). |
 | `internal/notify/` | Feature: payment notifications the Android app sends (Google Wallet), read into records (`parse.go` knows the apps). A payment already recorded from its email, an import or by hand is matched, not added. |
+| `internal/ai/` | Feature: Claude with the user's own API key. Stores the key encrypted (`seal.go`), and suggests categories for uncategorised records (`claude.go`). |
+| `internal/mcp/` | Feature: the MCP server at `/mcp`, so Claude Desktop, Claude Code and other MCP clients can read and tidy a user's records, with access tokens made in Settings. |
 | `internal/widget/` | Feature: the month summary the Android home screen widgets draw. |
 | `internal/server/` | Wires the features into one handler; serves the web app. Its tests run the whole API against a real database. |
 | `internal/testdb/` | Gives integration tests an empty, migrated database. |
@@ -170,6 +174,12 @@ Follow `internal/wallet` or `internal/inbox`; a feature is about five files:
 | POST | `/api/inbound/email` | `INBOUND_SECRET` | For the mail provider: raw email body, recipient in `X-Inbound-To`. `404` for unknown addresses. |
 | GET | `/api/notifications` | user | `{notifications}`: the latest payment notifications and what each became (`payment`, `matched`, `ignored`, `unparsed`) |
 | POST | `/api/notifications` | user | For the Android app. Body `{notifications: [{package, when, title, text}]}` (`when` in ms, at most 50). Returns `{notifications}` in the same order; one sent before is marked `duplicate` |
+| GET | `/api/ai` | user | `{can_save, has_key, key_hint, key_unreadable, uncategorized}`: the user's Claude key (only its last 4 characters). `can_save` is false without `SECRETS_KEY`; `key_unreadable` means the saved key must be added again. |
+| PUT, DELETE | `/api/ai/key` | user | Body `{key}`: an Anthropic API key, saved encrypted once Claude accepts it (`400` if not, `409` without `SECRETS_KEY`) |
+| POST | `/api/ai/categorize?offset=` | user | `{suggestions, remaining}`: a category Claude suggests (or `null`) for the next 100 payees whose confirmed records have none, skipping `offset`. Changes nothing. `409` without a key. |
+| POST | `/api/ai/categorize/apply` | user | Body `{items: [{payee, kind, category_id}]}`. Files each payee's uncategorised records and remembers the category for its emails. `{updated}` |
+| GET, POST, DELETE | `/api/mcp/tokens[/{id}]` | user | Access tokens for MCP clients: `{id, name, created_at, last_used_at}`. `POST {name}` also returns the `token`, once. |
+| POST | `/mcp` | MCP token | The MCP server (Streamable HTTP, JSON responses only). `Authorization: Bearer <token>`. Tools: `get_overview`, `list_records`, `list_uncategorized_payees`, `categorize_payees`, `set_record_category`, `create_category`, `spending_by_category`. |
 | GET | `/api/widget` | user | For the Android widgets. Query: `from`, `to` (RFC 3339). `{currency, currency_exponent, spent, balance, budget, budgets, review_count}` |
 | GET | `/healthz` | – | `{status: "ok", version}` if the database is reachable, else `503` |
 

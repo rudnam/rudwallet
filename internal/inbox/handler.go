@@ -52,12 +52,16 @@ type inboxView struct {
 }
 
 func (h *Handler) view(r *http.Request, token string) (inboxView, error) {
-	v := inboxView{AIEnabled: h.service.ai != nil}
+	userID := account.UserFrom(r).ID
+	ai, err := h.service.reader(r.Context(), userID)
+	if err != nil {
+		return inboxView{}, err
+	}
+	v := inboxView{AIEnabled: ai != nil}
 	if h.cfg.Domain != "" && h.cfg.Secret != "" {
 		v.Address = AddressPrefix + token + "@" + h.cfg.Domain
 	}
-	var err error
-	v.Emails, err = h.store.Recent(r.Context(), account.UserFrom(r).ID, 50)
+	v.Emails, err = h.store.Recent(r.Context(), userID, 50)
 	return v, err
 }
 
