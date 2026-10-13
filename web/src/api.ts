@@ -160,17 +160,33 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * The last answer to each GET, so a page seen before shows at once while it
+ * reloads (see api.seen). Any change (POST, PUT, DELETE, signing in or out
+ * included) empties it, so it never shows what the change made out of date,
+ * or another person's data.
+ */
+const lastSeen = new Map<string, unknown>();
+
 async function request<T>(method: string, path: string, body?: unknown, contentType?: string): Promise<T> {
-  const raw = contentType !== undefined;
-  const res = await fetch(server + path, {
-    method,
-    headers: { ...(body === undefined ? {} : { 'Content-Type': contentType ?? 'application/json' }), ...appHeaders() },
-    body: body === undefined ? undefined : raw ? (body as BodyInit) : JSON.stringify(body),
-  });
-  if (res.status === 204) return undefined as T;
-  const data = await res.json().catch(() => null);
-  if (!res.ok) throw new ApiError(data?.error ?? res.statusText, res.status);
-  return data as T;
+  const changes = method !== 'GET';
+  if (changes) lastSeen.clear();
+  try {
+    const raw = contentType !== undefined;
+    const res = await fetch(server + path, {
+      method,
+      headers: { ...(body === undefined ? {} : { 'Content-Type': contentType ?? 'application/json' }), ...appHeaders() },
+      body: body === undefined ? undefined : raw ? (body as BodyInit) : JSON.stringify(body),
+    });
+    if (res.status === 204) return undefined as T;
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new ApiError(data?.error ?? res.statusText, res.status);
+    if (!changes) lastSeen.set(path, data);
+    return data as T;
+  } finally {
+    // A GET that was under way during the change may have stored an old answer.
+    if (changes) lastSeen.clear();
+  }
 }
 
 function query(f: TransactionFilter): string {
@@ -236,6 +252,13 @@ export const api = {
   newAddress: () => request<Inbox>('POST', '/api/inbox/address'),
   uploadEmail: (raw: string) => request<InboundEmail>('POST', '/api/inbox/emails', raw, 'message/rfc822'),
   dismissEmail: (id: number) => request<void>('POST', `/api/inbox/emails/${id}/dismiss`),
+
+  /** What the same call last returned, if nothing has changed since; show it while the call reloads. */
+  seen: {
+    transactions: (f: TransactionFilter = {}) => lastSeen.get(`/api/transactions${query(f)}`) as Transaction[] | undefined,
+    budgets: () => lastSeen.get('/api/budgets') as Budget[] | undefined,
+    inbox: () => lastSeen.get('/api/inbox') as Inbox | undefined,
+  },
 
   importBudgetBakers: (csv: string) =>
     request<ImportResult>('POST', `/api/import/budgetbakers?tz_offset=${new Date().getTimezoneOffset()}`, csv, 'text/csv'),

@@ -216,3 +216,49 @@ function payPayCsv(day) {
     `${day} 09:00,-,"5,000",-,-,-,-,チャージ,PayPay銀行,PayPay銀行,-,本人,e2e-003`,
   ].join('\n');
 }
+
+test('a page seen before shows at once while it reloads, unless something changed', async ({ page }) => {
+  await signUp(page);
+  await page.getByRole('button', { name: 'Add record' }).click();
+  const dialog = page.getByRole('dialog', { name: 'New record' });
+  await dialog.getByLabel('Amount (JPY)').fill('1200');
+  await dialog.getByLabel('Payee').fill('Ramen Taro');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  const latest = page.getByRole('list', { name: 'Latest records' });
+  await expect(latest).toContainText('-¥1,200');
+
+  // Hold back the records until told, to see what shows meanwhile.
+  let gate = Promise.resolve();
+  let release = () => {};
+  const hold = () => (gate = new Promise((r) => (release = r)));
+  await page.route('**/api/transactions?*', async (route) => {
+    await gate;
+    await route.continue();
+  });
+  const nav = page.getByRole('navigation', { name: 'Main' });
+
+  // Back on Home, the records it showed before are there straight away.
+  await nav.getByRole('link', { name: 'Records' }).click();
+  await expect(page.getByRole('button', { name: /Ramen Taro/ })).toBeVisible();
+  hold();
+  await nav.getByRole('link', { name: 'Home' }).click();
+  await expect(latest).toContainText('-¥1,200');
+  release();
+
+  // A search seen before, then an edit made elsewhere: the search waits for
+  // the new amount instead of showing the old one.
+  await page.goto('/#/records?q=ramen');
+  await expect(page.getByRole('button', { name: /Ramen Taro, -¥1,200/ })).toBeVisible();
+  await nav.getByRole('link', { name: 'Home' }).click();
+  await latest.getByRole('button', { name: /Ramen Taro/ }).click();
+  const edit = page.getByRole('dialog', { name: 'Edit record' });
+  await edit.getByLabel('Amount (JPY)').fill('980');
+  await edit.getByRole('button', { name: 'Save' }).click();
+  await expect(latest).toContainText('-¥980');
+  hold();
+  await page.goto('/#/records?q=ramen');
+  await expect(page.getByText('Loading…')).toBeVisible();
+  await expect(page.getByText('-¥1,200')).toHaveCount(0);
+  release();
+  await expect(page.getByRole('button', { name: /Ramen Taro, -¥980/ })).toBeVisible();
+});
