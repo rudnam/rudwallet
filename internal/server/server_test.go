@@ -3,6 +3,8 @@ package server_test
 import (
 	"encoding/json"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -80,5 +82,45 @@ func TestAndroidAssetLinks(t *testing.T) {
 	if err := json.Unmarshal([]byte(body), &links); err != nil || resp.StatusCode != 200 || len(links) != 1 ||
 		links[0].Target.PackageName != "com.example.app" || links[0].Target.Fingerprints[0] != "AA:BB" {
 		t.Fatalf("%d %s", resp.StatusCode, body)
+	}
+}
+
+func TestAndroidDownload(t *testing.T) {
+	// None configured: nothing offered.
+	ts := newTestServer(t)
+	if _, body := get(t, ts.URL+"/api/downloads"); body != `{"android":null}`+"\n" {
+		t.Errorf("downloads without an APK: %s", body)
+	}
+	if resp, _ := get(t, ts.URL+"/download/wallet.apk"); resp.StatusCode != 404 {
+		t.Errorf("APK without one: %d", resp.StatusCode)
+	}
+
+	// Configured, but not built yet.
+	file := filepath.Join(t.TempDir(), "wallet.apk")
+	ts = newTestServer(t, func(c *config.Config) { c.AndroidAPK = file })
+	if _, body := get(t, ts.URL+"/api/downloads"); body != `{"android":null}`+"\n" {
+		t.Errorf("downloads before the APK exists: %s", body)
+	}
+
+	// Dropped in while the server runs.
+	if err := os.WriteFile(file, []byte("PK fake apk"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		Android *struct {
+			URL  string `json:"url"`
+			Size int64  `json:"size"`
+		} `json:"android"`
+	}
+	_, body := get(t, ts.URL+"/api/downloads")
+	if err := json.Unmarshal([]byte(body), &got); err != nil || got.Android == nil ||
+		got.Android.URL != "/download/wallet.apk" || got.Android.Size != 11 {
+		t.Fatalf("downloads: %s", body)
+	}
+	resp, body := get(t, ts.URL+got.Android.URL)
+	if resp.StatusCode != 200 || body != "PK fake apk" ||
+		resp.Header.Get("Content-Type") != "application/vnd.android.package-archive" ||
+		!strings.Contains(resp.Header.Get("Content-Disposition"), "wallet.apk") {
+		t.Errorf("APK: %d %q %v", resp.StatusCode, body, resp.Header)
 	}
 }

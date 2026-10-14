@@ -49,6 +49,8 @@ services:
       # The Android app's package, which Google sign-in in the app returns to.
       ANDROID_PACKAGE: com.rudnam.wallet
       ANDROID_CERT_FINGERPRINTS: "00:11:22:33"
+      # A stand-in APK, so the introduction page offers the download.
+      ANDROID_APK: /downloads/wallet.apk
       # Sign in with Google shows, with a client Google doesn't know: the
       # tests stop at the redirect (the Go tests cover the rest).
       GOOGLE_CLIENT_ID: e2e-client.apps.googleusercontent.com
@@ -61,6 +63,8 @@ services:
       SMTP_HOST: mail
       SMTP_PORT: "1025"
       MAIL_FROM: Wallet <no-reply@example.test>
+    volumes:
+      - ./fake.apk:/downloads/wallet.apk:ro
     healthcheck:
       test: ["CMD", "/server", "healthcheck"]
       interval: 1s

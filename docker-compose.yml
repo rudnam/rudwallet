@@ -60,6 +60,11 @@ services:
       SMTP_USERNAME: ${SMTP_USERNAME:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       MAIL_FROM: ${MAIL_FROM:-}
+      # Offered on the introduction page while the file exists; ./android/build.sh
+      # copies each new build into downloads/.
+      ANDROID_APK: /downloads/wallet.apk
+    volumes:
+      - ./downloads:/downloads:ro
     # No ports here; the deploy/ layer decides how traffic reaches the app.
 
 volumes:
