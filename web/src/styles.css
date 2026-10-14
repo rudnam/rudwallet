@@ -524,6 +524,9 @@ button.chip.on { background: var(--accent-soft); border-color: var(--accent); fo
 .mover-figures { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .lede { margin: 0; }
 .chip > .cat-icon.small { margin-left: -6px; }
+.chip.quiet { border-style: dashed; color: var(--muted); background: transparent; }
+.chip.quiet svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; }
+.chip.quiet:hover { color: var(--text); border-color: var(--accent); }
 .icon-pick label, .chip-pick label { position: relative; }
 
 /* ---------- Settings menu and pages ---------- */
@@ -581,6 +584,21 @@ button.chip.on { background: var(--accent-soft); border-color: var(--accent); fo
 @media (max-width: 560px) {
   .suggestion { grid-template-columns: auto 1fr; }
   .suggestion select { grid-column: 1 / -1; }
+}
+/* An import's groups, each with its category; ticked ones can be set together. */
+.card.flush.mapper { overflow: clip; }
+.mapper-bar {
+  position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+  min-height: 52px; padding: 8px 16px; background: var(--surface); border-bottom: 1px solid var(--border);
+}
+.mapper-all { display: flex; align-items: center; gap: 12px; flex: 1 1 auto; cursor: pointer; }
+.mapper-all .bulk-count { font-weight: 600; font-variant-numeric: tabular-nums; }
+.mapper-bar select { flex: 0 1 220px; min-width: 0; }
+.suggestion.pick { grid-template-columns: auto auto 1fr minmax(150px, 200px); }
+.mapper-more { display: block; width: 100%; padding: 12px 16px; border-top: 1px solid var(--border); text-align: center; }
+@media (max-width: 560px) {
+  .suggestion.pick { grid-template-columns: auto auto 1fr; }
+  .mapper-bar select { flex: 1 1 100%; }
 }
 .key-row { justify-content: space-between; row-gap: 4px; }
 .nowrap { white-space: nowrap; }

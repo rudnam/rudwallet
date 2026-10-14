@@ -108,19 +108,55 @@ test('import records exported from Wallet by BudgetBakers', async ({ page }) => 
     'account;category;currency;amount;ref_currency_amount;type;payment_type;payment_type_local;note;date;gps_latitude;gps_longitude;gps_accuracy_in_meters;warranty_in_month;transfer;payee;labels;envelope_id;custom_category',
     `Cash;Groceries;JPY;-2480.00;-2480.00;Expenses;CASH;Cash;;${today};;;;0;false;Aeon;;1000;false`,
     `Rakuten Bank;Salary;JPY;250000.00;250000.00;Income;TRANSFER;Transfer;;${today};;;;0;false;;;5000;false`,
+    `Cash;Bar, cafe;JPY;-480.00;-480.00;Expenses;CASH;Cash;;${today};;;;0;false;Doutor;;1000;false`,
+    `Cash;Coffee beans;JPY;-1500.00;-1500.00;Expenses;CASH;Cash;;${today};;;;0;false;Roastery;;1000;false`,
   ].join('\n');
-  await page.getByLabel('CSV file', { exact: true }).setInputFiles({ name: 'records.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
-  await expect(page.getByRole('status')).toContainText('Imported 2 records, created 1 accounts');
+  const file = { name: 'records.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) };
+  await page.getByLabel('CSV file', { exact: true }).setInputFiles(file);
+  await expect(page.getByText(/^4 records/)).toBeVisible();
+  await expect(page.getByLabel(/^Rakuten Bank/).locator('option:checked')).toHaveText('New account: Rakuten Bank');
+  // BudgetBakers' categories are matched to the closest of the user's.
+  await expect(page.getByLabel('Category for Bar, cafe').locator('option:checked')).toHaveText('Food & Drinks');
+  await expect(page.getByLabel('Category for Salary').locator('option:checked')).toHaveText('Salary');
+  await expect(page.getByLabel('Category for Coffee beans').locator('option:checked')).toHaveText('Coffee beans');
+
+  // Several at once.
+  await page.getByLabel('Choose Bar, cafe').check();
+  await page.getByLabel('Choose Coffee beans').check();
+  await expect(page.getByRole('region', { name: 'Chosen categories' })).toContainText('2 chosen');
+  await page.getByLabel('Set category for chosen').selectOption({ label: 'Groceries' });
+  await expect(page.getByLabel('Category for Coffee beans').locator('option:checked')).toHaveText('Groceries');
+  await expect(page.getByLabel('Category for Bar, cafe').locator('option:checked')).toHaveText('Groceries');
+  await expect(page.getByLabel('Choose Bar, cafe')).not.toBeChecked();
+
+  await page.getByRole('button', { name: 'Import 4 records' }).click();
+  await expect(page.getByRole('status')).toContainText('Imported 4 records, created 1 accounts.');
 
   // The same file again adds nothing.
-  await page.getByLabel('CSV file', { exact: true }).setInputFiles({ name: 'records.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
-  await expect(page.getByRole('status')).toContainText('Imported 0 records, skipped 2 already imported');
+  await page.getByLabel('CSV file', { exact: true }).setInputFiles(file);
+  await page.getByRole('button', { name: 'Import 4 records' }).click();
+  await expect(page.getByRole('status')).toContainText('Imported 0 records, skipped 4 already imported');
   await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
   await page.getByRole('link', { name: /Accounts/ }).click();
   await expect(page.getByRole('list', { name: 'Accounts' })).toContainText('Rakuten Bank');
 
   await page.goto('/app/#/records');
   await expect(page.getByRole('button', { name: /Aeon, -¥2,480/ })).toBeVisible();
+  const [roastery] = await (await page.request.get('/api/transactions?q=Roastery')).json();
+  const { categories } = await (await page.request.get('/api/wallet')).json();
+  expect(categories.find((c) => c.id === roastery.category_id)?.name).toBe('Groceries');
+});
+
+test('add a default category the user is missing', async ({ page }) => {
+  await signUp(page);
+  const { categories } = await (await page.request.get('/api/wallet')).json();
+  const car = categories.find((c) => c.name === 'Car');
+  expect((await page.request.delete(`/api/categories/${car.id}`)).status()).toBe(204);
+  await page.goto('/app/#/settings?section=categories');
+  await page.getByRole('button', { name: 'Add category Car' }).click();
+  await expect(page.getByRole('button', { name: 'Edit category Car' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add category Car' })).toHaveCount(0);
+  await expect(page.getByText('More categories')).toHaveCount(0);
 });
 
 test('a new user is walked through setting up, and daily adding remembers things', async ({ page }) => {
@@ -199,6 +235,7 @@ test('import PayPay transaction history', async ({ page }) => {
   await expect(page.getByLabel(/^PayPayカード/)).toHaveValue(String(card.id));
   await expect(page.getByLabel(/^PayPay残高/).locator('option:checked')).toHaveText('New account: PayPay');
   await expect(page.getByLabel(/^PayPay銀行/).locator('option:checked')).toHaveText('New account: PayPay銀行');
+  await expect(page.getByLabel('Category for ローソン').locator('option:checked')).toHaveText('Food & Drinks');
   await page.getByRole('button', { name: 'Import 3 payments' }).click();
   await expect(page.getByRole('status')).toContainText('Imported 2 records, skipped 1 already recorded from emails or by hand, created 2 accounts');
 

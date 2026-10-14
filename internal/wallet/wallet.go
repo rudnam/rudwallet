@@ -82,19 +82,33 @@ type Overview struct {
 var (
 	accountKinds = []string{"cash", "bank", "credit_card", "e_money", "savings", "other"}
 
+	// defaultCategories are every new user's categories. Icons are glyph keys
+	// (web/src/components/Icon.tsx); older users' defaults store emoji, which
+	// the app shows as the same glyphs. Users who signed up before one was
+	// added can add it later (MissingDefaults).
 	defaultCategories = []Category{
-		{Name: "Food & Drinks", Kind: "expense", Icon: "🍜", Color: "#d9534f"},
-		{Name: "Groceries", Kind: "expense", Icon: "🛒", Color: "#e8833a"},
-		{Name: "Shopping", Kind: "expense", Icon: "🛍️", Color: "#c9a227"},
-		{Name: "Transport", Kind: "expense", Icon: "🚆", Color: "#3b82c4"},
-		{Name: "Housing", Kind: "expense", Icon: "🏠", Color: "#8a5cc2"},
-		{Name: "Bills & Utilities", Kind: "expense", Icon: "💡", Color: "#5b6ee1"},
-		{Name: "Health", Kind: "expense", Icon: "💊", Color: "#2aa198"},
-		{Name: "Entertainment", Kind: "expense", Icon: "🎬", Color: "#d6619b"},
-		{Name: "Travel", Kind: "expense", Icon: "✈️", Color: "#1f9bd1"},
-		{Name: "Other", Kind: "expense", Icon: "📦", Color: "#7a7f7c"},
-		{Name: "Salary", Kind: "income", Icon: "💼", Color: "#2f9e5b"},
-		{Name: "Other income", Kind: "income", Icon: "💰", Color: "#5aa469"},
+		{Name: "Food & Drinks", Kind: "expense", Icon: "food", Color: "#d9534f"},
+		{Name: "Groceries", Kind: "expense", Icon: "grocery", Color: "#e8833a"},
+		{Name: "Shopping", Kind: "expense", Icon: "shopping", Color: "#c9a227"},
+		{Name: "Transport", Kind: "expense", Icon: "transit", Color: "#3b82c4"},
+		{Name: "Car", Kind: "expense", Icon: "car", Color: "#5f7387"},
+		{Name: "Housing", Kind: "expense", Icon: "home", Color: "#8a5cc2"},
+		{Name: "Bills & Utilities", Kind: "expense", Icon: "bills", Color: "#5b6ee1"},
+		{Name: "Phone & Internet", Kind: "expense", Icon: "phone", Color: "#2a8a8a"},
+		{Name: "Health", Kind: "expense", Icon: "health", Color: "#2aa198"},
+		{Name: "Personal care", Kind: "expense", Icon: "beauty", Color: "#a8508a"},
+		{Name: "Sport & Fitness", Kind: "expense", Icon: "sport", Color: "#4f8a4c"},
+		{Name: "Entertainment", Kind: "expense", Icon: "fun", Color: "#d6619b"},
+		{Name: "Education", Kind: "expense", Icon: "school", Color: "#5b4a8a"},
+		{Name: "Travel", Kind: "expense", Icon: "travel", Color: "#1f9bd1"},
+		{Name: "Gifts & Donations", Kind: "expense", Icon: "gift", Color: "#c96442"},
+		{Name: "Taxes & Fees", Kind: "expense", Icon: "bank", Color: "#8c7b5e"},
+		{Name: "Other", Kind: "expense", Icon: "other", Color: "#7a7f7c"},
+		{Name: "Salary", Kind: "income", Icon: "salary", Color: "#2f9e5b"},
+		{Name: "Rewards & Cashback", Kind: "income", Icon: "card", Color: "#b08a3e"},
+		{Name: "Refunds", Kind: "income", Icon: "shopping", Color: "#3b6ea8"},
+		{Name: "Interest & Dividends", Kind: "income", Icon: "savings", Color: "#2a8a8a"},
+		{Name: "Other income", Kind: "income", Icon: "money", Color: "#5aa469"},
 	}
 )
 
