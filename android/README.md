@@ -20,7 +20,13 @@ It builds the web app for the app (`npm run android` in `web/`, which also copie
 
 For each Play Store release, raise `versionCode` (and `versionName`) in `app/build.gradle`, then upload `wallet.aab` in the Play Console. Versions 1 and 2 were the earlier Trusted Web Activity app, which this replaces under the same package and key, so it installs as an update.
 
-The build is also copied to `downloads/wallet.apk`, which `docker-compose.yml` mounts for the server: the introduction page offers it as **Download for Android** while the file is there, with no restart needed. On a server elsewhere, copy `android/wallet.apk` to `downloads/` next to its `docker-compose.yml`.
+The introduction page offers the APK as **Download for Android** while the server has one, with no restart needed. To put a new build on https://wallet.rudnam.com:
+
+```sh
+./android/build.sh && ./android/publish.sh   # needs: aws login --profile rudnam-ec2
+```
+
+`publish.sh` uploads it to the deploy bucket on AWS and copies it onto the server; every deploy copies it again. `build.sh` also copies it to `downloads/wallet.apk`, which the local stack (`docker compose up`) offers the same way.
 
 A copy installed from the Play Store is signed by Google, so installing `wallet.apk` over it fails; uninstall it first.
 
