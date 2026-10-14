@@ -9,6 +9,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/lib/pq"
 	"github.com/rudnam/wallet-app/internal/db"
 )
 
@@ -28,6 +29,16 @@ type Token struct {
 	Name       string     `json:"name"`
 	CreatedAt  time.Time  `json:"created_at"`
 	LastUsedAt *time.Time `json:"last_used_at"`
+	// SignedIn is true for a connection made by signing in from the client
+	// (OAuth), false for a token made by hand in Settings.
+	SignedIn bool `json:"signed_in"`
+}
+
+// newSecret returns prefix and 256 random bits.
+func newSecret(prefix string) string {
+	b := make([]byte, 32)
+	rand.Read(b)
+	return prefix + base64.RawURLEncoding.EncodeToString(b)
 }
 
 func hash(token string) []byte {
@@ -46,9 +57,7 @@ func (s *Store) Create(ctx context.Context, userID int64, name string) (Token, s
 	if n >= maxTokens {
 		return Token{}, "", errTooMany
 	}
-	b := make([]byte, 32)
-	rand.Read(b)
-	secret := tokenPrefix + base64.RawURLEncoding.EncodeToString(b)
+	secret := newSecret(tokenPrefix)
 	t := Token{Name: name}
 	err := s.db.QueryRowContext(ctx,
 		`INSERT INTO mcp_tokens (token_hash, user_id, name) VALUES ($1, $2, $3) RETURNING id, created_at`,
@@ -58,7 +67,7 @@ func (s *Store) Create(ctx context.Context, userID int64, name string) (Token, s
 
 func (s *Store) List(ctx context.Context, userID int64) ([]Token, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, name, created_at, last_used_at FROM mcp_tokens WHERE user_id = $1 ORDER BY id`, userID)
+		`SELECT id, name, created_at, last_used_at, client_id IS NOT NULL FROM mcp_tokens WHERE user_id = $1 ORDER BY id`, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +76,7 @@ func (s *Store) List(ctx context.Context, userID int64) ([]Token, error) {
 	for rows.Next() {
 		var t Token
 		var used sql.NullTime
-		if err := rows.Scan(&t.ID, &t.Name, &t.CreatedAt, &used); err != nil {
+		if err := rows.Scan(&t.ID, &t.Name, &t.CreatedAt, &used, &t.SignedIn); err != nil {
 			return nil, err
 		}
 		if used.Valid {
@@ -93,9 +102,125 @@ func (s *Store) Delete(ctx context.Context, userID, id int64) error {
 func (s *Store) User(ctx context.Context, token string) (int64, error) {
 	var userID int64
 	err := s.db.QueryRowContext(ctx,
-		`UPDATE mcp_tokens SET last_used_at = now() WHERE token_hash = $1 RETURNING user_id`, hash(token)).Scan(&userID)
+		`UPDATE mcp_tokens SET last_used_at = now()
+		 WHERE token_hash = $1 AND (expires_at IS NULL OR expires_at > now()) RETURNING user_id`, hash(token)).Scan(&userID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, db.ErrNotFound
 	}
 	return userID, err
+}
+
+// ---------- Sign-in (OAuth) ----------
+
+const (
+	clientPrefix  = "wmcpc_"
+	codePrefix    = "wmcpa_"
+	refreshPrefix = "wmcpr_"
+	// accessTTL is how long a token from sign-in works before the client
+	// renews it with its refresh token.
+	accessTTL = time.Hour
+	// codeTTL is how long the client has to exchange an approval for tokens.
+	codeTTL = 5 * time.Minute
+)
+
+// Client is an MCP client that registered itself.
+type Client struct {
+	ID           string
+	Name         string
+	RedirectURIs []string
+}
+
+// RegisterClient records a new client and returns its ID.
+func (s *Store) RegisterClient(ctx context.Context, name string, redirectURIs []string) (string, error) {
+	id := newSecret(clientPrefix)[:len(clientPrefix)+22] // 128 bits: an ID, not a secret
+	_, err := s.db.ExecContext(ctx,
+		`INSERT INTO mcp_clients (client_id, name, redirect_uris) VALUES ($1, $2, $3)`, id, name, pq.Array(redirectURIs))
+	return id, err
+}
+
+// Client returns a registered client, or db.ErrNotFound.
+func (s *Store) Client(ctx context.Context, id string) (Client, error) {
+	c := Client{ID: id}
+	err := s.db.QueryRowContext(ctx, `SELECT name, redirect_uris FROM mcp_clients WHERE client_id = $1`, id).
+		Scan(&c.Name, pq.Array(&c.RedirectURIs))
+	if errors.Is(err, sql.ErrNoRows) {
+		return Client{}, db.ErrNotFound
+	}
+	return c, err
+}
+
+// CreateCode records the user's approval of a client and returns the code
+// the client exchanges for tokens. challenge is the PKCE S256 challenge.
+func (s *Store) CreateCode(ctx context.Context, userID int64, clientID, redirectURI, challenge string) (string, error) {
+	var n int
+	if err := s.db.QueryRowContext(ctx, `SELECT count(*) FROM mcp_tokens WHERE user_id = $1`, userID).Scan(&n); err != nil {
+		return "", err
+	}
+	if n >= maxTokens {
+		return "", errTooMany
+	}
+	if _, err := s.db.ExecContext(ctx, `DELETE FROM mcp_auth_codes WHERE expires_at < now()`); err != nil {
+		return "", err
+	}
+	code := newSecret(codePrefix)
+	_, err := s.db.ExecContext(ctx,
+		`INSERT INTO mcp_auth_codes (code_hash, client_id, user_id, redirect_uri, code_challenge, expires_at)
+		 VALUES ($1, $2, $3, $4, $5, now() + $6 * interval '1 second')`,
+		hash(code), clientID, userID, redirectURI, challenge, codeTTL.Seconds())
+	return code, err
+}
+
+// grant is an approval taken back from the database: who approved which
+// client, and what the client must prove.
+type grant struct {
+	clientID, redirectURI, challenge string
+	userID                           int64
+}
+
+// TakeCode returns the approval behind code and deletes it, so it is used
+// at most once. It returns db.ErrNotFound if the code is unknown or expired.
+func (s *Store) TakeCode(ctx context.Context, code string) (grant, error) {
+	var g grant
+	err := s.db.QueryRowContext(ctx,
+		`DELETE FROM mcp_auth_codes WHERE code_hash = $1 AND expires_at > now()
+		 RETURNING client_id, user_id, redirect_uri, code_challenge`, hash(code)).
+		Scan(&g.clientID, &g.userID, &g.redirectURI, &g.challenge)
+	if errors.Is(err, sql.ErrNoRows) {
+		return grant{}, db.ErrNotFound
+	}
+	return g, err
+}
+
+// Tokens is what the token endpoint hands a client.
+type Tokens struct {
+	Access, Refresh string
+}
+
+// Connect makes the tokens for a client the user approved. The connection
+// is listed in Settings under the client's name, like a token made by hand.
+func (s *Store) Connect(ctx context.Context, userID int64, c Client) (Tokens, error) {
+	t := Tokens{Access: newSecret(tokenPrefix), Refresh: newSecret(refreshPrefix)}
+	_, err := s.db.ExecContext(ctx,
+		`INSERT INTO mcp_tokens (token_hash, user_id, name, client_id, expires_at, refresh_hash)
+		 VALUES ($1, $2, $3, $4, now() + $5 * interval '1 second', $6)`,
+		hash(t.Access), userID, c.Name, c.ID, accessTTL.Seconds(), hash(t.Refresh))
+	return t, err
+}
+
+// Refresh swaps a client's refresh token for new tokens; the old ones stop
+// working. It returns db.ErrNotFound for an unknown refresh token, or one
+// that belongs to another client.
+func (s *Store) Refresh(ctx context.Context, clientID, refresh string) (Tokens, error) {
+	t := Tokens{Access: newSecret(tokenPrefix), Refresh: newSecret(refreshPrefix)}
+	res, err := s.db.ExecContext(ctx,
+		`UPDATE mcp_tokens SET token_hash = $1, refresh_hash = $2, expires_at = now() + $3 * interval '1 second'
+		 WHERE refresh_hash = $4 AND client_id = $5`,
+		hash(t.Access), hash(t.Refresh), accessTTL.Seconds(), hash(refresh), clientID)
+	if err != nil {
+		return Tokens{}, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return Tokens{}, db.ErrNotFound
+	}
+	return t, nil
 }

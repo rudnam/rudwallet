@@ -263,6 +263,15 @@ export interface MCPToken {
   last_used_at: string | null;
   /** The token itself, only in the answer that created it. */
   token?: string;
+  /** True for a connection made by signing in from the app, false for a token made here. */
+  signed_in?: boolean;
+}
+
+/** An MCP client asking to connect, for the Connect page. */
+export interface MCPClientInfo {
+  client_name: string;
+  /** Where the browser goes back to after the user answers. */
+  redirect_host: string;
 }
 
 /** An error response from the API; message is safe to show the user. */
@@ -401,6 +410,11 @@ export const api = {
   mcpTokens: () => request<MCPToken[]>('GET', '/api/mcp/tokens'),
   createMCPToken: (name: string) => request<MCPToken>('POST', '/api/mcp/tokens', { name }),
   deleteMCPToken: (id: number) => request<void>('DELETE', `/api/mcp/tokens/${id}`),
+  mcpClient: (clientId: string, redirectUri: string) =>
+    request<MCPClientInfo>('GET', `/api/mcp/authorize?${new URLSearchParams({ client_id: clientId, redirect_uri: redirectUri })}`),
+  /** Allows or denies a client; the answer says where to send the browser. */
+  mcpAuthorize: (r: { client_id: string; redirect_uri: string; code_challenge: string; state: string; allow: boolean }) =>
+    request<{ redirect_to: string }>('POST', '/api/mcp/authorize', r),
 
   importBudgetBakers: (csv: string) =>
     request<ImportResult>('POST', `/api/import/budgetbakers?tz_offset=${new Date().getTimezoneOffset()}`, csv, 'text/csv'),
