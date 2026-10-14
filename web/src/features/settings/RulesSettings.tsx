@@ -6,6 +6,7 @@ import { api, errorMessage, type Category, type Rules } from '../../api';
 import { href } from '../../router';
 import { useToast } from '../../toast';
 import { useWallet } from '../../wallet';
+import { t, tn, tx } from '../../i18n';
 
 export function RulesSettings() {
   const w = useWallet();
@@ -36,7 +37,7 @@ export function RulesSettings() {
   async function add(e: FormEvent) {
     e.preventDefault();
     const name = shop.trim();
-    await change(() => api.setPayeeRule(name, Number(shopCategory)), `${name} added`);
+    await change(() => api.setPayeeRule(name, Number(shopCategory)), t('{name} added', { name }));
     setShop('');
     setShopCategory('');
   }
@@ -46,9 +47,9 @@ export function RulesSettings() {
     <div className="stack loose">
       <div className="card stack">
         <p className="small">
-          When you confirm a payment from an email or a notification, its shop's category and its card's account are
-          remembered, and the next payment there is filled in for you. Payments at a shop's branches (a name that starts
-          with the shop's) share its category.
+          {t(
+            "When you confirm a payment from an email or a notification, its shop's category and its card's account are remembered, and the next payment there is filled in for you. Payments at a shop's branches (a name that starts with the shop's) share its category.",
+          )}
         </p>
         {error && (
           <p role="alert" className="error">
@@ -56,13 +57,15 @@ export function RulesSettings() {
           </p>
         )}
 
-        <h2>Shops</h2>
+        <h2>{t('Shops')}</h2>
         {rules === null ? (
-          <p className="muted">Loading…</p>
+          <p className="muted">{t('Loading…')}</p>
         ) : rules.payees.length === 0 ? (
-          <p className="muted small">No shops yet. Confirm a payment under <a href={href('review')}>To review</a>, or add one below.</p>
+          <p className="muted small">
+            {tx('No shops yet. Confirm a payment under {review}, or add one below.', { review: <a href={href('review')}>{t('To review')}</a> })}
+          </p>
         ) : (
-          <ul className="list rows" aria-label="Shops">
+          <ul className="list rows" aria-label={t('Shops')}>
             {rules.payees.map((r) => (
               <li key={r.key} className="row wrap rule-row" aria-label={r.payee}>
                 <span className="grow">
@@ -70,13 +73,13 @@ export function RulesSettings() {
                   <span className="muted small">{records(r.records)}</span>
                 </span>
                 <CategorySelect
-                  label={`Category for ${r.payee}`}
+                  label={t('Category for {name}', { name: r.payee })}
                   categories={w.categories}
                   value={String(r.category_id)}
-                  onChange={(id) => change(() => api.setPayeeRule(r.key, Number(id)), `${r.payee} changed`)}
+                  onChange={(id) => change(() => api.setPayeeRule(r.key, Number(id)), t('{name} changed', { name: r.payee }))}
                 />
-                <button type="button" className="link" onClick={() => change(() => api.deletePayeeRule(r.key), `${r.payee} forgotten`)}>
-                  Forget
+                <button type="button" className="link" onClick={() => change(() => api.deletePayeeRule(r.key), t('{name} forgotten', { name: r.payee }))}>
+                  {t('Forget')}
                 </button>
               </li>
             ))}
@@ -84,31 +87,31 @@ export function RulesSettings() {
         )}
 
         <form className="stack tight" onSubmit={add}>
-          <h3>Add a shop</h3>
+          <h3>{t('Add a shop')}</h3>
           <div className="row wrap rule-row">
             <input
               className="grow"
-              aria-label="Shop name"
-              placeholder="Shop name, e.g. ローソン"
+              aria-label={t('Shop name')}
+              placeholder={t('Shop name, e.g. ローソン')}
               value={shop}
               onChange={(e) => setShop(e.target.value)}
             />
-            <CategorySelect label="Category for the new shop" categories={w.categories} value={shopCategory} onChange={setShopCategory} />
+            <CategorySelect label={t('Category for the new shop')} categories={w.categories} value={shopCategory} onChange={setShopCategory} />
             <button type="submit" disabled={!shop.trim() || !shopCategory}>
-              Add
+              {t('Add')}
             </button>
           </div>
         </form>
       </div>
 
       <div className="card stack">
-        <h2>Cards</h2>
+        <h2>{t('Cards')}</h2>
         {rules === null ? (
-          <p className="muted">Loading…</p>
+          <p className="muted">{t('Loading…')}</p>
         ) : rules.cards.length === 0 ? (
-          <p className="muted small">No cards yet. A card is remembered when you confirm its first payment.</p>
+          <p className="muted small">{t('No cards yet. A card is remembered when you confirm its first payment.')}</p>
         ) : (
-          <ul className="list rows" aria-label="Cards">
+          <ul className="list rows" aria-label={t('Cards')}>
             {rules.cards.map((c) => (
               <li key={c.source} className="row wrap rule-row" aria-label={c.source}>
                 <span className="grow">
@@ -116,9 +119,9 @@ export function RulesSettings() {
                   <span className="muted small">{records(c.records)}</span>
                 </span>
                 <select
-                  aria-label={`Account for ${c.source}`}
+                  aria-label={t('Account for {name}', { name: c.source })}
                   value={c.account_id}
-                  onChange={(e) => change(() => api.setCardRule(c.source, Number(e.target.value)), `${c.source} changed`)}
+                  onChange={(e) => change(() => api.setCardRule(c.source, Number(e.target.value)), t('{name} changed', { name: c.source }))}
                 >
                   {accounts.map((a) => (
                     <option key={a.id} value={a.id}>
@@ -126,19 +129,20 @@ export function RulesSettings() {
                     </option>
                   ))}
                   {!accounts.some((a) => a.id === c.account_id) && (
-                    <option value={c.account_id}>{w.account(c.account_id)?.name ?? 'Archived account'}</option>
+                    <option value={c.account_id}>{w.account(c.account_id)?.name ?? t('Archived account')}</option>
                   )}
                 </select>
-                <button type="button" className="link" onClick={() => change(() => api.deleteCardRule(c.source), `${c.source} forgotten`)}>
-                  Forget
+                <button type="button" className="link" onClick={() => change(() => api.deleteCardRule(c.source), t('{name} forgotten', { name: c.source }))}>
+                  {t('Forget')}
                 </button>
               </li>
             ))}
           </ul>
         )}
         <p className="muted small">
-          A forgotten card's payments go to the account chosen under{' '}
-          <a href={href('settings', { section: 'email' })}>Email automation</a> until you confirm one elsewhere.
+          {tx("A forgotten card's payments go to the account chosen under {email} until you confirm one elsewhere.", {
+            email: <a href={href('settings', { section: 'email' })}>{t('Email automation')}</a>,
+          })}
         </p>
       </div>
     </div>
@@ -158,11 +162,11 @@ function CategorySelect({
 }) {
   return (
     <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>
-      {value === '' && <option value="">Pick a category</option>}
-      <optgroup label="Expenses">
+      {value === '' && <option value="">{t('Pick a category')}</option>}
+      <optgroup label={t('Expenses')}>
         {categories.filter((c) => c.kind === 'expense').map(option)}
       </optgroup>
-      <optgroup label="Income">
+      <optgroup label={t('Income')}>
         {categories.filter((c) => c.kind === 'income').map(option)}
       </optgroup>
     </select>
@@ -178,5 +182,5 @@ function option(c: Category) {
 }
 
 function records(n: number) {
-  return n === 1 ? '1 record' : `${n} records`;
+  return tn(n, '{n} record', '{n} records');
 }

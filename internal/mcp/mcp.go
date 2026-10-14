@@ -78,6 +78,9 @@ type newToken struct {
 }
 
 func (h *Handler) createToken(w http.ResponseWriter, r *http.Request) error {
+	if err := account.NotInDemo(r); err != nil {
+		return err
+	}
 	var in struct {
 		Name string `json:"name"`
 	}

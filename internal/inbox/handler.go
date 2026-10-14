@@ -58,7 +58,8 @@ func (h *Handler) view(r *http.Request, token string) (inboxView, error) {
 		return inboxView{}, err
 	}
 	v := inboxView{AIEnabled: ai != nil}
-	if h.cfg.Domain != "" && h.cfg.Secret != "" {
+	// A demo gets no address: mail from outside never reaches it.
+	if h.cfg.Domain != "" && h.cfg.Secret != "" && !account.UserFrom(r).Demo {
 		v.Address = AddressPrefix + token + "@" + h.cfg.Domain
 	}
 	v.Emails, err = h.store.Recent(r.Context(), userID, 50)
@@ -79,6 +80,9 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (h *Handler) rotate(w http.ResponseWriter, r *http.Request) error {
+	if err := account.NotInDemo(r); err != nil {
+		return err
+	}
 	token, err := h.store.Rotate(r.Context(), account.UserFrom(r).ID)
 	if err != nil {
 		return err
@@ -122,6 +126,10 @@ func (h *Handler) receive(w http.ResponseWriter, r *http.Request, userID int64, 
 // upload lets the user send an email's source themselves, e.g. to test the
 // automation before setting up forwarding.
 func (h *Handler) upload(w http.ResponseWriter, r *http.Request) error {
+	// Not in a demo: reading an email can use the server's Claude key.
+	if err := account.NotInDemo(r); err != nil {
+		return err
+	}
 	raw, err := readEmail(w, r)
 	if err != nil {
 		return err

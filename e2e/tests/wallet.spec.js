@@ -130,7 +130,7 @@ test('import records exported from Wallet by BudgetBakers', async ({ page }) => 
   await expect(page.getByLabel('Choose Bar, cafe')).not.toBeChecked();
 
   await page.getByRole('button', { name: 'Import 4 records' }).click();
-  await expect(page.getByRole('status')).toContainText('Imported 4 records, created 1 accounts.');
+  await expect(page.getByRole('status')).toContainText('Imported 4 records, created 1 account.');
 
   // The same file again adds nothing.
   await page.getByLabel('CSV file', { exact: true }).setInputFiles(file);

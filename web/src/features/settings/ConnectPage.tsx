@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import { api, errorMessage, type MCPClientInfo } from '../../api';
 import { href, type Route } from '../../router';
+import { t, tx } from '../../i18n';
 
 /** Where a sign-in started at #/connect is kept while Google sign-in leaves the page. */
 const pendingKey = 'wallet.connect';
@@ -59,29 +60,30 @@ export function ConnectPage({ route, email }: { route: Route; email: string }) {
 
   return (
     <div className="card stack connect">
-      {!client && !error && <p className="muted">Loading…</p>}
+      {!client && !error && <p className="muted">{t('Loading…')}</p>}
       {client && (
         <>
-          <h1>Connect {client.client_name}</h1>
+          <h1>{t('Connect {app}', { app: client.client_name })}</h1>
           <p>
-            <strong>{client.client_name}</strong> is asking to reach your wallet, signed in as <strong>{email}</strong>. It will be able to:
+            {tx('{app} is asking to reach your wallet, signed in as {email}. It will be able to:', {
+              app: <strong>{client.client_name}</strong>,
+              email: <strong>{email}</strong>,
+            })}
           </p>
           <ul className="small connect-list">
-            <li>see your accounts, records and categories</li>
-            <li>change the category of records, and add categories</li>
+            <li>{t('see your accounts, records and categories')}</li>
+            <li>{t('change the category of records, and add categories')}</li>
           </ul>
           <p className="muted small">
-            It can't add or delete records, or see your password or API key. You can disconnect it at any time in Settings → Claude.
+            {t("It can't add or delete records, or see your password or API key. You can disconnect it at any time in Settings → Claude.")}
           </p>
-          <p className="muted small">
-            You'll go back to <strong>{client.redirect_host}</strong>.
-          </p>
+          <p className="muted small">{tx("You'll go back to {host}.", { host: <strong>{client.redirect_host}</strong> })}</p>
           <div className="row end">
             <button type="button" className="secondary" disabled={busy} onClick={() => answer(false)}>
-              Deny
+              {t('Deny')}
             </button>
             <button type="button" disabled={busy} onClick={() => answer(true)}>
-              Allow
+              {t('Allow')}
             </button>
           </div>
         </>
@@ -91,7 +93,7 @@ export function ConnectPage({ route, email }: { route: Route; email: string }) {
           <p role="alert" className="error">
             {error}
           </p>
-          <a href={href('home')}>Go to your wallet</a>
+          <a href={href('home')}>{t('Go to your wallet')}</a>
         </>
       )}
     </div>

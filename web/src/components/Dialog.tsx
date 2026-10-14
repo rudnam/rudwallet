@@ -1,5 +1,6 @@
 import { useEffect, useRef, type PointerEvent, type ReactNode } from 'react';
 import { Icon, icons } from './Icon';
+import { t } from '../i18n';
 
 // On phones the dialog is a bottom sheet: dragging its top (the grabber and
 // title bar) down far enough, or flicking it, closes it.
@@ -70,7 +71,7 @@ export function Dialog({ title, onClose, children }: { title: string; onClose: (
         <div className="dialog-grab" aria-hidden="true" />
         <div className="dialog-head">
           <h2>{title}</h2>
-          <button type="button" className="link" aria-label="Close" onClick={onClose}>
+          <button type="button" className="link" aria-label={t('Close')} onClick={onClose}>
             <Icon d={icons.close} className="glyph" />
           </button>
         </div>

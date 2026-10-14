@@ -14,15 +14,31 @@ import { StatsPage } from './features/stats/StatsPage';
 import { onAppLinks } from './native';
 import { initialNotice, signinErrors, type Notice } from './notice';
 import { href, navigate, useRoute } from './router';
+import { t, tx, type Key } from './i18n';
+import { LanguagePicker } from './features/settings/LanguageSettings';
 import { ToastProvider, useToast } from './toast';
 import { useWallet, WalletProvider } from './wallet';
 
 /** The app's name, shown in the sidebar and on the sign-in screen. Also in index.html and the manifest. */
 export const appName = 'Wallet';
 
+/**
+ * The introduction page's "Try the demo" opens /app/?demo. Read once when
+ * the app loads, then dropped from the address so a reload doesn't start
+ * another demo.
+ */
+const demoRequested = (() => {
+  const params = new URLSearchParams(location.search);
+  if (!params.has('demo')) return false;
+  params.delete('demo');
+  const qs = params.toString();
+  history.replaceState(null, '', location.pathname + (qs ? `?${qs}` : '') + location.hash);
+  return true;
+})();
+
 type Session =
-  | { status: 'loading' }
-  | { status: 'signed-out'; notice?: Notice | null }
+  | { status: 'loading'; demo?: boolean }
+  | { status: 'signed-out'; notice?: Notice | null; mode?: 'sign-up' }
   | { status: 'signed-in'; me: Me }
   | { status: 'error'; message: string };
 
@@ -37,7 +53,7 @@ export function App() {
       onAppLinks({
         onAuth: (result) => {
           if ('error' in result) {
-            setSession({ status: 'signed-out', notice: { message: signinErrors[result.error] ?? signinErrors.failed, ok: false } });
+            setSession({ status: 'signed-out', notice: { message: t(signinErrors[result.error] ?? signinErrors.failed), ok: false } });
             return;
           }
           api.appToken(result.code, result.verifier).then(
@@ -62,7 +78,12 @@ export function App() {
         // An app asking to connect waits for the user to sign in.
         rememberConnect();
         const connecting = location.hash.startsWith('#/connect?');
-        setSession({ status: 'signed-out', notice: initialNotice ?? (connecting ? connectNotice : null) });
+        // A demo never connects an app: that would reach outside it.
+        if (demoRequested && !connecting) {
+          startDemo();
+          return;
+        }
+        setSession({ status: 'signed-out', notice: initialNotice ?? (connecting ? connectNotice() : null) });
       });
   }, []);
 
@@ -70,6 +91,25 @@ export function App() {
   useEffect(() => {
     if (session.status === 'signed-in') resumeConnect();
   }, [session.status]);
+
+  /** Signs in to a new demo account full of sample data. */
+  async function startDemo() {
+    setSession({ status: 'loading', demo: true });
+    try {
+      const me = await api.startDemo();
+      navigate('home');
+      setSession({ status: 'signed-in', me });
+    } catch (err) {
+      setSession({ status: 'signed-out', notice: { message: errorMessage(err), ok: false } });
+    }
+  }
+
+  /** From a demo to the sign-up form. Signing out deletes the demo. */
+  async function leaveDemo() {
+    await api.signOut();
+    navigate('home');
+    setSession({ status: 'signed-out', mode: 'sign-up' });
+  }
 
   async function signOut() {
     await api.signOut();
@@ -97,11 +137,12 @@ export function App() {
   if (session.status === 'signed-in') {
     return (
       <ToastProvider>
-        <WalletProvider>
+        <WalletProvider me={session.me}>
           <Shell
             me={session.me}
             onSignOut={signOut}
-            onDeleted={() => signedOut({ message: 'Your account and everything in it were deleted.', ok: true })}
+            onCreateAccount={leaveDemo}
+            onDeleted={() => signedOut({ message: t('Your account and everything in it were deleted.'), ok: true })}
           />
         </WalletProvider>
       </ToastProvider>
@@ -109,10 +150,10 @@ export function App() {
   }
   return (
     <main className="splash">
-      {session.status === 'loading' && <p className="muted">Loading…</p>}
+      {session.status === 'loading' && <p className="muted">{session.demo ? t('Setting up your demo…') : t('Loading…')}</p>}
       {session.status === 'error' && (
         <p role="alert" className="error">
-          Could not reach the server: {session.message}
+          {t('Could not reach the server: {error}', { error: session.message })}
         </p>
       )}
       {session.status === 'signed-out' && (
@@ -120,21 +161,28 @@ export function App() {
           <div className="auth-brand">
             <Logo />
             <span className="auth-name">{appName}</span>
-            <p>Your money, quietly kept in order.</p>
+            <p>{t('Your money, quietly kept in order.')}</p>
           </div>
-          <AuthForm key={session.notice?.message} notice={session.notice} onSignedIn={(me) => setSession({ status: 'signed-in', me })} />
+          <AuthForm
+            key={`${session.mode}-${session.notice?.message}`}
+            mode={session.mode}
+            notice={session.notice}
+            onSignedIn={(me) => setSession({ status: 'signed-in', me })}
+            onDemo={startDemo}
+          />
+          <LanguagePicker />
         </div>
       )}
     </main>
   );
 }
 
-const connectNotice: Notice = { message: 'Sign in to connect an app such as Claude to your wallet.', ok: true };
+const connectNotice = (): Notice => ({ message: t('Sign in to connect an app such as Claude to your wallet.'), ok: true });
 
 /** The notice the app opened with is shown once, not on every sign-in. */
 let noticeShown = false;
 
-const pages = [
+const pages: { page: string; label: Key; icon: string }[] = [
   { page: 'home', label: 'Home', icon: icons.home },
   { page: 'records', label: 'Records', icon: icons.records },
   { page: 'stats', label: 'Stats', icon: icons.stats },
@@ -146,7 +194,17 @@ const pages = [
 /** Pages outside the main navigation, and the entry they belong under. */
 const subpages: Record<string, string> = { organize: 'settings' };
 
-function Shell({ me, onSignOut, onDeleted }: { me: Me; onSignOut: () => void; onDeleted: () => void }) {
+function Shell({
+  me,
+  onSignOut,
+  onCreateAccount,
+  onDeleted,
+}: {
+  me: Me;
+  onSignOut: () => void;
+  onCreateAccount: () => void;
+  onDeleted: () => void;
+}) {
   const route = useRoute();
   const w = useWallet();
   const toast = useToast();
@@ -206,13 +264,13 @@ function Shell({ me, onSignOut, onDeleted }: { me: Me; onSignOut: () => void; on
 
   return (
     <div className="shell">
-      <nav className="nav" aria-label="Main">
+      <nav className="nav" aria-label={t('Main')}>
         <a className="nav-brand" href={href('home')}>
           <Logo />
           {appName}
         </a>
-        <button type="button" className="nav-add" aria-label="Add record" onClick={() => setAdding(true)}>
-          <Plus /> New record
+        <button type="button" className="nav-add" aria-label={t('Add record')} onClick={() => setAdding(true)}>
+          <Plus /> {t('New record')}
         </button>
         {pages.map((p) => (
           <a
@@ -222,26 +280,43 @@ function Shell({ me, onSignOut, onDeleted }: { me: Me; onSignOut: () => void; on
             aria-current={navPage === p.page ? 'page' : undefined}
           >
             <Icon d={p.icon} />
-            <span>{p.label}</span>
+            <span>{t(p.label)}</span>
             {p.page === 'review' && w.review_count > 0 && (
-              <span className="count" aria-label={`${w.review_count} to review`}>
+              <span className="count" aria-label={t('{n} to review', { n: w.review_count })}>
                 {w.review_count}
               </span>
             )}
           </a>
         ))}
-        <span className="nav-foot ellipsis" title={me.email}>
-          {me.email}
+        <span className="nav-foot ellipsis" title={me.demo ? undefined : me.email}>
+          {me.demo ? t('Demo') : me.email}
         </span>
       </nav>
       <main className="page" key={`${route.page}-${version}`}>
+        {me.demo && <DemoBanner onCreateAccount={onCreateAccount} />}
         {me.confirm_email && <ConfirmEmail email={me.email} />}
         {page}
       </main>
-      <button type="button" className="fab" aria-label="Add record" onClick={() => setAdding(true)}>
+      <button type="button" className="fab" aria-label={t('Add record')} onClick={() => setAdding(true)}>
         <Plus />
       </button>
       {adding && <TransactionForm onClose={() => setAdding(false)} onSaved={() => setVersion((v) => v + 1)} />}
+    </div>
+  );
+}
+
+/** In a demo: what this is, and the way to an account of one's own. */
+function DemoBanner({ onCreateAccount }: { onCreateAccount: () => void }) {
+  return (
+    <div className="notice demo-banner" role="note">
+      <Icon d={icons.spark} className="inline-icon" />
+      <span className="grow">
+        <strong>{t('This is a demo with sample data.')}</strong>{' '}
+        {t('Change anything you like: nobody else sees it, and it’s deleted within a day.')}
+      </span>
+      <button type="button" className="secondary" onClick={onCreateAccount}>
+        {t('Create your account')}
+      </button>
     </div>
   );
 }
@@ -262,20 +337,14 @@ function ConfirmEmail({ email }: { email: string }) {
     <div className="notice confirm-email">
       <Icon d={icons.mail} className="inline-icon" />
       <span className="grow">
-        {state === 'sent' ? (
-          <>
-            Sent. Check your inbox at <strong>{email}</strong>.
-          </>
-        ) : (
-          <>
-            Confirm your email: open the link we sent to <strong>{email}</strong>.
-          </>
-        )}
+        {state === 'sent'
+          ? tx('Sent. Check your inbox at {email}.', { email: <strong>{email}</strong> })
+          : tx('Confirm your email: open the link we sent to {email}.', { email: <strong>{email}</strong> })}
         {state !== 'idle' && state !== 'sending' && state !== 'sent' && <span className="error block small">{state}</span>}
       </span>
       {state !== 'sent' && (
         <button type="button" className="link" disabled={state === 'sending'} onClick={resend}>
-          Send again
+          {t('Send again')}
         </button>
       )}
     </div>

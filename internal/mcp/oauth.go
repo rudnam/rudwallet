@@ -286,6 +286,10 @@ func (h *Handler) describeRequest(w http.ResponseWriter, r *http.Request) error 
 
 // decide records the user's answer and says where to send the browser.
 func (h *Handler) decide(w http.ResponseWriter, r *http.Request) error {
+	// A demo connects nothing: the app would reach a wallet about to vanish.
+	if err := account.NotInDemo(r); err != nil {
+		return err
+	}
 	var in struct {
 		ClientID      string `json:"client_id"`
 		RedirectURI   string `json:"redirect_uri"`

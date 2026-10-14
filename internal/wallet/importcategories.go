@@ -57,8 +57,9 @@ type ImportChoices struct {
 }
 
 // MissingDefaults lists the default categories the user doesn't have (by
-// name, ignoring case), which they can add. Users who signed up before a
-// default was added never got it.
+// name, ignoring case, in English or Japanese), named in the wallet's
+// language, which they can add. Users who signed up before a default was
+// added never got it.
 func (s *Store) MissingDefaults(ctx context.Context, userID int64) ([]Category, error) {
 	cats, err := s.Categories(ctx, userID)
 	if err != nil {
@@ -69,8 +70,10 @@ func (s *Store) MissingDefaults(ctx context.Context, userID int64) ([]Category, 
 
 func missingDefaults(cats []Category) []Category {
 	out := []Category{}
+	lang := walletLanguage(cats)
 	for _, d := range defaultCategories {
 		if findCategory(cats, d.Kind, d.Name) == nil {
+			d.Name = localName(d.Name, lang)
 			out = append(out, d)
 		}
 	}
@@ -78,10 +81,11 @@ func missingDefaults(cats []Category) []Category {
 }
 
 // findCategory returns the ID of the category of the kind with the name,
-// ignoring case.
+// ignoring case. A default category's name also finds it in the other
+// language: "Food & Drinks" finds 食費.
 func findCategory(cats []Category, kind, name string) *int64 {
 	for _, c := range cats {
-		if c.Kind == kind && strings.EqualFold(c.Name, name) {
+		if c.Kind == kind && (strings.EqualFold(c.Name, name) || sameDefault(c.Name, name)) {
 			return &c.ID
 		}
 	}
@@ -93,7 +97,7 @@ func suggestNamed(cats []Category, g *ImportCategory, name string) {
 	if id := findCategory(cats, g.Kind, name); id != nil {
 		g.CategoryID = id
 	} else {
-		g.NewName = name
+		g.NewName = localName(name, walletLanguage(cats))
 	}
 }
 
@@ -128,8 +132,9 @@ func (ic *importCategories) named(kind, name string) (int64, error) {
 	}
 	c := Category{Name: name, Kind: kind, Color: "#66706b"}
 	for _, d := range defaultCategories {
-		if d.Kind == kind && strings.EqualFold(d.Name, name) {
+		if d.Kind == kind && (strings.EqualFold(d.Name, name) || sameDefault(d.Name, name)) {
 			c = d
+			c.Name = name // as the person chose it, e.g. in Japanese
 		}
 	}
 	err := ic.tx.QueryRowContext(ic.ctx,
