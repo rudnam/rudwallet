@@ -382,6 +382,10 @@ li.record:hover:not(:disabled) { background: none; } /* a row to read, not to ta
 .list.rows li + li { border-top: 1px solid var(--border); }
 .review-item .review-amount { font-family: var(--serif); font-size: 1.4rem; font-weight: 400; }
 .review-item select { flex: 1; min-width: 0; }
+.confirm-all > .grow { min-width: 12rem; }
+.rule-row > .grow { min-width: 10rem; }
+.rule-row select { min-width: 0; max-width: 14rem; }
+.rule-row input.grow { min-width: 10rem; }
 .review-item .row.wrap { flex-wrap: nowrap; }
 .email-body { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.8rem; max-height: 300px; overflow: auto; background: var(--sunken); padding: 10px; border-radius: 8px; }
 
