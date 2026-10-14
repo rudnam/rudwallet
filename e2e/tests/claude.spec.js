@@ -24,7 +24,7 @@ test('Claude sorts uncategorised records with the user’s key', async ({ page }
   await uncategorized(page);
 
   // Without a key, sorting points to Settings.
-  await page.goto('/#/organize');
+  await page.goto('/app/#/organize');
   await expect(page.getByRole('heading', { name: 'Add your Claude key first.' })).toBeVisible();
   await page.getByRole('link', { name: 'Add it in Settings' }).click();
 
@@ -56,17 +56,17 @@ test('Claude sorts uncategorised records with the user’s key', async ({ page }
   await expect(page.getByText('You left 1 payee as they were.')).toBeVisible();
 
   // Only Mystery Ltd is left without a category.
-  await page.goto('/#/records?category=none');
+  await page.goto('/app/#/records?category=none');
   await expect(page.getByRole('button', { name: /Mystery Ltd/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /セブン/ })).toHaveCount(0);
-  await page.goto(`/#/records?category=${await categoryId(page, 'Shopping')}`);
+  await page.goto(`/app/#/records?category=${await categoryId(page, 'Shopping')}`);
   await expect(page.getByRole('button', { name: /スギ薬局/ })).toBeVisible();
 });
 
 test('an MCP client connects with a token made in Settings', async ({ page }) => {
   await signUp(page);
   await uncategorized(page);
-  await page.goto('/#/settings?section=claude');
+  await page.goto('/app/#/settings?section=claude');
   await expect(page.getByTestId('mcp-url')).toHaveText(/\/mcp$/);
 
   await page.getByLabel('New connection').fill('Claude Desktop');

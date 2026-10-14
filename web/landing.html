@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wallet: your money, quietly kept in order</title>
+<meta name="description" content="Track accounts, budgets and spending. Payment emails and Google Wallet notifications become records for you.">
+<meta name="theme-color" content="#f5f3ec" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1f1e1c" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<!-- The site's introduction, served at /. The app itself is at /app/ (index.html). -->
+<script type="module" src="/src/landing.ts"></script>
+</head>
+<body class="landing">
+<header class="landing-bar">
+  <a class="landing-brand" href="/">
+    <svg class="logo" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#c96442"/><rect x="112" y="160" width="288" height="200" rx="36" fill="#f5f3ec"/><path d="M112 212h288" stroke="#c96442" stroke-width="22"/><circle cx="338" cy="292" r="20" fill="#c96442"/></svg>
+    Wallet
+  </a>
+  <a class="button secondary" href="/app/">Sign in</a>
+</header>
+
+<main>
+  <section class="landing-hero">
+    <div class="landing-pitch">
+      <h1>Your money, quietly kept in order.</h1>
+      <p class="landing-lead">Payment emails and notifications become records for you.</p>
+      <div><a class="button" href="/app/">Get started</a></div>
+    </div>
+
+    <!-- A still of the app's overview, drawn with the app's own styles. -->
+    <div class="landing-still" aria-hidden="true">
+      <div class="card stack tight">
+        <span class="eyebrow">Total balance</span>
+        <span class="landing-figure">¥312,480</span>
+      </div>
+      <div class="card landing-review">
+        <span class="landing-dot"></span>
+        <div class="grow">
+          <strong>IKEAオンライン</strong>
+          <span class="muted small block">From an email · to review</span>
+        </div>
+        <span class="landing-amount">−¥4,994</span>
+      </div>
+      <div class="card stack tight">
+        <div class="row"><span class="grow">Eating out</span><span class="muted small">¥3,679 of ¥5,000</span></div>
+        <div class="landing-meter"><span></span></div>
+      </div>
+    </div>
+  </section>
+
+  <ul class="landing-features" aria-label="Features">
+    <li>Budgets</li>
+    <li>Stats and trends</li>
+    <li>CSV import</li>
+    <li>Android widgets</li>
+  </ul>
+</main>
+</body>
+</html>

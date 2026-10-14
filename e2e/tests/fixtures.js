@@ -38,7 +38,7 @@ async function signUp(page) {
   base.expect(res.status(), await res.text()).toBe(201);
   // Open the emailed link, so screens look as they do for a settled account.
   await page.request.get(await confirmationLink(page.request, email));
-  await page.goto('/');
+  await page.goto('/app/');
   await base.expect(page.getByText('Total balance')).toBeVisible();
   return email;
 }

@@ -93,13 +93,13 @@ func TestEmailConfirmation(t *testing.T) {
 		t.Fatal("resend sent the same link")
 	}
 	// The link works from any browser, signed in or not.
-	if to := newClient(t, ts).open(first); to != "/?email=expired" {
+	if to := newClient(t, ts).open(first); to != "/app/?email=expired" {
 		t.Errorf("old link went to %q", to)
 	}
-	if to := newClient(t, ts).open(second); to != "/?email=confirmed" {
+	if to := newClient(t, ts).open(second); to != "/app/?email=confirmed" {
 		t.Errorf("new link went to %q", to)
 	}
-	if to := newClient(t, ts).open(second); to != "/?email=expired" {
+	if to := newClient(t, ts).open(second); to != "/app/?email=expired" {
 		t.Errorf("used link went to %q", to)
 	}
 	if c.do("GET", "/api/me", nil, &got); got.ConfirmEmail {

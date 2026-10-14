@@ -1,0 +1,31 @@
+/* The introduction page (landing.html). Tokens, fonts and buttons come from
+   styles.css, so it looks like the app. */
+.landing { padding: 0; }
+.landing main, .landing-bar { max-width: 1040px; margin: 0 auto; padding-left: calc(var(--space) * 1.5); padding-right: calc(var(--space) * 1.5); }
+.landing-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 20px; padding-bottom: 20px; }
+.landing-brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-family: var(--serif); font-size: 1.35rem; }
+.landing-brand .logo { width: 36px; height: 36px; border-radius: 10px; }
+
+.landing-hero { display: grid; grid-template-columns: 1.15fr 1fr; gap: 48px; align-items: center; padding: 48px 0 40px; }
+.landing-pitch { display: flex; flex-direction: column; gap: 20px; }
+.landing-pitch h1 { font-size: clamp(2.25rem, 5vw, 3.5rem); line-height: 1.08; }
+.landing-lead { font-size: 1.125rem; color: var(--muted); margin: 0; max-width: 34em; }
+
+.landing-still { display: flex; flex-direction: column; gap: 12px; transform: rotate(-1.5deg); }
+.landing-figure { font-family: var(--serif); font-size: 2rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.landing-review { display: flex; align-items: center; gap: 12px; border-color: var(--accent); }
+.landing-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex: none; }
+.landing-amount { font-family: var(--serif); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.landing-meter { height: 8px; border-radius: 4px; background: var(--sunken); overflow: hidden; }
+.landing-meter span { display: block; width: 74%; height: 100%; background: var(--chart); border-radius: 4px; }
+
+.landing-features { list-style: none; margin: 0; padding: 0 0 64px; display: flex; flex-wrap: wrap; gap: 10px; }
+.landing-features li { padding: 8px 16px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-size: 0.95rem; }
+
+@media (max-width: 860px) {
+  .landing-hero { grid-template-columns: 1fr; gap: 36px; padding: 24px 0 48px; }
+  .landing-still { transform: none; }
+}
+@media (max-width: 560px) {
+  .landing main, .landing-bar { padding-left: var(--space); padding-right: var(--space); }
+}

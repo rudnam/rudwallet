@@ -34,9 +34,12 @@ func TestServesWebApp(t *testing.T) {
 		path, wantBody, wantCache string
 		wantStatus                int
 	}{
-		{"/", "<title>App</title>", "no-cache", 200},
-		{"/records", "<title>App</title>", "no-cache", 200}, // client-side route
-		{"/assets", "<title>App</title>", "no-cache", 200},  // no directory listings
+		{"/", "<title>Landing</title>", "no-cache", 200},
+		{"/app/", "<title>App</title>", "no-cache", 200},
+		{"/app/records", "<title>App</title>", "no-cache", 200}, // client-side route
+		{"/app?email=confirmed", "<title>App</title>", "no-cache", 200},
+		{"/records", "404", "no-cache", 404},
+		{"/assets", "404", "no-cache", 404}, // no directory listings
 		{"/assets/app-1.js", "console.log", "immutable", 200},
 		{"/assets/missing.js", "404", "", 404},
 	}

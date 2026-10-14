@@ -90,7 +90,7 @@ func TestGoogleSignIn(t *testing.T) {
 
 	// A new person gets an account.
 	c := newClient(t, ts)
-	if to := googleSignIn(t, c, g, "sub-1", "Grace@Gmail.com"); to != "/" {
+	if to := googleSignIn(t, c, g, "sub-1", "Grace@Gmail.com"); to != "/app/" {
 		t.Fatalf("first sign-in landed on %q", to)
 	}
 	var me struct{ Email string }
@@ -117,7 +117,7 @@ func TestGoogleSignIn(t *testing.T) {
 	pw.signup("ada@gmail.com")
 	pw.open(f.lastLink(t, "ada@gmail.com"))
 	viaGoogle := newClient(t, ts)
-	if to := googleSignIn(t, viaGoogle, g, "sub-2", "ada@gmail.com"); to != "/" {
+	if to := googleSignIn(t, viaGoogle, g, "sub-2", "ada@gmail.com"); to != "/app/" {
 		t.Fatalf("linking landed on %q", to)
 	}
 	if viaGoogle.do("GET", "/api/me", nil, &me); me.Email != "ada@gmail.com" {
@@ -127,7 +127,7 @@ func TestGoogleSignIn(t *testing.T) {
 		t.Errorf("password after linking: %d", code)
 	}
 	// ...but a different Google account with that email can't take it over.
-	if to := googleSignIn(t, newClient(t, ts), g, "sub-3", "ada@gmail.com"); to != "/?signin_error=linked" {
+	if to := googleSignIn(t, newClient(t, ts), g, "sub-3", "ada@gmail.com"); to != "/app/?signin_error=linked" {
 		t.Errorf("second Google account landed on %q", to)
 	}
 
@@ -175,15 +175,15 @@ func TestGoogleSignInRefusals(t *testing.T) {
 		return resp.Header.Get("Location")
 	}
 	// Without the cookie from the start, a callback is refused.
-	if to := callback("code=the-code&state=guess"); to != "/?signin_error=expired" {
+	if to := callback("code=the-code&state=guess"); to != "/app/?signin_error=expired" {
 		t.Errorf("forged callback landed on %q", to)
 	}
-	if to := callback("error=access_denied"); to != "/?signin_error=cancelled" {
+	if to := callback("error=access_denied"); to != "/app/?signin_error=cancelled" {
 		t.Errorf("cancel landed on %q", to)
 	}
 	// Sign-up is closed, so a new Google account gets no account.
 	c.http.CheckRedirect = nil
-	if to := googleSignIn(t, c, g, "sub-9", "new@gmail.com"); to != "/?signin_error=closed" {
+	if to := googleSignIn(t, c, g, "sub-9", "new@gmail.com"); to != "/app/?signin_error=closed" {
 		t.Errorf("closed sign-up landed on %q", to)
 	}
 	if code := c.do("GET", "/api/me", nil, nil); code != 401 {

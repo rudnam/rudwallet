@@ -42,7 +42,7 @@ test('add, edit and delete a record', async ({ page }) => {
 
 test('a new account, a transfer, and a budget that runs over', async ({ page }) => {
   await signUp(page);
-  await page.goto('/#/settings');
+  await page.goto('/app/#/settings');
   await page.getByRole('link', { name: /Accounts/ }).click();
   await page.getByRole('button', { name: 'Add account' }).click();
   const acct = page.getByRole('dialog', { name: 'New account' });
@@ -60,7 +60,7 @@ test('a new account, a transfer, and a budget that runs over', async ({ page }) 
   await rec.getByLabel('From').selectOption({ label: 'MUFG' });
   await rec.getByLabel('To').selectOption({ label: 'Cash' });
   await rec.getByRole('button', { name: 'Save' }).click();
-  await page.goto('/#/');
+  await page.goto('/app/#/');
   const accounts = page.getByRole('list', { name: 'Accounts' });
   await expect(accounts.getByRole('listitem').filter({ hasText: 'MUFG' })).toContainText('¥40,000');
   await expect(accounts.getByRole('listitem').filter({ hasText: 'Cash' })).toContainText('¥10,000');
@@ -85,22 +85,22 @@ test('a new account, a transfer, and a budget that runs over', async ({ page }) 
 
 test('the currency can change until there are records', async ({ page }) => {
   await signUp(page);
-  await page.goto('/#/settings?section=general');
+  await page.goto('/app/#/settings?section=general');
   await page.getByLabel('Main currency').selectOption('USD');
-  await page.goto('/#/');
+  await page.goto('/app/#/');
   await expect(page.locator('.hero-figure')).toHaveText('$0.00');
   await page.getByRole('button', { name: 'Add record' }).click();
   await page.getByRole('dialog', { name: 'New record' }).getByLabel('Amount (USD)').fill('12.50');
   await page.getByRole('dialog', { name: 'New record' }).getByRole('button', { name: 'Save' }).click();
   await expect(page.locator('.hero-figure')).toHaveText('-$12.50');
-  await page.goto('/#/settings?section=general');
+  await page.goto('/app/#/settings?section=general');
   await page.getByLabel('Main currency').selectOption('EUR');
   await expect(page.getByRole('alert')).toHaveText("the currency can't change once you have records");
 });
 
 test('import records exported from Wallet by BudgetBakers', async ({ page }) => {
   await signUp(page);
-  await page.goto('/#/settings?section=import');
+  await page.goto('/app/#/settings?section=import');
   const now = new Date();
   const p = (n) => String(n).padStart(2, '0');
   const today = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())} 08:00:00`;
@@ -119,7 +119,7 @@ test('import records exported from Wallet by BudgetBakers', async ({ page }) => 
   await page.getByRole('link', { name: /Accounts/ }).click();
   await expect(page.getByRole('list', { name: 'Accounts' })).toContainText('Rakuten Bank');
 
-  await page.goto('/#/records');
+  await page.goto('/app/#/records');
   await expect(page.getByRole('button', { name: /Aeon, -¥2,480/ })).toBeVisible();
 });
 
@@ -171,7 +171,7 @@ test('a new user is walked through setting up, and daily adding remembers things
 
 test('categories wear line icons, and a new one can pick its own', async ({ page }) => {
   await signUp(page);
-  await page.goto('/#/settings?section=categories');
+  await page.goto('/app/#/settings?section=categories');
   await page.getByRole('button', { name: 'Add category' }).click();
   const dialog = page.getByRole('dialog', { name: 'New category' });
   await dialog.getByLabel('Name').fill('Cafés');
@@ -193,7 +193,7 @@ test('import PayPay transaction history', async ({ page }) => {
   const emailed = { kind: 'expense', amount: 1280, account_id: card.id, occurred_at: `${day.replaceAll('/', '-')}T12:05:00+09:00`, payee: 'SEVEN-ELEVEN' };
   expect((await page.request.post('/api/transactions', { data: emailed })).status()).toBe(201);
 
-  await page.goto('/#/settings?section=import');
+  await page.goto('/app/#/settings?section=import');
   await page.getByLabel('PayPay CSV file').setInputFiles({ name: 'paypay.csv', mimeType: 'text/csv', buffer: Buffer.from(payPayCsv(day)) });
   await expect(page.getByText(/^3 payments/)).toBeVisible();
   await expect(page.getByLabel(/^PayPayカード/)).toHaveValue(String(card.id));
@@ -202,7 +202,7 @@ test('import PayPay transaction history', async ({ page }) => {
   await page.getByRole('button', { name: 'Import 3 payments' }).click();
   await expect(page.getByRole('status')).toContainText('Imported 2 records, skipped 1 already recorded from emails or by hand, created 2 accounts');
 
-  await page.goto('/#/records');
+  await page.goto('/app/#/records');
   await expect(page.getByRole('button', { name: /ローソン, -¥1,200/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /SEVEN-ELEVEN/ })).toHaveCount(1);
 });
@@ -227,7 +227,7 @@ test('choose records to recategorise, move and delete them together', async ({ p
   for (const [payee, kind] of [['Bakery', 'expense'], ['Cafe', 'expense'], ['Kiosk', 'expense'], ['Refund', 'income']])
     expect((await api.post('/api/transactions', { data: { kind, amount: 500, account_id: cash, occurred_at: at, payee } })).status()).toBe(201);
 
-  await page.goto('/#/records');
+  await page.goto('/app/#/records');
   await page.getByRole('button', { name: 'Select' }).click();
   const bar = page.getByRole('region', { name: 'Chosen records' });
   await expect(bar).toContainText('Choose records');
@@ -288,7 +288,7 @@ test('a page seen before shows at once while it reloads, unless something change
 
   // A search seen before, then an edit made elsewhere: the search waits for
   // the new amount instead of showing the old one.
-  await page.goto('/#/records?q=ramen');
+  await page.goto('/app/#/records?q=ramen');
   await expect(page.getByRole('button', { name: /Ramen Taro, -¥1,200/ })).toBeVisible();
   await nav.getByRole('link', { name: 'Home' }).click();
   await latest.getByRole('button', { name: /Ramen Taro/ }).click();
@@ -297,7 +297,7 @@ test('a page seen before shows at once while it reloads, unless something change
   await edit.getByRole('button', { name: 'Save' }).click();
   await expect(latest).toContainText('-¥980');
   hold();
-  await page.goto('/#/records?q=ramen');
+  await page.goto('/app/#/records?q=ramen');
   await expect(page.getByText('Loading…')).toBeVisible();
   await expect(page.getByText('-¥1,200')).toHaveCount(0);
   release();

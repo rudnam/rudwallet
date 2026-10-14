@@ -68,6 +68,10 @@ for (const [name, viewport] of [
     };
 
     await page.goto('/');
+    await expect(page.getByRole('list', { name: 'Features' })).toBeVisible();
+    await shot('0-landing');
+
+    await page.goto('/app/');
     await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Continue with Google' })).toBeVisible();
     await shot('1-sign-in');
@@ -87,18 +91,18 @@ for (const [name, viewport] of [
     await expect(page.getByRole('list', { name: 'Spending by category' })).toBeVisible();
     await shot('2-overview');
 
-    await page.goto('/#/stats');
+    await page.goto('/app/#/stats');
     await expect(page.getByLabel('Trends')).toBeVisible();
     await shot('2-stats');
     await page.getByText('Year', { exact: true }).click();
     await expect(page.getByRole('img', { name: 'Spending per month' })).toBeVisible();
     await shot('2-stats-year');
 
-    await page.goto('/#/review');
+    await page.goto('/app/#/review');
     await expect(page.getByRole('listitem', { name: 'IKEAオンライン' })).toBeVisible();
     await shot('3-review');
 
-    await page.goto('/#/records');
+    await page.goto('/app/#/records');
     await expect(page.getByRole('button', { name: /Rent/ })).toBeVisible();
     await shot('4-records');
     await page.getByRole('button', { name: 'Select' }).click();
@@ -112,11 +116,11 @@ for (const [name, viewport] of [
     await shot('5-new-record');
     await page.keyboard.press('Escape');
 
-    await page.goto('/#/budgets');
+    await page.goto('/app/#/budgets');
     await expect(page.getByRole('list', { name: 'Budgets' })).toBeVisible();
     await shot('6-budgets');
 
-    await page.goto('/#/settings');
+    await page.goto('/app/#/settings');
     await expect(page.getByRole('navigation', { name: 'Settings sections' })).toBeVisible();
     await shot('7-settings');
 
@@ -124,13 +128,13 @@ for (const [name, viewport] of [
     await expect(page.getByTestId('inbox-address')).toBeVisible();
     await shot('8-settings-email');
 
-    await page.goto('/#/settings?section=accounts');
+    await page.goto('/app/#/settings?section=accounts');
     await page.getByRole('button', { name: 'Edit account PayPay Card' }).click();
     await expect(page.getByRole('dialog', { name: 'Edit account' })).toBeVisible();
     await shot('9-edit-account');
     await page.keyboard.press('Escape');
 
-    await page.goto('/#/settings?section=import');
+    await page.goto('/app/#/settings?section=import');
     const p = (n) => String(n).padStart(2, '0');
     const now = new Date();
     const csv = [
@@ -143,15 +147,15 @@ for (const [name, viewport] of [
     await expect(page.getByRole('button', { name: 'Import 3 payments' })).toBeVisible();
     await shot('10-import-paypay');
 
-    await page.goto('/#/settings?section=widgets');
+    await page.goto('/app/#/settings?section=widgets');
     await expect(page.getByRole('list', { name: 'Widgets' })).toBeVisible();
     await shot('10-settings-widgets');
 
-    await page.goto('/#/settings?section=notifications');
+    await page.goto('/app/#/settings?section=notifications');
     await expect(page.getByRole('list', { name: 'Recent notifications' })).toBeVisible();
     await shot('10-settings-notifications');
     // Claude: add a key (e2e/fake-claude.js accepts this one), connect an app, sort records.
-    await page.goto('/#/settings?section=claude');
+    await page.goto('/app/#/settings?section=claude');
     await expect(page.getByLabel('Anthropic API key')).toBeVisible();
     await shot('12-settings-claude');
     await page.getByLabel('Anthropic API key').fill('sk-ant-e2e-good-key-0000');
@@ -167,12 +171,12 @@ for (const [name, viewport] of [
     for (const [payee, amount] of [['セブン－イレブン 刈谷店', 540], ['セブン－イレブン 刈谷店', 312], ['スギ薬局 知立店', 1980], ['JR東海 定期', 15200], ['合同会社ミステリー', 3300]]) {
       await page.request.post('/api/transactions', { data: { kind: 'expense', amount, account_id: overview.accounts[0].id, occurred_at: new Date().toISOString(), payee } });
     }
-    await page.goto('/#/organize');
+    await page.goto('/app/#/organize');
     await page.getByRole('button', { name: 'Suggest categories' }).click();
     await expect(page.getByRole('list', { name: 'Suggested categories' }).getByRole('listitem')).toHaveCount(4);
     await shot('14-sort-records');
 
-    await page.goto('/#/settings');
+    await page.goto('/app/#/settings');
     await page.getByRole('button', { name: 'Delete account' }).click();
     await expect(page.getByRole('dialog', { name: 'Delete account' })).toBeVisible();
     await shot('11-delete-account');
