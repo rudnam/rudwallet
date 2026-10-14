@@ -6,11 +6,12 @@ import { formatDay, formatTime } from '../../money';
 import { Icon, icons } from '../../components/Icon';
 import { href } from '../../router';
 import { useWallet } from '../../wallet';
+import { serverText, t, tx, type Key } from '../../i18n';
 
 // Only the card's usage alerts: adverts and statements stay in Gmail.
 const gmailFilter = 'from:(paypay-card.co.jp) subject:(利用速報)';
 
-const statusText: Record<InboundEmail['status'], string> = {
+const statusText: Record<InboundEmail['status'], Key> = {
   payment: 'Recorded',
   ignored: 'Not a payment',
   unparsed: 'Needs you',
@@ -56,7 +57,7 @@ export function EmailSettings() {
   }
 
   async function newAddress() {
-    if (!confirm('Get a new address? Mail sent to the old one will be refused, so update your Gmail forwarding too.')) return;
+    if (!confirm(t('Get a new address? Mail sent to the old one will be refused, so update your Gmail forwarding too.'))) return;
     try {
       setInbox(await api.newAddress());
     } catch (err) {
@@ -77,64 +78,67 @@ export function EmailSettings() {
 
   return (
     <div className="card stack">
-      <p className="small">
-        Forward your payment emails here and each one becomes a record for you to confirm.
-      </p>
+      <p className="small">{t('Forward your payment emails here and each one becomes a record for you to confirm.')}</p>
 
       {inbox === null ? (
-        <p className="muted">Loading…</p>
+        <p className="muted">{t('Loading…')}</p>
       ) : inbox.address ? (
         <>
           <div className="address">
-            <span className="muted small">Your private forwarding address</span>
+            <span className="muted small">{t('Your private forwarding address')}</span>
             <code data-testid="inbox-address">{inbox.address}</code>
             <div className="row">
               <button type="button" onClick={() => copy(inbox.address, 'address')}>
-                {copied === 'address' ? 'Copied' : 'Copy address'}
+                {copied === 'address' ? t('Copied') : t('Copy address')}
               </button>
               <button type="button" className="link" onClick={newAddress}>
-                Get a new address
+                {t('Get a new address')}
               </button>
             </div>
           </div>
           <ol className="steps small">
             <li>
-              In Gmail on a computer, open <strong>Settings → See all settings → Forwarding and POP/IMAP</strong>, choose{' '}
-              <strong>Add a forwarding address</strong> and paste your address.
+              {tx('In Gmail on a computer, open {menu}, choose {add} and paste your address.', {
+                menu: <strong>{t('Settings → See all settings → Forwarding and POP/IMAP')}</strong>,
+                add: <strong>{t('Add a forwarding address')}</strong>,
+              })}
             </li>
             <li>
-              Gmail sends a confirmation to it. It shows up under <a href={href('review')}>To review</a> with a{' '}
-              <strong>Confirm forwarding</strong> button. Leave Gmail's own forwarding <strong>off</strong>: only the
-              filter below should forward.
+              {tx("Gmail sends a confirmation to it. It shows up under {review} with a {button} button. Leave Gmail's own forwarding {off}: only the filter below should forward.", {
+                review: <a href={href('review')}>{t('To review')}</a>,
+                button: <strong>{t('Confirm forwarding')}</strong>,
+                off: <strong>{t('off')}</strong>,
+              })}
             </li>
             <li>
-              Search Gmail for (tap to copy):
+              {t('Search Gmail for (tap to copy):')}
               <button type="button" className="code-button" onClick={() => copy(gmailFilter, 'filter')}>
                 <code>{gmailFilter}</code> <Icon d={copied === 'filter' ? icons.check : icons.copy} className="inline-icon" />
               </button>
-              Open the search options (☰), click <strong>Create filter</strong>, tick{' '}
-              <strong>Forward it to</strong>, and pick your address.
+              {tx('Open the search options (☰), click {create}, tick {forward}, and pick your address.', {
+                create: <strong>{t('Create filter')}</strong>,
+                forward: <strong>{t('Forward it to')}</strong>,
+              })}
             </li>
           </ol>
           <p className="small muted">
-            Each PayPay Card usage alert (利用速報) becomes a record, including online and tap-to-pay purchases. If other
-            PayPay Card emails arrive, purchase verifications and monthly statements are recognised and skipped, so
-            nothing is counted twice.
+            {t(
+              'Each PayPay Card usage alert (利用速報) becomes a record, including online and tap-to-pay purchases. If other PayPay Card emails arrive, purchase verifications and monthly statements are recognised and skipped, so nothing is counted twice.',
+            )}{' '}
             {inbox.ai_enabled
-              ? ' Receipts from other shops are read by the AI reader, so you can forward those too.'
-              : ' Other senders need a rule; until then they wait for you under To review.'}
+              ? t('Receipts from other shops are read by the AI reader, so you can forward those too.')
+              : t('Other senders need a rule; until then they wait for you under To review.')}
             {!inbox.ai_enabled && (
               <>
                 {' '}
-                Or <a href={href('settings', { section: 'claude' })}>add your Claude key</a> and Claude reads them.
+                {tx('Or {add} and Claude reads them.', { add: <a href={href('settings', { section: 'claude' })}>{t('add your Claude key')}</a> })}
               </>
             )}
           </p>
         </>
       ) : (
         <p className="notice small">
-          Forwarding isn't switched on for this server yet (it needs an inbound mail domain; see docs/email.md). You can
-          still test with an email below.
+          {t("Forwarding isn't switched on for this server yet (it needs an inbound mail domain; see docs/email.md). You can still test with an email below.")}
         </p>
       )}
 
@@ -145,15 +149,15 @@ export function EmailSettings() {
             checked={autoConfirm}
             onChange={(e) => setSetting({ auto_confirm: e.target.checked })}
           />
-          Confirm payments automatically when the shop's category is already known
+          {t("Confirm payments automatically when the shop's category is already known")}
         </label>
         <label className="field">
-          Emailed payments go to
+          {t('Emailed payments go to')}
           <select
             value={w.settings.default_account_id ?? ''}
             onChange={(e) => setSetting({ default_account_id: e.target.value ? Number(e.target.value) : null })}
           >
-            <option value="">The first account, until you pick one for a card</option>
+            <option value="">{t('The first account, until you pick one for a card')}</option>
             {w.accounts
               .filter((a) => !a.archived)
               .map((a) => (
@@ -163,16 +167,18 @@ export function EmailSettings() {
               ))}
           </select>
         </label>
-        <p className="muted small">When you confirm a payment in another account, that card is remembered for next time.</p>
+        <p className="muted small">{t('When you confirm a payment in another account, that card is remembered for next time.')}</p>
       </div>
 
       <details className="stack tight">
-        <summary>Test with an email</summary>
+        <summary>{t('Test with an email')}</summary>
         <p className="small muted">
-          In Gmail, open a payment email, choose <strong>⋮ → Show original</strong>, copy everything, and paste it here.
+          {tx('In Gmail, open a payment email, choose {menu}, copy everything, and paste it here.', {
+            menu: <strong>{t('⋮ → Show original')}</strong>,
+          })}
         </p>
         <textarea
-          aria-label="Email source"
+          aria-label={t('Email source')}
           rows={6}
           value={raw}
           onChange={(e) => setRaw(e.target.value)}
@@ -180,17 +186,17 @@ export function EmailSettings() {
         />
         <div className="row">
           <button type="button" disabled={!raw.trim()} onClick={test}>
-            Read email
+            {t('Read email')}
           </button>
         </div>
       </details>
       {tested && (
         <p className="notice" role="status">
           {tested.duplicate
-            ? 'This email was already received.'
+            ? t('This email was already received.')
             : tested.status === 'payment'
-              ? 'Found a payment. It is waiting under To review.'
-              : `${statusText[tested.status]}: ${tested.detail}`}
+              ? t('Found a payment. It is waiting under To review.')
+              : `${t(statusText[tested.status])}: ${serverText(tested.detail)}`}
         </p>
       )}
       {error && (
@@ -201,17 +207,17 @@ export function EmailSettings() {
 
       {inbox && inbox.emails.length > 0 && (
         <div className="stack tight">
-          <h3>Recent emails</h3>
-          <ul className="list rows" aria-label="Recent emails">
+          <h3>{t('Recent emails')}</h3>
+          <ul className="list rows" aria-label={t('Recent emails')}>
             {inbox.emails.slice(0, 10).map((e) => (
               <li key={e.id} className="row">
                 <span className="grow">
-                  <span className="block ellipsis">{e.subject || '(no subject)'}</span>
+                  <span className="block ellipsis">{e.subject || t('(no subject)')}</span>
                   <span className="muted small">
                     {formatDay(new Date(e.received_at))} {formatTime(new Date(e.received_at))} · {e.from}
                   </span>
                 </span>
-                <span className={`badge status-${e.status}`}>{statusText[e.status]}</span>
+                <span className={`badge status-${e.status}`}>{t(statusText[e.status])}</span>
               </li>
             ))}
           </ul>

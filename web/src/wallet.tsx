@@ -3,6 +3,7 @@
 // (or balances, or the review count).
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api, errorMessage, type Account, type Category, type Overview } from './api';
+import { t } from './i18n';
 import { formatMoney } from './money';
 
 interface WalletState extends Overview {
@@ -34,11 +35,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   if (error && !overview) {
     return (
       <p role="alert" className="error">
-        Could not load your wallet: {error}
+        {t('Could not load your wallet: {error}', { error })}
       </p>
     );
   }
-  if (!overview) return <p className="muted">Loading…</p>;
+  if (!overview) return <p className="muted">{t('Loading…')}</p>;
 
   const value: WalletState = {
     ...overview,

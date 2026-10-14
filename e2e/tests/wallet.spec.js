@@ -110,7 +110,7 @@ test('import records exported from Wallet by BudgetBakers', async ({ page }) => 
     `Rakuten Bank;Salary;JPY;250000.00;250000.00;Income;TRANSFER;Transfer;;${today};;;;0;false;;;5000;false`,
   ].join('\n');
   await page.getByLabel('CSV file', { exact: true }).setInputFiles({ name: 'records.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
-  await expect(page.getByRole('status')).toContainText('Imported 2 records, created 1 accounts');
+  await expect(page.getByRole('status')).toContainText('Imported 2 records, created 1 account.');
 
   // The same file again adds nothing.
   await page.getByLabel('CSV file', { exact: true }).setInputFiles({ name: 'records.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });

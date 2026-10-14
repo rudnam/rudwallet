@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, errorMessage, type Me } from '../api';
+import { t } from '../i18n';
 import { isApp, startGoogleSignIn } from '../native';
 import type { Notice } from '../notice';
 
@@ -38,7 +39,7 @@ export function AuthForm({ onSignedIn, notice }: { onSignedIn: (me: Me) => void;
   const signingIn = mode === 'sign-in';
   return (
     <form className="card stack" onSubmit={submit}>
-      <h1>{signingIn ? 'Sign in' : 'Create an account'}</h1>
+      <h1>{signingIn ? t('Sign in') : t('Create an account')}</h1>
       {status && (
         <p role="status" className="notice">
           {status}
@@ -57,19 +58,19 @@ export function AuthForm({ onSignedIn, notice }: { onSignedIn: (me: Me) => void;
             }}
           >
             <GoogleMark />
-            Continue with Google
+            {t('Continue with Google')}
           </a>
           <div className="or" aria-hidden="true">
-            or
+            {t('or')}
           </div>
         </>
       )}
       <label className="field">
-        Email
+        {t('Email')}
         <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
       </label>
       <label className="field">
-        Password
+        {t('Password')}
         <input
           type="password"
           autoComplete={signingIn ? 'current-password' : 'new-password'}
@@ -85,7 +86,7 @@ export function AuthForm({ onSignedIn, notice }: { onSignedIn: (me: Me) => void;
         </p>
       )}
       <button type="submit" disabled={busy}>
-        {signingIn ? 'Sign in' : 'Create account'}
+        {signingIn ? t('Sign in') : t('Create account')}
       </button>
       <button
         type="button"
@@ -96,7 +97,7 @@ export function AuthForm({ onSignedIn, notice }: { onSignedIn: (me: Me) => void;
           setStatus('');
         }}
       >
-        {signingIn ? 'New here? Create an account' : 'Have an account? Sign in'}
+        {signingIn ? t('New here? Create an account') : t('Have an account? Sign in')}
       </button>
     </form>
   );

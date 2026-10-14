@@ -8,6 +8,7 @@ import { CategoryIcon, Icon, icons } from '../../components/Icon';
 import { href } from '../../router';
 import { useToast } from '../../toast';
 import { useWallet } from '../../wallet';
+import { t, tn, tx } from '../../i18n';
 
 /** A suggestion as the user has it: the category they've settled on (0: leave it). */
 type Row = CategorySuggestion & { choice: number };
@@ -48,7 +49,7 @@ export function OrganizePage() {
     setError('');
     try {
       const { updated } = await api.applyCategories(chosen.map((r) => ({ payee: r.payee, kind: r.kind, category_id: r.choice })));
-      toast(`Sorted ${updated} ${updated === 1 ? 'record' : 'records'}`);
+      toast(tn(updated, 'Sorted {n} record', 'Sorted {n} records'));
       const left = skipped + rows.length - chosen.length;
       setSkipped(left);
       setRows(null);
@@ -72,8 +73,8 @@ export function OrganizePage() {
         <a className="back" href={href('settings', { section: 'claude' })}>
           <Icon d="M15 5l-7 7 7 7" className="inline-icon" /> Claude
         </a>
-        <h1>Sort records</h1>
-        <p className="muted lede">Claude suggests a category for each shop or payee. Check them, then file the records.</p>
+        <h1>{t('Sort records')}</h1>
+        <p className="muted lede">{t('Claude suggests a category for each shop or payee. Check them, then file the records.')}</p>
       </header>
 
       {status && !status.has_key && (
@@ -81,9 +82,9 @@ export function OrganizePage() {
           <span className="empty-mark" aria-hidden="true">
             <Icon d={icons.spark} className="glyph" />
           </span>
-          <h2>Add your Claude key first.</h2>
+          <h2>{t('Add your Claude key first.')}</h2>
           <p className="muted small">
-            Sorting uses your own Anthropic API key. <a href={href('settings', { section: 'claude' })}>Add it in Settings</a>
+            {t('Sorting uses your own Anthropic API key.')} <a href={href('settings', { section: 'claude' })}>{t('Add it in Settings')}</a>
           </p>
         </div>
       )}
@@ -91,21 +92,23 @@ export function OrganizePage() {
       {status?.has_key && rows === null && (
         <div className="card stack">
           {status.uncategorized === 0 ? (
-            <p>Every record has a category. Nothing to sort.</p>
+            <p>{t('Every record has a category. Nothing to sort.')}</p>
           ) : (
             <>
               <p>
-                <strong>{status.uncategorized}</strong> {status.uncategorized === 1 ? 'record has' : 'records have'} no category.
-                {skipped > 0 && ` You left ${skipped} ${skipped === 1 ? 'payee' : 'payees'} as they were.`}
+                {tx(status.uncategorized === 1 ? '{n} record has no category.' : '{n} records have no category.', {
+                  n: <strong>{status.uncategorized}</strong>,
+                })}
+                {skipped > 0 && ` ${tn(skipped, 'You left {n} payee as they were.', 'You left {n} payees as they were.')}`}
               </p>
               <div className="row end">
                 {skipped > 0 && (
                   <button type="button" className="secondary" disabled={!!busy} onClick={() => { setSkipped(0); ask(0); }}>
-                    Start over
+                    {t('Start over')}
                   </button>
                 )}
                 <button type="button" disabled={!!busy} onClick={() => ask(skipped)}>
-                  <Icon d={icons.spark} className="inline-icon" /> {busy === 'asking' ? 'Claude is reading your payees…' : 'Suggest categories'}
+                  <Icon d={icons.spark} className="inline-icon" /> {busy === 'asking' ? t('Claude is reading your payees…') : t('Suggest categories')}
                 </button>
               </div>
             </>
@@ -113,14 +116,14 @@ export function OrganizePage() {
         </div>
       )}
 
-      {busy === 'asking' && rows === null && <p className="muted small">This can take up to a minute for a long list.</p>}
+      {busy === 'asking' && rows === null && <p className="muted small">{t('This can take up to a minute for a long list.')}</p>}
 
       {rows && rows.length === 0 && (
         <div className="card stack">
-          <p>Nothing left to suggest.</p>
+          <p>{t('Nothing left to suggest.')}</p>
           <div className="row end">
             <button type="button" className="secondary" onClick={() => setRows(null)}>
-              Done
+              {t('Done')}
             </button>
           </div>
         </div>
@@ -128,7 +131,7 @@ export function OrganizePage() {
 
       {rows && rows.length > 0 && (
         <>
-          <ul className="list card flush" aria-label="Suggested categories">
+          <ul className="list card flush" aria-label={t('Suggested categories')}>
             {rows.map((r, i) => {
               const cat = w.categories.find((c) => c.id === r.choice);
               return (
@@ -137,15 +140,15 @@ export function OrganizePage() {
                   <span className="grow">
                     <span className="record-title">
                       {r.payee}
-                      {r.kind === 'income' && <span className="badge quiet">income</span>}
+                      {r.kind === 'income' && <span className="badge quiet">{t('income')}</span>}
                     </span>
                     <span className="muted small">
-                      {r.count} {r.count === 1 ? 'record' : 'records'} · {w.money(r.total)}
-                      {r.category_id === null && ' · no suggestion'}
+                      {tn(r.count, '{n} record', '{n} records')} · {w.money(r.total)}
+                      {r.category_id === null && ` · ${t('no suggestion')}`}
                     </span>
                   </span>
-                  <select aria-label={`Category for ${r.payee}`} value={r.choice} onChange={(e) => set(i, Number(e.target.value))}>
-                    <option value={0}>Leave as is</option>
+                  <select aria-label={t('Category for {name}', { name: r.payee })} value={r.choice} onChange={(e) => set(i, Number(e.target.value))}>
+                    <option value={0}>{t('Leave as is')}</option>
                     {w.categories
                       .filter((c) => c.kind === r.kind)
                       .map((c) => (
@@ -159,12 +162,12 @@ export function OrganizePage() {
             })}
           </ul>
           <div className="row end wrap">
-            {remaining > 0 && <span className="muted small grow">{remaining} more payees after these.</span>}
+            {remaining > 0 && <span className="muted small grow">{tn(remaining, '{n} more payee after these.', '{n} more payees after these.')}</span>}
             <button type="button" className="secondary" disabled={!!busy} onClick={() => setRows(null)}>
-              Cancel
+              {t('Cancel')}
             </button>
             <button type="button" disabled={!!busy || chosen.length === 0} onClick={apply}>
-              {busy === 'applying' ? 'Filing…' : `File ${records} ${records === 1 ? 'record' : 'records'}`}
+              {busy === 'applying' ? t('Filing…') : tn(records, 'File {n} record', 'File {n} records')}
             </button>
           </div>
         </>

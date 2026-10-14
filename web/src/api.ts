@@ -1,5 +1,7 @@
 // Typed client for the Go API. Shapes mirror the Go handlers' JSON.
 // Amounts are whole minor units of the user's currency (see Settings).
+import { serverText } from './i18n';
+import { language } from './language';
 import { appHeaders, saveSession, server } from './native';
 
 export interface Me {
@@ -261,7 +263,12 @@ async function request<T>(method: string, path: string, body?: unknown, contentT
     const raw = contentType !== undefined;
     const res = await fetch(server + path, {
       method,
-      headers: { ...(body === undefined ? {} : { 'Content-Type': contentType ?? 'application/json' }), ...appHeaders() },
+      headers: {
+        ...(body === undefined ? {} : { 'Content-Type': contentType ?? 'application/json' }),
+        // The language the app shows, which a new account's categories are named in.
+        'Accept-Language': language(),
+        ...appHeaders(),
+      },
       body: body === undefined ? undefined : raw ? (body as BodyInit) : JSON.stringify(body),
     });
     if (res.status === 204) return undefined as T;
@@ -378,7 +385,7 @@ export const api = {
   },
 };
 
-/** A message to show for any thrown value. */
+/** A message to show for any thrown value, in the language in use when it's one the app knows. */
 export function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
+  return serverText(err instanceof Error ? err.message : String(err));
 }

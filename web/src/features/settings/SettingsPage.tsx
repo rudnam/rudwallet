@@ -13,9 +13,12 @@ import { WidgetSettings } from './WidgetSettings';
 import { EmailSettings } from './EmailSettings';
 import { NotificationSettings } from './NotificationSettings';
 import { ClaudeSettings } from './ClaudeSettings';
+import { LanguageSettings } from './LanguageSettings';
+import { serverText, t, tn, tx, type Key } from '../../i18n';
+import { language, languages, locale } from '../../language';
 
-/** Each kind of account: what to call it, its icon and colour, and names people often use. */
-export const accountKinds: Record<AccountKind, { label: string; glyph: string; color: string; names: string[] }> = {
+/** Each kind of account: what to call it, its icon and colour, and names people often use (pass both through t). */
+export const accountKinds: Record<AccountKind, { label: Key; glyph: string; color: string; names: Key[] }> = {
   bank: { label: 'Bank account', glyph: 'bank', color: '#3b6ea8', names: ['MUFG', 'SMBC', 'Mizuho', 'Rakuten Bank', 'Japan Post Bank'] },
   credit_card: { label: 'Credit card', glyph: 'card', color: '#c8463d', names: ['PayPay Card', 'Rakuten Card', 'Amex', 'SMBC Card'] },
   e_money: { label: 'E-money', glyph: 'phone', color: '#d4553f', names: ['PayPay', 'Suica', 'PASMO', 'ICOCA', 'nanaco'] },
@@ -26,7 +29,7 @@ export const accountKinds: Record<AccountKind, { label: string; glyph: string; c
 
 const swatches = ['#c8463d', '#d97757', '#b08a3e', '#4f8a4c', '#2a8a8a', '#3b6ea8', '#5b4a8a', '#a8508a', '#6f6c63'];
 
-const sections: { id: string; label: string; title: string; glyph: string }[] = [
+const sections: { id: string; label: Key; title: Key; glyph: string }[] = [
   { id: 'email', label: 'Email automation', title: 'Email automation', glyph: 'mail' },
   { id: 'notifications', label: 'Payment notifications', title: 'Payment notifications', glyph: 'card' },
   { id: 'claude', label: 'Claude', title: 'Claude', glyph: 'spark' },
@@ -35,6 +38,7 @@ const sections: { id: string; label: string; title: string; glyph: string }[] = 
   { id: 'general', label: 'Currency', title: 'Currency', glyph: 'money' },
   { id: 'import', label: 'Import', title: 'Import records', glyph: 'school' },
   { id: 'widgets', label: 'Home screen widgets', title: 'Home screen widgets', glyph: 'phone' },
+  { id: 'language', label: 'Language', title: 'Language', glyph: 'globe' },
 ];
 
 export function SettingsPage({
@@ -57,9 +61,9 @@ export function SettingsPage({
       <section className="stack loose">
         <header className="stack tight">
           <a className="back" href={href('settings')}>
-            <Icon d="M15 5l-7 7 7 7" className="inline-icon" /> Settings
+            <Icon d="M15 5l-7 7 7 7" className="inline-icon" /> {t('Settings')}
           </a>
-          <h1>{open.title}</h1>
+          <h1>{t(open.title)}</h1>
         </header>
         {open.id === 'email' && <EmailSettings />}
         {open.id === 'notifications' && <NotificationSettings />}
@@ -69,24 +73,26 @@ export function SettingsPage({
         {open.id === 'general' && <General />}
         {open.id === 'import' && <Import />}
         {open.id === 'widgets' && <WidgetSettings />}
+        {open.id === 'language' && <LanguageSettings />}
       </section>
     );
   }
 
   const active = w.accounts.filter((a) => !a.archived).length;
   const summary: Record<string, string> = {
-    email: w.settings.auto_confirm ? 'Auto-confirm on' : '',
-    claude: 'Sort, connect apps',
-    accounts: `${active} ${active === 1 ? 'account' : 'accounts'}`,
-    categories: `${w.categories.length} categories`,
+    email: w.settings.auto_confirm ? t('Auto-confirm on') : '',
+    claude: t('Sort, connect apps'),
+    accounts: tn(active, '{n} account', '{n} accounts'),
+    categories: tn(w.categories.length, '{n} category', '{n} categories'),
     general: w.settings.currency,
     import: 'PayPay, BudgetBakers',
     widgets: 'Android',
+    language: languages.find((l) => l.code === language())!.name,
   };
   return (
     <section className="stack loose">
-      <h1>Settings</h1>
-      <nav className="card flush" aria-label="Settings sections">
+      <h1>{t('Settings')}</h1>
+      <nav className="card flush" aria-label={t('Settings sections')}>
         <ul className="list flush">
           {sections.map((s) => (
             <li key={s.id}>
@@ -94,7 +100,7 @@ export function SettingsPage({
                 <span className="cat-icon" aria-hidden="true">
                   <Icon d={s.glyph in icons ? icons[s.glyph as keyof typeof icons] : glyphs[s.glyph].d} className="glyph" />
                 </span>
-                <span className="grow">{s.label}</span>
+                <span className="grow">{t(s.label)}</span>
                 <span className="muted small">{summary[s.id]}</span>
                 <Icon d="M9 5l7 7-7 7" className="inline-icon chev-icon" />
               </a>
@@ -107,16 +113,16 @@ export function SettingsPage({
           {me.email[0]}
         </span>
         <span className="grow">
-          <span className="muted small block">Signed in as</span>
+          <span className="muted small block">{t('Signed in as')}</span>
           {me.email}
         </span>
         <button type="button" className="secondary" onClick={onSignOut}>
-          Sign out
+          {t('Sign out')}
         </button>
       </div>
       <div className="row end">
         <button type="button" className="link danger" onClick={() => setDeleting(true)}>
-          Delete account
+          {t('Delete account')}
         </button>
       </div>
       {deleting && <DeleteAccount me={me} onClose={() => setDeleting(false)} onDeleted={onDeleted} />}
@@ -147,14 +153,15 @@ function DeleteAccount({ me, onClose, onDeleted }: { me: Me; onClose: () => void
   }
 
   return (
-    <Dialog title="Delete account" onClose={onClose}>
+    <Dialog title={t('Delete account')} onClose={onClose}>
       <form className="stack" onSubmit={submit}>
         <p className="muted">
-          This deletes <strong>{me.email}</strong> and everything in it: accounts, records, budgets, categories and your forwarding
-          address. It can't be undone.
+          {tx("This deletes {email} and everything in it: accounts, records, budgets, categories and your forwarding address. It can't be undone.", {
+            email: <strong>{me.email}</strong>,
+          })}
         </p>
         <label className="field">
-          {me.has_password ? 'Your password' : 'Type your email to confirm'}
+          {me.has_password ? t('Your password') : t('Type your email to confirm')}
           <input
             type={me.has_password ? 'password' : 'email'}
             autoComplete={me.has_password ? 'current-password' : 'off'}
@@ -171,10 +178,10 @@ function DeleteAccount({ me, onClose, onDeleted }: { me: Me; onClose: () => void
         )}
         <div className="row end">
           <button type="button" className="link" onClick={onClose}>
-            Cancel
+            {t('Cancel')}
           </button>
           <button type="submit" className="danger" disabled={busy}>
-            Delete everything
+            {t('Delete everything')}
           </button>
         </div>
       </form>
@@ -202,22 +209,22 @@ function Accounts() {
       <Intro
         action={
           <button type="button" onClick={() => setEditing('new')}>
-            Add account
+            {t('Add account')}
           </button>
         }
       >
-        Everywhere your money lives. Tap one to change it.
+        {t('Everywhere your money lives. Tap one to change it.')}
       </Intro>
-      <ul className="list card flush" aria-label="Accounts">
+      <ul className="list card flush" aria-label={t('Accounts')}>
         {w.accounts.map((a) => (
           <li key={a.id}>
-            <button type="button" className="record" aria-label={`Edit account ${a.name}`} onClick={() => setEditing(a)}>
+            <button type="button" className="record" aria-label={t('Edit account {name}', { name: a.name })} onClick={() => setEditing(a)}>
               <CategoryIcon icon={accountKinds[a.kind].glyph} color={a.color} />
               <span className="grow">
                 <span className="record-title">
-                  {a.name} {a.archived && <span className="badge quiet">archived</span>}
+                  {a.name} {a.archived && <span className="badge quiet">{t('archived')}</span>}
                 </span>
-                <span className="muted small">{accountKinds[a.kind].label}</span>
+                <span className="muted small">{t(accountKinds[a.kind].label)}</span>
               </span>
               <span className="amount">{w.money(a.balance)}</span>
             </button>
@@ -251,22 +258,22 @@ export function AccountForm({ account, onClose }: { account?: Account; onClose: 
   async function save(e: FormEvent) {
     e.preventDefault();
     if (!kind || !meta) {
-      setError('Pick what kind of account it is.');
+      setError(t('Pick what kind of account it is.'));
       return;
     }
     const text = balance.trim() || '0';
     const minor = parseAmount(text.replace(/^-/, ''), exp);
     if (minor === null) {
-      setError('Enter the balance as a number, like 12000.');
+      setError(t('Enter the balance as a number, like 12000.'));
       return;
     }
     const signed = (text.startsWith('-') ? -minor : minor) * (card ? -1 : 1);
-    const input = { name: name.trim() || meta.label, kind, initial_balance: signed, color: color || meta.color, archived };
+    const input = { name: name.trim() || t(meta.label), kind, initial_balance: signed, color: color || meta.color, archived };
     try {
       if (account) await api.updateAccount(account.id, input);
       else await api.createAccount(input);
       await w.refresh();
-      toast(account ? 'Saved' : `Added ${input.name}`);
+      toast(account ? t('Saved') : t('Added {name}', { name: input.name }));
       onClose();
     } catch (err) {
       setError(errorMessage(err));
@@ -274,11 +281,11 @@ export function AccountForm({ account, onClose }: { account?: Account; onClose: 
   }
 
   async function remove() {
-    if (!account || !confirm(`Delete "${account.name}" and every record in it? This can't be undone.`)) return;
+    if (!account || !confirm(t("Delete \"{name}\" and every record in it? This can't be undone.", { name: account.name }))) return;
     try {
       await api.deleteAccount(account.id);
       await w.refresh();
-      toast('Deleted');
+      toast(t('Deleted'));
       onClose();
     } catch (err) {
       setError(errorMessage(err));
@@ -286,21 +293,22 @@ export function AccountForm({ account, onClose }: { account?: Account; onClose: 
   }
 
   const cur = w.settings.currency;
-  const balanceLabel = account
-    ? `${card ? 'Owed at the start' : 'Starting balance'} (${cur})`
-    : `${card ? 'Owed today' : 'Balance today'} (${cur})`;
+  const balanceLabel = t(
+    account ? (card ? 'Owed at the start ({currency})' : 'Starting balance ({currency})') : card ? 'Owed today ({currency})' : 'Balance today ({currency})',
+    { currency: cur },
+  );
 
   return (
-    <Dialog title={account ? 'Edit account' : 'New account'} onClose={onClose}>
+    <Dialog title={account ? t('Edit account') : t('New account')} onClose={onClose}>
       <form className="stack" onSubmit={save}>
         <fieldset className="chip-pick">
-          <legend>{account ? 'Type' : 'What kind of account?'}</legend>
+          <legend>{account ? t('Type') : t('What kind of account?')}</legend>
           <div className="kind-pick">
             {(Object.keys(accountKinds) as AccountKind[]).map((k) => (
               <label key={k} className={kind === k ? 'on' : ''}>
                 <input type="radio" name="kind" checked={kind === k} onChange={() => setKind(k)} />
                 <Icon d={glyphs[accountKinds[k].glyph].d} className="glyph" />
-                {accountKinds[k].label}
+                {t(accountKinds[k].label)}
               </label>
             ))}
           </div>
@@ -308,21 +316,24 @@ export function AccountForm({ account, onClose }: { account?: Account; onClose: 
         {meta && (
           <>
             <label className="field">
-              Name
+              {t('Name')}
               <input
                 maxLength={60}
                 value={name}
-                placeholder={meta.names[0] ?? meta.label}
+                placeholder={t(meta.names[0] ?? meta.label)}
                 onChange={(e) => setName(e.target.value)}
               />
             </label>
             {!account && meta.names.length > 0 && (
-              <div className="chips" aria-label="Suggested names">
-                {meta.names.map((n) => (
-                  <button key={n} type="button" className={name === n ? 'chip on' : 'chip'} onClick={() => setName(n)}>
-                    {n}
-                  </button>
-                ))}
+              <div className="chips" aria-label={t('Suggested names')}>
+                {meta.names.map((key) => {
+                  const n = t(key);
+                  return (
+                    <button key={key} type="button" className={name === n ? 'chip on' : 'chip'} onClick={() => setName(n)}>
+                      {n}
+                    </button>
+                  );
+                })}
               </div>
             )}
             <label className="field">
@@ -330,14 +341,14 @@ export function AccountForm({ account, onClose }: { account?: Account; onClose: 
               <input inputMode="decimal" placeholder="0" value={balance} onChange={(e) => setBalance(e.target.value)} />
               <span className="muted small">
                 {account
-                  ? 'Before any records in it. Records change the balance from there.'
+                  ? t('Before any records in it. Records change the balance from there.')
                   : card
-                    ? "What you haven't paid off yet. Payments you record add to it."
-                    : 'Records you add from now on change it.'}
+                    ? t("What you haven't paid off yet. Payments you record add to it.")
+                    : t('Records you add from now on change it.')}
               </span>
             </label>
             <fieldset className="chip-pick">
-              <legend>Colour</legend>
+              <legend>{t('Colour')}</legend>
               <div className="swatch-pick">
                 {swatches.map((c) => (
                   <label key={c} className={(color || meta.color) === c ? 'on' : ''} style={{ background: c }}>
@@ -346,17 +357,17 @@ export function AccountForm({ account, onClose }: { account?: Account; onClose: 
                 ))}
                 <label
                   className={swatches.includes(color || meta.color) ? 'custom' : 'custom on'}
-                  title="Any colour"
+                  title={t('Any colour')}
                   style={swatches.includes(color || meta.color) ? undefined : { background: color || meta.color }}
                 >
-                  <input type="color" aria-label="Any colour" value={color || meta.color} onChange={(e) => setColor(e.target.value)} />
+                  <input type="color" aria-label={t('Any colour')} value={color || meta.color} onChange={(e) => setColor(e.target.value)} />
                 </label>
               </div>
             </fieldset>
             {account && (
               <label className="check">
                 <input type="checkbox" checked={archived} onChange={(e) => setArchived(e.target.checked)} />
-                Archived (hidden from the overview and new records)
+                {t('Archived (hidden from the overview and new records)')}
               </label>
             )}
           </>
@@ -369,12 +380,12 @@ export function AccountForm({ account, onClose }: { account?: Account; onClose: 
         <div className="row end">
           {account && (
             <button type="button" className="link danger" onClick={remove}>
-              Delete
+              {t('Delete')}
             </button>
           )}
           <span className="grow" />
           <button type="submit" disabled={!kind}>
-            {account ? 'Save' : 'Add account'}
+            {account ? t('Save') : t('Add account')}
           </button>
         </div>
       </form>
@@ -392,21 +403,21 @@ function Categories() {
       <Intro
         action={
           <button type="button" onClick={() => setEditing('new')}>
-            Add category
+            {t('Add category')}
           </button>
         }
       >
-        What you spend on and earn from. Tap one to rename it or change its icon.
+        {t('What you spend on and earn from. Tap one to rename it or change its icon.')}
       </Intro>
       <div className="card stack">
       {(['expense', 'income'] as const).map((kind) => (
         <div key={kind} className="stack tight">
-          <span className="muted small">{kind === 'expense' ? 'Expenses' : 'Income'}</span>
+          <span className="muted small">{kind === 'expense' ? t('Expenses') : t('Income')}</span>
           <div className="chips">
             {w.categories
               .filter((c) => c.kind === kind)
               .map((c) => (
-                <button key={c.id} type="button" className="chip" aria-label={`Edit category ${c.name}`} onClick={() => setEditing(c)}>
+                <button key={c.id} type="button" className="chip" aria-label={t('Edit category {name}', { name: c.name })} onClick={() => setEditing(c)}>
                   <CategoryIcon icon={c.icon} name={c.name} color={c.color} size="small" /> {c.name}
                 </button>
               ))}
@@ -440,7 +451,7 @@ function CategoryForm({ category, onClose }: { category?: Category; onClose: () 
   }
 
   async function remove() {
-    if (!category || !confirm(`Delete "${category.name}"? Its records become uncategorised.`)) return;
+    if (!category || !confirm(t('Delete "{name}"? Its records become uncategorised.', { name: category.name }))) return;
     try {
       await api.deleteCategory(category.id);
       await w.refresh();
@@ -451,28 +462,28 @@ function CategoryForm({ category, onClose }: { category?: Category; onClose: () 
   }
 
   return (
-    <Dialog title={category ? 'Edit category' : 'New category'} onClose={onClose}>
+    <Dialog title={category ? t('Edit category') : t('New category')} onClose={onClose}>
       <form className="stack" onSubmit={save}>
         <label className="field">
-          Name
+          {t('Name')}
           <input required maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
         </label>
         {!category && (
           <label className="field">
-            Type
+            {t('Type')}
             <select value={kind} onChange={(e) => setKind(e.target.value as Category['kind'])}>
-              <option value="expense">Expense</option>
-              <option value="income">Income</option>
+              <option value="expense">{t('Expense')}</option>
+              <option value="income">{t('Income')}</option>
             </select>
           </label>
         )}
         <div className="grid2">
           <label className="field">
-            Colour
+            {t('Colour')}
             <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
           </label>
           <div className="field">
-            Preview
+            {t('Preview')}
             <span className="row">
               <CategoryIcon icon={icon} name={name || '?'} color={color} />
               <span className="ellipsis">{name}</span>
@@ -480,9 +491,9 @@ function CategoryForm({ category, onClose }: { category?: Category; onClose: () 
           </div>
         </div>
         <fieldset className="chip-pick">
-          <legend>Icon</legend>
+          <legend>{t('Icon')}</legend>
           <div className="icon-pick">
-            {[['', 'Initial only'], ...Object.entries(glyphs).map(([k, g]) => [k, g.label])].map(([k, label]) => (
+            {[['', t('Initial only')], ...Object.entries(glyphs).map(([k, g]) => [k, t(g.label)])].map(([k, label]) => (
               <label key={k} className={icon === k ? 'on' : ''} title={label}>
                 <input type="radio" name="icon" aria-label={label} checked={icon === k} onChange={() => setIcon(k)} />
                 {k ? <Icon d={glyphs[k].d} className="glyph" /> : <span className="initial">{(name || 'A')[0]}</span>}
@@ -498,11 +509,11 @@ function CategoryForm({ category, onClose }: { category?: Category; onClose: () 
         <div className="row end">
           {category && (
             <button type="button" className="link danger" onClick={remove}>
-              Delete
+              {t('Delete')}
             </button>
           )}
           <span className="grow" />
-          <button type="submit">Save</button>
+          <button type="submit">{t('Save')}</button>
         </div>
       </form>
     </Dialog>
@@ -528,14 +539,14 @@ function General() {
   return (
     <div className="card stack">
       <label className="field">
-        Main currency
+        {t('Main currency')}
         <select value={w.settings.currency} onChange={(e) => setCurrency(e.target.value)}>
           {(currencies.includes(w.settings.currency) ? currencies : [w.settings.currency, ...currencies]).map((c) => (
             <option key={c}>{c}</option>
           ))}
         </select>
       </label>
-      <p className="muted small">Pick it before adding records; it can't change afterwards.</p>
+      <p className="muted small">{t("Pick it before adding records; it can't change afterwards.")}</p>
       {error && (
         <p role="alert" className="error">
           {error}
@@ -560,21 +571,26 @@ function Import() {
 function ImportSummary({ result }: { result: ImportResult }) {
   return (
     <div className="notice" role="status">
-      Imported {result.imported} records
-      {result.duplicates > 0 && `, skipped ${result.duplicates} already imported`}
-      {result.matched > 0 && `, skipped ${result.matched} already recorded from emails or by hand`}
-      {result.accounts_created > 0 && `, created ${result.accounts_created} accounts`}
-      {result.categories_created > 0 && `, created ${result.categories_created} categories`}.
+      {[
+        tn(result.imported, 'Imported {n} record', 'Imported {n} records'),
+        result.duplicates > 0 && t('skipped {n} already imported', { n: result.duplicates }),
+        result.matched > 0 && t('skipped {n} already recorded from emails or by hand', { n: result.matched }),
+        result.accounts_created > 0 && tn(result.accounts_created, 'created {n} account', 'created {n} accounts'),
+        result.categories_created > 0 && tn(result.categories_created, 'created {n} category', 'created {n} categories'),
+      ]
+        .filter(Boolean)
+        .join(t(', '))}
+      {t('.')}
       {result.imported > 0 && (
         <>
           {' '}
-          Records without a category can be <a href={href('organize')}>sorted by Claude</a>.
+          {tx('Records without a category can be {sorted}.', { sorted: <a href={href('organize')}>{t('sorted by Claude')}</a> })}
         </>
       )}
       {result.problems.length > 0 && (
         <ul className="small">
           {result.problems.map((p) => (
-            <li key={p}>{p}</li>
+            <li key={p}>{serverText(p)}</li>
           ))}
         </ul>
       )}
@@ -590,7 +606,7 @@ const payPayMethodNames: Record<string, string> = {
   PayPayポイント: 'PayPay Points',
 };
 
-const shortDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+const shortDate = (iso: string) => new Date(iso).toLocaleDateString(locale(), { year: 'numeric', month: 'short', day: 'numeric' });
 
 /**
  * PayPay's transaction history: the file is read first, then each way of
@@ -651,21 +667,22 @@ function PayPayImport() {
     <div className="card stack">
       <h2>PayPay</h2>
       <p className="small muted">
-        In the PayPay app, open 取引履歴 (transaction history), tap the download button, pick a period of up to a year, and save the CSV file.
-        Payments already recorded from their emails are skipped, and importing an overlapping period adds each payment once.
+        {t(
+          'In the PayPay app, open 取引履歴 (transaction history), tap the download button, pick a period of up to a year, and save the CSV file. Payments already recorded from their emails are skipped, and importing an overlapping period adds each payment once.',
+        )}
       </p>
       {!preview && (
         <label className="field">
-          PayPay CSV file
+          {t('PayPay CSV file')}
           <input key={fileKey} type="file" accept=".csv,text/csv" disabled={busy} onChange={(e) => e.target.files?.[0] && read(e.target.files[0])} />
         </label>
       )}
       {preview && preview.records === 0 && (
         <>
-          <p>There are no payments in this file.</p>
+          <p>{t('There are no payments in this file.')}</p>
           <div className="row end">
             <button type="button" className="secondary" onClick={reset}>
-              Choose another file
+              {t('Choose another file')}
             </button>
           </div>
         </>
@@ -673,16 +690,23 @@ function PayPayImport() {
       {preview && preview.records > 0 && (
         <form className="stack" onSubmit={submit}>
           <p>
-            {preview.records} {preview.records === 1 ? 'payment' : 'payments'}
-            {preview.from && preview.to && (shortDate(preview.from) === shortDate(preview.to) ? ` on ${shortDate(preview.from)}` : `, ${shortDate(preview.from)} to ${shortDate(preview.to)}`)}. Choose where each way of paying is
-            recorded:
+            {!preview.from || !preview.to
+              ? tn(preview.records, '{n} payment. Choose where each way of paying is recorded:', '{n} payments. Choose where each way of paying is recorded:')
+              : shortDate(preview.from) === shortDate(preview.to)
+                ? tn(preview.records, '{n} payment on {day}. Choose where each way of paying is recorded:', '{n} payments on {day}. Choose where each way of paying is recorded:', {
+                    day: shortDate(preview.from),
+                  })
+                : tn(preview.records, '{n} payment, {from} to {to}. Choose where each way of paying is recorded:', '{n} payments, {from} to {to}. Choose where each way of paying is recorded:', {
+                    from: shortDate(preview.from),
+                    to: shortDate(preview.to),
+                  })}
           </p>
           {preview.methods.map((m) => (
             <label key={m.method} className="field">
               <span>
                 {m.method}
-                {payPayMethodNames[m.method] && <span className="muted"> · {payPayMethodNames[m.method]}</span>}
-                <span className="muted small"> · {m.count} {m.count === 1 ? 'record' : 'records'}</span>
+                {language() === 'en' && payPayMethodNames[m.method] && <span className="muted"> · {payPayMethodNames[m.method]}</span>}
+                <span className="muted small"> · {tn(m.count, '{n} record', '{n} records')}</span>
               </span>
               <select value={choice[m.method]} onChange={(e) => setChoice({ ...choice, [m.method]: Number(e.target.value) })}>
                 {accounts.map((a) => (
@@ -691,32 +715,32 @@ function PayPayImport() {
                   </option>
                 ))}
                 {!accounts.some((a) => a.name.toLowerCase() === m.new_name.toLowerCase()) && (
-                  <option value={0}>New account: {m.new_name}</option>
+                  <option value={0}>{t('New account: {name}', { name: m.new_name })}</option>
                 )}
               </select>
             </label>
           ))}
           {preview.problems.length > 0 && (
             <div className="notice warn small">
-              These rows can't be read and will be left out:
+              {t("These rows can't be read and will be left out:")}
               <ul>
                 {preview.problems.map((p) => (
-                  <li key={p}>{p}</li>
+                  <li key={p}>{serverText(p)}</li>
                 ))}
               </ul>
             </div>
           )}
           <div className="row end">
             <button type="button" className="secondary" onClick={reset} disabled={busy}>
-              Cancel
+              {t('Cancel')}
             </button>
             <button type="submit" disabled={busy}>
-              {busy ? 'Importing…' : `Import ${preview.records} ${preview.records === 1 ? 'payment' : 'payments'}`}
+              {busy ? t('Importing…') : tn(preview.records, 'Import {n} payment', 'Import {n} payments')}
             </button>
           </div>
         </form>
       )}
-      {busy && !preview && <p className="muted">Reading the file…</p>}
+      {busy && !preview && <p className="muted">{t('Reading the file…')}</p>}
       {error && (
         <p role="alert" className="error">
           {error}
@@ -751,14 +775,15 @@ function BudgetBakersImport() {
     <div className="card stack">
       <h2>BudgetBakers</h2>
       <p className="small muted">
-        In BudgetBakers' Wallet app, export your records as CSV (on the web app: Records → Export), then choose the file here. Accounts and
-        categories are matched by name and created when missing. Importing the same file twice adds nothing new.
+        {t(
+          "In BudgetBakers' Wallet app, export your records as CSV (on the web app: Records → Export), then choose the file here. Accounts and categories are matched by name and created when missing. Importing the same file twice adds nothing new.",
+        )}
       </p>
       <label className="field">
-        CSV file
+        {t('CSV file')}
         <input type="file" accept=".csv,text/csv" disabled={busy} onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
       </label>
-      {busy && <p className="muted">Importing…</p>}
+      {busy && <p className="muted">{t('Importing…')}</p>}
       {error && (
         <p role="alert" className="error">
           {error}

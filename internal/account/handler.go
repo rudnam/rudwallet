@@ -202,7 +202,7 @@ func (h *Handler) signup(w http.ResponseWriter, r *http.Request) error {
 	}
 	if h.cfg.Mail != nil {
 		// Not fatal: the app offers to send the link again.
-		if err := h.sendConfirmation(r.Context(), id, email); err != nil {
+		if err := h.sendConfirmation(r.Context(), id, email, httpx.Language(r)); err != nil {
 			slog.ErrorContext(r.Context(), "send confirmation email", "user", id, "err", err)
 		}
 	}

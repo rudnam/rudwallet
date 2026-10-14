@@ -8,6 +8,7 @@ import { formatDay } from '../../money';
 import { server } from '../../native';
 import { href } from '../../router';
 import { useToast } from '../../toast';
+import { t, t as tr, tn, tx } from '../../i18n';
 
 export function ClaudeSettings() {
   return (
@@ -38,7 +39,7 @@ function ApiKey() {
       setStatus(await api.setAIKey(key));
       setKey('');
       setEditing(false);
-      toast('Claude is connected');
+      toast(t('Claude is connected'));
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -47,11 +48,11 @@ function ApiKey() {
   }
 
   async function remove() {
-    if (!confirm('Remove your Claude API key? Claude stops sorting records and reading emails for you.')) return;
+    if (!confirm(t('Remove your Claude API key? Claude stops sorting records and reading emails for you.'))) return;
     try {
       await api.deleteAIKey();
       setStatus(await api.ai());
-      toast('Key removed');
+      toast(t('Key removed'));
     } catch (err) {
       setError(errorMessage(err));
     }
@@ -60,7 +61,7 @@ function ApiKey() {
   const form = (
     <form className="stack tight" onSubmit={save}>
       <label className="field">
-        Anthropic API key
+        {t('Anthropic API key')}
         <input
           type="password"
           autoComplete="off"
@@ -71,17 +72,17 @@ function ApiKey() {
           onChange={(e) => setKey(e.target.value)}
         />
         <span className="muted small">
-          Make one in the Claude Console at console.anthropic.com, under API keys. It's checked with Claude, then stored encrypted.
+          {t("Make one in the Claude Console at console.anthropic.com, under API keys. It's checked with Claude, then stored encrypted.")}
         </span>
       </label>
       <div className="row end">
         {editing && (
           <button type="button" className="link" onClick={() => setEditing(false)}>
-            Cancel
+            {t('Cancel')}
           </button>
         )}
         <button type="submit" disabled={busy || !key.trim()}>
-          {busy ? 'Checking…' : 'Save key'}
+          {busy ? t('Checking…') : t('Save key')}
         </button>
       </div>
     </form>
@@ -89,23 +90,23 @@ function ApiKey() {
 
   return (
     <div className="card stack">
-      <h2>Your API key</h2>
+      <h2>{t('Your API key')}</h2>
       <p className="small">
-        With your own key, Claude sorts records that have no category and reads payment emails from any shop. What Claude does is billed to
-        your Anthropic account.
+        {t('With your own key, Claude sorts records that have no category and reads payment emails from any shop. What Claude does is billed to your Anthropic account.')}
       </p>
-      {status === null && !error && <p className="muted">Loading…</p>}
+      {status === null && !error && <p className="muted">{t('Loading…')}</p>}
       {status && !status.can_save && !status.has_key && (
         <p className="notice warn small">
-          This server can't store API keys yet. Whoever runs it needs to set <code>SECRETS_KEY</code>, which keeps saved keys
-          encrypted.
+          {tx("This server can't store API keys yet. Whoever runs it needs to set {setting}, which keeps saved keys encrypted.", {
+            setting: <code>SECRETS_KEY</code>,
+          })}
         </p>
       )}
       {status?.can_save && !status.has_key && form}
       {status?.key_unreadable && (
         <>
           <p className="notice warn small" role="status">
-            Your saved key can't be read any more, because the server's encryption secret changed. Add it again.
+            {t("Your saved key can't be read any more, because the server's encryption secret changed. Add it again.")}
           </p>
           {status.can_save && form}
         </>
@@ -115,40 +116,40 @@ function ApiKey() {
           <div className="row wrap key-row">
             <span className="row">
               <span className="badge status-payment">
-                <Icon d={icons.check} className="inline-icon" /> Connected
+                <Icon d={icons.check} className="inline-icon" /> {t('Connected')}
               </span>
-              <span className="muted small nowrap">Key ending in {status.key_hint}</span>
+              <span className="muted small nowrap">{t('Key ending in {hint}', { hint: status.key_hint })}</span>
             </span>
             {!editing && (
               <span className="row">
                 <button type="button" className="link" onClick={() => setEditing(true)}>
-                  Replace
+                  {t('Replace')}
                 </button>
                 <button type="button" className="link danger" onClick={remove}>
-                  Remove
+                  {t('Remove')}
                 </button>
               </span>
             )}
           </div>
           {editing && form}
-          <ul className="list rows" aria-label="What Claude does for you">
+          <ul className="list rows" aria-label={t('What Claude does for you')}>
             <li className="row">
               <span className="grow">
-                <span className="block">Sort records</span>
+                <span className="block">{t('Sort records')}</span>
                 <span className="muted small">
                   {status.uncategorized === 0
-                    ? 'Every record has a category.'
-                    : `${status.uncategorized} ${status.uncategorized === 1 ? 'record has' : 'records have'} no category.`}
+                    ? t('Every record has a category.')
+                    : tn(status.uncategorized, '{n} record has no category.', '{n} records have no category.')}
                 </span>
               </span>
               <a className="button secondary" href={href('organize')}>
-                Open
+                {t('Open')}
               </a>
             </li>
             <li className="row">
               <span className="grow">
-                <span className="block">Read payment emails</span>
-                <span className="muted small">Receipts from shops without a built-in rule are read by Claude.</span>
+                <span className="block">{t('Read payment emails')}</span>
+                <span className="muted small">{t('Receipts from shops without a built-in rule are read by Claude.')}</span>
               </span>
             </li>
           </ul>
@@ -191,7 +192,7 @@ function Connections() {
   }
 
   async function remove(t: MCPToken) {
-    if (!confirm(`Disconnect "${t.name}"? It can no longer reach your wallet.`)) return;
+    if (!confirm(tr('Disconnect "{name}"? It can no longer reach your wallet.', { name: t.name }))) return;
     try {
       await api.deleteMCPToken(t.id);
       if (fresh?.id === t.id) setFresh(null);
@@ -229,19 +230,20 @@ function Connections() {
 
   return (
     <div className="card stack">
-      <h2>Connect Claude to your wallet</h2>
+      <h2>{t('Connect Claude to your wallet')}</h2>
       <p className="small">
-        Let Claude Desktop, Claude Code or another MCP client look through your records and tidy them: sort records, fix categories, and
-        answer questions about your spending. It doesn't need your API key; each app gets its own token.
+        {t(
+          "Let Claude Desktop, Claude Code or another MCP client look through your records and tidy them: sort records, fix categories, and answer questions about your spending. It doesn't need your API key; each app gets its own token.",
+        )}
       </p>
       <div className="address">
-        <span className="muted small">MCP server address</span>
+        <span className="muted small">{t('MCP server address')}</span>
         <code data-testid="mcp-url">{mcpURL}</code>
       </div>
 
       {fresh?.token && (
         <div className="notice stack tight" role="status">
-          <strong>Copy this token now. It won't be shown again.</strong>
+          <strong>{t("Copy this token now. It won't be shown again.")}</strong>
           <button type="button" className="code-button" onClick={() => copy(fresh.token!, 'token')}>
             <code data-testid="mcp-token">{fresh.token}</code> <Icon d={copied === 'token' ? icons.check : icons.copy} className="inline-icon" />
           </button>
@@ -250,46 +252,49 @@ function Connections() {
 
       <form className="row wrap" onSubmit={create}>
         <label className="field grow">
-          New connection
+          {t('New connection')}
           <input maxLength={60} placeholder="Claude Desktop" value={name} onChange={(e) => setName(e.target.value)} />
         </label>
         <button type="submit" className="align-end">
-          Make a token
+          {t('Make a token')}
         </button>
       </form>
 
       <details className="stack tight">
-        <summary>How to connect</summary>
+        <summary>{t('How to connect')}</summary>
         <p className="small">
-          <strong>Claude Code:</strong> run (tap to copy)
+          <strong>Claude Code:</strong> {t('run (tap to copy)')}
         </p>
         <button type="button" className="code-button" onClick={() => copy(claudeCode, 'code')}>
           <code>{claudeCode}</code> <Icon d={copied === 'code' ? icons.check : icons.copy} className="inline-icon" />
         </button>
         <p className="small">
-          <strong>Claude Desktop:</strong> open Settings → Developer → Edit Config, and add this to <code>claude_desktop_config.json</code> (it
-          needs Node.js). Then restart Claude Desktop.
+          <strong>Claude Desktop:</strong>{' '}
+          {tx('open Settings → Developer → Edit Config, and add this to {file} (it needs Node.js). Then restart Claude Desktop.', {
+            file: <code>claude_desktop_config.json</code>,
+          })}
         </p>
         <button type="button" className="code-button" onClick={() => copy(desktop, 'desktop')}>
           <pre className="small">{desktop}</pre>
           <Icon d={copied === 'desktop' ? icons.check : icons.copy} className="inline-icon" />
         </button>
-        <p className="small muted">Then ask, for example: "Sort my records that have no category."</p>
+        <p className="small muted">{t('Then ask, for example: "Sort my records that have no category."')}</p>
       </details>
 
       {tokens && tokens.length > 0 && (
-        <ul className="list rows" aria-label="Connections">
+        <ul className="list rows" aria-label={t('Connections')}>
           {tokens.map((t) => (
             <li key={t.id} className="row">
               <span className="grow">
                 <span className="block">{t.name}</span>
                 <span className="muted small">
-                  Made {formatDay(new Date(t.created_at))}
-                  {t.last_used_at ? ` · last used ${formatDay(new Date(t.last_used_at))}` : ' · not used yet'}
+                  {tr('Made {day}', { day: formatDay(new Date(t.created_at)) })}
+                  {' · '}
+                  {t.last_used_at ? tr('last used {day}', { day: formatDay(new Date(t.last_used_at)) }) : tr('not used yet')}
                 </span>
               </span>
               <button type="button" className="link danger" onClick={() => remove(t)}>
-                Disconnect
+                {tr('Disconnect')}
               </button>
             </li>
           ))}

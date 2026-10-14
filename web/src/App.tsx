@@ -13,6 +13,8 @@ import { StatsPage } from './features/stats/StatsPage';
 import { onAppLinks } from './native';
 import { initialNotice, signinErrors, type Notice } from './notice';
 import { href, navigate, useRoute } from './router';
+import { t, tx, type Key } from './i18n';
+import { LanguagePicker } from './features/settings/LanguageSettings';
 import { ToastProvider, useToast } from './toast';
 import { useWallet, WalletProvider } from './wallet';
 
@@ -35,7 +37,7 @@ export function App() {
       onAppLinks({
         onAuth: (result) => {
           if ('error' in result) {
-            setSession({ status: 'signed-out', notice: { message: signinErrors[result.error] ?? signinErrors.failed, ok: false } });
+            setSession({ status: 'signed-out', notice: { message: t(signinErrors[result.error] ?? signinErrors.failed), ok: false } });
             return;
           }
           api.appToken(result.code, result.verifier).then(
@@ -78,7 +80,7 @@ export function App() {
           <Shell
             me={session.me}
             onSignOut={signOut}
-            onDeleted={() => signedOut({ message: 'Your account and everything in it were deleted.', ok: true })}
+            onDeleted={() => signedOut({ message: t('Your account and everything in it were deleted.'), ok: true })}
           />
         </WalletProvider>
       </ToastProvider>
@@ -86,10 +88,10 @@ export function App() {
   }
   return (
     <main className="splash">
-      {session.status === 'loading' && <p className="muted">Loading…</p>}
+      {session.status === 'loading' && <p className="muted">{t('Loading…')}</p>}
       {session.status === 'error' && (
         <p role="alert" className="error">
-          Could not reach the server: {session.message}
+          {t('Could not reach the server: {error}', { error: session.message })}
         </p>
       )}
       {session.status === 'signed-out' && (
@@ -97,9 +99,10 @@ export function App() {
           <div className="auth-brand">
             <Logo />
             <span className="auth-name">{appName}</span>
-            <p>Your money, quietly kept in order.</p>
+            <p>{t('Your money, quietly kept in order.')}</p>
           </div>
           <AuthForm key={session.notice?.message} notice={session.notice} onSignedIn={(me) => setSession({ status: 'signed-in', me })} />
+          <LanguagePicker />
         </div>
       )}
     </main>
@@ -109,7 +112,7 @@ export function App() {
 /** The notice the app opened with is shown once, not on every sign-in. */
 let noticeShown = false;
 
-const pages = [
+const pages: { page: string; label: Key; icon: string }[] = [
   { page: 'home', label: 'Home', icon: icons.home },
   { page: 'records', label: 'Records', icon: icons.records },
   { page: 'stats', label: 'Stats', icon: icons.stats },
@@ -181,13 +184,13 @@ function Shell({ me, onSignOut, onDeleted }: { me: Me; onSignOut: () => void; on
 
   return (
     <div className="shell">
-      <nav className="nav" aria-label="Main">
+      <nav className="nav" aria-label={t('Main')}>
         <a className="nav-brand" href={href('home')}>
           <Logo />
           {appName}
         </a>
-        <button type="button" className="nav-add" aria-label="Add record" onClick={() => setAdding(true)}>
-          <Plus /> New record
+        <button type="button" className="nav-add" aria-label={t('Add record')} onClick={() => setAdding(true)}>
+          <Plus /> {t('New record')}
         </button>
         {pages.map((p) => (
           <a
@@ -197,9 +200,9 @@ function Shell({ me, onSignOut, onDeleted }: { me: Me; onSignOut: () => void; on
             aria-current={navPage === p.page ? 'page' : undefined}
           >
             <Icon d={p.icon} />
-            <span>{p.label}</span>
+            <span>{t(p.label)}</span>
             {p.page === 'review' && w.review_count > 0 && (
-              <span className="count" aria-label={`${w.review_count} to review`}>
+              <span className="count" aria-label={t('{n} to review', { n: w.review_count })}>
                 {w.review_count}
               </span>
             )}
@@ -213,7 +216,7 @@ function Shell({ me, onSignOut, onDeleted }: { me: Me; onSignOut: () => void; on
         {me.confirm_email && <ConfirmEmail email={me.email} />}
         {page}
       </main>
-      <button type="button" className="fab" aria-label="Add record" onClick={() => setAdding(true)}>
+      <button type="button" className="fab" aria-label={t('Add record')} onClick={() => setAdding(true)}>
         <Plus />
       </button>
       {adding && <TransactionForm onClose={() => setAdding(false)} onSaved={() => setVersion((v) => v + 1)} />}
@@ -237,20 +240,14 @@ function ConfirmEmail({ email }: { email: string }) {
     <div className="notice confirm-email">
       <Icon d={icons.mail} className="inline-icon" />
       <span className="grow">
-        {state === 'sent' ? (
-          <>
-            Sent. Check your inbox at <strong>{email}</strong>.
-          </>
-        ) : (
-          <>
-            Confirm your email: open the link we sent to <strong>{email}</strong>.
-          </>
-        )}
+        {state === 'sent'
+          ? tx('Sent. Check your inbox at {email}.', { email: <strong>{email}</strong> })
+          : tx('Confirm your email: open the link we sent to {email}.', { email: <strong>{email}</strong> })}
         {state !== 'idle' && state !== 'sending' && state !== 'sent' && <span className="error block small">{state}</span>}
       </span>
       {state !== 'sent' && (
         <button type="button" className="link" disabled={state === 'sending'} onClick={resend}>
-          Send again
+          {t('Send again')}
         </button>
       )}
     </div>

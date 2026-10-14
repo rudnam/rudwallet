@@ -4,6 +4,7 @@
 .landing main, .landing-bar { max-width: 1040px; margin: 0 auto; padding-left: calc(var(--space) * 1.5); padding-right: calc(var(--space) * 1.5); }
 .landing main { overflow-x: clip; }
 .landing-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 20px; padding-bottom: 20px; }
+.landing-bar-end { display: flex; align-items: center; gap: 8px; }
 .landing-brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-family: var(--serif); font-size: 1.35rem; }
 .landing-brand .logo { width: 36px; height: 36px; border-radius: 10px; }
 .landing h2 { font-size: clamp(1.6rem, 3.4vw, 2.25rem); line-height: 1.15; }

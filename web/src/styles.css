@@ -30,7 +30,8 @@
   --radius: 14px;
   --radius-sm: 10px;
   --space: 16px;
-  --serif: 'PT Serif', Georgia, 'Noto Serif JP', serif;
+  /* PT Serif and Inter have no Japanese: the device's Mincho and Gothic fill in. */
+  --serif: 'PT Serif', Georgia, 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', serif;
   --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
   color-scheme: light dark;
   font-family: var(--sans);
@@ -70,6 +71,8 @@ body { margin: 0; background: var(--bg); color: var(--text); }
 /* In the Android app the page runs under the status bar (index.html asks for viewport-fit=cover); elsewhere these are 0. */
 body { padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); }
 h1, h2, h3 { font-family: var(--serif); font-weight: 400; letter-spacing: -0.01em; margin: 0; }
+/* Japanese wraps between phrases, not mid-word, where the browser can tell them apart. */
+:lang(ja) :is(h1, h2, h3, .lede, .auth-brand p, .eyebrow) { word-break: auto-phrase; letter-spacing: 0; }
 h1 { font-size: 2rem; line-height: 1.15; }
 h2 { font-size: 1.25rem; }
 h3 { font-size: 1.05rem; }
@@ -167,6 +170,8 @@ a.button.secondary:hover { background: var(--sunken); }
 .google-mark { width: 18px; height: 18px; flex: none; }
 .or { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 0.875rem; }
 .or::before, .or::after { content: ''; flex: 1; border-top: 1px solid var(--border); }
+.language-switch { display: flex; justify-content: center; align-items: center; gap: 4px; margin-top: 16px; font-size: 0.875rem; color: var(--muted); }
+.language-switch > span { padding: 6px 8px; font-weight: 600; color: var(--text); }
 
 /* ---------- Shell: bottom tabs on phones, a sidebar on wide screens ---------- */
 .shell .page { padding-bottom: 140px; }

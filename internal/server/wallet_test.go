@@ -48,6 +48,24 @@ func TestWalletSetUpOnFirstVisit(t *testing.T) {
 	}
 }
 
+func TestWalletSetUpInJapanese(t *testing.T) {
+	ts := newTestServer(t)
+	c := newClient(t, ts)
+	c.signup("a@example.com")
+	c.headers["Accept-Language"] = "ja"
+	o := overview(t, c)
+	if len(o.Accounts) != 1 || o.Accounts[0].Name != "現金" {
+		t.Fatalf("accounts %+v", o.Accounts)
+	}
+	categoryID(t, o, "食費")
+	categoryID(t, o, "給与")
+	// The names are the person's own from then on: English later changes nothing.
+	c.headers["Accept-Language"] = "en"
+	if again := overview(t, c); again.Accounts[0].Name != "現金" || len(again.Categories) != len(o.Categories) {
+		t.Errorf("set up again in English: %+v", again)
+	}
+}
+
 func TestRecordsAndBalances(t *testing.T) {
 	ts := newTestServer(t)
 	alice, bob := newClient(t, ts), newClient(t, ts)

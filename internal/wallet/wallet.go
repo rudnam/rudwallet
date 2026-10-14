@@ -96,11 +96,23 @@ var (
 		{Name: "Salary", Kind: "income", Icon: "💼", Color: "#2f9e5b"},
 		{Name: "Other income", Kind: "income", Icon: "💰", Color: "#5aa469"},
 	}
+
+	// The same categories for someone whose app is in Japanese, by position.
+	japaneseCategoryNames = []string{"食費", "食料品", "買い物", "交通費", "住居費", "水道光熱費", "医療費", "娯楽", "旅行", "その他", "給与", "その他の収入"}
 )
+
+// cashName is the name of the account every wallet starts with.
+var cashName = map[string]string{"en": "Cash", "ja": "現金"}
 
 // setUp creates the user's settings, default categories and a Cash account
 // the first time they open the wallet. It is safe to call on every request.
 func (s *Store) setUp(ctx context.Context, userID int64) error {
+	return s.setUpIn(ctx, userID, "en")
+}
+
+// setUpIn is setUp naming the categories and the Cash account in lang ("en"
+// or "ja"), for when the app opens the wallet for the first time.
+func (s *Store) setUpIn(ctx context.Context, userID int64, lang string) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -113,15 +125,22 @@ func (s *Store) setUp(ctx context.Context, userID int64) error {
 	if n, _ := res.RowsAffected(); n == 0 {
 		return nil // already set up
 	}
-	for _, c := range defaultCategories {
+	for i, c := range defaultCategories {
+		if lang == "ja" {
+			c.Name = japaneseCategoryNames[i]
+		}
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO categories (user_id, name, kind, icon, color) VALUES ($1, $2, $3, $4, $5)`,
 			userID, c.Name, c.Kind, c.Icon, c.Color); err != nil {
 			return err
 		}
 	}
+	cash, ok := cashName[lang]
+	if !ok {
+		cash = cashName["en"]
+	}
 	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO wallet_accounts (user_id, name, kind) VALUES ($1, 'Cash', 'cash')`, userID); err != nil {
+		`INSERT INTO wallet_accounts (user_id, name, kind) VALUES ($1, $2, 'cash')`, userID, cash); err != nil {
 		return err
 	}
 	return tx.Commit()
