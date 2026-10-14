@@ -4,6 +4,7 @@ import { AuthForm } from './components/AuthForm';
 import { Icon, icons, Logo, Plus } from './components/Icon';
 import { TransactionForm } from './components/TransactionForm';
 import { BudgetsPage } from './features/budgets/BudgetsPage';
+import { ConnectPage, rememberConnect, resumeConnect } from './features/settings/ConnectPage';
 import { HomePage } from './features/home/HomePage';
 import { OrganizePage } from './features/organize/OrganizePage';
 import { RecordsPage } from './features/records/RecordsPage';
@@ -43,6 +44,7 @@ type Session =
 
 export function App() {
   const [session, setSession] = useState<Session>({ status: 'loading' });
+  const route = useRoute();
 
   // In the Android app: Google sign-in coming back from the browser, and
   // widgets opening a page.
@@ -69,15 +71,26 @@ export function App() {
       .me()
       .then((me) => setSession({ status: 'signed-in', me }))
       .catch((err) => {
-        if (err instanceof ApiError && err.status === 401 && demoRequested) startDemo();
-        else
-          setSession(
-            err instanceof ApiError && err.status === 401
-              ? { status: 'signed-out', notice: initialNotice }
-              : { status: 'error', message: errorMessage(err) },
-          );
+        if (!(err instanceof ApiError && err.status === 401)) {
+          setSession({ status: 'error', message: errorMessage(err) });
+          return;
+        }
+        // An app asking to connect waits for the user to sign in.
+        rememberConnect();
+        const connecting = location.hash.startsWith('#/connect?');
+        // A demo never connects an app: that would reach outside it.
+        if (demoRequested && !connecting) {
+          startDemo();
+          return;
+        }
+        setSession({ status: 'signed-out', notice: initialNotice ?? (connecting ? connectNotice() : null) });
       });
   }, []);
+
+  // Signing in with Google comes back to /app/, without the Connect request.
+  useEffect(() => {
+    if (session.status === 'signed-in') resumeConnect();
+  }, [session.status]);
 
   /** Signs in to a new demo account full of sample data. */
   async function startDemo() {
@@ -108,6 +121,19 @@ export function App() {
     setSession({ status: 'signed-out', notice });
   }
 
+  if (session.status === 'signed-in' && route.page === 'connect') {
+    return (
+      <main className="splash">
+        <div className="auth">
+          <div className="auth-brand">
+            <Logo />
+            <span className="auth-name">{appName}</span>
+          </div>
+          <ConnectPage route={route} email={session.me.email} />
+        </div>
+      </main>
+    );
+  }
   if (session.status === 'signed-in') {
     return (
       <ToastProvider>
@@ -150,6 +176,8 @@ export function App() {
     </main>
   );
 }
+
+const connectNotice = (): Notice => ({ message: t('Sign in to connect an app such as Claude to your wallet.'), ok: true });
 
 /** The notice the app opened with is shown once, not on every sign-in. */
 let noticeShown = false;

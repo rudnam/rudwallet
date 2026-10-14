@@ -33,14 +33,14 @@ docker compose up -d --build    # http://localhost:8080 (the app is at /app/)
 |---|---|---|
 | `./verify.sh` | Go vet, Go unit and integration tests, and browser tests, in throwaway containers | Before every commit or deploy. CI runs it too. |
 | `./preview.sh` | Builds the working tree (or `--ref <branch>`) and runs it privately at http://localhost:8081 with a fresh database of sample data | To **see** a change, e.g. what an AI just did, before deploying it |
-| `docker compose up -d --build` | Builds and (re)starts the real stack | To deploy |
+| `docker compose up -d --build` | Builds and (re)starts the local stack at http://localhost:8080 | To use it on this machine |
 
 ### Previewing a change before you deploy it
 
 ```sh
 ./preview.sh                          # what's in the working tree right now
 ./preview.sh --ref ai/new-feature     # a branch, without checking it out
-./preview.sh --restore backup.sql.gz  # with a copy of production data (see Backups)
+./preview.sh --restore backup.sql.gz  # with a copy of production data (see Production)
 ./preview.sh down                     # stop it and delete its data
 ```
 
@@ -58,21 +58,29 @@ cd web && npm install && npm run dev  # http://localhost:5173 (the introduction 
 
 After Go changes, run `docker compose up -d --build` again.
 
-## Deploying
+## Production
 
-[docs/deploy.md](docs/deploy.md) is a step-by-step path. Each step changes only the infrastructure, never the app:
+https://wallet.rudnam.com runs on AWS: one EC2 instance behind CloudFront, shared with the other rudnam apps. The infrastructure, backups and server access are in [rudnam/rudnam-infra](https://github.com/rudnam/rudnam-infra).
 
-1. **This machine:** `deploy/local.yml`.
-2. **Your PC on the internet:** Cloudflare Tunnel, with no open ports (`deploy/cloudflare.yml`).
-3. **A server with a public IP** (any VPS, or AWS EC2/Lightsail): Caddy with automatic HTTPS (`deploy/caddy.yml`).
-4. **Managed AWS:** ECS Fargate + RDS + a load balancer, for zero-downtime deploys, several instances and managed backups.
+- **Deploy:** push to `main`. CI (`.github/workflows/ci.yml`) runs `./verify.sh`, builds the image, pushes it to ECR and starts it on the instance with `deploy/aws.yml`. A failed check stops the deploy.
+- **Roll back:** Actions → CI → **Run workflow** on `main`, with the full SHA of an earlier commit. It reuses that commit's image, or rebuilds it.
+- **Settings and secrets:** the production `.env` is the SSM parameter `/rudnam/wallet-app/env`, not a file in this repo. To change one, update the parameter and redeploy (rudnam-infra README, "App secrets").
+- **Backups:** nightly database dumps (kept 30 days) and daily disk snapshots (7 days). To preview a change against real data:
+  ```sh
+  aws s3 ls --profile rudnam-ec2 s3://rudnam-backups-394567896817/wallet-app/
+  aws s3 cp --profile rudnam-ec2 s3://rudnam-backups-394567896817/wallet-app/<dump>.sql.gz backup.sql.gz
+  ./preview.sh --restore backup.sql.gz
+  ```
+- **Migrations** run on startup and only go forward, and a deploy briefly runs the old and new versions side by side. So every migration must keep the previous release working: adding a table, a nullable column or a column with a default is safe; renaming or dropping a column takes two releases (stop using it, then drop it). Don't roll back past a commit that changed the schema.
 
-### Backups
+## Contributing
 
-```sh
-docker compose exec -T db pg_dump -U app app | gzip > backup-$(date +%F).sql.gz   # back up
-gunzip -c backup.sql.gz | docker compose exec -T db psql -U app app                # restore into a fresh stack
-```
+1. Fork the repository (or branch, if you have write access) and run it locally (Quick start).
+2. Make the change, following `CLAUDE.md` (it applies to people too).
+3. Run `./verify.sh` until it prints `VERIFY PASSED`, and look at the change with `./preview.sh`.
+4. Open a pull request against `main`. CI runs the same checks and attaches screenshots; nothing deploys until it is merged.
+
+You never need production credentials: pull requests, including ones from forks, run without them.
 
 ## Configuration
 
@@ -84,8 +92,8 @@ All settings are environment variables (read in `internal/config`).
 | `ADDR` | `:8080` | Listen address |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error`. Logs are JSON on stdout. |
 | `COOKIE_SECURE` | `true` | Send the session cookie over HTTPS only. Set `false` only for local http. |
-| `TRUST_PROXY` | `false` | Read the client IP from `CF-Connecting-IP`, or the last `X-Forwarded-For` entry. Enable only when the app is reachable solely through that proxy. `docker-compose.yml` enables it. |
-| `PUBLIC_ORIGIN` | empty | The site's public address, e.g. `https://app.example.com`. Accepted by the CSRF check even if a proxy changes `Host`. |
+| `TRUST_PROXY` | `false` | Read the client IP from the last `X-Forwarded-For` entry, which the reverse proxy adds. Enable only when the app is reachable solely through that proxy. `docker-compose.yml` enables it; `deploy/local.yml` turns it off. |
+| `PUBLIC_ORIGIN` | empty | The site's public address, e.g. `https://app.example.com`. Accepted by the CSRF check even if a proxy changes `Host`, and named as the issuer when MCP clients sign in. |
 | `ALLOW_SIGNUP` | `true` | Set `false` to stop new accounts being created. |
 | `DEMO` | as `ALLOW_SIGNUP` | Offer "Try the demo": each visitor gets a throwaway account with six months of sample data in their language, without signing up. It has no password, can't forward email, save API keys or make access tokens, and is deleted when they end it or after a day. |
 | `AUTH_RATE_LIMIT` | `10` | Sign-in and sign-up attempts per minute per client IP. |
@@ -127,7 +135,7 @@ The code is split by **feature**: each one owns its SQL, HTTP handlers and page.
 | `internal/inbox/` | Feature: email automation. Forwarding addresses, the inbound webhook, and turning emails into records (`parse/` reads emails and knows the senders; `claude.go` is the AI fallback). |
 | `internal/notify/` | Feature: payment notifications the Android app sends (Google Wallet), read into records (`parse.go` knows the apps). A payment already recorded from its email, an import or by hand is matched, not added. |
 | `internal/ai/` | Feature: Claude with the user's own API key. Stores the key encrypted (`seal.go`), and suggests categories for uncategorised records (`claude.go`). |
-| `internal/mcp/` | Feature: the MCP server at `/mcp`, so Claude Desktop, Claude Code and other MCP clients can read and tidy a user's records, with access tokens made in Settings. |
+| `internal/mcp/` | Feature: the MCP server at `/mcp`, so Claude (as a connector, Claude Desktop or Claude Code) and other MCP clients can read and tidy a user's records, with access tokens made in Settings or got by signing in (OAuth 2.1, `oauth.go`). |
 | `internal/widget/` | Feature: the month summary the Android home screen widgets draw. |
 | `internal/demo/`, `internal/sample/` | Feature: the demo. `sample` makes months of believable records, accounts and budgets in English or Japanese; `demo` fills a visitor's demo wallet with them. The demo account itself is `internal/account/demo.go`. `e2e/seed` fills the preview account with the same sample (`-lang ja` for Japanese). |
 | `internal/server/` | Wires the features into one handler; serves the introduction page at `/` and the web app at `/app/`. Its tests run the whole API against a real database. |
@@ -136,7 +144,7 @@ The code is split by **feature**: each one owns its SQL, HTTP handlers and page.
 | `web/src/` | The React app (`web/index.html`, served at `/app/`): `api.ts` (typed API client), `App.tsx` (sign-in gate and navigation), `wallet.tsx` (shared accounts and categories), `components/`, and `features/<name>/` pages. |
 | `web/src/i18n.tsx`, `language.ts`, `locales/ja.ts` | English and Japanese. Text is written in English and passed through `t()`; `locales/ja.ts` has each one in Japanese, and a missing entry fails the type check. The language is the device's unless picked in Settings › Language or on the sign-in screen (kept in the browser). Server messages are translated in `locales/ja.ts` too. |
 | `e2e/` | Playwright browser tests, and the throwaway stack that `verify.sh` and `preview.sh` use. |
-| `deploy/` | Swappable ways to expose the app (local, Cloudflare Tunnel, Caddy), and `email-worker/` for inbound mail. |
+| `deploy/` | Where the app runs: `local.yml` (this machine) and `aws.yml` (production), plus `email-worker/` for inbound mail. |
 
 ### Adding a feature
 
@@ -166,8 +174,11 @@ Follow `internal/wallet` or `internal/inbox`; a feature is about five files:
 | POST, PUT, DELETE | `/api/accounts[/{id}]` | user | Accounts: `{name, kind, initial_balance, color, archived}` |
 | POST, PUT, DELETE | `/api/categories[/{id}]` | user | Categories: `{name, kind, icon, color}` |
 | GET | `/api/transactions` | user | Records, newest first. Query: `from`, `to` (RFC 3339), `account_id`, `category_id` (or `none`), `q`, `status` |
-| POST, PUT, DELETE | `/api/transactions[/{id}]` | user | Records: `{kind, amount, account_id, to_account_id, category_id, occurred_at, payee, note, status}`. Confirming an emailed record learns its shop and card. |
-| POST | `/api/transactions/bulk` | user | Changes many records at once. Body `{ids, action}`: `delete`, `categorize` with `category_id` (`null` clears it; only records of the category's kind change, never transfers), or `move` with `account_id`. Up to 2000 IDs. `{changed, skipped}` |
+| POST, PUT, DELETE | `/api/transactions[/{id}]` | user | Records: `{kind, amount, account_id, to_account_id, category_id, occurred_at, payee, note, status}`. Confirming an emailed record learns its shop and card; with `remember: false` on the update, the shop's learned category is left as it was. |
+| POST | `/api/transactions/bulk` | user | Changes many records at once. Body `{ids, action}`: `delete`, `categorize` with `category_id` (`null` clears it; only records of the category's kind change, never transfers), `move` with `account_id`, or `confirm` (records to review with a category and an amount, not flagged as possible duplicates; shops and cards are learned only if nothing was learned for them yet). Up to 2000 IDs. `{changed, skipped}` |
+| GET | `/api/rules` | user | What confirmed payments taught the app: `{payees: [{key, payee, category_id, records}], cards: [{source, account_id, records}]}` |
+| PUT, DELETE | `/api/rules/payees` | user | Set a shop's category (body `{payee, category_id}`, returns the rule), or forget it (`?payee=`, `204`) |
+| PUT, DELETE | `/api/rules/cards` | user | Move a learned card to another account (body `{source, account_id}`), or forget it (`?source=`). `204` |
 | GET | `/api/stats` | user | Confirmed income and expenses over a period (transfers count as neither). Query: `from`, `to` (RFC 3339, up to 20 years apart), `tz` (IANA zone for grouping days, default `UTC`), `account_id`. `{spent, income, categories: [{category_id, kind, amount, count}], days: [{day, spent, income}]}` |
 | GET, POST, PUT, DELETE | `/api/budgets[/{id}]` | user | Monthly budgets: `{name, category_id, amount}` |
 | POST | `/api/import/budgetbakers` | user | Body: the CSV (`text/csv`). `{imported, duplicates, matched, accounts_created, categories_created, problems}` |
@@ -184,8 +195,13 @@ Follow `internal/wallet` or `internal/inbox`; a feature is about five files:
 | PUT, DELETE | `/api/ai/key` | user | Body `{key}`: an Anthropic API key, saved encrypted once Claude accepts it (`400` if not, `409` without `SECRETS_KEY`) |
 | POST | `/api/ai/categorize?offset=` | user | `{suggestions, remaining}`: a category Claude suggests (or `null`) for the next 100 payees whose confirmed records have none, skipping `offset`. Changes nothing. `409` without a key. |
 | POST | `/api/ai/categorize/apply` | user | Body `{items: [{payee, kind, category_id}]}`. Files each payee's uncategorised records and remembers the category for its emails. `{updated}` |
-| GET, POST, DELETE | `/api/mcp/tokens[/{id}]` | user | Access tokens for MCP clients: `{id, name, created_at, last_used_at}`. `POST {name}` also returns the `token`, once. |
-| POST | `/mcp` | MCP token | The MCP server (Streamable HTTP, JSON responses only). `Authorization: Bearer <token>`. Tools: `get_overview`, `list_records`, `list_uncategorized_payees`, `categorize_payees`, `set_record_category`, `create_category`, `spending_by_category`. |
+| GET, POST, DELETE | `/api/mcp/tokens[/{id}]` | user | Access tokens for MCP clients: `{id, name, created_at, last_used_at, signed_in}`; `signed_in` marks a connection made by signing in. `POST {name}` also returns the `token`, once. Deleting a connection revokes its tokens. |
+| POST | `/mcp` | MCP token | The MCP server (Streamable HTTP, JSON responses only). `Authorization: Bearer <token>`; without one, `401` with `WWW-Authenticate: Bearer resource_metadata="…"` for clients that sign in. Tools: `get_overview`, `list_records`, `list_uncategorized_payees`, `categorize_payees`, `set_record_category`, `create_category`, `spending_by_category`. |
+| GET | `/.well-known/oauth-protected-resource[/mcp]`, `/.well-known/oauth-authorization-server` | – | Sign-in metadata for MCP clients (RFC 9728, RFC 8414). The issuer is `PUBLIC_ORIGIN`, or the request's own address. |
+| POST | `/oauth/register` | – | Dynamic client registration (RFC 7591). JSON `{client_name, redirect_uris}`; redirect URIs must be https, http on localhost, or a reverse-domain app scheme. `201 {client_id, …}`. 10 a minute per IP. |
+| GET | `/oauth/authorize` | – | Checks the client, its redirect URI and PKCE (S256 only), then sends the browser to the web app's Connect page (`/app/#/connect`). |
+| GET, POST | `/api/mcp/authorize` | user | For the Connect page. `GET ?client_id&redirect_uri` gives `{client_name, redirect_host}`. `POST {client_id, redirect_uri, code_challenge, state, allow}` gives `{redirect_to}`: back to the client with a one-time code (5 minutes), or `error=access_denied`. `409` at 20 connections. |
+| POST | `/oauth/token` | – | Form-encoded. `grant_type=authorization_code` (with `code`, `code_verifier`, `redirect_uri`, `client_id`) or `refresh_token`. `{access_token, token_type, expires_in: 3600, refresh_token}`; each refresh replaces both tokens. |
 | GET | `/api/widget` | user | For the Android widgets. Query: `from`, `to` (RFC 3339). `{currency, currency_exponent, spent, balance, budget, budgets, review_count}` |
 | GET | `/`, `/app/` | – | The introduction page; the web app, which also answers every path under `/app/` |
 | GET | `/api/downloads` | – | `{android}`: `{url, size, updated}` of the APK, or `null` if there is none |

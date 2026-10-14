@@ -7,7 +7,7 @@
 #                                e.g. ./verify.sh e2e -g wallet
 #
 # Needs only Docker. Uses its own Compose project (<folder>-verify) with the
-# database in tmpfs, so it never touches the live stack or its data, and it
+# database in tmpfs, so it never touches the local stack or its data, and it
 # tears everything down when it exits, except the Go module and build caches,
 # which it keeps so the next run compiles only what changed. Screenshots of
 # failed browser tests land in e2e/test-results/.
@@ -28,7 +28,7 @@ HOST_UID=$(id -u) HOST_GID=$(id -g)
 # BuildKit, for the Dockerfile's build cache (even if the environment says not to).
 DOCKER_BUILDKIT=1
 export PW_VERSION HOST_UID HOST_GID DOCKER_BUILDKIT
-# Keep the live stack's .env (COMPOSE_FILE etc.) out of this.
+# Keep the local stack's .env (COMPOSE_FILE etc.) out of this.
 unset COMPOSE_FILE COMPOSE_PROJECT_NAME
 
 project=${PWD##*/}; project=${project,,}-verify

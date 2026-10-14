@@ -4,7 +4,8 @@ Each user gets a private address such as `pay-k3x9q2m4ab@in.example.com`.
 They set up a Gmail filter that forwards payment emails (for example PayPay Card's
 利用速報 usage alerts) to it, and every payment becomes a record waiting for review.
 Confirming one teaches the app the shop's category and the card's account. With
-auto-confirm on, later payments at known shops go straight in.
+auto-confirm on, later payments at known shops go straight in. Settings → Shops and
+cards lists what was learned, to change or forget.
 
 ```
 Gmail filter ──forward──▶ Cloudflare Email Routing ──▶ Email Worker ──POST──▶ /api/inbound/email
@@ -40,7 +41,7 @@ typed in by hand) is flagged as a possible duplicate and never auto-confirmed.
 
 ## Turning it on
 
-You need a domain on Cloudflare (the same one as the Cloudflare Tunnel is fine) and
+You need a domain on Cloudflare (rudnam.com's DNS is there) and
 the app reachable over HTTPS.
 
 1. **Pick the inbound domain**, e.g. `in.example.com`, and a secret:

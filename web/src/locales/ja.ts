@@ -581,6 +581,59 @@ export const ja = {
   'not used yet': '未使用',
   Disconnect: '接続を解除',
 
+  // Settings › Shops and cards (what confirming payments taught the app)
+  'Shops and cards': 'お店とカード',
+  'What was learned': '覚えた内容',
+  "When you confirm a payment from an email or a notification, its shop's category and its card's account are remembered, and the next payment there is filled in for you. Payments at a shop's branches (a name that starts with the shop's) share its category.":
+    'メールや通知の支払いを確定すると、お店のカテゴリとカードの口座を覚え、次からの支払いに自動で入ります。支店（お店の名前で始まる名前）での支払いも同じカテゴリになります。',
+  Shops: 'お店',
+  'No shops yet. Confirm a payment under {review}, or add one below.': 'まだお店はありません。{review}で支払いを確定するか、下で追加してください。',
+  '{name} added': '{name}を追加しました',
+  '{name} changed': '{name}を変更しました',
+  '{name} forgotten': '{name}を削除しました',
+  Forget: '削除',
+  'Add a shop': 'お店を追加',
+  'Shop name': 'お店の名前',
+  'Shop name, e.g. ローソン': 'お店の名前（例: ローソン）',
+  'Category for the new shop': '新しいお店のカテゴリ',
+  Add: '追加',
+  Cards: 'カード',
+  'No cards yet. A card is remembered when you confirm its first payment.': 'まだカードはありません。最初の支払いを確定すると、そのカードを覚えます。',
+  'Account for {name}': '{name}の口座',
+  'Archived account': 'アーカイブ済みの口座',
+  "A forgotten card's payments go to the account chosen under {email} until you confirm one elsewhere.":
+    '削除したカードの支払いは、別の口座で確定するまで{email}で選んだ口座に入ります。',
+  'Pick a category': 'カテゴリを選択',
+  'See and change what was remembered under {rules}.': '覚えた内容は{rules}で確認・変更できます。',
+
+  // Connecting an app such as Claude (OAuth)
+  "Let Claude look through your records and tidy them: sort records, fix categories, and answer questions about your spending. It doesn't need your API key.":
+    'Claudeが記録を見て整理できます。記録の仕分けやカテゴリの修正、支出についての質問への回答など。APIキーは不要です。',
+  'In the Claude app': 'Claudeアプリ',
+  '{where} (claude.ai, desktop or mobile): open Settings → Connectors, add a custom connector with the address below, then click Connect and allow it here. Leave the OAuth fields empty.':
+    '{where}（claude.ai、デスクトップ、モバイル）で 設定 → コネクタ を開き、下のアドレスでカスタムコネクタを追加して「連携」を押し、ここで許可してください。OAuthの欄は空のままにします。',
+  'How to connect with a token': 'トークンで接続する方法',
+  'Connected {day}': '{day}に接続',
+  'Sign in to connect an app such as Claude to your wallet.': 'ClaudeなどのアプリをWalletにつなぐには、ログインしてください。',
+  'Connect {app}': '{app}と接続',
+  '{app} is asking to reach your wallet, signed in as {email}. It will be able to:': '{app}が、{email} でログイン中のWalletへのアクセスを求めています。次のことができるようになります:',
+  'see your accounts, records and categories': '口座、記録、カテゴリを見る',
+  'change the category of records, and add categories': '記録のカテゴリを変更し、カテゴリを追加する',
+  "It can't add or delete records, or see your password or API key. You can disconnect it at any time in Settings → Claude.":
+    '記録の追加や削除、パスワードやAPIキーの閲覧はできません。設定 → Claude でいつでも接続を解除できます。',
+  "You'll go back to {host}.": '{host} に戻ります。',
+  Deny: '拒否',
+  Allow: '許可',
+  'Go to your wallet': 'Walletを開く',
+
+  // To review: confirming many at once
+  'Confirmed {n} payment': '{n}件の支払いを確定しました',
+  'Confirmed {n} payments': '{n}件の支払いを確定しました',
+  'Every payment here has a category.': 'ここのすべての支払いにカテゴリがあります。',
+  '{ready} of {total} payments have a category. The rest stay for you.': '{total}件中{ready}件にカテゴリがあります。残りはそのまま残ります。',
+  'Confirm {n} with a category': 'カテゴリのある{n}件を確定',
+  'Use {category} for {payee} from now on, instead of {old}': '今後{payee}は{old}ではなく{category}にする',
+
   // Settings › Home screen widgets
   'Keep this month in view from your home screen.': '今月の様子をホーム画面からいつでも確認できます。',
   'The Wallet app for Android keeps this month in view from your home screen.': 'Android版のWalletアプリなら、今月の様子をホーム画面からいつでも確認できます。',
@@ -665,6 +718,11 @@ export const jaServer: Record<string, string> = {
   "this doesn't look like a PayPay transaction history: no {col} column": 'PayPayの取引履歴ではないようです（{col}の列がありません）',
   "this doesn't look like a Wallet export: no {col} column": 'Walletの書き出しファイルではないようです（{col}の列がありません）',
   "the demo can't do this; create an account to use it": 'デモではこの操作はできません。使うにはアカウントを作成してください',
+  "enter the shop's name": 'お店の名前を入力してください',
+  'no such rule': 'その設定はありません',
+  'action must be delete, categorize, move or confirm': '操作は delete、categorize、move、confirm のいずれかにしてください',
+  "This sign-in link isn't valid. Go back to the app you were connecting and try again.": 'このログインリンクは無効です。接続しようとしていたアプリに戻って、もう一度お試しください。',
+  'you have {n} connections already; disconnect one in Settings → Claude first': '接続はすでに{n}個あります。先に 設定 → Claude で1つ解除してください',
   // The browser's own, when the server can't be reached
   'Failed to fetch': 'サーバーに接続できませんでした',
 

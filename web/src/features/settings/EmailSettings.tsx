@@ -169,7 +169,12 @@ export function EmailSettings() {
               ))}
           </select>
         </label>
-        <p className="muted small">{t('When you confirm a payment in another account, that card is remembered for next time.')}</p>
+        <p className="muted small">
+          {t('When you confirm a payment in another account, that card is remembered for next time.')}{' '}
+          {tx('See and change what was remembered under {rules}.', {
+            rules: <a href={href('settings', { section: 'rules' })}>{t('Shops and cards')}</a>,
+          })}
+        </p>
       </div>
 
       {!w.me.demo && (

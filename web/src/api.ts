@@ -79,7 +79,11 @@ export interface Transaction {
 export type TransactionInput = Pick<
   Transaction,
   'kind' | 'amount' | 'account_id' | 'to_account_id' | 'category_id' | 'occurred_at' | 'payee' | 'note'
-> & { status?: Transaction['status'] };
+> & {
+  status?: Transaction['status'];
+  /** false: confirm without changing the category learned for the shop. Left out, it is learned. */
+  remember?: boolean;
+};
 
 export interface Overview {
   settings: Settings;
@@ -114,7 +118,32 @@ export type BulkChange = { ids: number[] } & (
   | { action: 'categorize'; category_id: number | null }
   /** For a transfer, the account it comes from. */
   | { action: 'move'; account_id: number }
+  /** Records to review that are ready: a category, an amount, not a possible duplicate. Teaches new shops and cards only. */
+  | { action: 'confirm' }
 );
+
+/** What confirmed payments taught the app, so the user can check it. */
+export interface Rules {
+  /** Shops with the most records first. */
+  payees: PayeeRule[];
+  cards: CardRule[];
+}
+
+export interface PayeeRule {
+  /** The shop's name as matched: lower case, half-width. */
+  key: string;
+  /** The name as the shop's records spell it. */
+  payee: string;
+  category_id: number;
+  records: number;
+}
+
+export interface CardRule {
+  /** The card as emails and notifications name it. */
+  source: string;
+  account_id: number;
+  records: number;
+}
 
 /** How many of the chosen records changed; the rest didn't fit the change. */
 export interface BulkResult {
@@ -240,6 +269,15 @@ export interface MCPToken {
   last_used_at: string | null;
   /** The token itself, only in the answer that created it. */
   token?: string;
+  /** True for a connection made by signing in from the app, false for a token made here. */
+  signed_in?: boolean;
+}
+
+/** An MCP client asking to connect, for the Connect page. */
+export interface MCPClientInfo {
+  client_name: string;
+  /** Where the browser goes back to after the user answers. */
+  redirect_host: string;
 }
 
 /** An error response from the API; message is safe to show the user. */
@@ -361,6 +399,12 @@ export const api = {
 
   notifications: () => request<{ notifications: PaymentNotification[] }>('GET', '/api/notifications'),
 
+  rules: () => request<Rules>('GET', '/api/rules'),
+  setPayeeRule: (payee: string, category_id: number) => request<PayeeRule>('PUT', '/api/rules/payees', { payee, category_id }),
+  deletePayeeRule: (payee: string) => request<void>('DELETE', `/api/rules/payees?payee=${encodeURIComponent(payee)}`),
+  setCardRule: (source: string, account_id: number) => request<void>('PUT', '/api/rules/cards', { source, account_id }),
+  deleteCardRule: (source: string) => request<void>('DELETE', `/api/rules/cards?source=${encodeURIComponent(source)}`),
+
   /** What the same call last returned, if nothing has changed since; show it while the call reloads. */
   seen: {
     transactions: (f: TransactionFilter = {}) => lastSeen.get(`/api/transactions${query(f)}`) as Transaction[] | undefined,
@@ -379,6 +423,11 @@ export const api = {
   mcpTokens: () => request<MCPToken[]>('GET', '/api/mcp/tokens'),
   createMCPToken: (name: string) => request<MCPToken>('POST', '/api/mcp/tokens', { name }),
   deleteMCPToken: (id: number) => request<void>('DELETE', `/api/mcp/tokens/${id}`),
+  mcpClient: (clientId: string, redirectUri: string) =>
+    request<MCPClientInfo>('GET', `/api/mcp/authorize?${new URLSearchParams({ client_id: clientId, redirect_uri: redirectUri })}`),
+  /** Allows or denies a client; the answer says where to send the browser. */
+  mcpAuthorize: (r: { client_id: string; redirect_uri: string; code_challenge: string; state: string; allow: boolean }) =>
+    request<{ redirect_to: string }>('POST', '/api/mcp/authorize', r),
 
   importBudgetBakers: (csv: string) =>
     request<ImportResult>('POST', `/api/import/budgetbakers?tz_offset=${new Date().getTimezoneOffset()}`, csv, 'text/csv'),

@@ -245,9 +245,12 @@ function Connections() {
     <div className="card stack">
       <h2>{t('Connect Claude to your wallet')}</h2>
       <p className="small">
-        {t(
-          "Let Claude Desktop, Claude Code or another MCP client look through your records and tidy them: sort records, fix categories, and answer questions about your spending. It doesn't need your API key; each app gets its own token.",
-        )}
+        {t("Let Claude look through your records and tidy them: sort records, fix categories, and answer questions about your spending. It doesn't need your API key.")}
+      </p>
+      <p className="small">
+        {tx('{where} (claude.ai, desktop or mobile): open Settings → Connectors, add a custom connector with the address below, then click Connect and allow it here. Leave the OAuth fields empty.', {
+          where: <strong>{t('In the Claude app')}</strong>,
+        })}
       </p>
       <div className="address">
         <span className="muted small">{t('MCP server address')}</span>
@@ -274,7 +277,7 @@ function Connections() {
       </form>
 
       <details className="stack tight">
-        <summary>{t('How to connect')}</summary>
+        <summary>{t('How to connect with a token')}</summary>
         <p className="small">
           <strong>Claude Code:</strong> {t('run (tap to copy)')}
         </p>
@@ -301,7 +304,7 @@ function Connections() {
               <span className="grow">
                 <span className="block">{t.name}</span>
                 <span className="muted small">
-                  {tr('Made {day}', { day: formatDay(new Date(t.created_at)) })}
+                  {t.signed_in ? tr('Connected {day}', { day: formatDay(new Date(t.created_at)) }) : tr('Made {day}', { day: formatDay(new Date(t.created_at)) })}
                   {' · '}
                   {t.last_used_at ? tr('last used {day}', { day: formatDay(new Date(t.last_used_at)) }) : tr('not used yet')}
                 </span>

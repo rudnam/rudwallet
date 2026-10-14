@@ -303,3 +303,46 @@ test('a page seen before shows at once while it reloads, unless something change
   release();
   await expect(page.getByRole('button', { name: /Ramen Taro, -¥980/ })).toBeVisible();
 });
+
+test('on a phone, the add record sheet drags down to close', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signUp(page);
+  await page.getByRole('button', { name: 'Add record' }).click();
+  const dialog = page.getByRole('dialog', { name: 'New record' });
+  await expect(dialog).toBeVisible();
+  const grab = dialog.locator('.dialog-grab');
+  await expect(grab).toBeVisible();
+  const box = await grab.boundingBox();
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+
+  // A short drag springs back.
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y + 40, { steps: 8 });
+  await page.mouse.up();
+  await expect(dialog).toBeVisible();
+  await page.waitForTimeout(300);
+  await dialog.getByLabel('Amount (JPY)').fill('500');
+
+  // A long one closes it.
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y + 250, { steps: 15 });
+  await page.mouse.up();
+  await expect(dialog).toBeHidden();
+});
+
+test('on a wide screen, the sidebar stays put while the page scrolls', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 420 });
+  await signUp(page);
+  await expect(page.getByText('Total balance')).toBeVisible();
+  await page.mouse.wheel(0, 2000);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  const nav = page.getByRole('navigation', { name: 'Main' });
+  expect((await nav.boundingBox()).y).toBe(0);
+  // The signed-in email sits at the bottom of the window, not partway up it.
+  const foot = await nav.locator('.nav-foot').boundingBox();
+  expect(foot.y + foot.height).toBeGreaterThan(420 - 40);
+  expect(foot.y + foot.height).toBeLessThanOrEqual(420);
+});

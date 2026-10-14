@@ -106,7 +106,7 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 	notifyStore := notify.NewStore(conn)
 	notify.NewHandler(notifyStore, notify.NewService(notifyStore, walletStore)).Register(mux, accounts.RequireUser)
 	widget.NewHandler(walletStore).Register(mux, accounts.RequireUser)
-	mcp.NewHandler(mcp.NewStore(conn), walletStore, version).Register(mux, accounts.RequireUser)
+	mcp.NewHandler(mcp.NewStore(conn), walletStore, mcp.Config{Version: version, PublicOrigin: cfg.PublicOrigin, TrustProxy: cfg.TrustProxy}).Register(mux, accounts.RequireUser)
 
 	// Unknown API paths get a JSON 404 rather than the web page.
 	mux.Handle("/api/", httpx.HandlerFunc(func(http.ResponseWriter, *http.Request) error {

@@ -39,8 +39,23 @@ async function seed(page) {
   for (const res of await Promise.all(earlier.map((r) => api.post('/api/transactions', { data: r })))) expect(res.status()).toBe(201);
   await api.post('/api/budgets', { data: { name: 'Eating out', category_id: cat('Food & Drinks'), amount: 5000 } });
   await api.post('/api/budgets', { data: { name: 'Everything', category_id: null, amount: 120000 } });
-  // One payment from an email, waiting for review.
-  await deliverEmail(api, await inboxAddress(page), payPayEmail({ merchant: 'IKEAオンライン', yen: 4994, when: new Date(), id: `screens-${Date.now()}-${Math.random()}` }));
+  // Payments from emails: one confirmed earlier, which taught its shop and
+  // card; two at shops with a rule, and one at a new shop, waiting for review.
+  const to = await inboxAddress(page);
+  const email = (merchant, yen, ago = 0) =>
+    deliverEmail(api, to, payPayEmail({ merchant, yen, when: new Date(Date.now() - ago), id: `screens-${Date.now()}-${Math.random()}` }));
+  const amazon = await email('Amazon.co.jp', 2980, 86400_000);
+  const r = (await (await api.get('/api/transactions?status=review')).json()).find((t) => t.id === amazon.transaction_id);
+  const confirmed = await api.put(`/api/transactions/${r.id}`, {
+    data: { kind: r.kind, amount: r.amount, account_id: card.id, to_account_id: null, category_id: cat('Shopping'), occurred_at: r.occurred_at, payee: r.payee, note: r.note, status: 'confirmed' },
+  });
+  expect(confirmed.status(), await confirmed.text()).toBe(200);
+  for (const [payee, category] of [['セブン－イレブン', 'Food & Drinks'], ['スギ薬局', 'Health']]) {
+    expect((await api.put('/api/rules/payees', { data: { payee, category_id: cat(category) } })).status()).toBe(200);
+  }
+  await email('セブン－イレブン', 612, 7200_000);
+  await email('スギ薬局 大曽根店', 1280, 5400_000);
+  await email('IKEAオンライン', 4994);
   // The phone's notifications: the same payment (matched to the email) and one that isn't a payment.
   const wallet = 'com.google.android.apps.walletnfcrel';
   await api.post('/api/notifications', {
@@ -95,7 +110,7 @@ for (const [name, viewport] of [
 
     await seed(page);
     await page.reload();
-    await expect(page.getByRole('link', { name: /1 payment to review/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /3 payments to review/ })).toBeVisible();
     await expect(page.getByRole('list', { name: 'Spending by category' })).toBeVisible();
     await shot('2-overview');
 
@@ -108,6 +123,10 @@ for (const [name, viewport] of [
 
     await page.goto('/app/#/review');
     await expect(page.getByRole('listitem', { name: 'IKEAオンライン' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Confirm 2 with a category' })).toBeVisible();
+    // A category other than the shop's rule asks whether to keep it.
+    await page.getByLabel('Category for セブン－イレブン').selectOption({ label: 'Groceries' });
+    await expect(page.getByLabel(/Use Groceries for セブン－イレブン from now on/)).toBeVisible();
     await shot('3-review');
 
     await page.goto('/app/#/records');
@@ -135,6 +154,10 @@ for (const [name, viewport] of [
     await page.getByRole('link', { name: /Email automation/ }).click();
     await expect(page.getByTestId('inbox-address')).toBeVisible();
     await shot('8-settings-email');
+
+    await page.goto('/app/#/settings?section=rules');
+    await expect(page.getByRole('list', { name: 'Shops' }).getByRole('listitem', { name: 'Amazon.co.jp' })).toBeVisible();
+    await shot('8-settings-rules');
 
     await page.goto('/app/#/settings?section=accounts');
     await page.getByRole('button', { name: 'Edit account PayPay Card' }).click();
@@ -174,6 +197,12 @@ for (const [name, viewport] of [
     await expect(page.getByTestId('mcp-token')).toBeVisible();
     await page.getByText('How to connect').click();
     await shot('13-settings-claude-connected');
+    // A Claude connector asks to connect.
+    const reg = await (await page.request.post('/oauth/register', { data: { client_name: 'Claude', redirect_uris: ['https://claude.ai/api/mcp/auth_callback'] } })).json();
+    const authorize = new URLSearchParams({ response_type: 'code', client_id: reg.client_id, redirect_uri: 'https://claude.ai/api/mcp/auth_callback', code_challenge: 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', code_challenge_method: 'S256' });
+    await page.goto(`/oauth/authorize?${authorize}`);
+    await expect(page.getByRole('heading', { name: 'Connect Claude' })).toBeVisible();
+    await shot('13-connect-claude');
 
     const overview = await (await page.request.get('/api/wallet')).json();
     for (const [payee, amount] of [['セブン－イレブン 刈谷店', 540], ['セブン－イレブン 刈谷店', 312], ['スギ薬局 知立店', 1980], ['JR東海 定期', 15200], ['合同会社ミステリー', 3300]]) {
