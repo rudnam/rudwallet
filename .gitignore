@@ -23,5 +23,7 @@ android/signing-key.txt
 android/*.apk
 android/*.aab
 android/*.idsig
-# The APK the server offers for download (ANDROID_APK)
-/downloads/
+# The APK the server offers for download (ANDROID_APK). The folder itself is
+# kept, so Docker doesn't create it as root when it mounts it.
+/downloads/*
+!/downloads/.gitkeep
