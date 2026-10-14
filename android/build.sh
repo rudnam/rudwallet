@@ -30,7 +30,13 @@ export WALLET_KEYSTORE_PASSWORD WALLET_KEY_PASSWORD
 cp app/build/outputs/bundle/release/app-release.aab wallet.aab
 cp app/build/outputs/apk/release/app-release.apk wallet.apk
 # What the server offers on the introduction page (ANDROID_APK in docker-compose.yml).
-mkdir -p ../downloads && cp wallet.apk ../downloads/wallet.apk
+mkdir -p ../downloads
+if [[ ! -w ../downloads ]]; then
+  echo "downloads/ isn't writable (Docker creates it as root if it's missing when the server starts)." >&2
+  echo "Fix it with: sudo chown $(id -un): $(cd ../downloads && pwd)" >&2
+  exit 1
+fi
+cp wallet.apk ../downloads/wallet.apk
 echo "Built android/wallet.aab (Play Store) and android/wallet.apk ($(sed -n 's/.*versionName "\(.*\)"/\1/p' app/build.gradle))"
 
 if [[ ${1:-} == install ]]; then
