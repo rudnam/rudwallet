@@ -236,8 +236,14 @@ func readBudgetBakers(data []byte, currency string, zone *time.Location, res *Im
 			problem(line, "no account")
 			continue
 		}
+		// Older exports sign the amount ("Expenses", -1200); newer ones
+		// don't ("Expense", 1200), so the type column decides when present.
 		kind := "expense"
-		if f > 0 || strings.EqualFold(get(rec, "type"), "income") {
+		switch t := strings.ToLower(get(rec, "type")); {
+		case t == "income":
+			kind = "income"
+		case t == "expense" || t == "expenses":
+		case f > 0:
 			kind = "income"
 		}
 		raw := strings.Join(rec, "\x1f")

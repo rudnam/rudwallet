@@ -253,6 +253,34 @@ func TestImportBudgetBakers(t *testing.T) {
 	}
 }
 
+// Newer Wallet exports leave amounts unsigned and give the direction in type.
+func TestImportBudgetBakersUnsignedAmounts(t *testing.T) {
+	ts := newTestServer(t)
+	c := newClient(t, ts)
+	c.signup("a@example.com")
+	overview(t, c)
+	csv := strings.Join([]string{
+		"account;category;currency;amount;ref_currency_amount;type;payment_type;note;date;transfer;payee;labels",
+		"PayPay Card;Food & Drinks;JPY;318;318;Expense;Cash;;2026-10-11T04:53:13.000Z;false;;",
+		"Bank;Salary;JPY;300000;300000;Income;Transfer;;2026-10-25T00:00:00.000Z;false;;",
+		"Bank;Transfer, withdraw;JPY;20000;20000;Expense;Transfer;;2026-10-26T01:00:00.000Z;true;;",
+		"Cash;Transfer, withdraw;JPY;20000;20000;Income;Transfer;;2026-10-26T01:00:00.000Z;true;;",
+	}, "\n")
+	var res wallet.ImportResult
+	if code := c.send("/api/import/budgetbakers", "text/csv", []byte(csv), nil, &res); code != 200 || res.Imported != 3 {
+		t.Fatalf("import: %d %+v", code, res)
+	}
+	var list []wallet.Transaction
+	c.do("GET", "/api/transactions", nil, &list)
+	kinds := map[int64]string{}
+	for _, r := range list {
+		kinds[r.Amount] = r.Kind
+	}
+	if kinds[318] != "expense" || kinds[300000] != "income" || kinds[20000] != "transfer" {
+		t.Errorf("kinds by amount: %v", kinds)
+	}
+}
+
 func TestImportPayPay(t *testing.T) {
 	ts := newTestServer(t)
 	c, other := newClient(t, ts), newClient(t, ts)
