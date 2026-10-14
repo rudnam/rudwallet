@@ -332,3 +332,17 @@ test('on a phone, the add record sheet drags down to close', async ({ page }) =>
   await page.mouse.up();
   await expect(dialog).toBeHidden();
 });
+
+test('on a wide screen, the sidebar stays put while the page scrolls', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 420 });
+  await signUp(page);
+  await expect(page.getByText('Total balance')).toBeVisible();
+  await page.mouse.wheel(0, 2000);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  const nav = page.getByRole('navigation', { name: 'Main' });
+  expect((await nav.boundingBox()).y).toBe(0);
+  // The signed-in email sits at the bottom of the window, not partway up it.
+  const foot = await nav.locator('.nav-foot').boundingBox();
+  expect(foot.y + foot.height).toBeGreaterThan(420 - 40);
+  expect(foot.y + foot.height).toBeLessThanOrEqual(420);
+});

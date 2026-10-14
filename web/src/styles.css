@@ -203,7 +203,7 @@ a.button.secondary:hover { background: var(--sunken); }
     background: linear-gradient(90deg, var(--sunken) 239px, var(--border) 239px 240px, transparent 240px);
   }
   .nav {
-    position: sticky; top: 0; inset: auto; height: 100dvh; flex-direction: column; justify-content: flex-start; gap: 2px;
+    position: sticky; inset: 0 auto auto; height: 100dvh; flex-direction: column; justify-content: flex-start; gap: 2px;
     border-top: 0; border-right: 1px solid var(--border); padding: 24px 14px; background: var(--sunken);
     backdrop-filter: none;
   }
