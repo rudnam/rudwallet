@@ -40,7 +40,7 @@ typed in by hand) is flagged as a possible duplicate and never auto-confirmed.
 
 ## Turning it on
 
-You need a domain on Cloudflare (the same one as the Cloudflare Tunnel is fine) and
+You need a domain on Cloudflare (rudnam.com's DNS is there) and
 the app reachable over HTTPS.
 
 1. **Pick the inbound domain**, e.g. `in.example.com`, and a secret:

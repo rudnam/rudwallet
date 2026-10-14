@@ -33,14 +33,14 @@ docker compose up -d --build    # http://localhost:8080 (the app is at /app/)
 |---|---|---|
 | `./verify.sh` | Go vet, Go unit and integration tests, and browser tests, in throwaway containers | Before every commit or deploy. CI runs it too. |
 | `./preview.sh` | Builds the working tree (or `--ref <branch>`) and runs it privately at http://localhost:8081 with a fresh database of sample data | To **see** a change, e.g. what an AI just did, before deploying it |
-| `docker compose up -d --build` | Builds and (re)starts the real stack | To deploy |
+| `docker compose up -d --build` | Builds and (re)starts the local stack at http://localhost:8080 | To use it on this machine |
 
 ### Previewing a change before you deploy it
 
 ```sh
 ./preview.sh                          # what's in the working tree right now
 ./preview.sh --ref ai/new-feature     # a branch, without checking it out
-./preview.sh --restore backup.sql.gz  # with a copy of production data (see Backups)
+./preview.sh --restore backup.sql.gz  # with a copy of production data (see Production)
 ./preview.sh down                     # stop it and delete its data
 ```
 
@@ -58,21 +58,29 @@ cd web && npm install && npm run dev  # http://localhost:5173 (the introduction 
 
 After Go changes, run `docker compose up -d --build` again.
 
-## Deploying
+## Production
 
-[docs/deploy.md](docs/deploy.md) is a step-by-step path. Each step changes only the infrastructure, never the app:
+https://wallet.rudnam.com runs on AWS: one EC2 instance behind CloudFront, shared with the other rudnam apps. The infrastructure, backups and server access are in [rudnam/rudnam-infra](https://github.com/rudnam/rudnam-infra).
 
-1. **This machine:** `deploy/local.yml`.
-2. **Your PC on the internet:** Cloudflare Tunnel, with no open ports (`deploy/cloudflare.yml`).
-3. **A server with a public IP** (any VPS, or AWS EC2/Lightsail): Caddy with automatic HTTPS (`deploy/caddy.yml`).
-4. **Managed AWS:** ECS Fargate + RDS + a load balancer, for zero-downtime deploys, several instances and managed backups.
+- **Deploy:** push to `main`. CI (`.github/workflows/ci.yml`) runs `./verify.sh`, builds the image, pushes it to ECR and starts it on the instance with `deploy/aws.yml`. A failed check stops the deploy.
+- **Roll back:** Actions → CI → **Run workflow** on `main`, with the full SHA of an earlier commit. It reuses that commit's image, or rebuilds it.
+- **Settings and secrets:** the production `.env` is the SSM parameter `/rudnam/wallet-app/env`, not a file in this repo. To change one, update the parameter and redeploy (rudnam-infra README, "App secrets").
+- **Backups:** nightly database dumps (kept 30 days) and daily disk snapshots (7 days). To preview a change against real data:
+  ```sh
+  aws s3 ls --profile rudnam-ec2 s3://rudnam-backups-394567896817/wallet-app/
+  aws s3 cp --profile rudnam-ec2 s3://rudnam-backups-394567896817/wallet-app/<dump>.sql.gz backup.sql.gz
+  ./preview.sh --restore backup.sql.gz
+  ```
+- **Migrations** run on startup and only go forward, and a deploy briefly runs the old and new versions side by side. So every migration must keep the previous release working: adding a table, a nullable column or a column with a default is safe; renaming or dropping a column takes two releases (stop using it, then drop it). Don't roll back past a commit that changed the schema.
 
-### Backups
+## Contributing
 
-```sh
-docker compose exec -T db pg_dump -U app app | gzip > backup-$(date +%F).sql.gz   # back up
-gunzip -c backup.sql.gz | docker compose exec -T db psql -U app app                # restore into a fresh stack
-```
+1. Fork the repository (or branch, if you have write access) and run it locally (Quick start).
+2. Make the change, following `CLAUDE.md` (it applies to people too).
+3. Run `./verify.sh` until it prints `VERIFY PASSED`, and look at the change with `./preview.sh`.
+4. Open a pull request against `main`. CI runs the same checks and attaches screenshots; nothing deploys until it is merged.
+
+You never need production credentials: pull requests, including ones from forks, run without them.
 
 ## Configuration
 
@@ -84,7 +92,7 @@ All settings are environment variables (read in `internal/config`).
 | `ADDR` | `:8080` | Listen address |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error`. Logs are JSON on stdout. |
 | `COOKIE_SECURE` | `true` | Send the session cookie over HTTPS only. Set `false` only for local http. |
-| `TRUST_PROXY` | `false` | Read the client IP from `CF-Connecting-IP`, or the last `X-Forwarded-For` entry. Enable only when the app is reachable solely through that proxy. `docker-compose.yml` enables it. |
+| `TRUST_PROXY` | `false` | Read the client IP from the last `X-Forwarded-For` entry, which the reverse proxy adds. Enable only when the app is reachable solely through that proxy. `docker-compose.yml` enables it; `deploy/local.yml` turns it off. |
 | `PUBLIC_ORIGIN` | empty | The site's public address, e.g. `https://app.example.com`. Accepted by the CSRF check even if a proxy changes `Host`. |
 | `ALLOW_SIGNUP` | `true` | Set `false` to stop new accounts being created. |
 | `AUTH_RATE_LIMIT` | `10` | Sign-in and sign-up attempts per minute per client IP. |
@@ -133,7 +141,7 @@ The code is split by **feature**: each one owns its SQL, HTTP handlers and page.
 | `web/landing.html`, `web/src/landing.*` | The introduction page at `/`: plain HTML in the app's styles. It sends links meant for the app (`/#/records`, `/?email=…`) and installs from before the app moved on to `/app/`. |
 | `web/src/` | The React app (`web/index.html`, served at `/app/`): `api.ts` (typed API client), `App.tsx` (sign-in gate and navigation), `wallet.tsx` (shared accounts and categories), `components/`, and `features/<name>/` pages. |
 | `e2e/` | Playwright browser tests, and the throwaway stack that `verify.sh` and `preview.sh` use. |
-| `deploy/` | Swappable ways to expose the app (local, Cloudflare Tunnel, Caddy), and `email-worker/` for inbound mail. |
+| `deploy/` | Where the app runs: `local.yml` (this machine) and `aws.yml` (production), plus `email-worker/` for inbound mail. |
 
 ### Adding a feature
 
