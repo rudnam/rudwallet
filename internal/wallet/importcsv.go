@@ -11,9 +11,12 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/rudnam/wallet-app/internal/db"
 )
 
 // ImportResult reports what a CSV import did.
@@ -43,13 +46,146 @@ type csvRow struct {
 	matchedTo int // index of the other half of a transfer, or -1
 }
 
+// BudgetBakersAccount is an account named in a BudgetBakers export, and the
+// account suggested for its records: the user's of the same name, or a new
+// one of NewKind.
+type BudgetBakersAccount struct {
+	Name      string `json:"name"`
+	Count     int    `json:"count"`
+	AccountID *int64 `json:"account_id"`
+	NewKind   string `json:"new_kind"`
+}
+
+// BudgetBakersPreview describes a BudgetBakers export before it is imported.
+type BudgetBakersPreview struct {
+	Records    int                   `json:"records"`
+	From       *time.Time            `json:"from"`
+	To         *time.Time            `json:"to"`
+	Accounts   []BudgetBakersAccount `json:"accounts"`
+	Categories []ImportCategory      `json:"categories"`
+	// NewCategories are the default categories the user doesn't have, which
+	// a group's records can go to (created on import).
+	NewCategories []Category `json:"new_categories"`
+	Problems      []string   `json:"problems"`
+}
+
+func bbKey(kind, name string) string { return kind + ":" + strings.ToLower(strings.TrimSpace(name)) }
+
+// PreviewBudgetBakers reads a BudgetBakers export and suggests an account
+// for each of its accounts and a category for each of its categories.
+func (s *Store) PreviewBudgetBakers(ctx context.Context, userID int64, data []byte, zone *time.Location) (BudgetBakersPreview, error) {
+	p := BudgetBakersPreview{Accounts: []BudgetBakersAccount{}, Categories: []ImportCategory{}, Problems: []string{}}
+	st, err := s.Settings(ctx, userID)
+	if err != nil {
+		return p, err
+	}
+	res := ImportResult{Problems: []string{}}
+	rows, err := readBudgetBakers(data, st.Currency, zone, &res)
+	if err != nil {
+		return p, err
+	}
+	pairTransfers(rows)
+	p.Problems = res.Problems
+	accounts, err := s.Accounts(ctx, userID)
+	if err != nil {
+		return p, err
+	}
+	cats, err := s.Categories(ctx, userID)
+	if err != nil {
+		return p, err
+	}
+
+	acctIndex, catIndex := map[string]int{}, map[string]int{}
+	for i, r := range rows {
+		if r.matchedTo < 0 || r.matchedTo > i {
+			p.Records++ // a transfer's two rows are one record
+		}
+		if p.From == nil || r.when.Before(*p.From) {
+			p.From = &rows[i].when
+		}
+		if p.To == nil || r.when.After(*p.To) {
+			p.To = &rows[i].when
+		}
+		k := strings.ToLower(r.account)
+		if _, ok := acctIndex[k]; !ok {
+			a := BudgetBakersAccount{Name: r.account, NewKind: guessAccountKind(r.account)}
+			for _, have := range accounts {
+				if strings.EqualFold(have.Name, r.account) {
+					a.AccountID = &have.ID
+					break
+				}
+			}
+			acctIndex[k] = len(p.Accounts)
+			p.Accounts = append(p.Accounts, a)
+		}
+		p.Accounts[acctIndex[k]].Count++
+
+		if r.transfer || r.category == "" {
+			continue
+		}
+		k = bbKey(r.kind, r.category)
+		if _, ok := catIndex[k]; !ok {
+			g := ImportCategory{Name: r.category, Kind: r.kind}
+			suggestBudgetBakers(cats, &g)
+			catIndex[k] = len(p.Categories)
+			p.Categories = append(p.Categories, g)
+		}
+		g := &p.Categories[catIndex[k]]
+		g.Count++
+		g.Total += r.amount
+	}
+	slices.SortStableFunc(p.Accounts, func(a, b BudgetBakersAccount) int { return b.Count - a.Count })
+	sortGroups(p.Categories)
+	p.NewCategories = missingDefaults(cats)
+	return p, nil
+}
+
+// sortGroups puts expenses before income, and the most records first.
+func sortGroups(gs []ImportCategory) {
+	slices.SortStableFunc(gs, func(a, b ImportCategory) int {
+		if a.Kind != b.Kind {
+			return strings.Compare(a.Kind, b.Kind) // expense < income
+		}
+		return b.Count - a.Count
+	})
+}
+
+// guessAccountKind guesses what kind of account a name is.
+func guessAccountKind(name string) string {
+	n := strings.ToLower(name)
+	has := func(words ...string) bool {
+		for _, w := range words {
+			if strings.Contains(n, w) {
+				return true
+			}
+		}
+		return false
+	}
+	switch {
+	case has("cash", "現金", "wallet", "財布"):
+		return "cash"
+	case has("card", "カード", "visa", "master", "amex", "jcb"):
+		return "credit_card"
+	case has("saving", "貯金", "貯蓄", "定期"):
+		return "savings"
+	case has("bank", "銀行", "ufj", "smbc", "mizuho", "みずほ", "ゆうちょ"):
+		return "bank"
+	case has("paypay", "suica", "pasmo", "icoca", "nanaco", "waon", "edy", "メルペイ", "楽天ペイ", "d払い", "au pay", "line pay"):
+		return "e_money"
+	}
+	return "other"
+}
+
 // ImportBudgetBakers imports the records export of Wallet by BudgetBakers
-// (Settings → Export records → CSV). Accounts and categories are matched by
-// name and created when missing. Each row gets a key from its content, so
-// importing the same file again adds nothing.
+// (Settings → Export records → CSV). Each row gets a key from its content,
+// so importing the same file again adds nothing.
+//
+// choices (from PreviewBudgetBakers) send the file's accounts and
+// categories where the user wants them. An account or category without a
+// choice, or with choices nil, is matched by name and created when missing.
 //
 // Dates without a UTC offset are read in zone, the user's local time.
-func (s *Store) ImportBudgetBakers(ctx context.Context, userID int64, data []byte, zone *time.Location) (ImportResult, error) {
+func (s *Store) ImportBudgetBakers(ctx context.Context, userID int64, data []byte, zone *time.Location, choices *ImportChoices) (ImportResult, error) {
 	res := ImportResult{Problems: []string{}}
 	st, err := s.Settings(ctx, userID)
 	if err != nil {
@@ -60,6 +196,9 @@ func (s *Store) ImportBudgetBakers(ctx context.Context, userID int64, data []byt
 		return res, err
 	}
 	pairTransfers(rows)
+	if choices == nil {
+		choices = &ImportChoices{}
+	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -68,12 +207,21 @@ func (s *Store) ImportBudgetBakers(ctx context.Context, userID int64, data []byt
 	defer tx.Rollback()
 
 	accounts := map[string]int64{}
-	categories := map[string]int64{} // kind + ":" + lower(name)
+	owned := map[string]int64{}
 	if err := loadNames(ctx, tx, `SELECT lower(name), id FROM wallet_accounts WHERE user_id = $1`, userID, accounts); err != nil {
 		return res, err
 	}
-	if err := loadNames(ctx, tx, `SELECT kind || ':' || lower(name), id FROM categories WHERE user_id = $1`, userID, categories); err != nil {
+	if err := loadNames(ctx, tx, `SELECT id::text, id FROM wallet_accounts WHERE user_id = $1`, userID, owned); err != nil {
 		return res, err
+	}
+	for _, ch := range choices.Accounts {
+		if ch.AccountID == 0 {
+			continue
+		}
+		if _, ok := owned[strconv.FormatInt(ch.AccountID, 10)]; !ok {
+			return res, db.ErrNotFound
+		}
+		accounts[strings.ToLower(ch.Name)] = ch.AccountID
 	}
 	account := func(name string) (int64, error) {
 		if id, ok := accounts[strings.ToLower(name)]; ok {
@@ -81,27 +229,46 @@ func (s *Store) ImportBudgetBakers(ctx context.Context, userID int64, data []byt
 		}
 		var id int64
 		err := tx.QueryRowContext(ctx,
-			`INSERT INTO wallet_accounts (user_id, name, kind) VALUES ($1, $2, 'other') RETURNING id`, userID, name).Scan(&id)
+			`INSERT INTO wallet_accounts (user_id, name, kind) VALUES ($1, $2, $3) RETURNING id`,
+			userID, name, guessAccountKind(name)).Scan(&id)
 		accounts[strings.ToLower(name)] = id
 		res.AccountsCreated++
 		return id, err
 	}
+
+	ic, err := newImportCategories(ctx, tx, s, userID)
+	if err != nil {
+		return res, err
+	}
+	chosen := map[string]CategoryChoice{}
+	for _, ch := range choices.Categories {
+		chosen[bbKey(ch.Kind, ch.Name)] = ch
+	}
+	resolved := map[string]*int64{}
 	category := func(kind, name string) (*int64, error) {
 		if name == "" {
 			return nil, nil
 		}
-		k := kind + ":" + strings.ToLower(name)
-		if id, ok := categories[k]; ok {
-			return &id, nil
+		k := bbKey(kind, name)
+		if id, ok := resolved[k]; ok {
+			return id, nil
 		}
-		var id int64
-		err := tx.QueryRowContext(ctx,
-			`INSERT INTO categories (user_id, name, kind) VALUES ($1, $2, $3) RETURNING id`, userID, name, kind).Scan(&id)
-		categories[k] = id
-		res.CategoriesCreated++
-		return &id, err
+		var id *int64
+		if ch, ok := chosen[k]; ok {
+			ch.Kind = kind
+			if id, err = ic.choose(ch); err != nil {
+				return nil, err
+			}
+		} else {
+			n, err := ic.named(kind, name)
+			if err != nil {
+				return nil, err
+			}
+			id = &n
+		}
+		resolved[k] = id
+		return id, nil
 	}
-
 	for i, r := range rows {
 		if r.matchedTo >= 0 && r.matchedTo < i {
 			continue // recorded with its other half
@@ -146,6 +313,7 @@ func (s *Store) ImportBudgetBakers(ctx context.Context, userID int64, data []byt
 			res.Imported++
 		}
 	}
+	res.CategoriesCreated = ic.created
 	return res, tx.Commit()
 }
 

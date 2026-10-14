@@ -173,6 +173,7 @@ Follow `internal/wallet` or `internal/inbox`; a feature is about five files:
 | PUT | `/api/settings` | user | `{currency, auto_confirm, default_account_id}`. The currency is fixed once records exist (`409`). |
 | POST, PUT, DELETE | `/api/accounts[/{id}]` | user | Accounts: `{name, kind, initial_balance, color, archived}` |
 | POST, PUT, DELETE | `/api/categories[/{id}]` | user | Categories: `{name, kind, icon, color}` |
+| GET | `/api/categories/missing` | user | The default categories the user doesn't have (added since they signed up, or deleted), to add with POST |
 | GET | `/api/transactions` | user | Records, newest first. Query: `from`, `to` (RFC 3339), `account_id`, `category_id` (or `none`), `q`, `status` |
 | POST, PUT, DELETE | `/api/transactions[/{id}]` | user | Records: `{kind, amount, account_id, to_account_id, category_id, occurred_at, payee, note, status}`. Confirming an emailed record learns its shop and card; with `remember: false` on the update, the shop's learned category is left as it was. |
 | POST | `/api/transactions/bulk` | user | Changes many records at once. Body `{ids, action}`: `delete`, `categorize` with `category_id` (`null` clears it; only records of the category's kind change, never transfers), `move` with `account_id`, or `confirm` (records to review with a category and an amount, not flagged as possible duplicates; shops and cards are learned only if nothing was learned for them yet). Up to 2000 IDs. `{changed, skipped}` |
@@ -181,9 +182,10 @@ Follow `internal/wallet` or `internal/inbox`; a feature is about five files:
 | PUT, DELETE | `/api/rules/cards` | user | Move a learned card to another account (body `{source, account_id}`), or forget it (`?source=`). `204` |
 | GET | `/api/stats` | user | Confirmed income and expenses over a period (transfers count as neither). Query: `from`, `to` (RFC 3339, up to 20 years apart), `tz` (IANA zone for grouping days, default `UTC`), `account_id`. `{spent, income, categories: [{category_id, kind, amount, count}], days: [{day, spent, income}]}` |
 | GET, POST, PUT, DELETE | `/api/budgets[/{id}]` | user | Monthly budgets: `{name, category_id, amount}` |
-| POST | `/api/import/budgetbakers` | user | Body: the CSV (`text/csv`). `{imported, duplicates, matched, accounts_created, categories_created, problems}` |
-| POST | `/api/import/paypay?preview=1` | user | Body: PayPay's 取引履歴 CSV (`text/csv`), Japanese or English. `{records, from, to, methods, problems}`: each way of paying (取引方法) with a suggested account |
-| POST | `/api/import/paypay` | user | Body: the same CSV. Query: `account=<id>:<取引方法>` per way of paying (`0`: a new account). Returns the import result; `matched` counts payments already recorded from emails or by hand |
+| POST | `/api/import/budgetbakers?preview=1` | user | Body: the CSV (`text/csv`). `{records, from, to, accounts, categories, new_categories, problems}`: each account with a suggested account, each category with a suggested one of the user's (`category_id`) or a new one (`new_name`); `new_categories` are the missing defaults |
+| POST | `/api/import/budgetbakers` | user | Body: the CSV (`text/csv`; accounts and categories matched by name, created when missing), or JSON `{csv, accounts: [{name, account_id}], categories: [{name, kind, category_id, new_name}]}` with the choices from the preview. `{imported, duplicates, matched, accounts_created, categories_created, problems}` |
+| POST | `/api/import/paypay?preview=1` | user | Body: PayPay's 取引履歴 CSV (`text/csv`), Japanese or English. `{records, from, to, methods, categories, new_categories, problems}`: each way of paying (取引方法) with a suggested account, and each shop with a suggested category (`learned`: the one chosen before) |
+| POST | `/api/import/paypay` | user | Body: the same CSV, with `account=<id>:<取引方法>` per way of paying (`0`: a new account), or JSON `{csv, accounts: [{name, account_id}], categories: [{name, kind, category_id, new_name}]}`; a shop's expense category is remembered as a shop rule. Returns the import result; `matched` counts payments already recorded from emails or by hand |
 | GET | `/api/inbox` | user | `{address, ai_enabled, emails}` |
 | POST | `/api/inbox/address` | user | A new forwarding address |
 | POST | `/api/inbox/emails` | user | Body: a raw email (`message/rfc822`), processed as if forwarded |

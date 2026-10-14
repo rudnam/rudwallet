@@ -82,35 +82,85 @@ type Overview struct {
 var (
 	accountKinds = []string{"cash", "bank", "credit_card", "e_money", "savings", "other"}
 
+	// defaultCategories are every new user's categories. Icons are glyph keys
+	// (web/src/components/Icon.tsx); older users' defaults store emoji, which
+	// the app shows as the same glyphs. Users who signed up before one was
+	// added can add it later (MissingDefaults).
 	defaultCategories = []Category{
-		{Name: "Food & Drinks", Kind: "expense", Icon: "🍜", Color: "#d9534f"},
-		{Name: "Groceries", Kind: "expense", Icon: "🛒", Color: "#e8833a"},
-		{Name: "Shopping", Kind: "expense", Icon: "🛍️", Color: "#c9a227"},
-		{Name: "Transport", Kind: "expense", Icon: "🚆", Color: "#3b82c4"},
-		{Name: "Housing", Kind: "expense", Icon: "🏠", Color: "#8a5cc2"},
-		{Name: "Bills & Utilities", Kind: "expense", Icon: "💡", Color: "#5b6ee1"},
-		{Name: "Health", Kind: "expense", Icon: "💊", Color: "#2aa198"},
-		{Name: "Entertainment", Kind: "expense", Icon: "🎬", Color: "#d6619b"},
-		{Name: "Travel", Kind: "expense", Icon: "✈️", Color: "#1f9bd1"},
-		{Name: "Other", Kind: "expense", Icon: "📦", Color: "#7a7f7c"},
-		{Name: "Salary", Kind: "income", Icon: "💼", Color: "#2f9e5b"},
-		{Name: "Other income", Kind: "income", Icon: "💰", Color: "#5aa469"},
+		{Name: "Food & Drinks", Kind: "expense", Icon: "food", Color: "#d9534f"},
+		{Name: "Groceries", Kind: "expense", Icon: "grocery", Color: "#e8833a"},
+		{Name: "Shopping", Kind: "expense", Icon: "shopping", Color: "#c9a227"},
+		{Name: "Transport", Kind: "expense", Icon: "transit", Color: "#3b82c4"},
+		{Name: "Car", Kind: "expense", Icon: "car", Color: "#5f7387"},
+		{Name: "Housing", Kind: "expense", Icon: "home", Color: "#8a5cc2"},
+		{Name: "Bills & Utilities", Kind: "expense", Icon: "bills", Color: "#5b6ee1"},
+		{Name: "Phone & Internet", Kind: "expense", Icon: "phone", Color: "#2a8a8a"},
+		{Name: "Health", Kind: "expense", Icon: "health", Color: "#2aa198"},
+		{Name: "Personal care", Kind: "expense", Icon: "beauty", Color: "#a8508a"},
+		{Name: "Sport & Fitness", Kind: "expense", Icon: "sport", Color: "#4f8a4c"},
+		{Name: "Entertainment", Kind: "expense", Icon: "fun", Color: "#d6619b"},
+		{Name: "Education", Kind: "expense", Icon: "school", Color: "#5b4a8a"},
+		{Name: "Travel", Kind: "expense", Icon: "travel", Color: "#1f9bd1"},
+		{Name: "Gifts & Donations", Kind: "expense", Icon: "gift", Color: "#c96442"},
+		{Name: "Taxes & Fees", Kind: "expense", Icon: "bank", Color: "#8c7b5e"},
+		{Name: "Other", Kind: "expense", Icon: "other", Color: "#7a7f7c"},
+		{Name: "Salary", Kind: "income", Icon: "salary", Color: "#2f9e5b"},
+		{Name: "Rewards & Cashback", Kind: "income", Icon: "card", Color: "#b08a3e"},
+		{Name: "Refunds", Kind: "income", Icon: "shopping", Color: "#3b6ea8"},
+		{Name: "Interest & Dividends", Kind: "income", Icon: "savings", Color: "#2a8a8a"},
+		{Name: "Other income", Kind: "income", Icon: "money", Color: "#5aa469"},
 	}
 
-	// The same categories for someone whose app is in Japanese, by position.
-	japaneseCategoryNames = []string{"食費", "食料品", "買い物", "交通費", "住居費", "水道光熱費", "医療費", "娯楽", "旅行", "その他", "給与", "その他の収入"}
+	// japaneseNames are the defaults' names in a wallet set up in Japanese,
+	// by English name. Every default needs one (TestJapaneseNames).
+	japaneseNames = map[string]string{
+		"Food & Drinks": "食費", "Groceries": "食料品", "Shopping": "買い物", "Transport": "交通費", "Car": "車",
+		"Housing": "住居費", "Bills & Utilities": "水道光熱費", "Phone & Internet": "通信費", "Health": "医療費",
+		"Personal care": "美容・身だしなみ", "Sport & Fitness": "スポーツ・フィットネス", "Entertainment": "娯楽",
+		"Education": "教育・教養", "Travel": "旅行", "Gifts & Donations": "贈り物・寄付", "Taxes & Fees": "税金・手数料",
+		"Other": "その他", "Salary": "給与", "Rewards & Cashback": "ポイント・還元", "Refunds": "返金",
+		"Interest & Dividends": "利息・配当", "Other income": "その他の収入",
+	}
 )
+
+// localName is a default category's name in lang ("en" or "ja").
+func localName(english, lang string) string {
+	if j, ok := japaneseNames[english]; ok && lang == "ja" {
+		return j
+	}
+	return english
+}
+
+// sameDefault: a and b name the same default category, in either language.
+func sameDefault(a, b string) bool {
+	for en, ja := range japaneseNames {
+		if (strings.EqualFold(a, en) || a == ja) && (strings.EqualFold(b, en) || b == ja) {
+			return true
+		}
+	}
+	return false
+}
+
+// walletLanguage is "ja" for a wallet whose categories are named in
+// Japanese (set up while the app was in Japanese), else "en".
+func walletLanguage(cats []Category) string {
+	for _, c := range cats {
+		for _, ja := range japaneseNames {
+			if c.Name == ja {
+				return "ja"
+			}
+		}
+	}
+	return "en"
+}
 
 // DefaultCategoryNames are the names a new wallet's categories get in lang,
 // in the same order as in English, so a category can be found by its
 // English name: DefaultCategoryNames("ja")[i] is DefaultCategoryNames("en")[i].
 func DefaultCategoryNames(lang string) []string {
-	if lang == "ja" {
-		return japaneseCategoryNames
-	}
 	names := make([]string, len(defaultCategories))
 	for i, c := range defaultCategories {
-		names[i] = c.Name
+		names[i] = localName(c.Name, lang)
 	}
 	return names
 }
@@ -140,10 +190,8 @@ func (s *Store) SetUp(ctx context.Context, userID int64, lang string) error {
 	if n, _ := res.RowsAffected(); n == 0 {
 		return nil // already set up
 	}
-	for i, c := range defaultCategories {
-		if lang == "ja" {
-			c.Name = japaneseCategoryNames[i]
-		}
+	for _, c := range defaultCategories {
+		c.Name = localName(c.Name, lang)
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO categories (user_id, name, kind, icon, color) VALUES ($1, $2, $3, $4, $5)`,
 			userID, c.Name, c.Kind, c.Icon, c.Color); err != nil {

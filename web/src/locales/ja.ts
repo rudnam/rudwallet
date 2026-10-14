@@ -424,6 +424,8 @@ export const ja = {
 
   // Settings › Categories
   'Add category': 'カテゴリを追加',
+  'More categories': 'ほかのカテゴリ',
+  'Add category {name}': 'カテゴリ「{name}」を追加',
   'What you spend on and earn from. Tap one to rename it or change its icon.': '支出と収入の分類です。タップすると名前やアイコンを変更できます。',
   'Edit category {name}': 'カテゴリ「{name}」を編集',
   'Delete "{name}"? Its records become uncategorised.': '「{name}」を削除しますか？その記録はカテゴリなしになります。',
@@ -470,6 +472,42 @@ export const ja = {
   "In BudgetBakers' Wallet app, export your records as CSV (on the web app: Records → Export), then choose the file here. Accounts and categories are matched by name and created when missing. Importing the same file twice adds nothing new.":
     'BudgetBakersのWalletアプリで記録をCSVに書き出し（Web版: Records → Export）、ここでそのファイルを選んでください。口座とカテゴリは名前で照合し、なければ作成します。同じファイルを2回取り込んでも重複はしません。',
   'CSV file': 'CSVファイル',
+
+  // Settings › Import: choosing where records go
+  "In BudgetBakers' Wallet app, export your records as CSV (on the web app: Records → Export), then choose the file here. You can choose where its accounts and categories go before anything is imported. Importing the same file twice adds nothing new.":
+    'BudgetBakersのWalletアプリで記録をCSVに書き出し（Web版: Records → Export）、ここでそのファイルを選んでください。取り込む前に、口座とカテゴリの行き先を選べます。同じファイルを2回取り込んでも重複はしません。',
+  'There are no records in this file.': 'このファイルには記録がありません。',
+  "{n} record. Choose where each account's records go:": '記録{n}件。口座ごとに記録先を選んでください:',
+  "{n} records. Choose where each account's records go:": '記録{n}件。口座ごとに記録先を選んでください:',
+  "{n} record on {day}. Choose where each account's records go:": '{day}の記録{n}件。口座ごとに記録先を選んでください:',
+  "{n} records on {day}. Choose where each account's records go:": '{day}の記録{n}件。口座ごとに記録先を選んでください:',
+  "{n} record, {from} to {to}. Choose where each account's records go:": '{from}〜{to}の記録{n}件。口座ごとに記録先を選んでください:',
+  "{n} records, {from} to {to}. Choose where each account's records go:": '{from}〜{to}の記録{n}件。口座ごとに記録先を選んでください:',
+  "And where each category's records go. Close matches are picked; BudgetBakers' categories that fit none of yours can be added as they are.":
+    'カテゴリごとの行き先も選んでください。近いものを選んであります。どれにも合わないBudgetBakersのカテゴリは、そのまま追加できます。',
+  "Choose a category for each shop. A shop's category is remembered, so its next payments are sorted too.":
+    'お店ごとにカテゴリを選んでください。お店のカテゴリは記憶され、次からの支払いも仕分けられます。',
+  'Import {n} record': '{n}件を取り込む',
+  'Import {n} records': '{n}件を取り込む',
+  'Chosen shops': '選択したお店',
+  'Chosen categories': '選択したカテゴリ',
+  'Choose all shops': 'すべてのお店を選択',
+  'Choose all categories': 'すべてのカテゴリを選択',
+  'Tick shops to set several at once': 'お店にチェックを入れると、まとめて設定できます',
+  'Tick categories to set several at once': 'カテゴリにチェックを入れると、まとめて設定できます',
+  'Set category for chosen': '選択した項目のカテゴリを設定',
+  'Set category…': 'カテゴリを設定…',
+  'New expense categories': '新しい支出カテゴリ',
+  'New income categories': '新しい収入カテゴリ',
+  'Categories by shop': 'お店ごとのカテゴリ',
+  'Categories by category': 'カテゴリの対応',
+  'Choose {name}': '{name}を選択',
+  'as before': '前回と同じ',
+  'new category': '新しいカテゴリ',
+  'Your categories': 'あなたのカテゴリ',
+  'New categories': '新しいカテゴリ',
+  'Show all {n} shops': '{n}件のお店をすべて表示',
+  'Show all {n} categories': '{n}件のカテゴリをすべて表示',
 
   // Settings › Email automation
   'Get a new address? Mail sent to the old one will be refused, so update your Gmail forwarding too.':

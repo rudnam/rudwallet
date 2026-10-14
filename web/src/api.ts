@@ -222,6 +222,52 @@ export interface PayPayPreview {
   from: string | null;
   to: string | null;
   methods: PayPayMethod[];
+  /** The payments by shop, each with a suggested category. */
+  categories: ImportCategory[];
+  /** Default categories the user doesn't have, which can be created on import. */
+  new_categories: Category[];
+  problems: string[];
+}
+
+/**
+ * Records in an import file that share a category (BudgetBakers) or a shop
+ * (PayPay), and where they're suggested to go: category_id, else a new
+ * category named new_name, else ('') none.
+ */
+export interface ImportCategory {
+  name: string;
+  kind: 'expense' | 'income';
+  count: number;
+  total: number;
+  category_id: number | null;
+  new_name: string;
+  /** The suggestion is what the user chose for this shop before. */
+  learned: boolean;
+}
+
+/** Where a group's records go: a category, a new one by name, or neither for none. */
+export interface CategoryChoice {
+  name: string;
+  kind: 'expense' | 'income';
+  category_id: number;
+  new_name: string;
+}
+
+/** One account in a BudgetBakers export, and the account suggested for it (null: a new one). */
+export interface BudgetBakersAccount {
+  name: string;
+  count: number;
+  account_id: number | null;
+  new_kind: AccountKind;
+}
+
+export interface BudgetBakersPreview {
+  records: number;
+  from: string | null;
+  to: string | null;
+  accounts: BudgetBakersAccount[];
+  categories: ImportCategory[];
+  new_categories: Category[];
   problems: string[];
 }
 
@@ -371,6 +417,8 @@ export const api = {
   updateAccount: (id: number, a: Omit<Account, 'id' | 'balance'>) => request<Account>('PUT', `/api/accounts/${id}`, a),
   deleteAccount: (id: number) => request<void>('DELETE', `/api/accounts/${id}`),
 
+  /** Default categories the user doesn't have yet. */
+  missingCategories: () => request<Category[]>('GET', '/api/categories/missing'),
   createCategory: (c: Omit<Category, 'id'>) => request<Category>('POST', '/api/categories', c),
   updateCategory: (id: number, c: Omit<Category, 'id'>) => request<Category>('PUT', `/api/categories/${id}`, c),
   deleteCategory: (id: number) => request<void>('DELETE', `/api/categories/${id}`),
@@ -429,15 +477,23 @@ export const api = {
   mcpAuthorize: (r: { client_id: string; redirect_uri: string; code_challenge: string; state: string; allow: boolean }) =>
     request<{ redirect_to: string }>('POST', '/api/mcp/authorize', r),
 
-  importBudgetBakers: (csv: string) =>
-    request<ImportResult>('POST', `/api/import/budgetbakers?tz_offset=${new Date().getTimezoneOffset()}`, csv, 'text/csv'),
+  previewBudgetBakers: (csv: string) =>
+    request<BudgetBakersPreview>('POST', `/api/import/budgetbakers?preview=1&tz_offset=${new Date().getTimezoneOffset()}`, csv, 'text/csv'),
+  /** accounts maps each account in the file to an account ID, or 0 for a new one. */
+  importBudgetBakers: (csv: string, accounts: Record<string, number>, categories: CategoryChoice[]) =>
+    request<ImportResult>('POST', `/api/import/budgetbakers?tz_offset=${new Date().getTimezoneOffset()}`, {
+      csv,
+      accounts: Object.entries(accounts).map(([name, account_id]) => ({ name, account_id })),
+      categories,
+    }),
   previewPayPay: (csv: string) => request<PayPayPreview>('POST', '/api/import/paypay?preview=1', csv, 'text/csv'),
   /** accounts maps each payment method to an account ID, or 0 for a new account. */
-  importPayPay: (csv: string, accounts: Record<string, number>) => {
-    const p = new URLSearchParams();
-    for (const [method, id] of Object.entries(accounts)) p.append('account', `${id}:${method}`);
-    return request<ImportResult>('POST', `/api/import/paypay?${p}`, csv, 'text/csv');
-  },
+  importPayPay: (csv: string, accounts: Record<string, number>, categories: CategoryChoice[]) =>
+    request<ImportResult>('POST', '/api/import/paypay', {
+      csv,
+      accounts: Object.entries(accounts).map(([name, account_id]) => ({ name, account_id })),
+      categories,
+    }),
 };
 
 /** A message to show for any thrown value, in the language in use when it's one the app knows. */
