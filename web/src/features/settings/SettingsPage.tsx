@@ -108,23 +108,38 @@ export function SettingsPage({
           ))}
         </ul>
       </nav>
-      <div className="card me">
-        <span className="avatar" aria-hidden="true">
-          {me.email[0]}
-        </span>
-        <span className="grow">
-          <span className="muted small block">{t('Signed in as')}</span>
-          {me.email}
-        </span>
-        <button type="button" className="secondary" onClick={onSignOut}>
-          {t('Sign out')}
-        </button>
-      </div>
-      <div className="row end">
-        <button type="button" className="link danger" onClick={() => setDeleting(true)}>
-          {t('Delete account')}
-        </button>
-      </div>
+      {me.demo ? (
+        // Ending a demo deletes it.
+        <div className="card me">
+          <span className="grow">
+            <span className="muted small block">{t('Demo')}</span>
+            {t('Sample data, deleted within a day')}
+          </span>
+          <button type="button" className="secondary" onClick={onSignOut}>
+            {t('End demo')}
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="card me">
+            <span className="avatar" aria-hidden="true">
+              {me.email[0]}
+            </span>
+            <span className="grow">
+              <span className="muted small block">{t('Signed in as')}</span>
+              {me.email}
+            </span>
+            <button type="button" className="secondary" onClick={onSignOut}>
+              {t('Sign out')}
+            </button>
+          </div>
+          <div className="row end">
+            <button type="button" className="link danger" onClick={() => setDeleting(true)}>
+              {t('Delete account')}
+            </button>
+          </div>
+        </>
+      )}
       {deleting && <DeleteAccount me={me} onClose={() => setDeleting(false)} onDeleted={onDeleted} />}
     </section>
   );

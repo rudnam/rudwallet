@@ -40,6 +40,10 @@ type Config struct {
 	// AppScheme is the Android app's package, whose URL scheme Google
 	// sign-in sends the app back to. Empty turns that off.
 	AppScheme string
+	// Demo, if set, lets visitors try a demo account it fills (demo.go),
+	// which lasts DemoTTL (default a day).
+	Demo    DemoFiller
+	DemoTTL time.Duration
 }
 
 type Handler struct {
@@ -52,6 +56,9 @@ type Handler struct {
 func NewHandler(cfg Config, st *Store) *Handler {
 	if cfg.SessionTTL == 0 {
 		cfg.SessionTTL = 30 * 24 * time.Hour
+	}
+	if cfg.DemoTTL == 0 {
+		cfg.DemoTTL = 24 * time.Hour
 	}
 	if cfg.AttemptsPerMinute <= 0 {
 		cfg.AttemptsPerMinute = 10
@@ -77,6 +84,9 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.Handle("POST /api/verify-email", h.RequireUser(h.rateLimited(h.resendConfirmation)))
 	mux.Handle("GET /api/auth/options", httpx.HandlerFunc(h.options))
 	mux.Handle("POST /api/auth/app-token", h.rateLimited(h.appToken))
+	if h.cfg.Demo != nil {
+		mux.Handle("POST /api/demo", h.rateLimited(h.startDemo))
+	}
 	if h.cfg.Google != nil {
 		mux.HandleFunc("GET /api/auth/google", h.googleStart)
 		mux.HandleFunc("GET /api/auth/google/callback", h.googleCallback)
@@ -144,12 +154,14 @@ type meResponse struct {
 	HasPassword bool `json:"has_password"`
 	// ConfirmEmail asks the person to open the link we emailed them.
 	ConfirmEmail bool `json:"confirm_email"`
+	// Demo is a throwaway demo account, deleted after a day.
+	Demo bool `json:"demo"`
 	// Token is the new session's token, for the Android app only.
 	Token string `json:"token,omitempty"`
 }
 
 func (h *Handler) meFor(u User) meResponse {
-	return meResponse{Email: u.Email, HasPassword: u.HasPassword, ConfirmEmail: h.cfg.Mail != nil && !u.EmailVerified}
+	return meResponse{Email: u.Email, HasPassword: u.HasPassword, ConfirmEmail: h.cfg.Mail != nil && !u.EmailVerified, Demo: u.Demo}
 }
 
 func (h *Handler) rateLimited(fn httpx.HandlerFunc) httpx.HandlerFunc {
@@ -164,7 +176,7 @@ func (h *Handler) rateLimited(fn httpx.HandlerFunc) httpx.HandlerFunc {
 func normalizeEmail(raw string) (string, error) {
 	e := strings.ToLower(strings.TrimSpace(raw))
 	addr, err := mail.ParseAddress(e)
-	if err != nil || addr.Address != e || len(e) > 254 {
+	if err != nil || addr.Address != e || len(e) > 254 || strings.HasSuffix(e, demoDomain) {
 		return "", httpx.Errorf(http.StatusBadRequest, "enter a valid email address")
 	}
 	return e, nil
@@ -259,15 +271,19 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) error {
 // startSession signs the user in: the browser gets a cookie, and the
 // Android app gets the token back, to put in the response.
 func (h *Handler) startSession(w http.ResponseWriter, r *http.Request, userID int64) (appToken string, err error) {
-	token, hash, err := newSessionToken()
-	if err != nil {
-		return "", err
-	}
 	ttl := h.cfg.SessionTTL
 	if fromApp(r) {
 		ttl = appSessionTTL
 	}
-	expires := h.now().Add(ttl)
+	return h.startSessionUntil(w, r, userID, h.now().Add(ttl))
+}
+
+// startSessionUntil is startSession for a session that ends at expires.
+func (h *Handler) startSessionUntil(w http.ResponseWriter, r *http.Request, userID int64, expires time.Time) (appToken string, err error) {
+	token, hash, err := newSessionToken()
+	if err != nil {
+		return "", err
+	}
 	if err := h.store.createSession(r.Context(), userID, hash, expires); err != nil {
 		return "", err
 	}
@@ -279,7 +295,7 @@ func (h *Handler) startSession(w http.ResponseWriter, r *http.Request, userID in
 		Value:    token,
 		Path:     "/",
 		Expires:  expires,
-		MaxAge:   int(h.cfg.SessionTTL.Seconds()),
+		MaxAge:   int(expires.Sub(h.now()).Seconds()),
 		HttpOnly: true, // not readable from JavaScript
 		Secure:   h.cfg.SecureCookies,
 		SameSite: http.SameSiteLaxMode,
@@ -296,6 +312,12 @@ func (h *Handler) clearCookie(w http.ResponseWriter) {
 
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) error {
 	if token := sessionToken(r); token != "" {
+		// Ending a demo deletes it: nobody can come back to it.
+		if u, err := h.store.userBySession(r.Context(), hashToken(token)); err == nil && u.Demo {
+			if err := h.store.deleteUser(r.Context(), u.ID); err != nil {
+				return err
+			}
+		}
 		if err := h.store.deleteSession(r.Context(), hashToken(token)); err != nil {
 			return err
 		}

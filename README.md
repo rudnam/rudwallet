@@ -87,6 +87,7 @@ All settings are environment variables (read in `internal/config`).
 | `TRUST_PROXY` | `false` | Read the client IP from `CF-Connecting-IP`, or the last `X-Forwarded-For` entry. Enable only when the app is reachable solely through that proxy. `docker-compose.yml` enables it. |
 | `PUBLIC_ORIGIN` | empty | The site's public address, e.g. `https://app.example.com`. Accepted by the CSRF check even if a proxy changes `Host`. |
 | `ALLOW_SIGNUP` | `true` | Set `false` to stop new accounts being created. |
+| `DEMO` | as `ALLOW_SIGNUP` | Offer "Try the demo": each visitor gets a throwaway account with six months of sample data in their language, without signing up. It has no password, can't forward email, save API keys or make access tokens, and is deleted when they end it or after a day. |
 | `AUTH_RATE_LIMIT` | `10` | Sign-in and sign-up attempts per minute per client IP. |
 | `ANDROID_PACKAGE`, `ANDROID_CERT_FINGERPRINTS` | empty | The Android app's package, which Sign in with Google in the app returns to, and its signing keys, published in `/.well-known/assetlinks.json`. See [android/README.md](android/README.md). |
 | `ANDROID_APK` | empty | Path of the Android app's APK. While the file exists, the introduction page offers it at `/download/wallet.apk`. `docker-compose.yml` sets `/downloads/wallet.apk`, mounted from `downloads/`, which `./android/build.sh` fills. |
@@ -128,6 +129,7 @@ The code is split by **feature**: each one owns its SQL, HTTP handlers and page.
 | `internal/ai/` | Feature: Claude with the user's own API key. Stores the key encrypted (`seal.go`), and suggests categories for uncategorised records (`claude.go`). |
 | `internal/mcp/` | Feature: the MCP server at `/mcp`, so Claude Desktop, Claude Code and other MCP clients can read and tidy a user's records, with access tokens made in Settings. |
 | `internal/widget/` | Feature: the month summary the Android home screen widgets draw. |
+| `internal/demo/`, `internal/sample/` | Feature: the demo. `sample` makes months of believable records, accounts and budgets in English or Japanese; `demo` fills a visitor's demo wallet with them. The demo account itself is `internal/account/demo.go`. `e2e/seed` fills the preview account with the same sample (`-lang ja` for Japanese). |
 | `internal/server/` | Wires the features into one handler; serves the introduction page at `/` and the web app at `/app/`. Its tests run the whole API against a real database. |
 | `internal/testdb/` | Gives integration tests an empty, migrated database. |
 | `web/landing.html`, `web/src/landing.*` | The introduction page at `/`: plain HTML in the app's styles. It sends links meant for the app (`/#/records`, `/?email=…`) and installs from before the app moved on to `/app/`. |
@@ -151,10 +153,11 @@ Follow `internal/wallet` or `internal/inbox`; a feature is about five files:
 | Method | Path | Auth | Returns |
 |---|---|---|---|
 | POST | `/api/signup`, `/api/login` | – | `{email}` and a session cookie. Body `{email, password}`. |
-| POST | `/api/logout` | – | `204` |
-| GET | `/api/me` | user | `{email, has_password, confirm_email}` |
+| POST | `/api/logout` | – | `204`. Ending a demo deletes it. |
+| GET | `/api/me` | user | `{email, has_password, confirm_email, demo}` |
 | DELETE | `/api/me` | user | `204`. Deletes the account and all its data. Body `{password}`, or `{email}` for accounts without a password. |
-| GET | `/api/auth/options` | – | `{google}`: which ways to sign in exist |
+| GET | `/api/auth/options` | – | `{google, demo}`: which ways to sign in exist, and whether visitors can try a demo |
+| POST | `/api/demo` | – | Body `{tz}` (the visitor's time zone). Signs in to a new demo account filled with sample data, named in the `Accept-Language` language; `201` with `/api/me`'s answer. Only when `DEMO` is on; rate-limited like sign-up. |
 | GET | `/api/auth/google`, `/api/auth/google/callback` | – | Sign in with Google (redirects) |
 | GET | `/api/verify-email?token=` | – | The link in a confirmation email; redirects to the app |
 | POST | `/api/verify-email` | user | `204`. Sends the confirmation email again. |

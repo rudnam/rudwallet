@@ -399,6 +399,9 @@ li.record:hover:not(:disabled) { background: none; } /* a row to read, not to ta
 }
 .notice { background: var(--sunken); border-radius: var(--radius-sm); padding: 10px 14px; margin: 0; }
 .confirm-email { display: flex; align-items: center; gap: 10px; margin-bottom: var(--space); }
+.demo-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: var(--space); background: var(--accent-soft); }
+.demo-banner .grow { min-width: 14rem; }
+.demo-offer { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--border); }
 .confirm-email .inline-icon { flex: none; }
 .notice.warn { background: color-mix(in srgb, var(--status-warning) 16%, var(--surface)); }
 .notice-card { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }

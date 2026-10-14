@@ -21,9 +21,23 @@ import { useWallet, WalletProvider } from './wallet';
 /** The app's name, shown in the sidebar and on the sign-in screen. Also in index.html and the manifest. */
 export const appName = 'Wallet';
 
+/**
+ * The introduction page's "Try the demo" opens /app/?demo. Read once when
+ * the app loads, then dropped from the address so a reload doesn't start
+ * another demo.
+ */
+const demoRequested = (() => {
+  const params = new URLSearchParams(location.search);
+  if (!params.has('demo')) return false;
+  params.delete('demo');
+  const qs = params.toString();
+  history.replaceState(null, '', location.pathname + (qs ? `?${qs}` : '') + location.hash);
+  return true;
+})();
+
 type Session =
-  | { status: 'loading' }
-  | { status: 'signed-out'; notice?: Notice | null }
+  | { status: 'loading'; demo?: boolean }
+  | { status: 'signed-out'; notice?: Notice | null; mode?: 'sign-up' }
   | { status: 'signed-in'; me: Me }
   | { status: 'error'; message: string };
 
@@ -54,14 +68,35 @@ export function App() {
     api
       .me()
       .then((me) => setSession({ status: 'signed-in', me }))
-      .catch((err) =>
-        setSession(
-          err instanceof ApiError && err.status === 401
-            ? { status: 'signed-out', notice: initialNotice }
-            : { status: 'error', message: errorMessage(err) },
-        ),
-      );
+      .catch((err) => {
+        if (err instanceof ApiError && err.status === 401 && demoRequested) startDemo();
+        else
+          setSession(
+            err instanceof ApiError && err.status === 401
+              ? { status: 'signed-out', notice: initialNotice }
+              : { status: 'error', message: errorMessage(err) },
+          );
+      });
   }, []);
+
+  /** Signs in to a new demo account full of sample data. */
+  async function startDemo() {
+    setSession({ status: 'loading', demo: true });
+    try {
+      const me = await api.startDemo();
+      navigate('home');
+      setSession({ status: 'signed-in', me });
+    } catch (err) {
+      setSession({ status: 'signed-out', notice: { message: errorMessage(err), ok: false } });
+    }
+  }
+
+  /** From a demo to the sign-up form. Signing out deletes the demo. */
+  async function leaveDemo() {
+    await api.signOut();
+    navigate('home');
+    setSession({ status: 'signed-out', mode: 'sign-up' });
+  }
 
   async function signOut() {
     await api.signOut();
@@ -76,10 +111,11 @@ export function App() {
   if (session.status === 'signed-in') {
     return (
       <ToastProvider>
-        <WalletProvider>
+        <WalletProvider me={session.me}>
           <Shell
             me={session.me}
             onSignOut={signOut}
+            onCreateAccount={leaveDemo}
             onDeleted={() => signedOut({ message: t('Your account and everything in it were deleted.'), ok: true })}
           />
         </WalletProvider>
@@ -88,7 +124,7 @@ export function App() {
   }
   return (
     <main className="splash">
-      {session.status === 'loading' && <p className="muted">{t('Loading…')}</p>}
+      {session.status === 'loading' && <p className="muted">{session.demo ? t('Setting up your demo…') : t('Loading…')}</p>}
       {session.status === 'error' && (
         <p role="alert" className="error">
           {t('Could not reach the server: {error}', { error: session.message })}
@@ -101,7 +137,13 @@ export function App() {
             <span className="auth-name">{appName}</span>
             <p>{t('Your money, quietly kept in order.')}</p>
           </div>
-          <AuthForm key={session.notice?.message} notice={session.notice} onSignedIn={(me) => setSession({ status: 'signed-in', me })} />
+          <AuthForm
+            key={`${session.mode}-${session.notice?.message}`}
+            mode={session.mode}
+            notice={session.notice}
+            onSignedIn={(me) => setSession({ status: 'signed-in', me })}
+            onDemo={startDemo}
+          />
           <LanguagePicker />
         </div>
       )}
@@ -124,7 +166,17 @@ const pages: { page: string; label: Key; icon: string }[] = [
 /** Pages outside the main navigation, and the entry they belong under. */
 const subpages: Record<string, string> = { organize: 'settings' };
 
-function Shell({ me, onSignOut, onDeleted }: { me: Me; onSignOut: () => void; onDeleted: () => void }) {
+function Shell({
+  me,
+  onSignOut,
+  onCreateAccount,
+  onDeleted,
+}: {
+  me: Me;
+  onSignOut: () => void;
+  onCreateAccount: () => void;
+  onDeleted: () => void;
+}) {
   const route = useRoute();
   const w = useWallet();
   const toast = useToast();
@@ -208,11 +260,12 @@ function Shell({ me, onSignOut, onDeleted }: { me: Me; onSignOut: () => void; on
             )}
           </a>
         ))}
-        <span className="nav-foot ellipsis" title={me.email}>
-          {me.email}
+        <span className="nav-foot ellipsis" title={me.demo ? undefined : me.email}>
+          {me.demo ? t('Demo') : me.email}
         </span>
       </nav>
       <main className="page" key={`${route.page}-${version}`}>
+        {me.demo && <DemoBanner onCreateAccount={onCreateAccount} />}
         {me.confirm_email && <ConfirmEmail email={me.email} />}
         {page}
       </main>
@@ -220,6 +273,22 @@ function Shell({ me, onSignOut, onDeleted }: { me: Me; onSignOut: () => void; on
         <Plus />
       </button>
       {adding && <TransactionForm onClose={() => setAdding(false)} onSaved={() => setVersion((v) => v + 1)} />}
+    </div>
+  );
+}
+
+/** In a demo: what this is, and the way to an account of one's own. */
+function DemoBanner({ onCreateAccount }: { onCreateAccount: () => void }) {
+  return (
+    <div className="notice demo-banner" role="note">
+      <Icon d={icons.spark} className="inline-icon" />
+      <span className="grow">
+        <strong>{t('This is a demo with sample data.')}</strong>{' '}
+        {t('Change anything you like: nobody else sees it, and it’s deleted within a day.')}
+      </span>
+      <button type="button" className="secondary" onClick={onCreateAccount}>
+        {t('Create your account')}
+      </button>
     </div>
   );
 }

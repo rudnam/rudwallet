@@ -44,6 +44,22 @@ export const ja = {
   Today: '今日',
   Yesterday: '昨日',
 
+  // The demo
+  'Setting up your demo…': 'デモを準備しています…',
+  Demo: 'デモ',
+  'This is a demo with sample data.': 'サンプルデータのデモです。',
+  'Change anything you like: nobody else sees it, and it’s deleted within a day.': '自由に変更できます。ほかの人には見えず、1日以内に削除されます。',
+  'Create your account': 'アカウントを作成',
+  'Just looking?': 'まずは見てみたい方は',
+  'Try the demo': 'デモを試す',
+  'Sample data, deleted within a day': 'サンプルデータ（1日以内に削除）',
+  'End demo': 'デモを終了',
+  'In the demo, emails can’t be forwarded. With an account you get a private address: forward your card’s payment emails there, and each one becomes a record for you to confirm.':
+    'デモではメールを転送できません。アカウントを作成すると専用のアドレスが届き、カードの支払いメールを転送すると1通ずつ確認待ちの記録になります。',
+  'With your own Anthropic API key, Claude sorts records that have no category and reads payment emails from any shop. Claude Desktop and Claude Code can also connect to your wallet.':
+    'ご自身のAnthropic APIキーを登録すると、Claudeがカテゴリのない記録を仕分け、どのお店の支払いメールも読み取ります。Claude DesktopやClaude Codeからつなぐこともできます。',
+  'Claude needs an account of your own; it isn’t available in the demo.': 'Claudeの機能を使うにはアカウントが必要です。デモでは使えません。',
+
   // Category icons
   Food: '食事',
   Groceries: '食料品',
@@ -648,6 +664,7 @@ export const jaServer: Record<string, string> = {
     'ファイルがUTF-8ではありません。Excelで保存し直したものではなく、PayPayから受け取ったままのCSVファイルを使ってください',
   "this doesn't look like a PayPay transaction history: no {col} column": 'PayPayの取引履歴ではないようです（{col}の列がありません）',
   "this doesn't look like a Wallet export: no {col} column": 'Walletの書き出しファイルではないようです（{col}の列がありません）',
+  "the demo can't do this; create an account to use it": 'デモではこの操作はできません。使うにはアカウントを作成してください',
   // The browser's own, when the server can't be reached
   'Failed to fetch': 'サーバーに接続できませんでした',
 

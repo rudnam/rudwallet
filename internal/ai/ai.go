@@ -161,6 +161,9 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (h *Handler) setKey(w http.ResponseWriter, r *http.Request) error {
+	if err := account.NotInDemo(r); err != nil {
+		return err
+	}
 	var in struct {
 		Key string `json:"key"`
 	}

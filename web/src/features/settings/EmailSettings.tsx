@@ -136,6 +136,8 @@ export function EmailSettings() {
             )}
           </p>
         </>
+      ) : w.me.demo ? (
+        <p className="notice small">{t('In the demo, emails can’t be forwarded. With an account you get a private address: forward your card’s payment emails there, and each one becomes a record for you to confirm.')}</p>
       ) : (
         <p className="notice small">
           {t("Forwarding isn't switched on for this server yet (it needs an inbound mail domain; see docs/email.md). You can still test with an email below.")}
@@ -170,6 +172,7 @@ export function EmailSettings() {
         <p className="muted small">{t('When you confirm a payment in another account, that card is remembered for next time.')}</p>
       </div>
 
+      {!w.me.demo && (
       <details className="stack tight">
         <summary>{t('Test with an email')}</summary>
         <p className="small muted">
@@ -190,6 +193,7 @@ export function EmailSettings() {
           </button>
         </div>
       </details>
+      )}
       {tested && (
         <p className="notice" role="status">
           {tested.duplicate

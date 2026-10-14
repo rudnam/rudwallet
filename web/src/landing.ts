@@ -19,6 +19,7 @@ else {
   });
   revealOnScroll();
   followSteps();
+  offerDemo();
 }
 
 // The page is written in English; each text's Japanese is in its data-ja
@@ -85,6 +86,18 @@ function followSteps() {
   addEventListener('scroll', queue, { passive: true });
   addEventListener('resize', queue);
   update();
+}
+
+// "Try the demo" shows only when the server offers demos.
+async function offerDemo() {
+  try {
+    const res = await fetch('/api/auth/options');
+    if (!res.ok) return;
+    const { demo } = (await res.json()) as { demo?: boolean };
+    if (demo) document.querySelectorAll<HTMLElement>('[data-demo-hidden]').forEach((el) => (el.hidden = false));
+  } catch {
+    // Offline or an older server: just don't offer it.
+  }
 }
 
 // The Android app's download shows only when the server has an APK to give.

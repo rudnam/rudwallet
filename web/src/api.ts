@@ -10,6 +10,8 @@ export interface Me {
   has_password: boolean;
   /** The server emailed a link to confirm the address, and it hasn't been opened yet. */
   confirm_email: boolean;
+  /** A throwaway demo account full of sample data, deleted within a day. Absent from older servers. */
+  demo?: boolean;
   /** A new session's token, given to the Android app only (see native.ts). */
   token?: string;
 }
@@ -17,6 +19,8 @@ export interface Me {
 /** The ways this server offers to sign in. */
 export interface AuthOptions {
   google: boolean;
+  /** Visitors can try a demo without an account. Absent from older servers. */
+  demo?: boolean;
 }
 
 export interface Settings {
@@ -312,6 +316,8 @@ export const api = {
     await saveSession('');
   },
   authOptions: () => request<AuthOptions>('GET', '/api/auth/options'),
+  /** Signs in to a new demo account with sample data, named in the app's language and dated in this time zone. */
+  startDemo: () => signedIn(request<Me>('POST', '/api/demo', { tz: Intl.DateTimeFormat().resolvedOptions().timeZone })),
   resendConfirmation: () => request<void>('POST', '/api/verify-email'),
   /** Deletes the account and everything in it. Confirm with the password, or for a Google-only account, the email. */
   deleteMe: async (confirm: { password: string } | { email: string }) => {

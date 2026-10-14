@@ -8,9 +8,22 @@ import { formatDay } from '../../money';
 import { server } from '../../native';
 import { href } from '../../router';
 import { useToast } from '../../toast';
+import { useWallet } from '../../wallet';
 import { t, t as tr, tn, tx } from '../../i18n';
 
 export function ClaudeSettings() {
+  const { me } = useWallet();
+  if (me.demo) {
+    // A demo can't save a key or make tokens: it would reach outside the app.
+    return (
+      <div className="card stack">
+        <p className="small">
+          {t('With your own Anthropic API key, Claude sorts records that have no category and reads payment emails from any shop. Claude Desktop and Claude Code can also connect to your wallet.')}
+        </p>
+        <p className="notice small">{t('Claude needs an account of your own; it isn’t available in the demo.')}</p>
+      </div>
+    );
+  }
   return (
     <>
       <ApiKey />

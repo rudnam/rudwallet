@@ -17,6 +17,7 @@ type User struct {
 	Email         string
 	EmailVerified bool
 	HasPassword   bool // false for people who only sign in with Google
+	Demo          bool // a throwaway demo account (demo.go)
 }
 
 // Store holds the account SQL.
@@ -178,9 +179,9 @@ func (s *Store) createSession(ctx context.Context, userID int64, tokenHash []byt
 func (s *Store) userBySession(ctx context.Context, tokenHash []byte) (User, error) {
 	var u User
 	err := s.db.QueryRowContext(ctx, `
-		SELECT u.id, u.email, u.email_verified_at IS NOT NULL, u.password_hash <> ''
+		SELECT u.id, u.email, u.email_verified_at IS NOT NULL, u.password_hash <> '', u.demo_expires_at IS NOT NULL
 		FROM sessions s JOIN users u ON u.id = s.user_id
-		WHERE s.token_hash = $1 AND s.expires_at > now()`, tokenHash).Scan(&u.ID, &u.Email, &u.EmailVerified, &u.HasPassword)
+		WHERE s.token_hash = $1 AND s.expires_at > now()`, tokenHash).Scan(&u.ID, &u.Email, &u.EmailVerified, &u.HasPassword, &u.Demo)
 	if errors.Is(err, sql.ErrNoRows) {
 		return u, db.ErrNotFound
 	}

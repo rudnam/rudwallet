@@ -101,18 +101,33 @@ var (
 	japaneseCategoryNames = []string{"食費", "食料品", "買い物", "交通費", "住居費", "水道光熱費", "医療費", "娯楽", "旅行", "その他", "給与", "その他の収入"}
 )
 
+// DefaultCategoryNames are the names a new wallet's categories get in lang,
+// in the same order as in English, so a category can be found by its
+// English name: DefaultCategoryNames("ja")[i] is DefaultCategoryNames("en")[i].
+func DefaultCategoryNames(lang string) []string {
+	if lang == "ja" {
+		return japaneseCategoryNames
+	}
+	names := make([]string, len(defaultCategories))
+	for i, c := range defaultCategories {
+		names[i] = c.Name
+	}
+	return names
+}
+
 // cashName is the name of the account every wallet starts with.
 var cashName = map[string]string{"en": "Cash", "ja": "現金"}
 
 // setUp creates the user's settings, default categories and a Cash account
 // the first time they open the wallet. It is safe to call on every request.
 func (s *Store) setUp(ctx context.Context, userID int64) error {
-	return s.setUpIn(ctx, userID, "en")
+	return s.SetUp(ctx, userID, "en")
 }
 
-// setUpIn is setUp naming the categories and the Cash account in lang ("en"
-// or "ja"), for when the app opens the wallet for the first time.
-func (s *Store) setUpIn(ctx context.Context, userID int64, lang string) error {
+// SetUp is setUp naming the categories and the Cash account in lang ("en"
+// or "ja"), for when the app opens the wallet for the first time, or a demo
+// starts.
+func (s *Store) SetUp(ctx context.Context, userID int64, lang string) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err

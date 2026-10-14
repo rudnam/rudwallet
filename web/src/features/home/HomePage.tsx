@@ -59,7 +59,7 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
         </a>
       )}
 
-      {records !== null && budgets !== null && (
+      {records !== null && budgets !== null && !w.me.demo && (
         <SetUp hasRecords={(records ?? []).length > 0} hasBudget={budgets.length > 0} />
       )}
 

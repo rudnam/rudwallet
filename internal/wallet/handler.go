@@ -111,7 +111,7 @@ func color(s, def string) (string, error) {
 
 func (h *Handler) overview(w http.ResponseWriter, r *http.Request) error {
 	// The app opens a new wallet here, so its categories are named in the app's language.
-	if err := h.store.setUpIn(r.Context(), userID(r), httpx.Language(r)); err != nil {
+	if err := h.store.SetUp(r.Context(), userID(r), httpx.Language(r)); err != nil {
 		return err
 	}
 	o, err := h.store.Overview(r.Context(), userID(r))
