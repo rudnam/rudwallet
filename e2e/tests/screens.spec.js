@@ -177,6 +177,23 @@ for (const [name, viewport] of [
     await page.getByLabel('PayPay CSV file').setInputFiles({ name: 'paypay.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
     await expect(page.getByRole('button', { name: 'Import 3 payments' })).toBeVisible();
     await shot('10-import-paypay');
+    await page.getByRole('button', { name: 'Cancel' }).click();
+
+    const bbDay = `${now.getFullYear()}-${p(now.getMonth() + 1)}-02 08:00:00`;
+    const bb = [
+      'account;category;currency;amount;ref_currency_amount;type;payment_type;note;date;transfer;payee;labels',
+      ...[
+        ['Restaurant, fast-food', 1200], ['Bar, cafe', 480], ['Groceries', 2480], ['Phone, cell phone', 5200], ['Public transport', 980],
+        ['Coffee beans', 1500], ['Fuel', 4200], ['Charges, Fees', 220],
+      ].map(([cat, n]) => `Wallet;${cat};JPY;${n};${n};Expense;Cash;;${bbDay};false;;`),
+      `Bank;Wage, invoices;JPY;300000;300000;Income;Transfer;;${bbDay};false;;`,
+    ].join('\n');
+    await page.getByLabel('CSV file', { exact: true }).setInputFiles({ name: 'records.csv', mimeType: 'text/csv', buffer: Buffer.from(bb) });
+    await expect(page.getByRole('button', { name: 'Import 9 records' })).toBeVisible();
+    await page.getByLabel('Choose Bar, cafe').check();
+    await page.getByLabel('Choose Coffee beans').check();
+    await page.getByLabel('Category for Bar, cafe').scrollIntoViewIfNeeded();
+    await shot('10-import-budgetbakers');
 
     await page.goto('/app/#/settings?section=widgets');
     await expect(page.getByRole('list', { name: 'Widgets' })).toBeVisible();

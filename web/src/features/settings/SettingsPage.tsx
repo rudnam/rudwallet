@@ -1,9 +1,9 @@
 // Settings: a short menu; each entry opens its own page (?section=…), with
 // a way back. Email automation, payment notifications, what they learned,
 // accounts, categories, currency, and import.
-import { useState, type FormEvent, type ReactNode } from 'react';
-import { api, errorMessage, type Me, type Account, type AccountKind, type Category, type ImportResult, type PayPayPreview } from '../../api';
-import { CategoryIcon, glyphKey, glyphs, Icon, icons } from '../../components/Icon';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { api, errorMessage, type Me, type Account, type AccountKind, type Category, type ImportResult, type PayPayPreview, type BudgetBakersPreview } from '../../api';
+import { CategoryIcon, glyphKey, glyphs, Icon, icons, Plus } from '../../components/Icon';
 import { Dialog } from '../../components/Dialog';
 import { amountInput, parseAmount } from '../../money';
 import { href, type Route } from '../../router';
@@ -14,6 +14,7 @@ import { EmailSettings } from './EmailSettings';
 import { NotificationSettings } from './NotificationSettings';
 import { ClaudeSettings } from './ClaudeSettings';
 import { RulesSettings } from './RulesSettings';
+import { ImportCategories, categoryChoices, suggestedChoices, type Choices } from './ImportCategories';
 
 /** Each kind of account: what to call it, its icon and colour, and names people often use. */
 export const accountKinds: Record<AccountKind, { label: string; glyph: string; color: string; names: string[] }> = {
@@ -391,6 +392,22 @@ export function AccountForm({ account, onClose }: { account?: Account; onClose: 
 function Categories() {
   const w = useWallet();
   const [editing, setEditing] = useState<Category | 'new' | null>(null);
+  const [missing, setMissing] = useState<Category[]>([]);
+  const [error, setError] = useState('');
+  const names = w.categories.map((c) => `${c.kind}:${c.name}`).join('|');
+  useEffect(() => {
+    api.missingCategories().then(setMissing, () => setMissing([]));
+  }, [names]);
+
+  async function add(c: Category) {
+    setError('');
+    try {
+      await api.createCategory({ name: c.name, kind: c.kind, icon: c.icon, color: c.color });
+      await w.refresh();
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
   return (
     <>
       <Intro
@@ -417,6 +434,23 @@ function Categories() {
           </div>
         </div>
       ))}
+      {missing.length > 0 && (
+        <div className="stack tight">
+          <span className="muted small">More categories</span>
+          <div className="chips">
+            {missing.map((c) => (
+              <button key={`${c.kind}:${c.name}`} type="button" className="chip quiet" aria-label={`Add category ${c.name}`} onClick={() => add(c)}>
+                <Plus /> {c.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {error && (
+        <p role="alert" className="error small">
+          {error}
+        </p>
+      )}
       </div>
       {editing && <CategoryForm category={editing === 'new' ? undefined : editing} onClose={() => setEditing(null)} />}
     </>
@@ -606,6 +640,7 @@ function PayPayImport() {
   const [csv, setCsv] = useState('');
   const [preview, setPreview] = useState<PayPayPreview | null>(null);
   const [choice, setChoice] = useState<Record<string, number>>({});
+  const [cats, setCats] = useState<Choices>({});
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -627,6 +662,7 @@ function PayPayImport() {
       setCsv(text);
       setPreview(p);
       setChoice(Object.fromEntries(p.methods.map((m) => [m.method, m.account_id ?? 0])));
+      setCats(suggestedChoices(p.categories));
     } catch (err) {
       setError(errorMessage(err));
       setFileKey((k) => k + 1);
@@ -640,7 +676,7 @@ function PayPayImport() {
     setBusy(true);
     setError('');
     try {
-      setResult(await api.importPayPay(csv, choice));
+      setResult(await api.importPayPay(csv, choice, categoryChoices(preview?.categories ?? [], cats)));
       reset();
       await w.refresh();
     } catch (err) {
@@ -700,6 +736,14 @@ function PayPayImport() {
               </select>
             </label>
           ))}
+          {preview.categories.length > 0 && (
+            <>
+              <p>
+                Choose a category for each shop. A shop's category is remembered, so its next payments are sorted too.
+              </p>
+              <ImportCategories groups={preview.categories} newCategories={preview.new_categories} choices={cats} onChange={setCats} label="shop" plural="shops" />
+            </>
+          )}
           {preview.problems.length > 0 && (
             <div className="notice warn small">
               These rows can't be read and will be left out:
@@ -731,18 +775,54 @@ function PayPayImport() {
   );
 }
 
+/**
+ * Wallet by BudgetBakers' records export: the file is read first, then its
+ * accounts and categories are matched to the user's (or new ones), with the
+ * app's best guess picked, before anything is recorded.
+ */
 function BudgetBakersImport() {
   const w = useWallet();
+  const [csv, setCsv] = useState('');
+  const [preview, setPreview] = useState<BudgetBakersPreview | null>(null);
+  const [choice, setChoice] = useState<Record<string, number>>({});
+  const [cats, setCats] = useState<Choices>({});
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [fileKey, setFileKey] = useState(0);
 
-  async function upload(file: File) {
+  function reset() {
+    setCsv('');
+    setPreview(null);
+    setFileKey((k) => k + 1);
+  }
+
+  async function read(file: File) {
     setBusy(true);
     setError('');
     setResult(null);
     try {
-      setResult(await api.importBudgetBakers(await file.text()));
+      const text = await file.text();
+      const p = await api.previewBudgetBakers(text);
+      setCsv(text);
+      setPreview(p);
+      setChoice(Object.fromEntries(p.accounts.map((a) => [a.name, a.account_id ?? 0])));
+      setCats(suggestedChoices(p.categories));
+    } catch (err) {
+      setError(errorMessage(err));
+      setFileKey((k) => k + 1);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      setResult(await api.importBudgetBakers(csv, choice, categoryChoices(preview?.categories ?? [], cats)));
+      reset();
       await w.refresh();
     } catch (err) {
       setError(errorMessage(err));
@@ -751,18 +831,81 @@ function BudgetBakersImport() {
     }
   }
 
+  const accounts = w.accounts.filter((a) => !a.archived || Object.values(choice).includes(a.id));
+  const noun = (n: number) => (n === 1 ? 'record' : 'records');
   return (
     <div className="card stack">
       <h2>BudgetBakers</h2>
       <p className="small muted">
-        In BudgetBakers' Wallet app, export your records as CSV (on the web app: Records → Export), then choose the file here. Accounts and
-        categories are matched by name and created when missing. Importing the same file twice adds nothing new.
+        In BudgetBakers' Wallet app, export your records as CSV (on the web app: Records → Export), then choose the file here. You can choose where
+        its accounts and categories go before anything is imported. Importing the same file twice adds nothing new.
       </p>
-      <label className="field">
-        CSV file
-        <input type="file" accept=".csv,text/csv" disabled={busy} onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
-      </label>
-      {busy && <p className="muted">Importing…</p>}
+      {!preview && (
+        <label className="field">
+          CSV file
+          <input key={fileKey} type="file" accept=".csv,text/csv" disabled={busy} onChange={(e) => e.target.files?.[0] && read(e.target.files[0])} />
+        </label>
+      )}
+      {preview && preview.records === 0 && (
+        <>
+          <p>There are no records in this file.</p>
+          <div className="row end">
+            <button type="button" className="secondary" onClick={reset}>
+              Choose another file
+            </button>
+          </div>
+        </>
+      )}
+      {preview && preview.records > 0 && (
+        <form className="stack" onSubmit={submit}>
+          <p>
+            {preview.records} {noun(preview.records)}
+            {preview.from && preview.to && (shortDate(preview.from) === shortDate(preview.to) ? ` on ${shortDate(preview.from)}` : `, ${shortDate(preview.from)} to ${shortDate(preview.to)}`)}. Choose where each account's
+            records go:
+          </p>
+          {preview.accounts.map((a) => (
+            <label key={a.name} className="field">
+              <span>
+                {a.name}
+                <span className="muted small"> · {a.count} {noun(a.count)}</span>
+              </span>
+              <select value={choice[a.name]} onChange={(e) => setChoice({ ...choice, [a.name]: Number(e.target.value) })}>
+                {accounts.map((acc) => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.name}
+                  </option>
+                ))}
+                {!accounts.some((acc) => acc.name.toLowerCase() === a.name.toLowerCase()) && <option value={0}>New account: {a.name}</option>}
+              </select>
+            </label>
+          ))}
+          {preview.categories.length > 0 && (
+            <>
+              <p>And where each category's records go. Close matches are picked; BudgetBakers' categories that fit none of yours can be added as they are.</p>
+              <ImportCategories groups={preview.categories} newCategories={preview.new_categories} choices={cats} onChange={setCats} label="category" plural="categories" />
+            </>
+          )}
+          {preview.problems.length > 0 && (
+            <div className="notice warn small">
+              These rows can't be read and will be left out:
+              <ul>
+                {preview.problems.map((p) => (
+                  <li key={p}>{p}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <div className="row end">
+            <button type="button" className="secondary" onClick={reset} disabled={busy}>
+              Cancel
+            </button>
+            <button type="submit" disabled={busy}>
+              {busy ? 'Importing…' : `Import ${preview.records} ${noun(preview.records)}`}
+            </button>
+          </div>
+        </form>
+      )}
+      {busy && !preview && <p className="muted">Reading the file…</p>}
       {error && (
         <p role="alert" className="error">
           {error}

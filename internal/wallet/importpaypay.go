@@ -96,11 +96,17 @@ type PayPayMethod struct {
 
 // PayPayPreview describes a PayPay export before it is imported.
 type PayPayPreview struct {
-	Records  int            `json:"records"`
-	From     *time.Time     `json:"from"`
-	To       *time.Time     `json:"to"`
-	Methods  []PayPayMethod `json:"methods"`
-	Problems []string       `json:"problems"`
+	Records int            `json:"records"`
+	From    *time.Time     `json:"from"`
+	To      *time.Time     `json:"to"`
+	Methods []PayPayMethod `json:"methods"`
+	// Categories groups the payments by shop (records without one, by what
+	// they are), each with a suggested category: the one chosen for the
+	// shop before, else a guess from its name.
+	Categories []ImportCategory `json:"categories"`
+	// NewCategories are the default categories the user doesn't have.
+	NewCategories []Category `json:"new_categories"`
+	Problems      []string   `json:"problems"`
 }
 
 type payPayRow struct {
@@ -116,7 +122,7 @@ type payPayRow struct {
 // PreviewPayPay reads a PayPay export and suggests an account for each way
 // of paying in it.
 func (s *Store) PreviewPayPay(ctx context.Context, userID int64, data []byte) (PayPayPreview, error) {
-	p := PayPayPreview{Methods: []PayPayMethod{}}
+	p := PayPayPreview{Methods: []PayPayMethod{}, Categories: []ImportCategory{}}
 	res := ImportResult{Problems: []string{}}
 	rows, err := s.readPayPayFor(ctx, userID, data, &res)
 	if err != nil {
@@ -131,19 +137,112 @@ func (s *Store) PreviewPayPay(ctx context.Context, userID int64, data []byte) (P
 			p.To = &r.when
 		}
 	}
-	p.Methods, err = s.payPayMethods(ctx, userID, rows)
-	return p, err
+	if p.Methods, err = s.payPayMethods(ctx, userID, rows); err != nil {
+		return p, err
+	}
+	cats, err := s.Categories(ctx, userID)
+	if err != nil {
+		return p, err
+	}
+	rules, err := s.payeeRules(ctx, userID)
+	if err != nil {
+		return p, err
+	}
+	index := map[string]int{}
+	for _, r := range rows {
+		label := recordLabel(r.payee, r.note)
+		if r.kind == "transfer" || PayeeKey(label) == "" {
+			continue
+		}
+		k := groupKey(r.kind, label)
+		if _, ok := index[k]; !ok {
+			g := ImportCategory{Name: label, Kind: r.kind}
+			if id := rules.match(r.payee); id != nil && kindOf(cats, *id) == r.kind {
+				g.CategoryID, g.Learned = id, true
+			} else if d := guessCategory(r.kind, r.payee, r.note); d != "" {
+				suggestNamed(cats, &g, d)
+			}
+			index[k] = len(p.Categories)
+			p.Categories = append(p.Categories, g)
+		}
+		g := &p.Categories[index[k]]
+		g.Count++
+		g.Total += r.amount
+	}
+	// Shops not seen before first: they are the ones to decide on.
+	sortGroups(p.Categories)
+	slices.SortStableFunc(p.Categories, func(a, b ImportCategory) int {
+		switch {
+		case a.Learned == b.Learned:
+			return 0
+		case b.Learned:
+			return -1
+		}
+		return 1
+	})
+	p.NewCategories = missingDefaults(cats)
+	return p, nil
+}
+
+func kindOf(cats []Category, id int64) string {
+	for _, c := range cats {
+		if c.ID == id {
+			return c.Kind
+		}
+	}
+	return ""
+}
+
+// payeeRuleSet is the user's payee_rules, matched as ruleCategory does.
+type payeeRuleSet struct {
+	byKey map[string]int
+	ids   []int64
+}
+
+func (s *Store) payeeRules(ctx context.Context, userID int64) (payeeRuleSet, error) {
+	rs := payeeRuleSet{byKey: map[string]int{}}
+	rows, err := s.db.QueryContext(ctx, `SELECT payee_key, category_id FROM payee_rules WHERE user_id = $1`, userID)
+	if err != nil {
+		return rs, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var key string
+		var id int64
+		if err := rows.Scan(&key, &id); err != nil {
+			return rs, err
+		}
+		rs.byKey[key] = len(rs.ids)
+		rs.ids = append(rs.ids, id)
+	}
+	return rs, rows.Err()
+}
+
+func (rs payeeRuleSet) match(payee string) *int64 {
+	key := PayeeKey(payee)
+	if key == "" {
+		return nil
+	}
+	if i, ok := matchRule(rs.byKey, key); ok {
+		return &rs.ids[i]
+	}
+	return nil
 }
 
 // ImportPayPay imports a PayPay export. accounts maps a 取引方法 to the
 // account for it; a method left out, or mapped to 0, gets the suggested
 // account (created if new). The choice is remembered for the next import.
 //
+// categories (groups from PreviewPayPay) give records a category; a shop's
+// expense category is remembered for its next payments, as when the user
+// sorts records. A record whose group has no choice gets its shop's
+// remembered category, if an expense, as before previews had them.
+//
 // Rows are keyed by their 取引番号, so importing overlapping periods adds
 // each payment once. A payment already recorded another way (from its email,
 // or by hand) in the same account, for the same amount, within a day, is
 // skipped and counted as Matched.
-func (s *Store) ImportPayPay(ctx context.Context, userID int64, data []byte, accounts map[string]int64) (ImportResult, error) {
+func (s *Store) ImportPayPay(ctx context.Context, userID int64, data []byte, accounts map[string]int64, categories []CategoryChoice) (ImportResult, error) {
 	res := ImportResult{Problems: []string{}}
 	rows, err := s.readPayPayFor(ctx, userID, data, &res)
 	if err != nil {
@@ -197,6 +296,48 @@ func (s *Store) ImportPayPay(ctx context.Context, userID int64, data []byte, acc
 		}
 	}
 
+	ic, err := newImportCategories(ctx, tx, s, userID)
+	if err != nil {
+		return res, err
+	}
+	chosen := map[string]CategoryChoice{}
+	for _, ch := range categories {
+		chosen[groupKey(ch.Kind, ch.Name)] = ch
+	}
+	resolved := map[string]*int64{}
+	learned := map[string]bool{}
+	category := func(r payPayRow) (*int64, error) {
+		k := groupKey(r.kind, recordLabel(r.payee, r.note))
+		ch, ok := chosen[k]
+		if !ok {
+			if r.kind != "expense" {
+				return nil, nil
+			}
+			return s.ruleCategory(ctx, userID, r.payee)
+		}
+		id, done := resolved[k]
+		if !done {
+			ch.Kind = r.kind
+			var err error
+			if id, err = ic.choose(ch); err != nil {
+				return nil, err
+			}
+			resolved[k] = id
+		}
+		// Rules have no kind, so only expenses teach one: income from a
+		// shop (a refund, points) mustn't change its payments' category.
+		if key := PayeeKey(r.payee); id != nil && r.kind == "expense" && key != "" && !learned[key] {
+			learned[key] = true
+			if _, err := tx.ExecContext(ctx,
+				`INSERT INTO payee_rules (user_id, payee_key, category_id) VALUES ($1, $2, $3)
+				 ON CONFLICT (user_id, payee_key) DO UPDATE SET category_id = EXCLUDED.category_id`,
+				userID, key, *id); err != nil {
+				return nil, err
+			}
+		}
+		return id, nil
+	}
+
 	matched := []int64{} // existing records, each matched to one row
 	for _, r := range rows {
 		t := Transaction{Kind: r.kind, Amount: r.amount, AccountID: account[r.method], OccurredAt: r.when, Payee: r.payee, Note: r.note}
@@ -237,8 +378,8 @@ func (s *Store) ImportPayPay(ctx context.Context, userID int64, data []byte, acc
 				return res, err
 			}
 		}
-		if t.Kind == "expense" {
-			if t.CategoryID, err = s.ruleCategory(ctx, userID, t.Payee); err != nil {
+		if t.Kind != "transfer" {
+			if t.CategoryID, err = category(r); err != nil {
 				return res, err
 			}
 		}
@@ -251,6 +392,7 @@ func (s *Store) ImportPayPay(ctx context.Context, userID int64, data []byte, acc
 		}
 		res.Imported++
 	}
+	res.CategoriesCreated = ic.created
 	return res, tx.Commit()
 }
 
