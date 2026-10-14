@@ -92,3 +92,52 @@ test('emails without a rule wait for the user', async ({ page }) => {
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByText('All caught up.')).toBeVisible();
 });
+
+test('a one-off category leaves the shop alone, Confirm all clears the rest, and rules can be changed', async ({ page }) => {
+  await signUp(page);
+  const to = await inboxAddress(page);
+  const run = Date.now();
+  const email = (merchant, yen, id) => deliverEmail(page.request, to, payPayEmail({ merchant, yen, when: new Date(), id: `${id}-${run}` }));
+
+  // A shop added by hand fills in its payments' category.
+  await page.goto('/app/#/settings?section=rules');
+  await expect(page.getByText('No shops yet.')).toBeVisible();
+  await page.getByLabel('Shop name').fill('ローソン');
+  await page.getByLabel('Category for the new shop').selectOption({ label: 'Food & Drinks' });
+  await page.getByRole('button', { name: 'Add' }).click();
+  await expect(page.getByRole('list', { name: 'Shops' }).getByRole('listitem', { name: 'ローソン' })).toBeVisible();
+
+  await email('ローソン', 550, 'l1');
+  await email('ローソン', 1200, 'l2');
+  await email('無印良品', 1990, 'm1');
+  await page.goto('/app/#/review');
+  const items = page.getByRole('list', { name: 'Payments to review' }).getByRole('listitem');
+  await expect(items).toHaveCount(3);
+
+  // One Lawson payment was a gift: confirm it as such without remembering.
+  const gift = items.filter({ hasText: '-¥1,200' });
+  await gift.getByLabel('Category for ローソン').selectOption({ label: 'Shopping' });
+  await expect(gift.getByLabel(/Use Shopping for ローソン from now on, instead of Food & Drinks/)).not.toBeChecked();
+  await gift.getByRole('button', { name: 'Confirm' }).click();
+  await expect(items).toHaveCount(2);
+
+  // Pick the new shop's category, then confirm everything at once.
+  await page.getByLabel('Category for 無印良品').selectOption({ label: 'Shopping' });
+  await page.getByRole('button', { name: 'Confirm 2 with a category' }).click();
+  await expect(page.getByText('All caught up.')).toBeVisible();
+
+  // Lawson kept its category; the new shop and the card were learned.
+  await page.goto('/app/#/settings?section=rules');
+  const lawson = page.getByRole('list', { name: 'Shops' }).getByRole('listitem', { name: 'ローソン' });
+  await expect(lawson.getByLabel('Category for ローソン').locator('option:checked')).toHaveText('Food & Drinks');
+  await expect(lawson).toContainText('2 records');
+  await expect(page.getByLabel('Category for 無印良品').locator('option:checked')).toHaveText('Shopping');
+  await expect(page.getByRole('list', { name: 'Cards' })).toContainText('PayPayカード ゴールド（Visa）');
+
+  // Forgetting a shop means its next payment waits without a category.
+  await lawson.getByRole('button', { name: 'Forget' }).click();
+  await expect(lawson).toHaveCount(0);
+  await email('ローソン', 300, 'l3');
+  await page.goto('/app/#/review');
+  await expect(page.getByLabel('Category for ローソン')).toHaveValue('');
+});

@@ -48,6 +48,12 @@ func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) ht
 	route("POST /api/transactions/bulk", h.bulkTransactions)
 	route("PUT /api/transactions/{id}", h.updateTransaction)
 	route("DELETE /api/transactions/{id}", h.deleteTransaction)
+
+	route("GET /api/rules", h.rules)
+	route("PUT /api/rules/payees", h.setPayeeRule)
+	route("DELETE /api/rules/payees", h.deletePayeeRule)
+	route("PUT /api/rules/cards", h.setCardRule)
+	route("DELETE /api/rules/cards", h.deleteCardRule)
 	route("GET /api/stats", h.stats)
 
 	route("GET /api/budgets", h.listBudgets)
@@ -362,6 +368,9 @@ type transactionInput struct {
 	Payee       string    `json:"payee"`
 	Note        string    `json:"note"`
 	Status      string    `json:"status"`
+	// Remember, when false, confirms a record from an email or a
+	// notification without changing the category learned for its shop.
+	Remember *bool `json:"remember"`
 }
 
 func (in transactionInput) transaction() (Transaction, error) {
@@ -420,7 +429,7 @@ func (h *Handler) updateTransaction(w http.ResponseWriter, r *http.Request) erro
 		return err
 	}
 	t.ID = id
-	t, err = h.store.Update(r.Context(), userID(r), t)
+	t, err = h.store.Update(r.Context(), userID(r), t, in.Remember == nil || *in.Remember)
 	if err := storeErr(err, "record"); err != nil {
 		return err
 	}

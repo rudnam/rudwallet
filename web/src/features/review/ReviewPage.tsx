@@ -1,6 +1,7 @@
 // Payments read from emails and phone notifications, waiting for the user:
-// confirm them (which teaches the app the shop's category and the card's
-// account), fix them, or handle emails it couldn't read.
+// confirm them one by one or all at once (which teaches the app the shop's
+// category and the card's account), fix them, or handle emails it couldn't
+// read.
 import { useCallback, useEffect, useState } from 'react';
 import { api, errorMessage, type InboundEmail, type Transaction } from '../../api';
 import { TransactionForm } from '../../components/TransactionForm';
@@ -18,6 +19,36 @@ export function ReviewPage() {
   const [open, setOpen] = useState<Transaction | null>(null);
   const [addFrom, setAddFrom] = useState<InboundEmail | null>(null);
   const [error, setError] = useState('');
+  // Categories picked here but not confirmed yet, by record.
+  const [picked, setPicked] = useState<Record<number, number | null>>({});
+  const [confirmingAll, setConfirmingAll] = useState(false);
+  const toast = useToast();
+
+  const categoryOf = (t: Transaction) => (t.id in picked ? picked[t.id] : t.category_id);
+  // What "Confirm all" confirms: what the server's bulk confirm accepts.
+  const ready = (records ?? []).filter((t) => t.amount > 0 && !t.duplicate_of_id && t.kind !== 'transfer' && categoryOf(t) !== null);
+
+  async function confirmAll() {
+    setConfirmingAll(true);
+    setError('');
+    try {
+      // Categories picked here first, one request per category.
+      const changed = new Map<number, number[]>();
+      for (const t of ready) {
+        const c = categoryOf(t)!;
+        if (c !== t.category_id) changed.set(c, [...(changed.get(c) ?? []), t.id]);
+      }
+      for (const [category_id, ids] of changed) await api.bulkTransactions({ ids, action: 'categorize', category_id });
+      const { changed: n } = await api.bulkTransactions({ ids: ready.map((t) => t.id), action: 'confirm' });
+      toast(n === 1 ? 'Confirmed 1 payment' : `Confirmed ${n} payments`);
+      setPicked({});
+      await Promise.all([reload(), w.refresh()]);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setConfirmingAll(false);
+    }
+  }
 
   const loadEmails = useCallback(() => {
     api.inbox().then(
@@ -91,10 +122,30 @@ export function ReviewPage() {
           </div>
         ))}
 
+      {ready.length > 1 && (
+        <div className="row wrap confirm-all">
+          <span className="grow muted small">
+            {ready.length === records?.length
+              ? 'Every payment here has a category.'
+              : `${ready.length} of ${records?.length} payments have a category. The rest stay for you.`}
+          </span>
+          <button type="button" disabled={confirmingAll} onClick={confirmAll}>
+            Confirm {ready.length} with a category
+          </button>
+        </div>
+      )}
+
       {records && records.length > 0 && (
         <ul className="list" aria-label="Payments to review">
           {records.map((t) => (
-            <ReviewItem key={t.id} t={t} onEdit={() => setOpen(t)} onDone={reload} />
+            <ReviewItem
+              key={t.id}
+              t={t}
+              categoryId={categoryOf(t)}
+              onPick={(id) => setPicked((p) => ({ ...p, [t.id]: id }))}
+              onEdit={() => setOpen(t)}
+              onDone={reload}
+            />
           ))}
         </ul>
       )}
@@ -148,12 +199,29 @@ export function ReviewPage() {
   );
 }
 
-/** One payment: pick a category and confirm in place, or open it to edit. */
-function ReviewItem({ t, onEdit, onDone }: { t: Transaction; onEdit: () => void; onDone: () => void }) {
+/**
+ * One payment: pick a category and confirm in place, or open it to edit.
+ * Changing a category the shop's rule filled in asks whether to keep the new
+ * one for the shop, so a one-off doesn't change every later payment there.
+ */
+function ReviewItem({
+  t,
+  categoryId,
+  onPick,
+  onEdit,
+  onDone,
+}: {
+  t: Transaction;
+  categoryId: number | null;
+  onPick: (id: number | null) => void;
+  onEdit: () => void;
+  onDone: () => void;
+}) {
   const w = useWallet();
   const toast = useToast();
-  const [categoryId, setCategoryId] = useState<number | null>(t.category_id);
+  const [remember, setRemember] = useState(false);
   const [error, setError] = useState('');
+  const overriding = t.payee !== '' && t.category_id !== null && categoryId !== null && categoryId !== t.category_id;
   const [busy, setBusy] = useState(false);
   const when = new Date(t.occurred_at);
   const title = t.payee || 'Payment';
@@ -175,6 +243,7 @@ function ReviewItem({ t, onEdit, onDone }: { t: Transaction; onEdit: () => void;
         payee: t.payee,
         note: t.note,
         status: 'confirmed',
+        ...(overriding ? { remember } : {}),
       });
       await w.refresh();
       toast(`Confirmed ${title}`);
@@ -209,7 +278,7 @@ function ReviewItem({ t, onEdit, onDone }: { t: Transaction; onEdit: () => void;
         <select
           aria-label={`Category for ${title}`}
           value={categoryId ?? ''}
-          onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : null)}
+          onChange={(e) => onPick(e.target.value ? Number(e.target.value) : null)}
         >
           <option value="">No category</option>
           {w.categories
@@ -227,6 +296,12 @@ function ReviewItem({ t, onEdit, onDone }: { t: Transaction; onEdit: () => void;
           Edit
         </button>
       </div>
+      {overriding && (
+        <label className="check small">
+          <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+          Use {w.category(categoryId)?.name} for {t.payee} from now on, instead of {w.category(t.category_id)?.name}
+        </label>
+      )}
       {error && (
         <p role="alert" className="error">
           {error}

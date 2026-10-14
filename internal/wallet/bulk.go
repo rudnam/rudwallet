@@ -63,6 +63,48 @@ func (s *Store) BulkMove(ctx context.Context, userID int64, ids []int64, account
 		userID, pq.Array(ids), accountID))
 }
 
+// BulkConfirm confirms the user's records among ids that are waiting for
+// review and ready: an expense or income with a category and an amount, not
+// flagged as a possible duplicate. Shops and cards nothing was learned for
+// yet are remembered; rules already learned stay as they are.
+func (s *Store) BulkConfirm(ctx context.Context, userID int64, ids []int64) (int, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+	rows, err := tx.QueryContext(ctx,
+		`UPDATE transactions SET status = 'confirmed'
+		 WHERE user_id = $1 AND id = ANY($2::bigint[]) AND status = 'review' AND kind <> 'transfer'
+		   AND category_id IS NOT NULL AND amount > 0 AND duplicate_of_id IS NULL
+		 RETURNING `+txColumns, userID, pq.Array(ids))
+	if err != nil {
+		return 0, err
+	}
+	var confirmed []Transaction
+	for rows.Next() {
+		t, err := scanTx(rows)
+		if err != nil {
+			rows.Close()
+			return 0, err
+		}
+		confirmed = append(confirmed, t)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	for _, t := range confirmed {
+		if t.Source != "email" && t.Source != "notification" {
+			continue
+		}
+		if err := learnIfNew(ctx, tx, userID, t); err != nil {
+			return 0, err
+		}
+	}
+	return len(confirmed), tx.Commit()
+}
+
 func affected(res sql.Result, err error) (int, error) {
 	if err != nil {
 		return 0, err
@@ -73,8 +115,8 @@ func affected(res sql.Result, err error) (int, error) {
 
 type bulkInput struct {
 	IDs []int64 `json:"ids"`
-	// Action is "delete", "categorize" (to CategoryID, or none if null) or
-	// "move" (to AccountID).
+	// Action is "delete", "categorize" (to CategoryID, or none if null),
+	// "move" (to AccountID) or "confirm" (records to review that are ready).
 	Action     string `json:"action"`
 	CategoryID *int64 `json:"category_id"`
 	AccountID  int64  `json:"account_id"`
@@ -100,8 +142,10 @@ func (h *Handler) bulkTransactions(w http.ResponseWriter, r *http.Request) error
 		n, err = h.store.BulkCategorize(ctx, uid, in.IDs, in.CategoryID)
 	case "move":
 		n, err = h.store.BulkMove(ctx, uid, in.IDs, in.AccountID)
+	case "confirm":
+		n, err = h.store.BulkConfirm(ctx, uid, in.IDs)
 	default:
-		return httpx.Errorf(http.StatusBadRequest, "action must be delete, categorize or move")
+		return httpx.Errorf(http.StatusBadRequest, "action must be delete, categorize, move or confirm")
 	}
 	if err := storeErr(err, "record"); err != nil {
 		return err

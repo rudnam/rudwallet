@@ -163,7 +163,10 @@ export function EmailSettings() {
               ))}
           </select>
         </label>
-        <p className="muted small">When you confirm a payment in another account, that card is remembered for next time.</p>
+        <p className="muted small">
+          When you confirm a payment in another account, that card is remembered for next time. See and change what was
+          remembered under <a href={href('settings', { section: 'rules' })}>Shops and cards</a>.
+        </p>
       </div>
 
       <details className="stack tight">

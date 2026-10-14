@@ -175,8 +175,8 @@ func (s *Store) Create(ctx context.Context, userID int64, t Transaction) (Transa
 
 // Update saves the user's edits. When they confirm or correct a record that
 // came from an email or a notification, the merchant's category and the card's account are
-// remembered for next time.
-func (s *Store) Update(ctx context.Context, userID int64, t Transaction) (Transaction, error) {
+// remembered for next time; the category only if remember is set.
+func (s *Store) Update(ctx context.Context, userID int64, t Transaction, remember bool) (Transaction, error) {
 	old, err := s.Get(ctx, userID, t.ID)
 	if err != nil {
 		return t, err
@@ -202,15 +202,15 @@ func (s *Store) Update(ctx context.Context, userID int64, t Transaction) (Transa
 		return t, err
 	}
 	if (old.Source == "email" || old.Source == "notification") && updated.Status == "confirmed" {
-		if err := s.learn(ctx, userID, updated); err != nil {
+		if err := s.learn(ctx, userID, updated, remember); err != nil {
 			return updated, err
 		}
 	}
 	return updated, nil
 }
 
-func (s *Store) learn(ctx context.Context, userID int64, t Transaction) error {
-	if key := PayeeKey(t.Payee); key != "" && t.CategoryID != nil {
+func (s *Store) learn(ctx context.Context, userID int64, t Transaction, category bool) error {
+	if key := PayeeKey(t.Payee); category && key != "" && t.CategoryID != nil {
 		if _, err := s.db.ExecContext(ctx,
 			`INSERT INTO payee_rules (user_id, payee_key, category_id) VALUES ($1, $2, $3)
 			 ON CONFLICT (user_id, payee_key) DO UPDATE SET category_id = EXCLUDED.category_id`,

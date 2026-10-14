@@ -1,6 +1,6 @@
 // Settings: a short menu; each entry opens its own page (?section=…), with
-// a way back. Email automation, payment notifications, accounts, categories,
-// currency, and import.
+// a way back. Email automation, payment notifications, what they learned,
+// accounts, categories, currency, and import.
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { api, errorMessage, type Me, type Account, type AccountKind, type Category, type ImportResult, type PayPayPreview } from '../../api';
 import { CategoryIcon, glyphKey, glyphs, Icon, icons } from '../../components/Icon';
@@ -13,6 +13,7 @@ import { WidgetSettings } from './WidgetSettings';
 import { EmailSettings } from './EmailSettings';
 import { NotificationSettings } from './NotificationSettings';
 import { ClaudeSettings } from './ClaudeSettings';
+import { RulesSettings } from './RulesSettings';
 
 /** Each kind of account: what to call it, its icon and colour, and names people often use. */
 export const accountKinds: Record<AccountKind, { label: string; glyph: string; color: string; names: string[] }> = {
@@ -29,6 +30,7 @@ const swatches = ['#c8463d', '#d97757', '#b08a3e', '#4f8a4c', '#2a8a8a', '#3b6ea
 const sections: { id: string; label: string; title: string; glyph: string }[] = [
   { id: 'email', label: 'Email automation', title: 'Email automation', glyph: 'mail' },
   { id: 'notifications', label: 'Payment notifications', title: 'Payment notifications', glyph: 'card' },
+  { id: 'rules', label: 'Shops and cards', title: 'Shops and cards', glyph: 'shopping' },
   { id: 'claude', label: 'Claude', title: 'Claude', glyph: 'spark' },
   { id: 'accounts', label: 'Accounts', title: 'Accounts', glyph: 'bank' },
   { id: 'categories', label: 'Categories', title: 'Categories', glyph: 'other' },
@@ -63,6 +65,7 @@ export function SettingsPage({
         </header>
         {open.id === 'email' && <EmailSettings />}
         {open.id === 'notifications' && <NotificationSettings />}
+        {open.id === 'rules' && <RulesSettings />}
         {open.id === 'claude' && <ClaudeSettings />}
         {open.id === 'accounts' && <Accounts />}
         {open.id === 'categories' && <Categories />}
@@ -76,6 +79,7 @@ export function SettingsPage({
   const active = w.accounts.filter((a) => !a.archived).length;
   const summary: Record<string, string> = {
     email: w.settings.auto_confirm ? 'Auto-confirm on' : '',
+    rules: 'What was learned',
     claude: 'Sort, connect apps',
     accounts: `${active} ${active === 1 ? 'account' : 'accounts'}`,
     categories: `${w.categories.length} categories`,

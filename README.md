@@ -161,8 +161,11 @@ Follow `internal/wallet` or `internal/inbox`; a feature is about five files:
 | POST, PUT, DELETE | `/api/accounts[/{id}]` | user | Accounts: `{name, kind, initial_balance, color, archived}` |
 | POST, PUT, DELETE | `/api/categories[/{id}]` | user | Categories: `{name, kind, icon, color}` |
 | GET | `/api/transactions` | user | Records, newest first. Query: `from`, `to` (RFC 3339), `account_id`, `category_id` (or `none`), `q`, `status` |
-| POST, PUT, DELETE | `/api/transactions[/{id}]` | user | Records: `{kind, amount, account_id, to_account_id, category_id, occurred_at, payee, note, status}`. Confirming an emailed record learns its shop and card. |
-| POST | `/api/transactions/bulk` | user | Changes many records at once. Body `{ids, action}`: `delete`, `categorize` with `category_id` (`null` clears it; only records of the category's kind change, never transfers), or `move` with `account_id`. Up to 2000 IDs. `{changed, skipped}` |
+| POST, PUT, DELETE | `/api/transactions[/{id}]` | user | Records: `{kind, amount, account_id, to_account_id, category_id, occurred_at, payee, note, status}`. Confirming an emailed record learns its shop and card; with `remember: false` on the update, the shop's learned category is left as it was. |
+| POST | `/api/transactions/bulk` | user | Changes many records at once. Body `{ids, action}`: `delete`, `categorize` with `category_id` (`null` clears it; only records of the category's kind change, never transfers), `move` with `account_id`, or `confirm` (records to review with a category and an amount, not flagged as possible duplicates; shops and cards are learned only if nothing was learned for them yet). Up to 2000 IDs. `{changed, skipped}` |
+| GET | `/api/rules` | user | What confirmed payments taught the app: `{payees: [{key, payee, category_id, records}], cards: [{source, account_id, records}]}` |
+| PUT, DELETE | `/api/rules/payees` | user | Set a shop's category (body `{payee, category_id}`, returns the rule), or forget it (`?payee=`, `204`) |
+| PUT, DELETE | `/api/rules/cards` | user | Move a learned card to another account (body `{source, account_id}`), or forget it (`?source=`). `204` |
 | GET | `/api/stats` | user | Confirmed income and expenses over a period (transfers count as neither). Query: `from`, `to` (RFC 3339, up to 20 years apart), `tz` (IANA zone for grouping days, default `UTC`), `account_id`. `{spent, income, categories: [{category_id, kind, amount, count}], days: [{day, spent, income}]}` |
 | GET, POST, PUT, DELETE | `/api/budgets[/{id}]` | user | Monthly budgets: `{name, category_id, amount}` |
 | POST | `/api/import/budgetbakers` | user | Body: the CSV (`text/csv`). `{imported, duplicates, matched, accounts_created, categories_created, problems}` |
