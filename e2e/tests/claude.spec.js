@@ -1,4 +1,5 @@
-const { test, expect, signUp } = require('./fixtures');
+const crypto = require('crypto');
+const { test, expect, signUp, PASSWORD } = require('./fixtures');
 
 const GOOD_KEY = 'sk-ant-e2e-good-key-0000'; // matches e2e/fake-claude.js
 
@@ -96,6 +97,64 @@ test('an MCP client connects with a token made in Settings', async ({ page }) =>
   await page.getByRole('button', { name: 'Disconnect' }).click();
   await expect(page.getByRole('list', { name: 'Connections' })).toHaveCount(0);
   expect((await call('ping', {})).status()).toBe(401);
+});
+
+test('Claude connects by signing in, as a connector does', async ({ page }) => {
+  const email = await signUp(page);
+  await uncategorized(page);
+  await page.request.post('/api/logout');
+
+  // What Claude's servers do: register, then send the browser to sign in.
+  const callback = 'https://claude.example/api/mcp/auth_callback';
+  const reg = await page.request.post('/oauth/register', { data: { client_name: 'Claude', redirect_uris: [callback] } });
+  expect(reg.status()).toBe(201);
+  const clientId = (await reg.json()).client_id;
+  const verifier = crypto.randomBytes(32).toString('base64url');
+  const challenge = crypto.createHash('sha256').update(verifier).digest('base64url');
+  const q = new URLSearchParams({ response_type: 'code', client_id: clientId, redirect_uri: callback, code_challenge: challenge, code_challenge_method: 'S256', state: 'st8' });
+  await page.route('https://claude.example/**', (route) => route.fulfill({ contentType: 'text/plain', body: 'back at Claude' }));
+
+  await page.goto(`/oauth/authorize?${q}`);
+  await expect(page.getByText('Sign in to connect an app such as Claude to your wallet.')).toBeVisible();
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill(PASSWORD);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page.getByRole('heading', { name: 'Connect Claude' })).toBeVisible();
+  await expect(page.getByText('claude.example')).toBeVisible();
+  await page.getByRole('button', { name: 'Allow' }).click();
+  await page.waitForURL(/^https:\/\/claude\.example\//);
+  const back = new URL(page.url());
+  expect(back.searchParams.get('state')).toBe('st8');
+
+  // Claude's servers exchange the code, then use the token.
+  const tok = await page.request.post('/oauth/token', {
+    form: { grant_type: 'authorization_code', client_id: clientId, code: back.searchParams.get('code'), code_verifier: verifier, redirect_uri: callback },
+  });
+  expect(tok.status(), await tok.text()).toBe(200);
+  const { access_token } = await tok.json();
+  const res = await page.request.fetch('/mcp', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${access_token}`, Cookie: '' },
+    data: { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'list_uncategorized_payees', arguments: {} } },
+  });
+  expect((await res.json()).result.structuredContent.payees.map((p) => p.payee)).toContain('Mystery Ltd');
+
+  // The connection is listed in Settings.
+  await page.goto('/app/#/settings?section=claude');
+  await expect(page.getByRole('list', { name: 'Connections' })).toContainText(/Claude\s*Connected/);
+});
+
+test('denying a connection sends the user back to the app with no access', async ({ page }) => {
+  await signUp(page);
+  const callback = 'https://claude.example/cb';
+  const reg = await (await page.request.post('/oauth/register', { data: { client_name: 'Claude', redirect_uris: [callback] } })).json();
+  const challenge = crypto.createHash('sha256').update('v'.repeat(43)).digest('base64url');
+  const q = new URLSearchParams({ response_type: 'code', client_id: reg.client_id, redirect_uri: callback, code_challenge: challenge, code_challenge_method: 'S256' });
+  await page.route('https://claude.example/**', (route) => route.fulfill({ contentType: 'text/plain', body: 'back at Claude' }));
+  await page.goto(`/oauth/authorize?${q}`);
+  await page.getByRole('button', { name: 'Deny' }).click();
+  await page.waitForURL(/^https:\/\/claude\.example\//);
+  expect(new URL(page.url()).searchParams.get('error')).toBe('access_denied');
 });
 
 async function categoryId(page, name) {

@@ -197,6 +197,12 @@ for (const [name, viewport] of [
     await expect(page.getByTestId('mcp-token')).toBeVisible();
     await page.getByText('How to connect').click();
     await shot('13-settings-claude-connected');
+    // A Claude connector asks to connect.
+    const reg = await (await page.request.post('/oauth/register', { data: { client_name: 'Claude', redirect_uris: ['https://claude.ai/api/mcp/auth_callback'] } })).json();
+    const authorize = new URLSearchParams({ response_type: 'code', client_id: reg.client_id, redirect_uri: 'https://claude.ai/api/mcp/auth_callback', code_challenge: 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', code_challenge_method: 'S256' });
+    await page.goto(`/oauth/authorize?${authorize}`);
+    await expect(page.getByRole('heading', { name: 'Connect Claude' })).toBeVisible();
+    await shot('13-connect-claude');
 
     const overview = await (await page.request.get('/api/wallet')).json();
     for (const [payee, amount] of [['セブン－イレブン 刈谷店', 540], ['セブン－イレブン 刈谷店', 312], ['スギ薬局 知立店', 1980], ['JR東海 定期', 15200], ['合同会社ミステリー', 3300]]) {

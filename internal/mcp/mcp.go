@@ -1,8 +1,10 @@
 // Package mcp lets an MCP client (Claude Desktop, Claude Code, or any other)
 // connect to a user's wallet at /mcp, so Claude can look through their
 // records and tidy them: sort uncategorised records, fix categories, add
-// categories. Each user makes access tokens in Settings → Claude; a client
-// sends one as "Authorization: Bearer <token>".
+// categories. A client sends an access token as "Authorization: Bearer
+// <token>": one the user made in Settings → Claude, or one the client got by
+// having the user sign in and approve it (OAuth, see oauth.go), which is how
+// Claude's connectors work.
 //
 // It speaks the Model Context Protocol's Streamable HTTP transport, the
 // simple way: every JSON-RPC request gets one JSON response, there are no
@@ -17,6 +19,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/rudnam/wallet-app/internal/account"
@@ -25,16 +28,28 @@ import (
 	"github.com/rudnam/wallet-app/internal/wallet"
 )
 
-type Handler struct {
-	store   *Store
-	wallet  *wallet.Store
-	version string
+type Config struct {
+	// Version is reported to clients as the server's version.
+	Version string
+	// PublicOrigin is the site's address, e.g. https://app.example.com, which
+	// sign-in names as its issuer. Empty means the request's own.
+	PublicOrigin string
+	// TrustProxy reads the client IP, and whether the request came over
+	// HTTPS, from the headers the reverse proxy adds.
+	TrustProxy bool
 }
 
-// NewHandler serves /mcp and the token settings. version is reported to
-// clients as the server's version.
-func NewHandler(st *Store, w *wallet.Store, version string) *Handler {
-	return &Handler{store: st, wallet: w, version: version}
+type Handler struct {
+	cfg    Config
+	store  *Store
+	wallet *wallet.Store
+	// limit caps how often one IP address can register clients.
+	limit *httpx.RateLimiter
+}
+
+// NewHandler serves /mcp, the sign-in for MCP clients, and the token settings.
+func NewHandler(st *Store, w *wallet.Store, cfg Config) *Handler {
+	return &Handler{cfg: cfg, store: st, wallet: w, limit: httpx.NewRateLimiter(10, time.Minute)}
 }
 
 func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) http.Handler) {
@@ -42,6 +57,7 @@ func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) ht
 	mux.Handle("POST /api/mcp/tokens", requireUser(httpx.HandlerFunc(h.createToken)))
 	mux.Handle("DELETE /api/mcp/tokens/{id}", requireUser(httpx.HandlerFunc(h.deleteToken)))
 	mux.Handle("/mcp", http.HandlerFunc(h.serve))
+	h.registerOAuth(mux, requireUser)
 }
 
 // ---------- Token settings ----------
@@ -146,7 +162,8 @@ func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
 		userID, err = h.store.User(r.Context(), token)
 	}
 	if errors.Is(err, db.ErrNotFound) {
-		w.Header().Set("WWW-Authenticate", `Bearer realm="wallet"`)
+		// Tells clients that can sign in (OAuth) where to start.
+		w.Header().Set("WWW-Authenticate", `Bearer realm="wallet", resource_metadata="`+h.origin(r)+resourceMetadataPath+`"`)
 		httpx.WriteError(w, http.StatusUnauthorized, "make an access token in the app's Settings → Claude, and send it as a bearer token")
 		return
 	}
@@ -210,7 +227,7 @@ func (h *Handler) dispatch(r *http.Request, userID int64, req rpcRequest) (any, 
 		return map[string]any{
 			"protocolVersion": version,
 			"capabilities":    map[string]any{"tools": map[string]any{}},
-			"serverInfo":      map[string]any{"name": "wallet", "title": "Wallet", "version": h.version},
+			"serverInfo":      map[string]any{"name": "wallet", "title": "Wallet", "version": h.cfg.Version},
 			"instructions":    instructions,
 		}, nil
 	case "ping":

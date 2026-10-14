@@ -231,8 +231,12 @@ function Connections() {
     <div className="card stack">
       <h2>Connect Claude to your wallet</h2>
       <p className="small">
-        Let Claude Desktop, Claude Code or another MCP client look through your records and tidy them: sort records, fix categories, and
-        answer questions about your spending. It doesn't need your API key; each app gets its own token.
+        Let Claude look through your records and tidy them: sort records, fix categories, and answer questions about your spending. It
+        doesn't need your API key.
+      </p>
+      <p className="small">
+        <strong>In the Claude app</strong> (claude.ai, desktop or mobile): open Settings → Connectors, add a custom connector with the
+        address below, then click Connect and allow it here. Leave the OAuth fields empty.
       </p>
       <div className="address">
         <span className="muted small">MCP server address</span>
@@ -259,7 +263,7 @@ function Connections() {
       </form>
 
       <details className="stack tight">
-        <summary>How to connect</summary>
+        <summary>How to connect with a token</summary>
         <p className="small">
           <strong>Claude Code:</strong> run (tap to copy)
         </p>
@@ -284,7 +288,7 @@ function Connections() {
               <span className="grow">
                 <span className="block">{t.name}</span>
                 <span className="muted small">
-                  Made {formatDay(new Date(t.created_at))}
+                  {t.signed_in ? 'Connected' : 'Made'} {formatDay(new Date(t.created_at))}
                   {t.last_used_at ? ` · last used ${formatDay(new Date(t.last_used_at))}` : ' · not used yet'}
                 </span>
               </span>

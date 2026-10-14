@@ -165,6 +165,9 @@ a.button.secondary:hover { background: var(--sunken); }
 .auth .card button[type='submit'] { margin-top: 4px; padding: 12px; }
 .auth .google { padding: 11px; gap: 10px; font-weight: 500; }
 .google-mark { width: 18px; height: 18px; flex: none; }
+.connect p { margin: 0; }
+.connect-list { margin: 0; padding-left: 1.25em; display: flex; flex-direction: column; gap: 4px; }
+.connect .row button { padding: 10px 20px; }
 .or { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 0.875rem; }
 .or::before, .or::after { content: ''; flex: 1; border-top: 1px solid var(--border); }
 

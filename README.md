@@ -93,7 +93,7 @@ All settings are environment variables (read in `internal/config`).
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error`. Logs are JSON on stdout. |
 | `COOKIE_SECURE` | `true` | Send the session cookie over HTTPS only. Set `false` only for local http. |
 | `TRUST_PROXY` | `false` | Read the client IP from the last `X-Forwarded-For` entry, which the reverse proxy adds. Enable only when the app is reachable solely through that proxy. `docker-compose.yml` enables it; `deploy/local.yml` turns it off. |
-| `PUBLIC_ORIGIN` | empty | The site's public address, e.g. `https://app.example.com`. Accepted by the CSRF check even if a proxy changes `Host`. |
+| `PUBLIC_ORIGIN` | empty | The site's public address, e.g. `https://app.example.com`. Accepted by the CSRF check even if a proxy changes `Host`, and named as the issuer when MCP clients sign in. |
 | `ALLOW_SIGNUP` | `true` | Set `false` to stop new accounts being created. |
 | `AUTH_RATE_LIMIT` | `10` | Sign-in and sign-up attempts per minute per client IP. |
 | `ANDROID_PACKAGE`, `ANDROID_CERT_FINGERPRINTS` | empty | The Android app's package, which Sign in with Google in the app returns to, and its signing keys, published in `/.well-known/assetlinks.json`. See [android/README.md](android/README.md). |
@@ -134,7 +134,7 @@ The code is split by **feature**: each one owns its SQL, HTTP handlers and page.
 | `internal/inbox/` | Feature: email automation. Forwarding addresses, the inbound webhook, and turning emails into records (`parse/` reads emails and knows the senders; `claude.go` is the AI fallback). |
 | `internal/notify/` | Feature: payment notifications the Android app sends (Google Wallet), read into records (`parse.go` knows the apps). A payment already recorded from its email, an import or by hand is matched, not added. |
 | `internal/ai/` | Feature: Claude with the user's own API key. Stores the key encrypted (`seal.go`), and suggests categories for uncategorised records (`claude.go`). |
-| `internal/mcp/` | Feature: the MCP server at `/mcp`, so Claude Desktop, Claude Code and other MCP clients can read and tidy a user's records, with access tokens made in Settings. |
+| `internal/mcp/` | Feature: the MCP server at `/mcp`, so Claude (as a connector, Claude Desktop or Claude Code) and other MCP clients can read and tidy a user's records, with access tokens made in Settings or got by signing in (OAuth 2.1, `oauth.go`). |
 | `internal/widget/` | Feature: the month summary the Android home screen widgets draw. |
 | `internal/server/` | Wires the features into one handler; serves the introduction page at `/` and the web app at `/app/`. Its tests run the whole API against a real database. |
 | `internal/testdb/` | Gives integration tests an empty, migrated database. |
@@ -191,8 +191,13 @@ Follow `internal/wallet` or `internal/inbox`; a feature is about five files:
 | PUT, DELETE | `/api/ai/key` | user | Body `{key}`: an Anthropic API key, saved encrypted once Claude accepts it (`400` if not, `409` without `SECRETS_KEY`) |
 | POST | `/api/ai/categorize?offset=` | user | `{suggestions, remaining}`: a category Claude suggests (or `null`) for the next 100 payees whose confirmed records have none, skipping `offset`. Changes nothing. `409` without a key. |
 | POST | `/api/ai/categorize/apply` | user | Body `{items: [{payee, kind, category_id}]}`. Files each payee's uncategorised records and remembers the category for its emails. `{updated}` |
-| GET, POST, DELETE | `/api/mcp/tokens[/{id}]` | user | Access tokens for MCP clients: `{id, name, created_at, last_used_at}`. `POST {name}` also returns the `token`, once. |
-| POST | `/mcp` | MCP token | The MCP server (Streamable HTTP, JSON responses only). `Authorization: Bearer <token>`. Tools: `get_overview`, `list_records`, `list_uncategorized_payees`, `categorize_payees`, `set_record_category`, `create_category`, `spending_by_category`. |
+| GET, POST, DELETE | `/api/mcp/tokens[/{id}]` | user | Access tokens for MCP clients: `{id, name, created_at, last_used_at, signed_in}`; `signed_in` marks a connection made by signing in. `POST {name}` also returns the `token`, once. Deleting a connection revokes its tokens. |
+| POST | `/mcp` | MCP token | The MCP server (Streamable HTTP, JSON responses only). `Authorization: Bearer <token>`; without one, `401` with `WWW-Authenticate: Bearer resource_metadata="…"` for clients that sign in. Tools: `get_overview`, `list_records`, `list_uncategorized_payees`, `categorize_payees`, `set_record_category`, `create_category`, `spending_by_category`. |
+| GET | `/.well-known/oauth-protected-resource[/mcp]`, `/.well-known/oauth-authorization-server` | – | Sign-in metadata for MCP clients (RFC 9728, RFC 8414). The issuer is `PUBLIC_ORIGIN`, or the request's own address. |
+| POST | `/oauth/register` | – | Dynamic client registration (RFC 7591). JSON `{client_name, redirect_uris}`; redirect URIs must be https, http on localhost, or a reverse-domain app scheme. `201 {client_id, …}`. 10 a minute per IP. |
+| GET | `/oauth/authorize` | – | Checks the client, its redirect URI and PKCE (S256 only), then sends the browser to the web app's Connect page (`/app/#/connect`). |
+| GET, POST | `/api/mcp/authorize` | user | For the Connect page. `GET ?client_id&redirect_uri` gives `{client_name, redirect_host}`. `POST {client_id, redirect_uri, code_challenge, state, allow}` gives `{redirect_to}`: back to the client with a one-time code (5 minutes), or `error=access_denied`. `409` at 20 connections. |
+| POST | `/oauth/token` | – | Form-encoded. `grant_type=authorization_code` (with `code`, `code_verifier`, `redirect_uri`, `client_id`) or `refresh_token`. `{access_token, token_type, expires_in: 3600, refresh_token}`; each refresh replaces both tokens. |
 | GET | `/api/widget` | user | For the Android widgets. Query: `from`, `to` (RFC 3339). `{currency, currency_exponent, spent, balance, budget, budgets, review_count}` |
 | GET | `/`, `/app/` | – | The introduction page; the web app, which also answers every path under `/app/` |
 | GET | `/api/downloads` | – | `{android}`: `{url, size, updated}` of the APK, or `null` if there is none |
