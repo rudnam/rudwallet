@@ -23,3 +23,5 @@ android/signing-key.txt
 android/*.apk
 android/*.aab
 android/*.idsig
+# The APK the server offers for download (ANDROID_APK)
+/downloads/

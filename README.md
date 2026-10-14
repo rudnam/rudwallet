@@ -89,6 +89,7 @@ All settings are environment variables (read in `internal/config`).
 | `ALLOW_SIGNUP` | `true` | Set `false` to stop new accounts being created. |
 | `AUTH_RATE_LIMIT` | `10` | Sign-in and sign-up attempts per minute per client IP. |
 | `ANDROID_PACKAGE`, `ANDROID_CERT_FINGERPRINTS` | empty | The Android app's package, which Sign in with Google in the app returns to, and its signing keys, published in `/.well-known/assetlinks.json`. See [android/README.md](android/README.md). |
+| `ANDROID_APK` | empty | Path of the Android app's APK. While the file exists, the introduction page offers it at `/download/wallet.apk`. `docker-compose.yml` sets `/downloads/wallet.apk`, mounted from `downloads/`, which `./android/build.sh` fills. |
 | `INBOUND_DOMAIN`, `INBOUND_SECRET` | empty | Turn on email automation: users get `pay-<token>@INBOUND_DOMAIN`, and the mail provider's hook calls `POST /api/inbound/email` with the secret (24+ characters). See [docs/email.md](docs/email.md). |
 | `ANTHROPIC_API_KEY` | empty | Let Claude read payment emails from senders without a built-in rule, for every user. Without it, users who add their own key in Settings → Claude get this for themselves. |
 | `ANTHROPIC_MODEL` | `claude-opus-5-5` | The model for that, and for the Claude features users turn on with their own key. |
@@ -183,6 +184,8 @@ Follow `internal/wallet` or `internal/inbox`; a feature is about five files:
 | POST | `/mcp` | MCP token | The MCP server (Streamable HTTP, JSON responses only). `Authorization: Bearer <token>`. Tools: `get_overview`, `list_records`, `list_uncategorized_payees`, `categorize_payees`, `set_record_category`, `create_category`, `spending_by_category`. |
 | GET | `/api/widget` | user | For the Android widgets. Query: `from`, `to` (RFC 3339). `{currency, currency_exponent, spent, balance, budget, budgets, review_count}` |
 | GET | `/`, `/app/` | – | The introduction page; the web app, which also answers every path under `/app/` |
+| GET | `/api/downloads` | – | `{android}`: `{url, size, updated}` of the APK, or `null` if there is none |
+| GET | `/download/wallet.apk` | – | The Android app's APK (`ANDROID_APK`), or `404` |
 | GET | `/healthz` | – | `{status: "ok", version}` if the database is reachable, else `503` |
 
 Errors are `{"error": "message"}` with a matching status code. Requests that change data must come from the site itself (the `Origin` check), and the session cookie is `HttpOnly` and `SameSite=Lax`.

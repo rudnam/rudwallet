@@ -40,6 +40,8 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 	if cfg.AndroidPackage != "" {
 		mux.Handle("GET /.well-known/assetlinks.json", assetLinks(cfg.AndroidPackage, cfg.AndroidCertFingerprints))
 	}
+	mux.Handle("GET /api/downloads", downloads(cfg.AndroidAPK))
+	mux.Handle("GET "+apkPath, apk(cfg.AndroidAPK))
 
 	// Features
 	var google *account.GoogleConfig

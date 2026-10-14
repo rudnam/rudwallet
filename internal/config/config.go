@@ -41,6 +41,9 @@ type Config struct {
 	// full screen. See android/README.md.
 	AndroidPackage          string
 	AndroidCertFingerprints []string
+	// AndroidAPK is the path of the Android app's APK, offered for download
+	// on the introduction page while the file exists.
+	AndroidAPK string
 	// InboundDomain and InboundSecret turn on the email automation: each
 	// user gets an address @InboundDomain, and the mail provider's hook
 	// calls POST /api/inbound/email with InboundSecret. See docs/email.md.
@@ -87,6 +90,7 @@ func Load(getenv func(string) string) (Config, error) {
 		AuthRateLimit:           r.positiveInt("AUTH_RATE_LIMIT", 10),
 		AndroidPackage:          r.str("ANDROID_PACKAGE", ""),
 		AndroidCertFingerprints: r.list("ANDROID_CERT_FINGERPRINTS"),
+		AndroidAPK:              r.str("ANDROID_APK", ""),
 		InboundDomain:           strings.ToLower(r.str("INBOUND_DOMAIN", "")),
 		InboundSecret:           r.str("INBOUND_SECRET", ""),
 		AnthropicAPIKey:         r.str("ANTHROPIC_API_KEY", ""),

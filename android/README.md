@@ -20,6 +20,8 @@ It builds the web app for the app (`npm run android` in `web/`, which also copie
 
 For each Play Store release, raise `versionCode` (and `versionName`) in `app/build.gradle`, then upload `wallet.aab` in the Play Console. Versions 1 and 2 were the earlier Trusted Web Activity app, which this replaces under the same package and key, so it installs as an update.
 
+The build is also copied to `downloads/wallet.apk`, which `docker-compose.yml` mounts for the server: the introduction page offers it as **Download for Android** while the file is there, with no restart needed. On a server elsewhere, copy `android/wallet.apk` to `downloads/` next to its `docker-compose.yml`.
+
 A copy installed from the Play Store is signed by Google, so installing `wallet.apk` over it fails; uninstall it first.
 
 While working on the app, `cd web && npm run android`, then open `android/` in Android Studio, or `cd android && ./gradlew installDebug`. A debug build needs no signing key.

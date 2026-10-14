@@ -29,6 +29,8 @@ export WALLET_KEYSTORE_PASSWORD WALLET_KEY_PASSWORD
 ./gradlew --quiet bundleRelease assembleRelease
 cp app/build/outputs/bundle/release/app-release.aab wallet.aab
 cp app/build/outputs/apk/release/app-release.apk wallet.apk
+# What the server offers on the introduction page (ANDROID_APK in docker-compose.yml).
+mkdir -p ../downloads && cp wallet.apk ../downloads/wallet.apk
 echo "Built android/wallet.aab (Play Store) and android/wallet.apk ($(sed -n 's/.*versionName "\(.*\)"/\1/p' app/build.gradle))"
 
 if [[ ${1:-} == install ]]; then
