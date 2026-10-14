@@ -46,9 +46,13 @@ async function seed(page) {
     deliverEmail(api, to, payPayEmail({ merchant, yen, when: new Date(Date.now() - ago), id: `screens-${Date.now()}-${Math.random()}` }));
   const amazon = await email('Amazon.co.jp', 2980, 86400_000);
   const r = (await (await api.get('/api/transactions?status=review')).json()).find((t) => t.id === amazon.transaction_id);
-  await api.put(`/api/transactions/${r.id}`, { data: { ...r, account_id: card.id, category_id: cat('Shopping'), status: 'confirmed' } });
-  await api.put('/api/rules/payees', { data: { payee: 'セブン－イレブン', category_id: cat('Food & Drinks') } });
-  await api.put('/api/rules/payees', { data: { payee: 'スギ薬局', category_id: cat('Health') } });
+  const confirmed = await api.put(`/api/transactions/${r.id}`, {
+    data: { kind: r.kind, amount: r.amount, account_id: card.id, to_account_id: null, category_id: cat('Shopping'), occurred_at: r.occurred_at, payee: r.payee, note: r.note, status: 'confirmed' },
+  });
+  expect(confirmed.status(), await confirmed.text()).toBe(200);
+  for (const [payee, category] of [['セブン－イレブン', 'Food & Drinks'], ['スギ薬局', 'Health']]) {
+    expect((await api.put('/api/rules/payees', { data: { payee, category_id: cat(category) } })).status()).toBe(200);
+  }
   await email('セブン－イレブン', 612, 7200_000);
   await email('スギ薬局 大曽根店', 1280, 5400_000);
   await email('IKEAオンライン', 4994);
@@ -98,7 +102,7 @@ for (const [name, viewport] of [
 
     await seed(page);
     await page.reload();
-    await expect(page.getByRole('link', { name: /4 payments to review/ })).toBeVisible();
+    await expect(page.getByRole('link', { name: /3 payments to review/ })).toBeVisible();
     await expect(page.getByRole('list', { name: 'Spending by category' })).toBeVisible();
     await shot('2-overview');
 

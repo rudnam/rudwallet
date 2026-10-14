@@ -104,7 +104,7 @@ test('a one-off category leaves the shop alone, Confirm all clears the rest, and
   await expect(page.getByText('No shops yet.')).toBeVisible();
   await page.getByLabel('Shop name').fill('ローソン');
   await page.getByLabel('Category for the new shop').selectOption({ label: 'Food & Drinks' });
-  await page.getByRole('button', { name: 'Add' }).click();
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
   await expect(page.getByRole('list', { name: 'Shops' }).getByRole('listitem', { name: 'ローソン' })).toBeVisible();
 
   await email('ローソン', 550, 'l1');
