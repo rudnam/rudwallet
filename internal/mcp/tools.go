@@ -180,6 +180,20 @@ var toolList = []*tool{
 		run:         setCategory,
 	},
 	{
+		Name:  "set_record_account",
+		Title: "Set a record's account",
+		Description: "Move one record to another of the user's accounts (IDs from get_overview). " +
+			"For a transfer, account_id is the account it comes from; to_account_id, if given, is the one it goes to, and must differ. " +
+			"A payment read from an email or a notification also teaches the app that its card belongs to the new account, so later payments by that card go there.",
+		InputSchema: object(map[string]any{
+			"record_id":     map[string]any{"type": "integer"},
+			"account_id":    map[string]any{"type": "integer"},
+			"to_account_id": map[string]any{"type": "integer", "description": "Transfers only."},
+		}, "record_id", "account_id"),
+		Annotations: changes,
+		run:         setAccount,
+	},
+	{
 		Name:        "create_category",
 		Title:       "Create a category",
 		Description: "Add a category. Check get_overview first: reuse a fitting category rather than adding a near-duplicate.",
@@ -395,6 +409,22 @@ func setCategory(c *call, args json.RawMessage) (any, error) {
 		return nil, walletErr(err, "record")
 	}
 	return map[string]any{"id": t.ID, "category_id": t.CategoryID}, nil
+}
+
+func setAccount(c *call, args json.RawMessage) (any, error) {
+	var in struct {
+		RecordID    int64  `json:"record_id"`
+		AccountID   int64  `json:"account_id"`
+		ToAccountID *int64 `json:"to_account_id"`
+	}
+	if err := decode(args, &in); err != nil {
+		return nil, err
+	}
+	t, err := c.h.wallet.SetAccount(c.r.Context(), c.userID, in.RecordID, in.AccountID, in.ToAccountID)
+	if err != nil {
+		return nil, walletErr(err, "record")
+	}
+	return map[string]any{"id": t.ID, "account_id": t.AccountID, "to_account_id": t.ToAccountID}, nil
 }
 
 func createCategory(c *call, args json.RawMessage) (any, error) {

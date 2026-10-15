@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/rudnam/wallet-app/internal/wallet"
 )
 
 // mcpCall sends one JSON-RPC request to /mcp the way an MCP client does: a
@@ -149,6 +151,47 @@ func TestMCP(t *testing.T) {
 	if r, _ := tool(t, ts.URL, tok.Token, "set_record_category", map[string]any{"record_id": gymID, "category_id": cat["id"]}); r["category_id"] != cat["id"] {
 		t.Errorf("set category %v", r)
 	}
+	// Records move between accounts; a transfer keeps two different ones.
+	var card struct{ ID int64 }
+	if code := alice.do("POST", "/api/accounts", map[string]any{"name": "Card", "kind": "credit_card"}, &card); code != 201 {
+		t.Fatalf("add account: %d", code)
+	}
+	if r, _ := tool(t, ts.URL, tok.Token, "set_record_account", map[string]any{"record_id": gymID, "account_id": card.ID}); r["account_id"] != float64(card.ID) {
+		t.Errorf("set account %v", r)
+	}
+	if recs, _ := tool(t, ts.URL, tok.Token, "list_records", map[string]any{"account_id": card.ID}); len(recs["records"].([]any)) != 1 {
+		t.Errorf("records on the card %v", recs)
+	}
+	if _, msg := tool(t, ts.URL, tok.Token, "set_record_account", map[string]any{"record_id": gymID, "account_id": cash, "to_account_id": card.ID}); msg == "" {
+		t.Error("an expense got a second account")
+	}
+	var transfer struct{ ID int64 }
+	alice.do("POST", "/api/transactions", map[string]any{"kind": "transfer", "amount": 1000, "account_id": cash, "to_account_id": card.ID,
+		"occurred_at": time.Date(2026, 10, 6, 12, 0, 0, 0, time.UTC)}, &transfer)
+	if _, msg := tool(t, ts.URL, tok.Token, "set_record_account", map[string]any{"record_id": transfer.ID, "account_id": card.ID}); !strings.Contains(msg, "two different") {
+		t.Errorf("transfer into itself: %q", msg)
+	}
+	if r, _ := tool(t, ts.URL, tok.Token, "set_record_account", map[string]any{"record_id": transfer.ID, "account_id": card.ID, "to_account_id": cash}); r["account_id"] != float64(card.ID) || r["to_account_id"] != float64(cash) {
+		t.Errorf("reverse transfer %v", r)
+	}
+	// Moving an emailed payment teaches its card's account; a manual record
+	// teaches nothing.
+	var rules wallet.Rules
+	if alice.do("GET", "/api/rules", nil, &rules); len(rules.Cards) != 0 {
+		t.Errorf("a manual record taught a card %+v", rules.Cards)
+	}
+	day := time.Date(2026, 9, 20, 4, 0, 0, 0, time.UTC)
+	emailed := pay(t, alice, "m1", "ローソン", 550, day)
+	if emailed.AccountID == card.ID {
+		t.Fatalf("payment already on the card %+v", emailed)
+	}
+	tool(t, ts.URL, tok.Token, "set_record_account", map[string]any{"record_id": emailed.ID, "account_id": card.ID})
+	if alice.do("GET", "/api/rules", nil, &rules); len(rules.Cards) != 1 || rules.Cards[0].AccountID != card.ID {
+		t.Errorf("card rules %+v", rules.Cards)
+	}
+	if next := pay(t, alice, "m2", "ローソン", 300, day.Add(time.Hour)); next.AccountID != card.ID {
+		t.Errorf("the card's next payment went to %d, not the card", next.AccountID)
+	}
 	sp, _ := tool(t, ts.URL, tok.Token, "spending_by_category", map[string]any{"from": "2026-10-01", "to": "2026-11-01"})
 	if sp["total"] != "8525" || sp["categories"].([]any)[0].(map[string]any)["category"] != "Fitness" {
 		t.Errorf("spending %v", sp)
@@ -166,6 +209,10 @@ func TestMCP(t *testing.T) {
 	bobHealth := categoryID(t, overview(t, bob), "Health")
 	if _, msg := tool(t, ts.URL, bobTok.Token, "set_record_category", map[string]any{"record_id": gymID, "category_id": bobHealth}); msg == "" {
 		t.Error("bob changed alice's record")
+	}
+	bobCash := overview(t, bob).Accounts[0].ID
+	if _, msg := tool(t, ts.URL, bobTok.Token, "set_record_account", map[string]any{"record_id": gymID, "account_id": bobCash}); msg == "" {
+		t.Error("bob moved alice's record")
 	}
 	if code := bob.do("DELETE", "/api/mcp/tokens/"+itoa(tok.ID), nil, nil); code != 404 {
 		t.Errorf("bob deleted alice's token: %d", code)

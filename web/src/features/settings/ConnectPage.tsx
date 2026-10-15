@@ -68,7 +68,7 @@ export function ConnectPage({ route, email }: { route: Route; email: string }) {
           </p>
           <ul className="small connect-list">
             <li>see your accounts, records and categories</li>
-            <li>change the category of records, and add categories</li>
+            <li>change the category or account of records, and add categories</li>
           </ul>
           <p className="muted small">
             It can't add or delete records, or see your password or API key. You can disconnect it at any time in Settings → Claude.
