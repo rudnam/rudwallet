@@ -236,3 +236,66 @@ func TestInboundDisabledWithoutSecret(t *testing.T) {
 		t.Errorf("upload: %d %+v", code, e)
 	}
 }
+
+func TestRestoreEmailedRecord(t *testing.T) {
+	ts := newTestServer(t, withInbound)
+	c := newClient(t, ts)
+	c.signup("a@example.com")
+	o := overview(t, c)
+	var manual wallet.Transaction
+	c.do("POST", "/api/transactions", map[string]any{"kind": "expense", "amount": 1820, "account_id": o.Accounts[0].ID,
+		"occurred_at": time.Date(2026, 10, 5, 23, 0, 0, 0, time.UTC), "payee": "lunch"}, &manual)
+	var v inboxView
+	c.do("GET", "/api/inbox", nil, &v)
+	var e inbox.Email
+	deliver(c, v.Address, fixture(t, "paypay-nfc.eml"), &e)
+	if e.TransactionID == nil {
+		t.Fatalf("email made no record: %+v", e)
+	}
+	emailed := *e.TransactionID
+	emailLink := func() *int64 {
+		c.do("GET", "/api/inbox", nil, &v)
+		for _, x := range v.Emails {
+			if x.ID == e.ID {
+				return x.TransactionID
+			}
+		}
+		t.Fatal("email gone from the inbox")
+		return nil
+	}
+	review := func() wallet.Transaction {
+		var l []wallet.Transaction
+		c.do("GET", "/api/transactions?status=review", nil, &l)
+		if len(l) != 1 {
+			t.Fatalf("%d records to review, want 1", len(l))
+		}
+		return l[0]
+	}
+	before := review()
+
+	// The emailed record keeps where it came from and its email.
+	c.do("DELETE", fmt.Sprintf("/api/transactions/%d", emailed), nil, nil)
+	if emailLink() != nil {
+		t.Fatal("email still linked to a deleted record")
+	}
+	if code := c.do("POST", "/api/transactions/restore", map[string]any{"ids": []int64{emailed}}, nil); code != 200 {
+		t.Fatalf("restore: %d", code)
+	}
+	after := review()
+	if after.ID != emailed || after.Source != before.Source || after.SourceLabel != before.SourceLabel || after.Status != "review" {
+		t.Errorf("restored %+v, want %+v", after, before)
+	}
+	if l := emailLink(); l == nil || *l != emailed {
+		t.Errorf("email links to %v, want %d", l, emailed)
+	}
+
+	// The record it duplicates: deleting it clears the flag, restoring it puts it back.
+	c.do("DELETE", fmt.Sprintf("/api/transactions/%d", manual.ID), nil, nil)
+	if review().DuplicateOfID != nil {
+		t.Fatal("still flagged as a duplicate of a deleted record")
+	}
+	c.do("POST", "/api/transactions/restore", map[string]any{"ids": []int64{manual.ID}}, nil)
+	if d := review().DuplicateOfID; d == nil || *d != manual.ID {
+		t.Errorf("duplicate of %v, want %d", d, manual.ID)
+	}
+}

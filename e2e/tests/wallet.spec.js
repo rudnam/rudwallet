@@ -25,8 +25,31 @@ test('add, edit and delete a record', async ({ page }) => {
   await page.getByRole('button', { name: /Ramen Taro/ }).click();
   const edit = page.getByRole('dialog', { name: 'Edit record' });
   await edit.getByLabel('Amount (JPY)').fill('980');
+  await edit.getByLabel('Note').fill('Extra egg');
   await edit.getByRole('button', { name: 'Save' }).click();
+
+  // It asks first, listing only what changes.
+  const changes = page.getByRole('list', { name: 'Changes' });
+  await expect(changes.getByRole('listitem')).toHaveCount(2);
+  await expect(changes).toContainText('Amount¥1,200¥980');
+  await expect(changes).toContainText('NoteNoneExtra egg');
+  // Back returns to the form with the edits kept.
+  await page.getByRole('button', { name: 'Back' }).click();
+  await expect(edit.getByLabel('Amount (JPY)')).toHaveValue('980');
+  await edit.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('button', { name: 'Save changes' }).click();
   await expect(page.getByRole('button', { name: /Ramen Taro, -¥980/ })).toBeVisible();
+
+  // Undo puts it back as it was.
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(page.getByText('Change undone')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Ramen Taro, -¥1,200/ })).toBeVisible();
+  await page.getByRole('button', { name: /Ramen Taro/ }).click();
+  await expect(edit.getByLabel('Note')).toHaveValue('');
+  // Saving with nothing changed just closes.
+  await edit.getByRole('button', { name: 'Save' }).click();
+  await expect(edit).toBeHidden();
+  await expect(page.getByRole('list', { name: 'Changes' })).toBeHidden();
 
   // Search, then delete.
   await page.getByLabel('Search records').fill('nothing like this');
@@ -34,8 +57,16 @@ test('add, edit and delete a record', async ({ page }) => {
   await expect(page.getByText('No records match.')).toBeVisible();
   await page.getByLabel('Search records').fill('ramen');
   await page.getByLabel('Search records').press('Enter');
-  page.once('dialog', (d) => d.accept());
+  page.on('dialog', (d) => d.accept());
   await page.getByRole('button', { name: /Ramen Taro/ }).click();
+  await page.getByRole('dialog', { name: 'Edit record' }).getByRole('button', { name: 'Delete' }).click();
+  await expect(page.getByText('No records match.')).toBeVisible();
+  // Undo brings it back, note and all.
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(page.getByText('Record restored')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Ramen Taro, -¥1,200/ })).toBeVisible();
+  await page.getByRole('button', { name: /Ramen Taro/ }).click();
+  await expect(page.getByRole('dialog', { name: 'Edit record' }).getByLabel('Payee')).toHaveValue('Ramen Taro');
   await page.getByRole('dialog', { name: 'Edit record' }).getByRole('button', { name: 'Delete' }).click();
   await expect(page.getByText('No records match.')).toBeVisible();
 });
@@ -298,6 +329,11 @@ test('choose records to recategorise, move and delete them together', async ({ p
   await expect(page.getByText('Deleted 2 records.')).toBeVisible();
   await expect(page.getByRole('checkbox', { name: /Cafe/ })).toHaveCount(0);
   await expect(page.getByRole('checkbox', { name: /Bakery/ })).toBeVisible();
+  // Undo brings both back.
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(page.getByText('Restored 2 records.')).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: /Cafe/ })).toBeVisible();
+  await expect(page.getByRole('checkbox', { name: /Kiosk/ })).toBeVisible();
 });
 
 test('a page seen before shows at once while it reloads, unless something changed', async ({ page }) => {
@@ -337,6 +373,7 @@ test('a page seen before shows at once while it reloads, unless something change
   const edit = page.getByRole('dialog', { name: 'Edit record' });
   await edit.getByLabel('Amount (JPY)').fill('980');
   await edit.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('button', { name: 'Save changes' }).click();
   await expect(latest).toContainText('-¥980');
   hold();
   await page.goto('/app/#/records?q=ramen');

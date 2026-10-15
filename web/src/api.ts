@@ -151,6 +151,10 @@ export interface BulkResult {
   skipped: number;
 }
 
+export interface RestoreResult {
+  restored: number;
+}
+
 /** Confirmed income and expenses over a period; transfers count as neither. */
 export interface Stats {
   spent: number;
@@ -428,6 +432,8 @@ export const api = {
   updateTransaction: (id: number, t: TransactionInput) => request<Transaction>('PUT', `/api/transactions/${id}`, t),
   deleteTransaction: (id: number) => request<void>('DELETE', `/api/transactions/${id}`),
   bulkTransactions: (change: BulkChange) => request<BulkResult>('POST', '/api/transactions/bulk', change),
+  /** Brings back records deleted in the last day. */
+  restoreTransactions: (ids: number[]) => request<RestoreResult>('POST', '/api/transactions/restore', { ids }),
 
   stats: (from: Date, to: Date, accountId?: number) => {
     const p = new URLSearchParams({ from: from.toISOString(), to: to.toISOString(), tz: Intl.DateTimeFormat().resolvedOptions().timeZone });

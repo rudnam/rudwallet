@@ -240,6 +240,11 @@ a.button.secondary:hover { background: var(--sunken); }
   box-shadow: var(--shadow-lift); animation: rise 0.25s ease-out; white-space: nowrap;
 }
 .toast:empty { display: none; }
+.toast:has(.toast-action) { display: flex; align-items: center; gap: 4px; padding: 4px 6px 4px 18px; }
+.toast-action {
+  background: none; color: color-mix(in srgb, var(--accent) 45%, var(--bg)); padding: 6px 12px; font-weight: 600; font-size: inherit;
+}
+.toast-action:hover:not(:disabled) { background: color-mix(in srgb, var(--bg) 14%, transparent); }
 @media (min-width: 800px) { .toast { bottom: 32px; left: calc(50% + 120px); } }
 @keyframes rise { from { opacity: 0; transform: translate(-50%, 8px); } }
 
@@ -365,6 +370,13 @@ li.record:hover:not(:disabled) { background: none; } /* a row to read, not to ta
 .setup-mark .inline-icon { width: 14px; height: 14px; stroke-width: 2.4; vertical-align: 0; }
 .bar-label { display: flex; align-items: center; gap: 8px; }
 .notice .inline-icon { margin-right: 2px; }
+
+/* What an edit changes, old struck through beside new. */
+.changes { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.changes li { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; }
+.changes li + li { border-top: 1px solid var(--border); }
+.changes li > span:last-child { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; overflow-wrap: anywhere; }
+.changes s { text-decoration-thickness: 1px; }
 
 /* Picking a category's icon. */
 .icon-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); gap: 6px; }
