@@ -191,6 +191,17 @@ var toolList = []*tool{
 		run:         createCategory,
 	},
 	{
+		Name:  "delete_category",
+		Title: "Delete a category",
+		Description: "Delete a category. Its records become uncategorised, and its budgets and remembered payees are deleted with it. " +
+			"It can't be undone: ask the user first.",
+		InputSchema: object(map[string]any{
+			"category_id": map[string]any{"type": "integer"},
+		}, "category_id"),
+		Annotations: map[string]any{"readOnlyHint": false, "destructiveHint": true, "idempotentHint": true, "openWorldHint": false},
+		run:         deleteCategory,
+	},
+	{
 		Name:        "spending_by_category",
 		Title:       "Spending by category",
 		Description: "Confirmed expenses in a period, summed by category, largest first.",
@@ -414,6 +425,19 @@ func createCategory(c *call, args json.RawMessage) (any, error) {
 		return nil, walletErr(err, "category")
 	}
 	return outCategory{cat.ID, cat.Name, cat.Kind}, nil
+}
+
+func deleteCategory(c *call, args json.RawMessage) (any, error) {
+	var in struct {
+		CategoryID int64 `json:"category_id"`
+	}
+	if err := decode(args, &in); err != nil {
+		return nil, err
+	}
+	if err := c.h.wallet.DeleteCategory(c.r.Context(), c.userID, in.CategoryID); err != nil {
+		return nil, walletErr(err, "category")
+	}
+	return map[string]any{"deleted_category_id": in.CategoryID}, nil
 }
 
 func spending(c *call, args json.RawMessage) (any, error) {
