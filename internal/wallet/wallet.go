@@ -110,11 +110,74 @@ var (
 		{Name: "Interest & Dividends", Kind: "income", Icon: "savings", Color: "#2a8a8a"},
 		{Name: "Other income", Kind: "income", Icon: "money", Color: "#5aa469"},
 	}
+
+	// japaneseNames are the defaults' names in a wallet set up in Japanese,
+	// by English name. Every default needs one (TestJapaneseNames).
+	japaneseNames = map[string]string{
+		"Food & Drinks": "食費", "Groceries": "食料品", "Shopping": "買い物", "Transport": "交通費", "Car": "車",
+		"Housing": "住居費", "Bills & Utilities": "水道光熱費", "Phone & Internet": "通信費", "Health": "医療費",
+		"Personal care": "美容・身だしなみ", "Sport & Fitness": "スポーツ・フィットネス", "Entertainment": "娯楽",
+		"Education": "教育・教養", "Travel": "旅行", "Gifts & Donations": "贈り物・寄付", "Taxes & Fees": "税金・手数料",
+		"Other": "その他", "Salary": "給与", "Rewards & Cashback": "ポイント・還元", "Refunds": "返金",
+		"Interest & Dividends": "利息・配当", "Other income": "その他の収入",
+	}
 )
+
+// localName is a default category's name in lang ("en" or "ja").
+func localName(english, lang string) string {
+	if j, ok := japaneseNames[english]; ok && lang == "ja" {
+		return j
+	}
+	return english
+}
+
+// sameDefault: a and b name the same default category, in either language.
+func sameDefault(a, b string) bool {
+	for en, ja := range japaneseNames {
+		if (strings.EqualFold(a, en) || a == ja) && (strings.EqualFold(b, en) || b == ja) {
+			return true
+		}
+	}
+	return false
+}
+
+// walletLanguage is "ja" for a wallet whose categories are named in
+// Japanese (set up while the app was in Japanese), else "en".
+func walletLanguage(cats []Category) string {
+	for _, c := range cats {
+		for _, ja := range japaneseNames {
+			if c.Name == ja {
+				return "ja"
+			}
+		}
+	}
+	return "en"
+}
+
+// DefaultCategoryNames are the names a new wallet's categories get in lang,
+// in the same order as in English, so a category can be found by its
+// English name: DefaultCategoryNames("ja")[i] is DefaultCategoryNames("en")[i].
+func DefaultCategoryNames(lang string) []string {
+	names := make([]string, len(defaultCategories))
+	for i, c := range defaultCategories {
+		names[i] = localName(c.Name, lang)
+	}
+	return names
+}
+
+// cashName is the name of the account every wallet starts with.
+var cashName = map[string]string{"en": "Cash", "ja": "現金"}
 
 // setUp creates the user's settings, default categories and a Cash account
 // the first time they open the wallet. It is safe to call on every request.
 func (s *Store) setUp(ctx context.Context, userID int64) error {
+	return s.SetUp(ctx, userID, "en")
+}
+
+// SetUp is setUp naming the categories and the Cash account in lang ("en"
+// or "ja"), for when the app opens the wallet for the first time, or a demo
+// starts.
+func (s *Store) SetUp(ctx context.Context, userID int64, lang string) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -128,14 +191,19 @@ func (s *Store) setUp(ctx context.Context, userID int64) error {
 		return nil // already set up
 	}
 	for _, c := range defaultCategories {
+		c.Name = localName(c.Name, lang)
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO categories (user_id, name, kind, icon, color) VALUES ($1, $2, $3, $4, $5)`,
 			userID, c.Name, c.Kind, c.Icon, c.Color); err != nil {
 			return err
 		}
 	}
+	cash, ok := cashName[lang]
+	if !ok {
+		cash = cashName["en"]
+	}
 	if _, err := tx.ExecContext(ctx,
-		`INSERT INTO wallet_accounts (user_id, name, kind) VALUES ($1, 'Cash', 'cash')`, userID); err != nil {
+		`INSERT INTO wallet_accounts (user_id, name, kind) VALUES ($1, $2, 'cash')`, userID, cash); err != nil {
 		return err
 	}
 	return tx.Commit()

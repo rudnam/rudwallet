@@ -130,7 +130,7 @@ test('import records exported from Wallet by BudgetBakers', async ({ page }) => 
   await expect(page.getByLabel('Choose Bar, cafe')).not.toBeChecked();
 
   await page.getByRole('button', { name: 'Import 4 records' }).click();
-  await expect(page.getByRole('status')).toContainText('Imported 4 records, created 1 accounts.');
+  await expect(page.getByRole('status')).toContainText('Imported 4 records, created 1 account.');
 
   // The same file again adds nothing.
   await page.getByLabel('CSV file', { exact: true }).setInputFiles(file);
@@ -149,10 +149,15 @@ test('import records exported from Wallet by BudgetBakers', async ({ page }) => 
 
 test('add a default category the user is missing', async ({ page }) => {
   await signUp(page);
-  const { categories } = await (await page.request.get('/api/wallet')).json();
-  const car = categories.find((c) => c.name === 'Car');
-  expect((await page.request.delete(`/api/categories/${car.id}`)).status()).toBe(204);
   await page.goto('/app/#/settings?section=categories');
+  // Deleting one says what goes with it.
+  await page.getByRole('button', { name: 'Edit category Car' }).click();
+  const confirm = page.waitForEvent('dialog');
+  const deleting = page.getByRole('dialog', { name: 'Edit category' }).getByRole('button', { name: 'Delete' }).click();
+  const d = await confirm;
+  expect(d.message()).toBe('Delete "Car"? Its records become uncategorised, and its budgets and the shops filed under it are forgotten.');
+  await d.accept();
+  await deleting;
   await page.getByRole('button', { name: 'Add category Car' }).click();
   await expect(page.getByRole('button', { name: 'Edit category Car' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add category Car' })).toHaveCount(0);

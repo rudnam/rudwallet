@@ -13,7 +13,7 @@ services:
       - "127.0.0.1:${PREVIEW_MAIL_PORT:-8025}:8025"
   # Fills the preview account with months of sample records (e2e/seed).
   seed:
-    image: golang:1.26-alpine
+    image: ${GO_IMAGE:?run through preview.sh}
     profiles: [seed]
     working_dir: /src
     depends_on:

@@ -4,6 +4,7 @@
 // installed from / before the move, which still opens at /.
 import './styles.css';
 import './landing.css';
+import { language, locale, setLanguage } from './language';
 
 const forApp =
   location.hash.startsWith('#/') ||
@@ -11,8 +12,32 @@ const forApp =
   matchMedia('(display-mode: standalone)').matches;
 if (forApp) location.replace('/app/' + location.search + location.hash);
 else {
+  translate();
+  document.querySelector('#language-toggle')?.addEventListener('click', () => {
+    setLanguage(language() === 'ja' ? 'en' : 'ja');
+    translate();
+  });
   revealOnScroll();
   followSteps();
+  offerDemo();
+}
+
+// The page is written in English; each text's Japanese is in its data-ja
+// (HTML, ours). The English is kept in data-en to switch back.
+function translate() {
+  const ja = language() === 'ja';
+  document.querySelectorAll<HTMLElement>('[data-ja]').forEach((el) => {
+    el.dataset.en ??= el.innerHTML;
+    el.innerHTML = ja ? el.dataset.ja! : el.dataset.en;
+  });
+  const description = document.querySelector<HTMLMetaElement>('meta[data-ja-content]');
+  if (description) {
+    description.dataset.en ??= description.content;
+    description.content = ja ? description.dataset.jaContent! : description.dataset.en;
+  }
+  // The switch names the other language, in that language.
+  const toggle = document.querySelector<HTMLElement>('#language-toggle');
+  if (toggle) toggle.lang = ja ? 'en' : 'ja';
   offerAPK();
 }
 
@@ -63,6 +88,18 @@ function followSteps() {
   update();
 }
 
+// "Try the demo" shows only when the server offers demos.
+async function offerDemo() {
+  try {
+    const res = await fetch('/api/auth/options');
+    if (!res.ok) return;
+    const { demo } = (await res.json()) as { demo?: boolean };
+    if (demo) document.querySelectorAll<HTMLElement>('[data-demo-hidden]').forEach((el) => (el.hidden = false));
+  } catch {
+    // Offline or an older server: just don't offer it.
+  }
+}
+
 // The Android app's download shows only when the server has an APK to give.
 async function offerAPK() {
   try {
@@ -72,8 +109,8 @@ async function offerAPK() {
     if (!android) return;
     document.querySelector<HTMLAnchorElement>('#apk-link')!.href = android.url;
     const size = android.size < 1e6 ? `${Math.max(1, Math.round(android.size / 1e3))} KB` : `${(android.size / 1e6).toFixed(1)} MB`;
-    const day = new Date(android.updated).toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' });
-    document.querySelector('#apk-meta')!.textContent = `APK · ${size} · updated ${day}`;
+    const day = new Date(android.updated).toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' });
+    document.querySelector('#apk-meta')!.textContent = language() === 'ja' ? `APK · ${size} · ${day}更新` : `APK · ${size} · updated ${day}`;
     document.querySelectorAll<HTMLElement>('[data-apk-hidden]').forEach((el) => (el.hidden = false));
   } catch {
     // Offline or an older server: just don't offer it.

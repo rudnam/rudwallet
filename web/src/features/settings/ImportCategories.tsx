@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { Category, CategoryChoice, ImportCategory } from "../../api";
 import { CategoryIcon } from "../../components/Icon";
 import { useWallet } from "../../wallet";
+import { t, tn } from "../../i18n";
 
 /** Each group's choice as a select value: "c:<id>", "n:<new name>", or "" for none. */
 export type Choices = Record<string, string>;
@@ -51,18 +52,17 @@ export function ImportCategories({
   newCategories,
   choices,
   onChange,
-  label,
-  plural,
+  by,
 }: {
   groups: ImportCategory[];
   /** Default categories the user doesn't have, offered as new ones. */
   newCategories: Category[];
   choices: Choices;
   onChange: (c: Choices) => void;
-  /** What a row is, e.g. "shop", and more than one. */
-  label: string;
-  plural: string;
+  /** What a row is: a shop (PayPay) or a category in the file (BudgetBakers). */
+  by: "shop" | "category";
 }) {
+  const shops = by === "shop";
   const w = useWallet();
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [showAll, setShowAll] = useState(groups.length <= firstRows + 3);
@@ -126,12 +126,12 @@ export function ImportCategories({
         <div
           className="mapper-bar"
           role="region"
-          aria-label={`Chosen ${plural}`}
+          aria-label={shops ? t("Chosen shops") : t("Chosen categories")}
         >
           <label className="mapper-all">
             <input
               type="checkbox"
-              aria-label={`Choose all ${plural}`}
+              aria-label={shops ? t("Choose all shops") : t("Choose all categories")}
               checked={all}
               ref={(el) => {
                 if (el) el.indeterminate = picked.size > 0 && !all;
@@ -143,24 +143,24 @@ export function ImportCategories({
             <span className="bulk-count" aria-live="polite">
               {picked.size === 0 ? (
                 <span className="muted small">
-                  Tick {plural} to set several at once
+                  {shops ? t("Tick shops to set several at once") : t("Tick categories to set several at once")}
                 </span>
               ) : (
-                `${picked.size} chosen`
+                t("{n} chosen", { n: picked.size })
               )}
             </span>
           </label>
           {picked.size > 0 && (
             <select
-              aria-label="Set category for chosen"
+              aria-label={t("Set category for chosen")}
               value=""
               onChange={(e) => e.target.value && setForPicked(e.target.value)}
             >
-              <option value="">Set category…</option>
-              <option value="|">No category</option>
+              <option value="">{t("Set category…")}</option>
+              <option value="|">{t("No category")}</option>
               {kinds.map((k) => {
                 const { existing, fresh } = names(k);
-                const title = k === "expense" ? "Expenses" : "Income";
+                const title = k === "expense" ? t("Expenses") : t("Income");
                 return [
                   <optgroup key={k} label={title}>
                     {existing.map((c) => (
@@ -172,7 +172,7 @@ export function ImportCategories({
                   fresh.length > 0 && (
                     <optgroup
                       key={`${k}-new`}
-                      label={`New ${k === "expense" ? "expense" : "income"} categories`}
+                      label={k === "expense" ? t("New expense categories") : t("New income categories")}
                     >
                       {fresh.map((n) => (
                         <option key={n} value={`${k}|n:${n}`}>
@@ -187,7 +187,7 @@ export function ImportCategories({
           )}
         </div>
       )}
-      <ul className="list flush" aria-label={`Categories by ${label}`}>
+      <ul className="list flush" aria-label={shops ? t("Categories by shop") : t("Categories by category")}>
         {shown.map((g) => {
           const key = keyOf(g);
           const v = choices[key] ?? "";
@@ -202,7 +202,7 @@ export function ImportCategories({
               {bulk && (
                 <input
                   type="checkbox"
-                  aria-label={`Choose ${g.name}`}
+                  aria-label={t("Choose {name}", { name: g.name })}
                   checked={picked.has(key)}
                   onChange={() => toggle(g)}
                 />
@@ -222,25 +222,24 @@ export function ImportCategories({
                 <span className="record-title">
                   {g.name}
                   {g.kind === "income" && (
-                    <span className="badge quiet">income</span>
+                    <span className="badge quiet">{t("income")}</span>
                   )}
                 </span>
                 <span className="muted small">
-                  {g.count} {g.count === 1 ? "record" : "records"} ·{" "}
-                  {w.money(g.total)}
-                  {g.learned && v === `c:${g.category_id}` && " · as before"}
-                  {v.startsWith("n:") && " · new category"}
+                  {tn(g.count, "{n} record", "{n} records")} · {w.money(g.total)}
+                  {g.learned && v === `c:${g.category_id}` && ` · ${t("as before")}`}
+                  {v.startsWith("n:") && ` · ${t("new category")}`}
                 </span>
               </span>
               <select
-                aria-label={`Category for ${g.name}`}
+                aria-label={t("Category for {name}", { name: g.name })}
                 value={v}
                 onChange={(e) =>
                   onChange({ ...choices, [key]: e.target.value })
                 }
               >
-                <option value="">No category</option>
-                <optgroup label="Your categories">
+                <option value="">{t("No category")}</option>
+                <optgroup label={t("Your categories")}>
                   {existing.map((c) => (
                     <option key={c.id} value={`c:${c.id}`}>
                       {c.name}
@@ -248,7 +247,7 @@ export function ImportCategories({
                   ))}
                 </optgroup>
                 {fresh.length > 0 && (
-                  <optgroup label="New categories">
+                  <optgroup label={t("New categories")}>
                     {fresh.map((n) => (
                       <option key={n} value={`n:${n}`}>
                         {n}
@@ -267,7 +266,7 @@ export function ImportCategories({
           className="link mapper-more"
           onClick={() => setShowAll(true)}
         >
-          Show all {groups.length} {plural}
+          {shops ? t("Show all {n} shops", { n: groups.length }) : t("Show all {n} categories", { n: groups.length })}
         </button>
       )}
     </div>

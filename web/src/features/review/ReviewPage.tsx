@@ -11,6 +11,7 @@ import { useRecords } from '../../useRecords';
 import { Icon, icons } from '../../components/Icon';
 import { useToast } from '../../toast';
 import { useWallet } from '../../wallet';
+import { serverText, t, t as tr, tn, tx } from '../../i18n';
 
 export function ReviewPage() {
   const w = useWallet();
@@ -40,7 +41,7 @@ export function ReviewPage() {
       }
       for (const [category_id, ids] of changed) await api.bulkTransactions({ ids, action: 'categorize', category_id });
       const { changed: n } = await api.bulkTransactions({ ids: ready.map((t) => t.id), action: 'confirm' });
-      toast(n === 1 ? 'Confirmed 1 payment' : `Confirmed ${n} payments`);
+      toast(tn(n, 'Confirmed {n} payment', 'Confirmed {n} payments'));
       setPicked({});
       await Promise.all([reload(), w.refresh()]);
     } catch (err) {
@@ -71,9 +72,9 @@ export function ReviewPage() {
   return (
     <section className="stack loose">
       <header className="stack tight">
-        <h1>To review</h1>
+        <h1>{t('To review')}</h1>
         <p className="muted lede">
-          Payments read from your emails and your phone's notifications. Pick a category and confirm; next time it's remembered.
+          {t("Payments read from your emails and your phone's notifications. Pick a category and confirm; next time it's remembered.")}
         </p>
       </header>
       {error && (
@@ -86,11 +87,12 @@ export function ReviewPage() {
           <span className="empty-mark" aria-hidden="true">
             <Icon d={icons.check} className="glyph" />
           </span>
-          <h2>All caught up.</h2>
+          <h2>{t('All caught up.')}</h2>
           <p className="muted small">
-            Payments from forwarded emails and Google Wallet appear here. Set up{' '}
-            <a href={href('settings', { section: 'email' })}>email automation</a> or{' '}
-            <a href={href('settings', { section: 'notifications' })}>payment notifications</a>.
+            {tx('Payments from forwarded emails and Google Wallet appear here. Set up {email} or {notifications}.', {
+              email: <a href={href('settings', { section: 'email' })}>{t('email automation')}</a>,
+              notifications: <a href={href('settings', { section: 'notifications' })}>{t('payment notifications')}</a>,
+            })}
           </p>
         </div>
       )}
@@ -99,24 +101,22 @@ export function ReviewPage() {
         .filter((e) => e.status === 'forwarding')
         .map((e) => (
           <div key={e.id} className="card stack notice-card">
-            <strong>Confirm Gmail forwarding</strong>
+            <strong>{t('Confirm Gmail forwarding')}</strong>
             <p className="small">
-              Gmail sent a confirmation to your forwarding address. Open the link to allow forwarding
-              {e.detail ? (
-                <>
-                  , or enter code <strong>{e.detail}</strong> in Gmail's settings
-                </>
-              ) : null}
-              .
+              {e.detail
+                ? tx("Gmail sent a confirmation to your forwarding address. Open the link to allow forwarding, or enter code {code} in Gmail's settings.", {
+                    code: <strong>{e.detail}</strong>,
+                  })
+                : t('Gmail sent a confirmation to your forwarding address. Open the link to allow forwarding.')}
             </p>
             <div className="row">
               {e.confirm_url && (
                 <a className="button" href={e.confirm_url} target="_blank" rel="noreferrer noopener">
-                  Confirm forwarding
+                  {t('Confirm forwarding')}
                 </a>
               )}
               <button type="button" className="link" onClick={() => dismiss(e)}>
-                Done
+                {t('Done')}
               </button>
             </div>
           </div>
@@ -126,17 +126,17 @@ export function ReviewPage() {
         <div className="row wrap confirm-all">
           <span className="grow muted small">
             {ready.length === records?.length
-              ? 'Every payment here has a category.'
-              : `${ready.length} of ${records?.length} payments have a category. The rest stay for you.`}
+              ? t('Every payment here has a category.')
+              : t('{ready} of {total} payments have a category. The rest stay for you.', { ready: ready.length, total: records?.length ?? 0 })}
           </span>
           <button type="button" disabled={confirmingAll} onClick={confirmAll}>
-            Confirm {ready.length} with a category
+            {t('Confirm {n} with a category', { n: ready.length })}
           </button>
         </div>
       )}
 
       {records && records.length > 0 && (
-        <ul className="list" aria-label="Payments to review">
+        <ul className="list" aria-label={t('Payments to review')}>
           {records.map((t) => (
             <ReviewItem
               key={t.id}
@@ -152,30 +152,28 @@ export function ReviewPage() {
 
       {emails.filter((e) => e.status === 'unparsed').length > 0 && (
         <>
-          <h2>Emails that need you</h2>
-          <p className="muted small lede">
-            These couldn't be read automatically. Add them yourself, or set them aside.
-          </p>
-          <ul className="list" aria-label="Unread emails">
+          <h2>{t('Emails that need you')}</h2>
+          <p className="muted small lede">{t("These couldn't be read automatically. Add them yourself, or set them aside.")}</p>
+          <ul className="list" aria-label={t('Unread emails')}>
             {emails
               .filter((e) => e.status === 'unparsed')
               .map((e) => (
                 <li key={e.id} className="card stack tight">
-                  <strong>{e.subject || '(no subject)'}</strong>
+                  <strong>{e.subject || t('(no subject)')}</strong>
                   <span className="muted small">
                     {e.from} · {formatDay(new Date(e.received_at))}
                   </span>
-                  <span className="small">{e.detail}</span>
+                  <span className="small">{serverText(e.detail)}</span>
                   <details>
-                    <summary className="small">Show email</summary>
+                    <summary className="small">{t('Show email')}</summary>
                     <pre className="email-body">{e.body_text}</pre>
                   </details>
                   <div className="row">
                     <button type="button" onClick={() => setAddFrom(e)}>
-                      Add as record
+                      {t('Add as record')}
                     </button>
                     <button type="button" className="link" onClick={() => dismiss(e)}>
-                      Not a payment
+                      {t('Not a payment')}
                     </button>
                   </div>
                 </li>
@@ -224,7 +222,7 @@ function ReviewItem({
   const overriding = t.payee !== '' && t.category_id !== null && categoryId !== null && categoryId !== t.category_id;
   const [busy, setBusy] = useState(false);
   const when = new Date(t.occurred_at);
-  const title = t.payee || 'Payment';
+  const title = t.payee || tr('Payment');
 
   async function confirm() {
     if (t.amount <= 0) {
@@ -246,7 +244,7 @@ function ReviewItem({
         ...(overriding ? { remember } : {}),
       });
       await w.refresh();
-      toast(`Confirmed ${title}`);
+      toast(tr('Confirmed {payee}', { payee: title }));
       onDone();
     } catch (err) {
       setError(errorMessage(err));
@@ -265,22 +263,22 @@ function ReviewItem({
           </span>
         </span>
         <strong className={`amount review-amount ${t.kind}`}>
-          {t.amount > 0 ? w.money(t.kind === 'income' ? t.amount : -t.amount, true) : 'Amount?'}
+          {t.amount > 0 ? w.money(t.kind === 'income' ? t.amount : -t.amount, true) : tr('Amount?')}
         </strong>
       </div>
       {t.note && <span className="small muted">{t.note}</span>}
       {t.duplicate_of_id && (
         <span className="notice warn small" role="status">
-          <Icon d={icons.warning} className="inline-icon" /> Possible duplicate: you already have a record of this amount around this time.
+          <Icon d={icons.warning} className="inline-icon" /> {tr('Possible duplicate: you already have a record of this amount around this time.')}
         </span>
       )}
       <div className="row wrap">
         <select
-          aria-label={`Category for ${title}`}
+          aria-label={tr('Category for {name}', { name: title })}
           value={categoryId ?? ''}
           onChange={(e) => onPick(e.target.value ? Number(e.target.value) : null)}
         >
-          <option value="">No category</option>
+          <option value="">{tr('No category')}</option>
           {w.categories
             .filter((c) => c.kind === t.kind)
             .map((c) => (
@@ -290,16 +288,20 @@ function ReviewItem({
             ))}
         </select>
         <button type="button" disabled={busy} onClick={confirm}>
-          Confirm
+          {tr('Confirm')}
         </button>
         <button type="button" className="link" onClick={onEdit}>
-          Edit
+          {tr('Edit')}
         </button>
       </div>
       {overriding && (
         <label className="check small">
           <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
-          Use {w.category(categoryId)?.name} for {t.payee} from now on, instead of {w.category(t.category_id)?.name}
+          {tr('Use {category} for {payee} from now on, instead of {old}', {
+            category: w.category(categoryId)?.name ?? '',
+            payee: t.payee,
+            old: w.category(t.category_id)?.name ?? '',
+          })}
         </label>
       )}
       {error && (

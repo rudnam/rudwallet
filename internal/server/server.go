@@ -17,6 +17,7 @@ import (
 	"github.com/rudnam/wallet-app/internal/account"
 	"github.com/rudnam/wallet-app/internal/ai"
 	"github.com/rudnam/wallet-app/internal/config"
+	"github.com/rudnam/wallet-app/internal/demo"
 	"github.com/rudnam/wallet-app/internal/httpx"
 	"github.com/rudnam/wallet-app/internal/inbox"
 	"github.com/rudnam/wallet-app/internal/mailer"
@@ -59,6 +60,11 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 		sender = &mailer.SMTP{Host: cfg.SMTPHost, Port: cfg.SMTPPort, Username: cfg.SMTPUsername,
 			Password: cfg.SMTPPassword, From: cfg.MailFrom}
 	}
+	walletStore := wallet.NewStore(conn)
+	var demoFiller account.DemoFiller
+	if cfg.Demo {
+		demoFiller = demo.Filler(walletStore)
+	}
 	accounts := account.NewHandler(account.Config{
 		SecureCookies:     cfg.SecureCookies,
 		TrustProxy:        cfg.TrustProxy,
@@ -68,9 +74,9 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 		Mail:              sender,
 		PublicOrigin:      cfg.PublicOrigin,
 		AppScheme:         cfg.AndroidPackage,
+		Demo:              demoFiller,
 	}, account.NewStore(conn))
 	accounts.Register(mux)
-	walletStore := wallet.NewStore(conn)
 	wallet.NewHandler(walletStore).Register(mux, accounts.RequireUser)
 	model := cfg.AnthropicModel
 	if model == "" {

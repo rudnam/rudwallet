@@ -1,5 +1,6 @@
 // Records grouped by day, newest first.
 import type { Transaction } from '../api';
+import { t as tr } from '../i18n';
 import { dayKey, formatDay, formatTime } from '../money';
 import { useWallet } from '../wallet';
 import { CategoryIcon, Icon, icons } from './Icon';
@@ -7,7 +8,7 @@ import { CategoryIcon, Icon, icons } from './Icon';
 export function TransactionList({
   records,
   onOpen,
-  label = 'Records',
+  label = tr('Records'),
   selected,
   onToggle,
 }: {
@@ -72,10 +73,10 @@ function Row({
   const account = w.account(t.account_id);
   const title =
     t.kind === 'transfer'
-      ? `Transfer to ${w.account(t.to_account_id)?.name ?? '?'}`
-      : t.payee || cat?.name || (t.kind === 'income' ? 'Income' : 'Expense');
+      ? tr('Transfer to {account}', { account: w.account(t.to_account_id)?.name ?? '?' })
+      : t.payee || cat?.name || (t.kind === 'income' ? tr('Income') : tr('Expense'));
   const sub = [
-    t.kind === 'transfer' ? `from ${account?.name ?? '?'}` : (cat?.name ?? 'No category'),
+    t.kind === 'transfer' ? tr('from {account}', { account: account?.name ?? '?' }) : (cat?.name ?? tr('No category')),
     t.kind !== 'transfer' && account?.name,
     formatTime(new Date(t.occurred_at)),
   ]
@@ -96,21 +97,21 @@ function Row({
         <span className="grow">
           <span className="record-title">
             {title}
-            {t.status === 'review' && <span className="badge">To review</span>}
+            {t.status === 'review' && <span className="badge">{tr('To review')}</span>}
             {t.source === 'email' && t.status === 'confirmed' && (
-              <span className="badge quiet" title="Recorded from an email">
-                <Icon d={icons.mail} className="inline-icon" /> Email
+              <span className="badge quiet" title={tr('Recorded from an email')}>
+                <Icon d={icons.mail} className="inline-icon" /> {tr('Email')}
               </span>
             )}
             {t.source === 'notification' && t.status === 'confirmed' && (
-              <span className="badge quiet" title="Recorded from a payment notification">
-                Phone
+              <span className="badge quiet" title={tr('Recorded from a payment notification')}>
+                {tr('Phone')}
               </span>
             )}
           </span>
           <span className="muted small">{sub}</span>
         </span>
-        <span className={`amount ${t.kind}`}>{t.amount === 0 && t.status === 'review' ? 'Amount?' : amount}</span>
+        <span className={`amount ${t.kind}`}>{t.amount === 0 && t.status === 'review' ? tr('Amount?') : amount}</span>
     </>
   );
 

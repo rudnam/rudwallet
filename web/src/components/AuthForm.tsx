@@ -1,23 +1,39 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, errorMessage, type Me } from '../api';
+import { t } from '../i18n';
 import { isApp, startGoogleSignIn } from '../native';
 import type { Notice } from '../notice';
 
 type Mode = 'sign-in' | 'sign-up';
 
-export function AuthForm({ onSignedIn, notice }: { onSignedIn: (me: Me) => void; notice?: Notice | null }) {
-  const [mode, setMode] = useState<Mode>('sign-in');
+export function AuthForm({
+  onSignedIn,
+  onDemo,
+  notice,
+  mode: initialMode = 'sign-in',
+}: {
+  onSignedIn: (me: Me) => void;
+  /** Starts a demo; offered when the server has demos. */
+  onDemo?: () => void;
+  notice?: Notice | null;
+  mode?: Mode;
+}) {
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(notice && !notice.ok ? notice.message : '');
   const [status, setStatus] = useState(notice?.ok ? notice.message : '');
   const [busy, setBusy] = useState(false);
   const [google, setGoogle] = useState(false);
+  const [demo, setDemo] = useState(false);
 
   useEffect(() => {
     api
       .authOptions()
-      .then((o) => setGoogle(o.google))
+      .then((o) => {
+        setGoogle(o.google);
+        setDemo(!!o.demo);
+      })
       .catch(() => {}); // the email form still works
   }, []);
 
@@ -38,7 +54,7 @@ export function AuthForm({ onSignedIn, notice }: { onSignedIn: (me: Me) => void;
   const signingIn = mode === 'sign-in';
   return (
     <form className="card stack" onSubmit={submit}>
-      <h1>{signingIn ? 'Sign in' : 'Create an account'}</h1>
+      <h1>{signingIn ? t('Sign in') : t('Create an account')}</h1>
       {status && (
         <p role="status" className="notice">
           {status}
@@ -57,19 +73,19 @@ export function AuthForm({ onSignedIn, notice }: { onSignedIn: (me: Me) => void;
             }}
           >
             <GoogleMark />
-            Continue with Google
+            {t('Continue with Google')}
           </a>
           <div className="or" aria-hidden="true">
-            or
+            {t('or')}
           </div>
         </>
       )}
       <label className="field">
-        Email
+        {t('Email')}
         <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
       </label>
       <label className="field">
-        Password
+        {t('Password')}
         <input
           type="password"
           autoComplete={signingIn ? 'current-password' : 'new-password'}
@@ -85,7 +101,7 @@ export function AuthForm({ onSignedIn, notice }: { onSignedIn: (me: Me) => void;
         </p>
       )}
       <button type="submit" disabled={busy}>
-        {signingIn ? 'Sign in' : 'Create account'}
+        {signingIn ? t('Sign in') : t('Create account')}
       </button>
       <button
         type="button"
@@ -96,8 +112,16 @@ export function AuthForm({ onSignedIn, notice }: { onSignedIn: (me: Me) => void;
           setStatus('');
         }}
       >
-        {signingIn ? 'New here? Create an account' : 'Have an account? Sign in'}
+        {signingIn ? t('New here? Create an account') : t('Have an account? Sign in')}
       </button>
+      {demo && onDemo && (
+        <div className="demo-offer">
+          <span className="muted small">{t('Just looking?')}</span>
+          <button type="button" className="secondary" onClick={onDemo}>
+            {t('Try the demo')}
+          </button>
+        </div>
+      )}
     </form>
   );
 }

@@ -48,11 +48,13 @@ var googleHTTP = &http.Client{Timeout: 10 * time.Second}
 
 type optionsResponse struct {
 	Google bool `json:"google"`
+	// Demo: visitors can try a demo without an account (POST /api/demo).
+	Demo bool `json:"demo"`
 }
 
 // options tells the sign-in page which ways to sign in exist.
 func (h *Handler) options(w http.ResponseWriter, r *http.Request) error {
-	httpx.WriteJSON(w, http.StatusOK, optionsResponse{Google: h.cfg.Google != nil})
+	httpx.WriteJSON(w, http.StatusOK, optionsResponse{Google: h.cfg.Google != nil, Demo: h.cfg.Demo != nil})
 	return nil
 }
 

@@ -7,6 +7,7 @@ import { CategoryIcon, Icon, icons } from '../../components/Icon';
 import { addMonths, amountInput, formatMonth, monthStart, parseAmount } from '../../money';
 import { useRecords } from '../../useRecords';
 import { useWallet } from '../../wallet';
+import { t } from '../../i18n';
 import { budgetSpent } from '../home/HomePage';
 
 export function BudgetsPage() {
@@ -27,10 +28,10 @@ export function BudgetsPage() {
       <header className="page-head">
         <div>
           <span className="eyebrow">{formatMonth(month)}</span>
-          <h1>Budgets</h1>
+          <h1>{t('Budgets')}</h1>
         </div>
         <button type="button" className="secondary" onClick={() => setEditing('new')}>
-          New budget
+          {t('New budget')}
         </button>
       </header>
       {error && (
@@ -39,20 +40,20 @@ export function BudgetsPage() {
         </p>
       )}
       {budgets === null ? (
-        <p className="muted">Loading…</p>
+        <p className="muted">{t('Loading…')}</p>
       ) : budgets.length === 0 ? (
         <div className="card stack empty">
           <span className="empty-mark" aria-hidden="true">
             <Icon d={icons.budgets} className="glyph" />
           </span>
-          <h2>No budgets yet</h2>
-          <p className="muted small">Set a monthly limit for a category, or for all your spending, and watch it fill up.</p>
+          <h2>{t('No budgets yet')}</h2>
+          <p className="muted small">{t('Set a monthly limit for a category, or for all your spending, and watch it fill up.')}</p>
           <button type="button" onClick={() => setEditing('new')}>
-            Create a budget
+            {t('Create a budget')}
           </button>
         </div>
       ) : (
-        <ul className="list" aria-label="Budgets">
+        <ul className="list" aria-label={t('Budgets')}>
           {budgets.map((b) => {
             const c = w.category(b.category_id);
             return (
@@ -67,10 +68,10 @@ export function BudgetsPage() {
                   )}
                   <span className="grow">
                     <strong className="block">{b.name}</strong>
-                    <span className="muted small">{c ? c.name : 'All spending'}</span>
+                    <span className="muted small">{c ? c.name : t('All spending')}</span>
                   </span>
-                  <button type="button" className="link" aria-label={`Edit budget ${b.name}`} onClick={() => setEditing(b)}>
-                    Edit
+                  <button type="button" className="link" aria-label={t('Edit budget {name}', { name: b.name })} onClick={() => setEditing(b)}>
+                    {t('Edit')}
                   </button>
                 </div>
                 <Meter spent={budgetSpent(b, records ?? [])} limit={b.amount} format={(n) => w.money(n)} />
@@ -105,10 +106,10 @@ function BudgetForm({ budget, onClose, onSaved }: { budget?: Budget; onClose: ()
     e.preventDefault();
     const minor = parseAmount(amount, exp);
     if (!minor) {
-      setError('Enter a monthly limit.');
+      setError(t('Enter a monthly limit.'));
       return;
     }
-    const input = { name: name || w.category(categoryId)?.name || 'All spending', category_id: categoryId, amount: minor };
+    const input = { name: name || w.category(categoryId)?.name || t('All spending'), category_id: categoryId, amount: minor };
     try {
       if (budget) await api.updateBudget(budget.id, input);
       else await api.createBudget(input);
@@ -119,7 +120,7 @@ function BudgetForm({ budget, onClose, onSaved }: { budget?: Budget; onClose: ()
   }
 
   async function remove() {
-    if (!budget || !confirm(`Delete the budget "${budget.name}"?`)) return;
+    if (!budget || !confirm(t('Delete the budget "{name}"?', { name: budget.name }))) return;
     try {
       await api.deleteBudget(budget.id);
       onSaved();
@@ -129,12 +130,12 @@ function BudgetForm({ budget, onClose, onSaved }: { budget?: Budget; onClose: ()
   }
 
   return (
-    <Dialog title={budget ? 'Edit budget' : 'New budget'} onClose={onClose}>
+    <Dialog title={budget ? t('Edit budget') : t('New budget')} onClose={onClose}>
       <form className="stack" onSubmit={save}>
         <label className="field">
-          Category
+          {t('Category')}
           <select value={categoryId ?? ''} onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : null)}>
-            <option value="">All spending</option>
+            <option value="">{t('All spending')}</option>
             {w.categories
               .filter((c) => c.kind === 'expense')
               .map((c) => (
@@ -145,11 +146,11 @@ function BudgetForm({ budget, onClose, onSaved }: { budget?: Budget; onClose: ()
           </select>
         </label>
         <label className="field">
-          Monthly limit ({w.settings.currency})
+          {t('Monthly limit ({currency})', { currency: w.settings.currency })}
           <input inputMode="decimal" required value={amount} onChange={(e) => setAmount(e.target.value)} />
         </label>
         <label className="field">
-          Name (optional)
+          {t('Name (optional)')}
           <input value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
         </label>
         {error && (
@@ -160,11 +161,11 @@ function BudgetForm({ budget, onClose, onSaved }: { budget?: Budget; onClose: ()
         <div className="row end">
           {budget && (
             <button type="button" className="link danger" onClick={remove}>
-              Delete
+              {t('Delete')}
             </button>
           )}
           <span className="grow" />
-          <button type="submit">Save</button>
+          <button type="submit">{t('Save')}</button>
         </div>
       </form>
     </Dialog>

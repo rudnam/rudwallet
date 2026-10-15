@@ -2,10 +2,13 @@
 // shared by every page. Call refresh() after anything that changes them
 // (or balances, or the review count).
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
-import { api, errorMessage, type Account, type Category, type Overview } from './api';
+import { api, errorMessage, type Account, type Category, type Me, type Overview } from './api';
+import { t } from './i18n';
 import { formatMoney } from './money';
 
 interface WalletState extends Overview {
+  /** Who is signed in; me.demo for a demo account. */
+  me: Me;
   refresh: () => Promise<void>;
   money: (amount: number, signed?: boolean) => string;
   account: (id: number | null) => Account | undefined;
@@ -14,7 +17,7 @@ interface WalletState extends Overview {
 
 const Ctx = createContext<WalletState | null>(null);
 
-export function WalletProvider({ children }: { children: ReactNode }) {
+export function WalletProvider({ me, children }: { me: Me; children: ReactNode }) {
   const [overview, setOverview] = useState<Overview | null>(null);
   const [error, setError] = useState('');
 
@@ -34,14 +37,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   if (error && !overview) {
     return (
       <p role="alert" className="error">
-        Could not load your wallet: {error}
+        {t('Could not load your wallet: {error}', { error })}
       </p>
     );
   }
-  if (!overview) return <p className="muted">Loading…</p>;
+  if (!overview) return <p className="muted">{t('Loading…')}</p>;
 
   const value: WalletState = {
     ...overview,
+    me,
     refresh,
     money: (amount, signed) => formatMoney(amount, overview.settings, signed),
     account: (id) => overview.accounts.find((a) => a.id === id),

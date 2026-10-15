@@ -17,9 +17,11 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 PW_VERSION=unused   # e2e/compose.yml needs it set; the preview runs no tests
+GO_IMAGE=$(sed -n 's/^FROM \(golang:[^ ]*\).*/\1/p' Dockerfile)   # for the seed, as in verify.sh
+: "${GO_IMAGE:?could not read the golang image from the Dockerfile}"
 PREVIEW_PORT=${PREVIEW_PORT:-8081}
 DOCKER_BUILDKIT=1   # for the Dockerfile's build cache, even if the environment says not to
-export PW_VERSION PREVIEW_PORT DOCKER_BUILDKIT
+export PW_VERSION GO_IMAGE PREVIEW_PORT DOCKER_BUILDKIT
 unset COMPOSE_FILE COMPOSE_PROJECT_NAME   # keep the local stack's .env out of this
 
 project=${PWD##*/}; project=${project,,}-preview

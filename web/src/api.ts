@@ -1,5 +1,7 @@
 // Typed client for the Go API. Shapes mirror the Go handlers' JSON.
 // Amounts are whole minor units of the user's currency (see Settings).
+import { serverText } from './i18n';
+import { language } from './language';
 import { appHeaders, saveSession, server } from './native';
 
 export interface Me {
@@ -8,6 +10,8 @@ export interface Me {
   has_password: boolean;
   /** The server emailed a link to confirm the address, and it hasn't been opened yet. */
   confirm_email: boolean;
+  /** A throwaway demo account full of sample data, deleted within a day. Absent from older servers. */
+  demo?: boolean;
   /** A new session's token, given to the Android app only (see native.ts). */
   token?: string;
 }
@@ -15,6 +19,8 @@ export interface Me {
 /** The ways this server offers to sign in. */
 export interface AuthOptions {
   google: boolean;
+  /** Visitors can try a demo without an account. Absent from older servers. */
+  demo?: boolean;
 }
 
 export interface Settings {
@@ -345,7 +351,12 @@ async function request<T>(method: string, path: string, body?: unknown, contentT
     const raw = contentType !== undefined;
     const res = await fetch(server + path, {
       method,
-      headers: { ...(body === undefined ? {} : { 'Content-Type': contentType ?? 'application/json' }), ...appHeaders() },
+      headers: {
+        ...(body === undefined ? {} : { 'Content-Type': contentType ?? 'application/json' }),
+        // The language the app shows, which a new account's categories are named in.
+        'Accept-Language': language(),
+        ...appHeaders(),
+      },
       body: body === undefined ? undefined : raw ? (body as BodyInit) : JSON.stringify(body),
     });
     if (res.status === 204) return undefined as T;
@@ -389,6 +400,8 @@ export const api = {
     await saveSession('');
   },
   authOptions: () => request<AuthOptions>('GET', '/api/auth/options'),
+  /** Signs in to a new demo account with sample data, named in the app's language and dated in this time zone. */
+  startDemo: () => signedIn(request<Me>('POST', '/api/demo', { tz: Intl.DateTimeFormat().resolvedOptions().timeZone })),
   resendConfirmation: () => request<void>('POST', '/api/verify-email'),
   /** Deletes the account and everything in it. Confirm with the password, or for a Google-only account, the email. */
   deleteMe: async (confirm: { password: string } | { email: string }) => {
@@ -483,7 +496,7 @@ export const api = {
     }),
 };
 
-/** A message to show for any thrown value. */
+/** A message to show for any thrown value, in the language in use when it's one the app knows. */
 export function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
+  return serverText(err instanceof Error ? err.message : String(err));
 }

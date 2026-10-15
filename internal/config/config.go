@@ -34,6 +34,9 @@ type Config struct {
 	PublicOrigin string
 	// AllowSignup lets new accounts be created.
 	AllowSignup bool
+	// Demo lets visitors try a throwaway demo account full of sample data,
+	// without signing up. It defaults to AllowSignup.
+	Demo bool
 	// AuthRateLimit is sign-in and sign-up attempts per minute per client IP.
 	AuthRateLimit int
 	// AndroidPackage and AndroidCertFingerprints, when set, publish
@@ -104,6 +107,7 @@ func Load(getenv func(string) string) (Config, error) {
 		SMTPPassword:            r.str("SMTP_PASSWORD", ""),
 		MailFrom:                r.str("MAIL_FROM", ""),
 	}
+	c.Demo = r.bool("DEMO", c.AllowSignup)
 	if (c.AndroidPackage == "") != (len(c.AndroidCertFingerprints) == 0) {
 		r.errs = append(r.errs, errors.New("set both ANDROID_PACKAGE and ANDROID_CERT_FINGERPRINTS, or neither"))
 	}

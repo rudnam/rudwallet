@@ -3,6 +3,7 @@
 // icon and words. Values are written out in text, so nothing is colour-only.
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon, icons } from './Icon';
+import { t } from '../i18n';
 
 export interface BarItem {
   key: string | number;
@@ -16,7 +17,7 @@ export function CategoryBars({
   items,
   format,
   onSelect,
-  label = 'Spending by category',
+  label = t('Spending by category'),
 }: {
   items: BarItem[];
   format: (n: number) => string;
@@ -43,7 +44,7 @@ export function CategoryBars({
           </>
         );
         return (
-          <li key={i.key} title={`${i.label}: ${format(i.amount)} (${share}% of the total)`}>
+          <li key={i.key} title={t('{label}: {amount} ({share}% of the total)', { label: i.label, amount: format(i.amount), share })}>
             {onSelect ? (
               <button type="button" className="bar-row" onClick={() => onSelect(i.key)}>
                 {content}
@@ -68,8 +69,8 @@ export function DailyColumns({
   format,
   compact,
   tick,
-  label = 'Spending per day this month',
-  hint = 'Point at a day to see its spending.',
+  label = t('Spending per day this month'),
+  hint = t('Point at a day to see its spending.'),
 }: {
   values: number[];
   labelFor: (index: number) => string;
@@ -178,14 +179,14 @@ export function Meter({ spent, limit, format }: { spent: number; limit: number; 
   const status =
     state === 'over' ? (
       <>
-        <Icon d={icons.stop} className="inline-icon" /> Over by {format(spent - limit)}
+        <Icon d={icons.stop} className="inline-icon" /> {t('Over by {amount}', { amount: format(spent - limit) })}
       </>
     ) : state === 'warn' ? (
       <>
-        <Icon d={icons.warning} className="inline-icon" /> {format(limit - spent)} left
+        <Icon d={icons.warning} className="inline-icon" /> {t('{amount} left', { amount: format(limit - spent) })}
       </>
     ) : (
-      `${format(limit - spent)} left`
+      t('{amount} left', { amount: format(limit - spent) })
     );
   return (
     <div className={`meter ${state}`}>
@@ -195,13 +196,13 @@ export function Meter({ spent, limit, format }: { spent: number; limit: number; 
         aria-valuemin={0}
         aria-valuemax={limit}
         aria-valuenow={Math.min(spent, limit)}
-        aria-valuetext={`${format(spent)} of ${format(limit)}`}
+        aria-valuetext={t('{spent} of {limit}', { spent: format(spent), limit: format(limit) })}
       >
         <span className="meter-fill" style={{ width: `${Math.min(pct, 1) * 100}%` }} />
       </div>
       <div className="row small">
         <span className="grow">
-          {format(spent)} of {format(limit)}
+          {t('{spent} of {limit}', { spent: format(spent), limit: format(limit) })}
         </span>
         <span className="meter-status">{status}</span>
       </div>
