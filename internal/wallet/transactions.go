@@ -458,15 +458,46 @@ func (s *Store) ruleCategory(ctx context.Context, userID int64, merchant string)
 	return &id, nil
 }
 
-// FormatMinor writes whole minor units as a plain decimal, e.g. 1250 USD as "12.50".
+// FormatMinor writes whole minor units as a plain decimal, e.g. 1250 USD as
+// "12.50", and -50 USD as "-0.50".
 func FormatMinor(amount int64, currency string) string {
 	exp := CurrencyExponent(currency)
 	if exp == 0 {
 		return fmt.Sprint(amount)
 	}
+	sign := ""
+	if amount < 0 { // e.g. a credit card's balance
+		sign, amount = "-", -amount
+	}
 	div := int64(1)
 	for range exp {
 		div *= 10
 	}
-	return fmt.Sprintf("%d.%0*d", amount/div, exp, amount%div)
+	return fmt.Sprintf("%s%d.%0*d", sign, amount/div, exp, amount%div)
+}
+
+// ParseMinor reads a plain decimal, e.g. "12.50" or "-3", as whole minor
+// units of currency: FormatMinor's inverse. It accepts no more decimal
+// places than the currency has, so no amount is rounded.
+func ParseMinor(s, currency string) (int64, error) {
+	bad := fmt.Errorf("%q is not an amount like %s", s, FormatMinor(123456, currency))
+	s = strings.TrimSpace(s)
+	neg := strings.HasPrefix(s, "-")
+	s = strings.TrimPrefix(s, "-")
+	whole, frac, _ := strings.Cut(s, ".")
+	exp := CurrencyExponent(currency)
+	if whole == "" || len(frac) > exp || len(whole) > 15 || strings.HasSuffix(s, ".") {
+		return 0, bad
+	}
+	var n int64
+	for _, r := range whole + frac + strings.Repeat("0", exp-len(frac)) {
+		if r < '0' || r > '9' {
+			return 0, bad
+		}
+		n = n*10 + int64(r-'0')
+	}
+	if neg {
+		n = -n
+	}
+	return n, nil
 }
