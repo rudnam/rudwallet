@@ -189,3 +189,40 @@ func (s *Store) SetCategory(ctx context.Context, userID, id int64, categoryID *i
 		`UPDATE transactions SET category_id = $3 WHERE user_id = $1 AND id = $2`, userID, id, categoryID))
 	return t, err
 }
+
+// SetAccount moves one record to another account, keeping the rest. For a
+// transfer, accountID is the account it comes from, and toAccountID, if
+// given, the one it goes to. A payment from an email or a notification also
+// teaches its card's account, as correcting it in the app does.
+func (s *Store) SetAccount(ctx context.Context, userID, id, accountID int64, toAccountID *int64) (Transaction, error) {
+	t, err := s.Get(ctx, userID, id)
+	if err != nil {
+		return t, err
+	}
+	t.AccountID = accountID
+	if toAccountID != nil {
+		t.ToAccountID = toAccountID
+	}
+	if err := s.checkRefs(ctx, userID, t); err != nil {
+		return t, err
+	}
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return t, err
+	}
+	defer tx.Rollback()
+	if err := rowsChanged(tx.ExecContext(ctx,
+		`UPDATE transactions SET account_id = $3, to_account_id = $4 WHERE user_id = $1 AND id = $2`,
+		userID, id, t.AccountID, t.ToAccountID)); err != nil {
+		return t, err
+	}
+	if (t.Source == "email" || t.Source == "notification") && t.SourceLabel != "" && t.Kind != "transfer" {
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO source_rules (user_id, source, account_id) VALUES ($1, $2, $3)
+			 ON CONFLICT (user_id, source) DO UPDATE SET account_id = EXCLUDED.account_id`,
+			userID, t.SourceLabel, t.AccountID); err != nil {
+			return t, err
+		}
+	}
+	return t, tx.Commit()
+}

@@ -657,7 +657,7 @@ export const ja = {
   'Connect {app}': '{app}と接続',
   '{app} is asking to reach your wallet, signed in as {email}. It will be able to:': '{app}が、{email} でログイン中のWalletへのアクセスを求めています。次のことができるようになります:',
   'see your accounts, records and categories': '口座、記録、カテゴリを見る',
-  'change the category of records, and add categories': '記録のカテゴリを変更し、カテゴリを追加する',
+  'change the category or account of records, and add categories': '記録のカテゴリや口座を変更し、カテゴリを追加する',
   "It can't add or delete records, or see your password or API key. You can disconnect it at any time in Settings → Claude.":
     '記録の追加や削除、パスワードやAPIキーの閲覧はできません。設定 → Claude でいつでも接続を解除できます。',
   "You'll go back to {host}.": '{host} に戻ります。',
