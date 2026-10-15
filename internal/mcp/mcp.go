@@ -214,7 +214,7 @@ func writeRPC(w http.ResponseWriter, res rpcResponse) {
 	httpx.WriteJSON(w, http.StatusOK, res)
 }
 
-const instructions = `This is the user's personal finance app (a wallet). Amounts are decimal strings in the user's currency. Records ("transactions") are expenses, income or transfers between the user's accounts. Use get_overview first to learn the accounts and categories. To tidy up, list_uncategorized_payees shows records without a category grouped by payee, and categorize_payees files them; prefer the user's existing categories, and ask before creating new ones.`
+const instructions = `This is the user's personal finance app (a wallet). Amounts are decimal strings in the user's currency. Records ("transactions") are expenses, income or transfers between the user's accounts. Use get_overview first to learn the accounts and categories. To tidy up, list_uncategorized_payees shows records without a category grouped by payee, and categorize_payees files them; prefer the user's existing categories, and ask before creating new ones or deleting any.`
 
 func (h *Handler) dispatch(r *http.Request, userID int64, req rpcRequest) (any, *rpcError) {
 	switch req.Method {

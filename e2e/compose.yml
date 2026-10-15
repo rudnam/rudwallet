@@ -78,7 +78,7 @@ services:
 
   # go vet plus every Go test, including the HTTP integration tests.
   gotest:
-    image: golang:1.26-alpine
+    image: ${GO_IMAGE:?run through verify.sh}
     profiles: [go]
     working_dir: /src
     depends_on:

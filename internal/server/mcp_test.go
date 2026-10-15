@@ -156,6 +156,15 @@ func TestMCP(t *testing.T) {
 	if _, msg := tool(t, ts.URL, tok.Token, "spending_by_category", map[string]any{"from": "October", "to": "2026-11-01"}); msg == "" {
 		t.Error("bad date accepted")
 	}
+	if r, msg := tool(t, ts.URL, tok.Token, "delete_category", map[string]any{"category_id": cat["id"]}); r["deleted_category_id"] != cat["id"] {
+		t.Errorf("delete category %v %q", r, msg)
+	}
+	if recs, _ := tool(t, ts.URL, tok.Token, "list_records", map[string]any{"uncategorized": true}); len(recs["records"].([]any)) != 1 {
+		t.Errorf("gym not uncategorised after delete: %v", recs)
+	}
+	if _, msg := tool(t, ts.URL, tok.Token, "delete_category", map[string]any{"category_id": cat["id"]}); !strings.Contains(msg, "no such category") {
+		t.Errorf("delete again: %q", msg)
+	}
 
 	// Bob's token sees only Bob's wallet, and can't change Alice's records.
 	var bobTok mcpToken
@@ -166,6 +175,9 @@ func TestMCP(t *testing.T) {
 	bobHealth := categoryID(t, overview(t, bob), "Health")
 	if _, msg := tool(t, ts.URL, bobTok.Token, "set_record_category", map[string]any{"record_id": gymID, "category_id": bobHealth}); msg == "" {
 		t.Error("bob changed alice's record")
+	}
+	if _, msg := tool(t, ts.URL, bobTok.Token, "delete_category", map[string]any{"category_id": health}); !strings.Contains(msg, "no such category") {
+		t.Errorf("bob deleted alice's category: %q", msg)
 	}
 	if code := bob.do("DELETE", "/api/mcp/tokens/"+itoa(tok.ID), nil, nil); code != 404 {
 		t.Errorf("bob deleted alice's token: %d", code)

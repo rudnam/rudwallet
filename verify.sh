@@ -24,10 +24,14 @@ esac
 # The Playwright image must match the @playwright/test version exactly.
 PW_VERSION=$(sed -n 's/.*"@playwright\/test": *"\([0-9.]*\)".*/\1/p' e2e/package.json)
 : "${PW_VERSION:?could not read the @playwright/test version from e2e/package.json}"
+# Go tests run on the Dockerfile's Go image, so they use the toolchain that
+# builds the app, and Dependabot's bumps of it reach them too.
+GO_IMAGE=$(sed -n 's/^FROM \(golang:[^ ]*\).*/\1/p' Dockerfile)
+: "${GO_IMAGE:?could not read the golang image from the Dockerfile}"
 HOST_UID=$(id -u) HOST_GID=$(id -g)
 # BuildKit, for the Dockerfile's build cache (even if the environment says not to).
 DOCKER_BUILDKIT=1
-export PW_VERSION HOST_UID HOST_GID DOCKER_BUILDKIT
+export PW_VERSION GO_IMAGE HOST_UID HOST_GID DOCKER_BUILDKIT
 # Keep the local stack's .env (COMPOSE_FILE etc.) out of this.
 unset COMPOSE_FILE COMPOSE_PROJECT_NAME
 
