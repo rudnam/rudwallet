@@ -28,6 +28,25 @@ func (s *Store) BulkDelete(ctx context.Context, userID int64, ids []int64) (int,
 		`DELETE FROM transactions WHERE user_id = $1 AND id = ANY($2::bigint[])`, userID, pq.Array(ids)))
 }
 
+// DeleteRecords deletes the user's records with these IDs (no repeats), all
+// or none: if any isn't the user's, nothing is deleted (db.ErrNotFound).
+func (s *Store) DeleteRecords(ctx context.Context, userID int64, ids []int64) (int, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+	n, err := affected(tx.ExecContext(ctx,
+		`DELETE FROM transactions WHERE user_id = $1 AND id = ANY($2::bigint[])`, userID, pq.Array(ids)))
+	if err != nil {
+		return 0, err
+	}
+	if n != len(ids) {
+		return 0, db.ErrNotFound
+	}
+	return n, tx.Commit()
+}
+
 // BulkCategorize gives the user's records among ids a category, or none
 // when categoryID is nil. Only records of the category's kind change, and
 // transfers never do.

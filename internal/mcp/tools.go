@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"net/http"
 	"slices"
 	"sort"
@@ -135,7 +134,7 @@ var toolList = []*tool{
 			"category_id":   map[string]any{"type": "integer"},
 			"uncategorized": map[string]any{"type": "boolean", "description": "Only records without a category."},
 			"query":         map[string]any{"type": "string", "description": "Text to find in the payee or note."},
-			"status":        map[string]any{"type": "string", "enum": []string{"review", "confirmed"}, "description": "Only records waiting for review, or only confirmed ones."},
+			"status":        map[string]any{"type": "string", "enum": []string{"review", "confirmed"}},
 			"limit":         map[string]any{"type": "integer", "description": "At most this many (default 100, max 500)."},
 		}),
 		Annotations: readOnly,
@@ -206,65 +205,51 @@ var toolList = []*tool{
 	},
 	{
 		Name:  "find_duplicates",
-		Title: "Find likely duplicate records",
-		Description: "Pairs of records of the same kind whose amounts and times are close, in any accounts (e.g. a cash entry and the card charge it repeats), " +
-			"closest first: equal amounts, then the same payee, then nearest in time. Only reads; a record can be in several pairs. " +
-			"Not every pair is a duplicate (two equal coffees on one day are two): show the pairs to the user, with each record's source, " +
-			"and let them choose which record to delete, if any.",
+		Title: "Likely duplicate records",
+		Description: "Pairs of records that may be one payment recorded twice: the same kind, in any accounts, at most 3 days apart, " +
+			"amounts within 5%. Equal amounts first. Not every pair is a duplicate: show them to the user and let them choose what to delete.",
 		InputSchema: object(map[string]any{
-			"from":                     dateArg("Only records at or after this time."),
-			"to":                       dateArg("Only records before this time."),
-			"account_id":               map[string]any{"type": "integer", "description": "Only pairs with a record in this account."},
-			"max_days_apart":           map[string]any{"type": "integer", "description": "How many days apart the two may be (default 3, 0 to 31; 0 means within 12 hours)."},
-			"amount_tolerance_percent": map[string]any{"type": "integer", "description": "How much the amounts may differ, as a percentage of the larger (default 5, 0 to 50; 0 means equal)."},
-			"offset":                   map[string]any{"type": "integer", "description": "Skip this many pairs."},
-			"limit":                    map[string]any{"type": "integer", "description": "At most this many pairs (default 50, max 200)."},
+			"from":   dateArg("Only records at or after this time."),
+			"to":     dateArg("Only records before this time."),
+			"offset": map[string]any{"type": "integer", "description": "Skip this many pairs."},
+			"limit":  map[string]any{"type": "integer", "description": "At most this many pairs (default 50, max 200)."},
 		}),
 		Annotations: readOnly,
-		run:         findDuplicates,
+		run:         duplicates,
 	},
 	{
 		Name:  "delete_records",
 		Title: "Delete records",
-		Description: "Delete records, all or none: if any ID is wrong, nothing is deleted. " +
-			"A transfer is one record, so deleting it removes it from both its accounts. Balances change accordingly. " +
-			"It can't be undone: list exactly which records will go (date, amount, payee, account) and ask the user to confirm first.",
+		Description: "Delete records, all or none: if any ID is wrong, nothing is deleted. A transfer is one record, so it leaves both its accounts. " +
+			"It can't be undone: list the records for the user and ask first.",
 		InputSchema: object(map[string]any{
-			"record_ids": map[string]any{"type": "array", "items": map[string]any{"type": "integer"}, "minItems": 1, "maxItems": maxRecordIDs,
-				"description": fmt.Sprintf("1 to %d record IDs.", maxRecordIDs)},
+			"record_ids": map[string]any{"type": "array", "items": map[string]any{"type": "integer"}, "description": "1 to 500 record IDs."},
 		}, "record_ids"),
 		Annotations: map[string]any{"readOnlyHint": false, "destructiveHint": true, "idempotentHint": true, "openWorldHint": false},
 		run:         deleteRecords,
 	},
 	{
+		Name:  "confirm_records",
+		Title: "Confirm records to review",
+		Description: "Clear \"needs review\" on records, as the app's review page does: only those with a category and an amount, " +
+			"not flagged as a possible duplicate (duplicate_of_id), are confirmed.",
+		InputSchema: object(map[string]any{
+			"record_ids": map[string]any{"type": "array", "items": map[string]any{"type": "integer"}, "description": "1 to 500 record IDs."},
+		}, "record_ids"),
+		Annotations: changes,
+		run:         confirmRecords,
+	},
+	{
 		Name:  "set_account_balance",
 		Title: "Correct an account's balance",
-		Description: "Make an account's balance match a statement without changing any record: its starting balance is set so that it plus the " +
-			"confirmed records before as_of comes to the given balance. Records waiting for review count only once confirmed; " +
-			"if the statement includes them, confirm them first. The previous starting balance is returned, so it can be put back. " +
-			"Confirm the figure and its date with the user first.",
+		Description: "Set an account's balance to the figure on a statement by changing its starting balance; no record changes. " +
+			"Records to review count once confirmed. Confirm the figure with the user first.",
 		InputSchema: object(map[string]any{
 			"account_id": map[string]any{"type": "integer"},
-			"balance":    map[string]any{"type": "string", "description": "The statement's balance, a decimal in the user's currency, e.g. \"-1234.50\" for money owed on a card."},
-			"as_of": dateArg("When the statement's balance was taken: records before this time count toward it, later ones are added on top. " +
-				"For a statement closing on 30 September, give 2026-10-01 (or a time with the user's offset). Leave it out to count every record."),
+			"balance":    map[string]any{"type": "string", "description": "A decimal in the user's currency, e.g. -1234.50 for money owed on a card."},
 		}, "account_id", "balance"),
 		Annotations: map[string]any{"readOnlyHint": false, "destructiveHint": true, "idempotentHint": true, "openWorldHint": false},
 		run:         setBalance,
-	},
-	{
-		Name:  "confirm_records",
-		Title: "Confirm records to review",
-		Description: "Clear \"needs review\" on records the user has checked, as the app's review page does. Each needs an amount and, unless it is a transfer, " +
-			"a category (set_record_category). Records flagged as a possible duplicate are left for review unless keep_duplicates is true. " +
-			"Records that weren't confirmed are listed with the reason.",
-		InputSchema: object(map[string]any{
-			"record_ids": map[string]any{"type": "array", "items": map[string]any{"type": "integer"}, "minItems": 1, "maxItems": maxRecordIDs,
-				"description": fmt.Sprintf("1 to %d record IDs.", maxRecordIDs)},
-			"keep_duplicates": map[string]any{"type": "boolean", "description": "Also confirm records flagged as a possible duplicate, and clear the flag. Only once the user has said both records are real."},
-		}, "record_ids"),
-		Annotations: map[string]any{"readOnlyHint": false, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false},
-		run:         confirmRecords,
 	},
 	{
 		Name:        "spending_by_category",
@@ -345,58 +330,8 @@ type outRecord struct {
 	Payee      string `json:"payee"`
 	Note       string `json:"note"`
 	Status     string `json:"status"`
-	// Source is where it came from: manual, import, email or notification.
-	Source string `json:"source"`
-	// DuplicateOfID is set while it waits for review as a possible
-	// duplicate of that record.
+	// DuplicateOfID: waiting for review as a possible duplicate of that record.
 	DuplicateOfID *int64 `json:"duplicate_of_id,omitempty"`
-}
-
-// recordNames looks up the account and category names records show.
-type recordNames struct {
-	accounts, categories map[int64]string
-}
-
-func (c *call) recordNames() (recordNames, error) {
-	o, err := c.h.wallet.Overview(c.r.Context(), c.userID)
-	if err != nil {
-		return recordNames{}, err
-	}
-	c.currency = o.Settings.Currency
-	n := recordNames{map[int64]string{}, map[int64]string{}}
-	for _, a := range o.Accounts {
-		n.accounts[a.ID] = a.Name
-	}
-	for _, cat := range o.Categories {
-		n.categories[cat.ID] = cat.Name
-	}
-	return n, nil
-}
-
-func (c *call) record(n recordNames, t wallet.Transaction) outRecord {
-	amount, _ := c.money(t.Amount)
-	rec := outRecord{ID: t.ID, OccurredAt: t.OccurredAt.Format(time.RFC3339), Kind: t.Kind, Amount: amount,
-		Account: n.accounts[t.AccountID], CategoryID: t.CategoryID, Payee: t.Payee, Note: t.Note, Status: t.Status,
-		Source: t.Source, DuplicateOfID: t.DuplicateOfID}
-	if t.ToAccountID != nil {
-		rec.ToAccount = n.accounts[*t.ToAccountID]
-	}
-	if t.CategoryID != nil {
-		rec.Category = n.categories[*t.CategoryID]
-	}
-	return rec
-}
-
-func (c *call) records(list []wallet.Transaction) ([]outRecord, error) {
-	n, err := c.recordNames()
-	if err != nil {
-		return nil, err
-	}
-	out := []outRecord{}
-	for _, t := range list {
-		out = append(out, c.record(n, t))
-	}
-	return out, nil
 }
 
 func listRecords(c *call, args json.RawMessage) (any, error) {
@@ -405,15 +340,11 @@ func listRecords(c *call, args json.RawMessage) (any, error) {
 		AccountID     int64 `json:"account_id"`
 		CategoryID    int64 `json:"category_id"`
 		Uncategorized bool
-		Query         string
-		Status        string
+		Query, Status string
 		Limit         int
 	}
 	if err := decode(args, &in); err != nil {
 		return nil, err
-	}
-	if in.Status != "" && in.Status != "review" && in.Status != "confirmed" {
-		return nil, toolErrorf("status must be review or confirmed")
 	}
 	f := wallet.Filter{AccountID: in.AccountID, CategoryID: in.CategoryID, Uncategorized: in.Uncategorized, Query: in.Query, Status: in.Status}
 	var err error
@@ -441,6 +372,38 @@ func listRecords(c *call, args json.RawMessage) (any, error) {
 		return nil, err
 	}
 	return map[string]any{"currency": c.currency, "records": out, "truncated": truncated}, nil
+}
+
+// records writes records for the model, with account and category names.
+func (c *call) records(list []wallet.Transaction) ([]outRecord, error) {
+	o, err := c.h.wallet.Overview(c.r.Context(), c.userID)
+	if err != nil {
+		return nil, err
+	}
+	c.currency = o.Settings.Currency
+	accounts := map[int64]string{}
+	for _, a := range o.Accounts {
+		accounts[a.ID] = a.Name
+	}
+	cats := map[int64]string{}
+	for _, cat := range o.Categories {
+		cats[cat.ID] = cat.Name
+	}
+	out := []outRecord{}
+	for _, t := range list {
+		amount, _ := c.money(t.Amount)
+		rec := outRecord{ID: t.ID, OccurredAt: t.OccurredAt.Format(time.RFC3339), Kind: t.Kind, Amount: amount,
+			Account: accounts[t.AccountID], CategoryID: t.CategoryID, Payee: t.Payee, Note: t.Note, Status: t.Status,
+			DuplicateOfID: t.DuplicateOfID}
+		if t.ToAccountID != nil {
+			rec.ToAccount = accounts[*t.ToAccountID]
+		}
+		if t.CategoryID != nil {
+			rec.Category = cats[*t.CategoryID]
+		}
+		out = append(out, rec)
+	}
+	return out, nil
 }
 
 func uncategorized(c *call, args json.RawMessage) (any, error) {
@@ -539,6 +502,116 @@ func deleteCategory(c *call, args json.RawMessage) (any, error) {
 	return map[string]any{"deleted_category_id": in.CategoryID}, nil
 }
 
+func duplicates(c *call, args json.RawMessage) (any, error) {
+	var in struct {
+		From, To      string
+		Offset, Limit int
+	}
+	if err := decode(args, &in); err != nil {
+		return nil, err
+	}
+	from, err := parseTime(in.From, "from")
+	if err != nil {
+		return nil, err
+	}
+	to, err := parseTime(in.To, "to")
+	if err != nil {
+		return nil, err
+	}
+	pairs, err := c.h.wallet.Duplicates(c.r.Context(), c.userID, from, to)
+	if err != nil {
+		return nil, err
+	}
+	limit := in.Limit
+	if limit <= 0 {
+		limit = 50
+	}
+	limit = min(limit, 200)
+	pairs = pairs[min(max(in.Offset, 0), len(pairs)):]
+	remaining := max(len(pairs)-limit, 0)
+	pairs = pairs[:min(limit, len(pairs))]
+	out := [][]outRecord{}
+	for _, p := range pairs {
+		recs, err := c.records(p[:])
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, recs)
+	}
+	return map[string]any{"currency": c.currency, "pairs": out, "remaining": remaining}, nil
+}
+
+// recordIDs reads a tool's record IDs, without repeats.
+func recordIDs(args json.RawMessage) ([]int64, error) {
+	var in struct {
+		RecordIDs []int64 `json:"record_ids"`
+	}
+	if err := decode(args, &in); err != nil {
+		return nil, err
+	}
+	slices.Sort(in.RecordIDs)
+	ids := slices.Compact(in.RecordIDs)
+	if len(ids) == 0 || len(ids) > 500 {
+		return nil, toolErrorf("give 1 to 500 record IDs")
+	}
+	return ids, nil
+}
+
+func deleteRecords(c *call, args json.RawMessage) (any, error) {
+	ids, err := recordIDs(args)
+	if err != nil {
+		return nil, err
+	}
+	n, err := c.h.wallet.DeleteRecords(c.r.Context(), c.userID, ids)
+	if err != nil {
+		return nil, walletErr(err, "record (nothing was deleted)")
+	}
+	return map[string]int{"deleted_records": n}, nil
+}
+
+func confirmRecords(c *call, args json.RawMessage) (any, error) {
+	ids, err := recordIDs(args)
+	if err != nil {
+		return nil, err
+	}
+	n, err := c.h.wallet.BulkConfirm(c.r.Context(), c.userID, ids)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]int{"confirmed_records": n, "not_confirmed": len(ids) - n}, nil
+}
+
+func setBalance(c *call, args json.RawMessage) (any, error) {
+	var in struct {
+		AccountID int64 `json:"account_id"`
+		Balance   string
+	}
+	if err := decode(args, &in); err != nil {
+		return nil, err
+	}
+	ctx := c.r.Context()
+	o, err := c.h.wallet.Overview(ctx, c.userID)
+	if err != nil {
+		return nil, err
+	}
+	c.currency = o.Settings.Currency
+	balance, err := wallet.ParseMinor(in.Balance, c.currency)
+	if err != nil {
+		return nil, toolErrorf("%v", err)
+	}
+	i := slices.IndexFunc(o.Accounts, func(a wallet.Account) bool { return a.ID == in.AccountID })
+	if i < 0 {
+		return nil, toolErrorf("no such account")
+	}
+	a := o.Accounts[i]
+	a.InitialBalance += balance - a.Balance
+	if a, err = c.h.wallet.UpdateAccount(ctx, c.userID, a); err != nil {
+		return nil, walletErr(err, "account")
+	}
+	bal, _ := c.money(a.Balance)
+	return outAccount{a.ID, a.Name, a.Kind, bal, a.Archived}, nil
+}
+
 func spending(c *call, args json.RawMessage) (any, error) {
 	var in struct{ From, To string }
 	if err := decode(args, &in); err != nil {
@@ -591,191 +664,4 @@ func spending(c *call, args json.RawMessage) (any, error) {
 		return nil, err
 	}
 	return map[string]any{"currency": c.currency, "total": totalText, "categories": rows}, nil
-}
-
-// maxRecordIDs is the most records one call changes: a page of list_records.
-const maxRecordIDs = 500
-
-// recordIDs checks a tool's record IDs and drops repeats.
-func recordIDs(ids []int64) ([]int64, error) {
-	ids = slices.Clone(ids)
-	slices.Sort(ids)
-	ids = slices.Compact(ids)
-	if len(ids) == 0 || len(ids) > maxRecordIDs {
-		return nil, toolErrorf("give 1 to %d record IDs", maxRecordIDs)
-	}
-	if ids[0] <= 0 {
-		return nil, toolErrorf("no such record: %d", ids[0])
-	}
-	return ids, nil
-}
-
-func findDuplicates(c *call, args json.RawMessage) (any, error) {
-	var in struct {
-		From, To         string
-		AccountID        int64 `json:"account_id"`
-		MaxDaysApart     *int  `json:"max_days_apart"`
-		TolerancePercent *int  `json:"amount_tolerance_percent"`
-		Offset, Limit    int
-	}
-	if err := decode(args, &in); err != nil {
-		return nil, err
-	}
-	q := wallet.DuplicateQuery{AccountID: in.AccountID, MaxApart: 3 * 24 * time.Hour, TolerancePercent: 5}
-	var err error
-	if q.From, err = parseTime(in.From, "from"); err != nil {
-		return nil, err
-	}
-	if q.To, err = parseTime(in.To, "to"); err != nil {
-		return nil, err
-	}
-	if d := in.MaxDaysApart; d != nil {
-		if *d < 0 || *d > 31 {
-			return nil, toolErrorf("max_days_apart must be 0 to 31")
-		}
-		// 0 days apart means the same day, give or take a time zone.
-		q.MaxApart = time.Duration(max(*d*24, 12)) * time.Hour
-	}
-	if p := in.TolerancePercent; p != nil {
-		if *p < 0 || *p > 50 {
-			return nil, toolErrorf("amount_tolerance_percent must be 0 to 50")
-		}
-		q.TolerancePercent = *p
-	}
-	pairs, truncated, err := c.h.wallet.Duplicates(c.r.Context(), c.userID, q)
-	if err != nil {
-		return nil, err
-	}
-	limit := in.Limit
-	if limit <= 0 {
-		limit = 50
-	}
-	limit = min(limit, 200)
-	pairs = pairs[min(max(in.Offset, 0), len(pairs)):]
-	remaining := max(len(pairs)-limit, 0)
-	pairs = pairs[:min(limit, len(pairs))]
-
-	n, err := c.recordNames()
-	if err != nil {
-		return nil, err
-	}
-	type pair struct {
-		Records          [2]outRecord `json:"records"`
-		AmountDifference string       `json:"amount_difference"`
-		DaysApart        float64      `json:"days_apart"`
-		SameAccount      bool         `json:"same_account"`
-		SamePayee        bool         `json:"same_payee"`
-		// Flagged: the app already marked one as a possible duplicate of the other.
-		Flagged bool `json:"flagged"`
-	}
-	out := []pair{}
-	for _, p := range pairs {
-		diff, err := c.money(max(p.A.Amount-p.B.Amount, p.B.Amount-p.A.Amount))
-		if err != nil {
-			return nil, err
-		}
-		apart := p.A.OccurredAt.Sub(p.B.OccurredAt).Abs()
-		out = append(out, pair{
-			Records:          [2]outRecord{c.record(n, p.A), c.record(n, p.B)},
-			AmountDifference: diff,
-			DaysApart:        math.Round(apart.Hours()/24*10) / 10,
-			SameAccount:      p.A.AccountID == p.B.AccountID && equalID(p.A.ToAccountID, p.B.ToAccountID),
-			SamePayee:        p.SamePayee,
-			Flagged:          equalID(p.A.DuplicateOfID, &p.B.ID) || equalID(p.B.DuplicateOfID, &p.A.ID),
-		})
-	}
-	res := map[string]any{"currency": c.currency, "pairs": out, "remaining": remaining}
-	if truncated {
-		res["note"] = "Too many pairs to compare at once: only the nearest in time were. Search a shorter period to find the rest."
-	}
-	return res, nil
-}
-
-func equalID(a, b *int64) bool { return (a == nil && b == nil) || (a != nil && b != nil && *a == *b) }
-
-func deleteRecords(c *call, args json.RawMessage) (any, error) {
-	var in struct {
-		RecordIDs []int64 `json:"record_ids"`
-	}
-	if err := decode(args, &in); err != nil {
-		return nil, err
-	}
-	ids, err := recordIDs(in.RecordIDs)
-	if err != nil {
-		return nil, err
-	}
-	deleted, err := c.h.wallet.DeleteRecords(c.r.Context(), c.userID, ids)
-	if err != nil {
-		return nil, walletErr(err, "record")
-	}
-	out, err := c.records(deleted)
-	if err != nil {
-		return nil, err
-	}
-	return map[string]any{"currency": c.currency, "deleted": len(out), "records": out}, nil
-}
-
-func setBalance(c *call, args json.RawMessage) (any, error) {
-	var in struct {
-		AccountID int64 `json:"account_id"`
-		Balance   string
-		AsOf      string `json:"as_of"`
-	}
-	if err := decode(args, &in); err != nil {
-		return nil, err
-	}
-	ctx := c.r.Context()
-	st, err := c.h.wallet.Settings(ctx, c.userID)
-	if err != nil {
-		return nil, err
-	}
-	c.currency = st.Currency
-	balance, err := wallet.ParseMinor(in.Balance, st.Currency)
-	if err != nil {
-		return nil, toolErrorf("balance: %v", err)
-	}
-	asOf, err := parseTime(in.AsOf, "as_of")
-	if err != nil {
-		return nil, err
-	}
-	ch, err := c.h.wallet.SetBalance(ctx, c.userID, in.AccountID, balance, asOf)
-	if err != nil {
-		return nil, walletErr(err, "account")
-	}
-	res := map[string]any{"currency": c.currency, "account_id": ch.After.ID, "account": ch.After.Name}
-	for k, v := range map[string]int64{
-		"previous_balance": ch.Before.Balance, "balance": ch.After.Balance,
-		"previous_starting_balance": ch.Before.InitialBalance, "starting_balance": ch.After.InitialBalance,
-	} {
-		if res[k], err = c.money(v); err != nil {
-			return nil, err
-		}
-	}
-	if ch.ToReview > 0 {
-		res["records_to_review"] = ch.ToReview
-	}
-	return res, nil
-}
-
-func confirmRecords(c *call, args json.RawMessage) (any, error) {
-	var in struct {
-		RecordIDs      []int64 `json:"record_ids"`
-		KeepDuplicates bool    `json:"keep_duplicates"`
-	}
-	if err := decode(args, &in); err != nil {
-		return nil, err
-	}
-	ids, err := recordIDs(in.RecordIDs)
-	if err != nil {
-		return nil, err
-	}
-	confirmed, skipped, err := c.h.wallet.ConfirmRecords(c.r.Context(), c.userID, ids, in.KeepDuplicates)
-	if err != nil {
-		return nil, err
-	}
-	confirmedIDs := []int64{}
-	for _, t := range confirmed {
-		confirmedIDs = append(confirmedIDs, t.ID)
-	}
-	return map[string]any{"confirmed": confirmedIDs, "not_confirmed": skipped}, nil
 }

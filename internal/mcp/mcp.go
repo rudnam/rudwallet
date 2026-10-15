@@ -1,8 +1,7 @@
 // Package mcp lets an MCP client (Claude Desktop, Claude Code, or any other)
 // connect to a user's wallet at /mcp, so Claude can look through their
 // records and tidy them: sort uncategorised records, fix categories, add
-// categories, find and delete duplicates, confirm records to review, and
-// correct a balance. A client sends an access token as "Authorization: Bearer
+// categories. A client sends an access token as "Authorization: Bearer
 // <token>": one the user made in Settings → Claude, or one the client got by
 // having the user sign in and approve it (OAuth, see oauth.go), which is how
 // Claude's connectors work.
@@ -215,7 +214,7 @@ func writeRPC(w http.ResponseWriter, res rpcResponse) {
 	httpx.WriteJSON(w, http.StatusOK, res)
 }
 
-const instructions = `This is the user's personal finance app (a wallet). Amounts are decimal strings in the user's currency. Records ("transactions") are expenses, income or transfers between the user's accounts. Use get_overview first to learn the accounts and categories. To tidy up, list_uncategorized_payees shows records without a category grouped by payee, and categorize_payees files them; prefer the user's existing categories, and ask before creating new ones or deleting any. find_duplicates suggests records that may be one payment recorded twice; it only reads, and the user decides which to delete. Before deleting records (which can't be undone) or correcting a balance, show the user exactly what will change and wait for their yes. confirm_records clears "needs review" once the user has checked the records.`
+const instructions = `This is the user's personal finance app (a wallet). Amounts are decimal strings in the user's currency. Records ("transactions") are expenses, income or transfers between the user's accounts. Use get_overview first to learn the accounts and categories. To tidy up, list_uncategorized_payees shows records without a category grouped by payee, and categorize_payees files them; prefer the user's existing categories, and ask before creating new ones or deleting any. find_duplicates suggests records recorded twice; ask the user which to delete.`
 
 func (h *Handler) dispatch(r *http.Request, userID int64, req rpcRequest) (any, *rpcError) {
 	switch req.Method {
