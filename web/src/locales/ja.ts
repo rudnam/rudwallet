@@ -428,7 +428,8 @@ export const ja = {
   'Add category {name}': 'カテゴリ「{name}」を追加',
   'What you spend on and earn from. Tap one to rename it or change its icon.': '支出と収入の分類です。タップすると名前やアイコンを変更できます。',
   'Edit category {name}': 'カテゴリ「{name}」を編集',
-  'Delete "{name}"? Its records become uncategorised.': '「{name}」を削除しますか？その記録はカテゴリなしになります。',
+  'Delete "{name}"? Its records become uncategorised, and its budgets and the shops filed under it are forgotten.':
+    '「{name}」を削除しますか？その記録はカテゴリなしになり、このカテゴリの予算と、覚えたお店の振り分けも削除されます。',
   'Edit category': 'カテゴリを編集',
   'New category': '新しいカテゴリ',
   Preview: 'プレビュー',

@@ -504,7 +504,7 @@ function CategoryForm({ category, onClose }: { category?: Category; onClose: () 
   }
 
   async function remove() {
-    if (!category || !confirm(t('Delete "{name}"? Its records become uncategorised.', { name: category.name }))) return;
+    if (!category || !confirm(t('Delete "{name}"? Its records become uncategorised, and its budgets and the shops filed under it are forgotten.', { name: category.name }))) return;
     try {
       await api.deleteCategory(category.id);
       await w.refresh();
