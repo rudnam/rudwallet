@@ -41,8 +41,17 @@ fi
 # holds, so a rerun skips images that are already done and redoes them if the
 # CA changes.
 ca_sum=$(sha256sum "$ca" | cut -c1-16)
+# The tags come from the files that use them, so version bumps (Dependabot's
+# included) need no change here: the Go and Node stages of the Dockerfile, the
+# Go image the tests run in, and the Playwright version the tests pin.
 pw_version=$(sed -n 's/.*"@playwright\/test": *"\([0-9.]*\)".*/\1/p' e2e/package.json)
-images=(golang:1.26-alpine node:24-alpine "mcr.microsoft.com/playwright:v${pw_version}-noble")
+mapfile -t images < <(
+  {
+    sed -n 's/^FROM \([^ ]*\).*/\1/p' Dockerfile
+    sed -n 's/^ *image: *\([^ ]*\) *$/\1/p' e2e/compose.yml e2e/preview.yml
+  } | grep -E '^(golang|node):' | sort -u
+)
+images+=("mcr.microsoft.com/playwright:v${pw_version}-noble")
 
 ctx=$(mktemp -d)
 trap 'rm -rf "$ctx"' EXIT
