@@ -1,7 +1,7 @@
 // Spending and income over a week, a month, a year or any range, compared
 // with the period before.
 import { useEffect, useState } from 'react';
-import { api, errorMessage, type Stats } from '../../api';
+import { api, errorMessage, type Budget, type Stats } from '../../api';
 import { CategoryBars, DailyColumns, type BarItem } from '../../components/charts';
 import { CategoryIcon, Icon, icons } from '../../components/Icon';
 import { addMonths, dayKey, formatCompact, formatMonth } from '../../money';
@@ -38,15 +38,26 @@ export function StatsPage({ route }: { route: Route }) {
   // The three periods before, each only up to the same point as this one,
   // so half a month is compared with the first halves of earlier months.
   const past = [1, 2, 3].map((n) => samePoint(shift(period, -n), days));
-  const [stats, setStats] = useState<{ now: Stats; past: Stats[] } | null>(null);
+  // For the month in progress, across all accounts: those months in full too,
+  // to see what the rest of a month usually costs.
+  const ahead = period.span === 'month' && ongoing && !account;
+  const full = ahead ? [1, 2, 3].map((n) => shift(period, -n)) : [];
+  const [stats, setStats] = useState<{ now: Stats; past: Stats[]; full: Stats[] } | null>(null);
+  const [budgets, setBudgets] = useState<Budget[]>(() => api.seen.budgets() ?? []);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (ahead) api.budgets().then(setBudgets, () => {});
+  }, [ahead]);
 
   const key = `${period.from.getTime()}-${period.to.getTime()}-${days}-${account}`;
   useEffect(() => {
     let current = true;
     setStats(null);
-    Promise.all([api.stats(period.from, period.to, account), ...past.map((q) => api.stats(q.from, q.to, account))]).then(
-      ([now, ...before]) => current && (setStats({ now, past: before }), setError('')),
+    const ask = (q: Period) => api.stats(q.from, q.to, account);
+    Promise.all([ask(period), ...past.map(ask), ...full.map(ask)]).then(
+      ([now, ...before]) =>
+        current && (setStats({ now, past: before.slice(0, past.length), full: before.slice(past.length) }), setError('')),
       (err) => current && setError(errorMessage(err)),
     );
     return () => {
@@ -167,6 +178,10 @@ export function StatsPage({ route }: { route: Route }) {
       </div>
 
       {stats && days > 0 && <Trends now={stats.now} past={stats.past} period={period} days={days} ongoing={ongoing} />}
+
+      {stats && ahead && (
+        <MonthAhead now={stats.now} past={stats.past} full={stats.full} budgets={budgets} days={days} period={period} />
+      )}
 
       <div className="card stack">
         <h2>{t('Spending over time')}</h2>
@@ -446,6 +461,94 @@ function Trends({ now, past, period, days, ongoing }: { now: Stats; past: Stats[
       )}
       {up.length > 0 && <Movers title={t('Higher than usual')} items={up} />}
       {down.length > 0 && <Movers title={t('Lower than usual')} items={down} />}
+    </div>
+  );
+}
+
+/**
+ * The month in progress: where its spending is heading, and how much each
+ * budget leaves to spend per day. The rest of the month is expected to cost
+ * what it usually has, so rent paid on the 1st isn't counted again; without
+ * earlier months, the same per day as so far.
+ */
+function MonthAhead({
+  now,
+  past,
+  full,
+  budgets,
+  days,
+  period,
+}: {
+  now: Stats;
+  past: Stats[];
+  full: Stats[];
+  budgets: Budget[];
+  days: number;
+  period: Period;
+}) {
+  const w = useWallet();
+  const len = lengthInDays(period);
+  const left = len - days + 1; // today included
+  const months = full.map((f, i) => ({ full: f, partial: past[i] })).filter((m) => m.full.days.length > 0);
+  const heading = (spentIn: (s: Stats) => number) =>
+    Math.round(
+      spentIn(now) +
+        (months.length > 0
+          ? months.reduce((sum, m) => sum + Math.max(0, spentIn(m.full) - spentIn(m.partial)), 0) / months.length
+          : (spentIn(now) / days) * (len - days)),
+    );
+  const forBudget = (b: Budget) => (s: Stats) =>
+    b.category_id === null
+      ? s.spent
+      : s.categories.filter((c) => c.kind === 'expense' && c.category_id === b.category_id).reduce((sum, c) => sum + c.amount, 0);
+  const title = t('Rest of {month}', { month: period.from.toLocaleDateString(locale(), { month: 'long' }) });
+
+  return (
+    <div className="card stack month-ahead" aria-label={title}>
+      <h2>{title}</h2>
+      <div>
+        <strong className="block">{t('Heading for about {amount}', { amount: w.money(heading((s) => s.spent)) })}</strong>
+        <span className="muted small block">
+          {months.length > 0
+            ? t('{spent} so far, plus what the rest of a month usually costs.', { spent: w.money(now.spent) })
+            : t('{spent} so far, at the same rate per day.', { spent: w.money(now.spent) })}
+        </span>
+      </div>
+      {budgets.length > 0 && (
+        <div className="stack tight">
+          <h3 className="small muted">{tn(left, 'To stay within budget, {n} day left', 'To stay within budget, {n} days left')}</h3>
+          <ul className="movers" aria-label={t('Per day to stay within budget')}>
+            {budgets.map((b) => {
+              const c = w.category(b.category_id);
+              const spent = forBudget(b)(now);
+              const to = heading(forBudget(b));
+              return (
+                <li key={b.id}>
+                  {c ? (
+                    <CategoryIcon icon={c.icon} name={c.name} color={c.color} size="small" />
+                  ) : (
+                    <span className="cat-icon small" aria-hidden="true">
+                      <Icon d={icons.budgets} className="glyph" />
+                    </span>
+                  )}
+                  <span className="grow ellipsis">{b.name}</span>
+                  <span className="mover-figures">
+                    {spent >= b.amount ? (
+                      <strong className="over">{t('Over by {amount}', { amount: w.money(spent - b.amount) })}</strong>
+                    ) : (
+                      <strong>{t('{amount} a day', { amount: w.money(Math.floor((b.amount - spent) / left)) })}</strong>
+                    )}
+                    <span className="muted small block">
+                      {to > b.amount && spent < b.amount && <Icon d={icons.warning} className="inline-icon" />}{' '}
+                      {t('Heading for about {amount}', { amount: w.money(to) })}
+                    </span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

@@ -114,6 +114,48 @@ test('a new account, a transfer, and a budget that runs over', async ({ page }) 
   await expect(page.getByRole('list', { name: 'Budgets' })).toContainText('Over by ¥200');
 });
 
+test('Stats says where the month is heading, and what budgets leave per day', async ({ page }) => {
+  // The 10th of this month, with rent paid on the 1st, as it was last month.
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  await page.clock.setFixedTime(new Date(y, m, 10, 12));
+  await signUp(page);
+  const api = page.request;
+  const overview = await (await api.get('/api/wallet')).json();
+  const cat = (name) => overview.categories.find((c) => c.name === name).id;
+  const records = [
+    [m - 1, 1, 50000, 'Housing'],
+    [m - 1, 20, 3000, 'Food & Drinks'],
+    [m, 1, 50000, 'Housing'],
+    [m, 2, 1500, 'Food & Drinks'],
+    [m, 6, 2500, 'Food & Drinks'],
+  ];
+  for (const [month, d, amount, category] of records) {
+    const r = { kind: 'expense', amount, account_id: overview.accounts[0].id, category_id: cat(category), occurred_at: new Date(y, month, d, 12).toISOString() };
+    expect((await api.post('/api/transactions', { data: r })).status()).toBe(201);
+  }
+  expect((await api.post('/api/budgets', { data: { name: 'Eating out', category_id: cat('Food & Drinks'), amount: 10000 } })).status()).toBe(201);
+  expect((await api.post('/api/budgets', { data: { name: 'Everything', category_id: null, amount: 50000 } })).status()).toBe(201);
+
+  const yen = (n) => '¥' + n.toLocaleString('en-US');
+  const left = new Date(y, m + 1, 0).getDate() - 9;
+  await page.goto('/app/#/stats');
+  const card = page.locator('.card[aria-label^="Rest of "]');
+  // ¥54,000 so far, plus the ¥3,000 last month's last weeks cost: rent isn't counted twice.
+  await expect(card).toContainText('Heading for about ¥57,000');
+  await expect(card).toContainText(`To stay within budget, ${left} days left`);
+  const perDay = card.getByRole('list', { name: 'Per day to stay within budget' });
+  const eating = perDay.getByRole('listitem').filter({ hasText: 'Eating out' });
+  await expect(eating).toContainText(`${yen(Math.floor(6000 / left))} a day`);
+  await expect(eating).toContainText('Heading for about ¥7,000');
+  await expect(perDay.getByRole('listitem').filter({ hasText: 'Everything' })).toContainText('Over by ¥4,000');
+
+  // The overview stays as it was.
+  await page.goto('/app/#/');
+  await expect(page.locator('.hero')).not.toContainText('pace');
+});
+
 test('the currency can change until there are records', async ({ page }) => {
   await signUp(page);
   await page.goto('/app/#/settings?section=general');
