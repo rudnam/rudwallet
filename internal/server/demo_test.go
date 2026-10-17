@@ -8,7 +8,6 @@ import (
 
 func withDemo(c *config.Config) {
 	c.Demo = true
-	c.InboundDomain, c.InboundSecret = "in.example.com", "an inbound secret of 24+ chars"
 }
 
 type meJSON struct {
@@ -82,37 +81,13 @@ func TestDemoInEnglish(t *testing.T) {
 	categoryID(t, o, "Food & Drinks")
 }
 
-// A demo can't reach outside the app: no forwarding address, API keys,
-// access tokens or test emails (which could use the server's Claude key).
+// A demo can't reach outside the app: no access tokens.
 func TestDemoCantReachOutside(t *testing.T) {
 	ts := newTestServer(t, withDemo)
 	c := newClient(t, ts)
 	startDemo(t, c, "en")
-	var inbox struct{ Address string }
-	if c.do("GET", "/api/inbox", nil, &inbox); inbox.Address != "" {
-		t.Errorf("a demo got the address %q", inbox.Address)
-	}
-	for _, call := range []struct {
-		method, path string
-		body         any
-	}{
-		{"POST", "/api/inbox/address", nil},
-		{"PUT", "/api/ai/key", map[string]string{"key": "sk-ant-demo-0000"}},
-		{"POST", "/api/mcp/tokens", map[string]string{"name": "Claude"}},
-	} {
-		if code := c.do(call.method, call.path, call.body, nil); code != 403 {
-			t.Errorf("%s %s in a demo: %d, want 403", call.method, call.path, code)
-		}
-	}
-	if code := c.send("/api/inbox/emails", "message/rfc822", []byte("Subject: hi\r\n\r\nhello"), nil, nil); code != 403 {
-		t.Errorf("uploading an email in a demo: %d, want 403", code)
-	}
-
-	// A real account can do these.
-	real := newClient(t, ts)
-	real.signup("real@example.com")
-	if real.do("GET", "/api/inbox", nil, &inbox); inbox.Address == "" {
-		t.Error("a real account got no address")
+	if code := c.do("POST", "/api/mcp/tokens", map[string]string{"name": "Claude"}, nil); code != 403 {
+		t.Errorf("making a token in a demo: %d, want 403", code)
 	}
 }
 

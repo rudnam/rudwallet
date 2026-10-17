@@ -13,9 +13,6 @@ import (
 	"github.com/rudnam/wallet-app/internal/mailer"
 )
 
-// DefaultAnthropicModel is the Claude model used unless ANTHROPIC_MODEL says otherwise.
-const DefaultAnthropicModel = "claude-opus-5-5"
-
 type Config struct {
 	// Addr is the listen address.
 	Addr string
@@ -47,18 +44,6 @@ type Config struct {
 	// AndroidAPK is the path of the Android app's APK, offered for download
 	// on the introduction page while the file exists.
 	AndroidAPK string
-	// InboundDomain and InboundSecret turn on the email automation: each
-	// user gets an address @InboundDomain, and the mail provider's hook
-	// calls POST /api/inbound/email with InboundSecret. See docs/email.md.
-	InboundDomain string
-	InboundSecret string
-	// AnthropicAPIKey, when set, lets Claude read payment emails that no
-	// built-in rule knows. AnthropicModel picks the model.
-	AnthropicAPIKey string
-	AnthropicModel  string
-	// SecretsKey encrypts secrets the app keeps for users, such as their
-	// own Anthropic API keys. Without it, users can't save keys.
-	SecretsKey string
 	// GoogleClientID and GoogleClientSecret turn on Sign in with Google.
 	// They need PublicOrigin, which gives the callback address.
 	GoogleClientID     string
@@ -94,11 +79,6 @@ func Load(getenv func(string) string) (Config, error) {
 		AndroidPackage:          r.str("ANDROID_PACKAGE", ""),
 		AndroidCertFingerprints: r.list("ANDROID_CERT_FINGERPRINTS"),
 		AndroidAPK:              r.str("ANDROID_APK", ""),
-		InboundDomain:           strings.ToLower(r.str("INBOUND_DOMAIN", "")),
-		InboundSecret:           r.str("INBOUND_SECRET", ""),
-		AnthropicAPIKey:         r.str("ANTHROPIC_API_KEY", ""),
-		AnthropicModel:          r.str("ANTHROPIC_MODEL", DefaultAnthropicModel),
-		SecretsKey:              r.str("SECRETS_KEY", ""),
 		GoogleClientID:          r.str("GOOGLE_CLIENT_ID", ""),
 		GoogleClientSecret:      r.str("GOOGLE_CLIENT_SECRET", ""),
 		SMTPHost:                r.str("SMTP_HOST", ""),
@@ -110,15 +90,6 @@ func Load(getenv func(string) string) (Config, error) {
 	c.Demo = r.bool("DEMO", c.AllowSignup)
 	if (c.AndroidPackage == "") != (len(c.AndroidCertFingerprints) == 0) {
 		r.errs = append(r.errs, errors.New("set both ANDROID_PACKAGE and ANDROID_CERT_FINGERPRINTS, or neither"))
-	}
-	if c.InboundDomain != "" && c.InboundSecret == "" {
-		r.errs = append(r.errs, errors.New("INBOUND_DOMAIN needs INBOUND_SECRET"))
-	}
-	if c.InboundSecret != "" && len(c.InboundSecret) < 24 {
-		r.errs = append(r.errs, errors.New("INBOUND_SECRET must be at least 24 characters"))
-	}
-	if c.SecretsKey != "" && len(c.SecretsKey) < 32 {
-		r.errs = append(r.errs, errors.New("SECRETS_KEY must be at least 32 characters, e.g. from: openssl rand -base64 32"))
 	}
 	if (c.GoogleClientID == "") != (c.GoogleClientSecret == "") {
 		r.errs = append(r.errs, errors.New("set both GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, or neither"))

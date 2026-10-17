@@ -82,26 +82,13 @@ curl -fsS -o /dev/null -H 'Content-Type: application/json' -H "Origin: $url" \
   echo "(could not create the preview user; it may exist in the restored backup)"
 
 # On a fresh database, fill the preview user with six months of sample
-# records, accounts and budgets, dated in this machine's time zone, and
-# deliver a few sample payment emails, as the mail provider would, so there
-# is something to review.
+# records, accounts and budgets, dated in this machine's time zone, and a few
+# PayPay payment notifications, as the phone would send them, so there is
+# something to review.
 if [[ -z $restore ]]; then
   PREVIEW_TZ=${TZ:-$(cat /etc/timezone 2>/dev/null || readlink /etc/localtime 2>/dev/null | sed 's|.*zoneinfo/||' || true)}
   export PREVIEW_TZ=${PREVIEW_TZ:-UTC}
   dc --profile seed run --rm seed || echo "(could not add sample records)"
-  jar=$(mktemp)
-  curl -fsS -o /dev/null -c "$jar" -H 'Content-Type: application/json' -H "Origin: $url" \
-    -d '{"email":"preview@example.com","password":"preview-password"}' "$url/api/login" || true
-  address=$(curl -fsS -b "$jar" "$url/api/inbox" 2>/dev/null | sed -n 's/.*"address":"\([^"]*\)".*/\1/p')
-  rm -f "$jar"
-  if [[ -n $address ]]; then
-    for f in paypay-usage paypay-nfc paypay-verify; do
-      curl -fsS -o /dev/null -H 'Authorization: Bearer e2e-inbound-secret-0123456789' \
-        -H "X-Inbound-To: $address" -H 'Content-Type: message/rfc822' \
-        --data-binary "@internal/inbox/parse/testdata/$f.eml" "$url/api/inbound/email" || true
-    done
-    echo "Delivered sample payment emails to $address"
-  fi
 fi
 
 printf '\n\033[1mPreview of %s is running at %s\033[0m\n' "$APP_VERSION" "$url"

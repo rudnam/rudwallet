@@ -1,6 +1,6 @@
 // Package sample makes months of believable money for someone living in
-// Japan: accounts, records, budgets and a few emailed payments waiting for
-// review. The demo (internal/demo) fills each visitor's wallet with it, and
+// Japan: accounts, records, budgets and a few payments from the phone's
+// notifications waiting for review. The demo (internal/demo) fills each visitor's wallet with it, and
 // e2e/seed fills the preview account. Names are in English or Japanese.
 //
 // The same wallet comes out every time for the same day: the randomness has
@@ -18,7 +18,7 @@ type Wallet struct {
 	Accounts []Account
 	Records  []Record
 	Budgets  []Budget
-	// Review are payments read from card emails, still waiting for the person.
+	// Review are payments read from the phone's notifications, still waiting for the person.
 	Review []Payment
 }
 
@@ -56,7 +56,7 @@ type Budget struct {
 	Amount   int64
 }
 
-// Payment is a payment as a card's email reports it. Source is the card.
+// Payment is a payment as the phone's notification reports it. Source is the card.
 type Payment struct {
 	Amount   int64
 	Merchant string
@@ -178,9 +178,9 @@ func New(now time.Time, months int, lang string) Wallet {
 		{Name: n["groceries"], Category: "Groceries", Amount: 32000},
 	}
 
-	// Two card emails from the last few hours, as PayPay Card's usage alerts
-	// name the card.
-	card := "PayPayカード ゴールド（Visa）"
+	// Two PayPay Card payments from the last few hours, as PayPay's
+	// notifications name the card.
+	card := "PayPay Card"
 	w.Review = []Payment{
 		{Amount: 4994, Merchant: "IKEAオンライン", At: now.Add(-2 * time.Hour).Truncate(time.Minute), Source: card},
 		{Amount: 1280, Merchant: "Amazon.co.jp", At: now.Add(-26 * time.Hour).Truncate(time.Minute), Source: card},

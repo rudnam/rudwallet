@@ -273,7 +273,7 @@ test('import PayPay transaction history', async ({ page }) => {
   await expect(page.getByLabel(/^PayPay銀行/).locator('option:checked')).toHaveText('New account: PayPay銀行');
   await expect(page.getByLabel('Category for ローソン').locator('option:checked')).toHaveText('Food & Drinks');
   await page.getByRole('button', { name: 'Import 3 payments' }).click();
-  await expect(page.getByRole('status')).toContainText('Imported 2 records, skipped 1 already recorded from emails or by hand, created 2 accounts');
+  await expect(page.getByRole('status')).toContainText('Imported 2 records, skipped 1 already recorded from notifications or by hand, created 2 accounts');
 
   await page.goto('/app/#/records');
   await expect(page.getByRole('button', { name: /ローソン, -¥1,200/ })).toBeVisible();

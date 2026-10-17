@@ -23,12 +23,9 @@ test('the introduction page opens a demo full of sample data', async ({ page }) 
   await expect(page.getByRole('button', { name: /^Rent, -¥72,000$/ })).toBeVisible();
 
   // Nothing that reaches outside the app.
-  await page.goto('/app/#/settings?section=email');
-  await expect(page.getByText('In the demo, emails can’t be forwarded.', { exact: false })).toBeVisible();
-  await expect(page.getByTestId('inbox-address')).toHaveCount(0);
   await page.goto('/app/#/settings?section=claude');
   await expect(page.getByText('it isn’t available in the demo', { exact: false })).toBeVisible();
-  await expect(page.getByLabel('Anthropic API key')).toHaveCount(0);
+  await expect(page.getByLabel('New connection')).toHaveCount(0);
 
   // From the demo to an account of one's own.
   await page.goto('/app/#/settings');
