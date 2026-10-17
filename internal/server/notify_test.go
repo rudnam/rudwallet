@@ -215,3 +215,64 @@ func TestRemovedFeaturesAnswerEmpty(t *testing.T) {
 		t.Errorf("inbound email: %d, want 404", code)
 	}
 }
+
+// A restored record from a notification keeps where it came from, its
+// notification, and the flag on the record it duplicates.
+func TestRestoreNotifiedRecord(t *testing.T) {
+	ts := newTestServer(t)
+	c := newClient(t, ts)
+	c.signup("a@example.com")
+	o := overview(t, c)
+	when := time.Date(2026, 10, 5, 23, 0, 0, 0, time.UTC)
+	var manual wallet.Transaction
+	c.do("POST", "/api/transactions", map[string]any{"kind": "expense", "amount": 1820, "account_id": o.Accounts[0].ID,
+		"occurred_at": when.Add(-time.Hour), "payee": "lunch"}, &manual)
+	n := post(t, c, notify.Incoming{Package: payPay, When: when.UnixMilli(), Title: "支払いを受け付けました",
+		Text: "お店：大戸屋\n金額：1,820円\n日時：2026年10月6日 08:00"})[0]
+	if n.Status != "payment" || n.TransactionID == nil {
+		t.Fatalf("notification %+v", n)
+	}
+	notified := *n.TransactionID
+	link := func() *int64 {
+		var list notifications
+		c.do("GET", "/api/notifications", nil, &list)
+		return list.Notifications[0].TransactionID
+	}
+	review := func() wallet.Transaction {
+		var l []wallet.Transaction
+		c.do("GET", "/api/transactions?status=review", nil, &l)
+		if len(l) != 1 {
+			t.Fatalf("%d records to review, want 1", len(l))
+		}
+		return l[0]
+	}
+	before := review()
+	if before.DuplicateOfID == nil || *before.DuplicateOfID != manual.ID {
+		t.Fatalf("want a possible duplicate of %d: %+v", manual.ID, before)
+	}
+
+	c.do("DELETE", fmt.Sprintf("/api/transactions/%d", notified), nil, nil)
+	if link() != nil {
+		t.Fatal("notification still linked to a deleted record")
+	}
+	if code := c.do("POST", "/api/transactions/restore", map[string]any{"ids": []int64{notified}}, nil); code != 200 {
+		t.Fatalf("restore: %d", code)
+	}
+	after := review()
+	if after.ID != notified || after.Source != "notification" || after.SourceLabel != before.SourceLabel || after.Status != "review" {
+		t.Errorf("restored %+v, want %+v", after, before)
+	}
+	if l := link(); l == nil || *l != notified {
+		t.Errorf("notification links to %v, want %d", l, notified)
+	}
+
+	// The record it duplicates: deleting it clears the flag, restoring it puts it back.
+	c.do("DELETE", fmt.Sprintf("/api/transactions/%d", manual.ID), nil, nil)
+	if review().DuplicateOfID != nil {
+		t.Fatal("still flagged as a duplicate of a deleted record")
+	}
+	c.do("POST", "/api/transactions/restore", map[string]any{"ids": []int64{manual.ID}}, nil)
+	if d := review().DuplicateOfID; d == nil || *d != manual.ID {
+		t.Errorf("duplicate of %v, want %d", d, manual.ID)
+	}
+}
