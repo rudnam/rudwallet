@@ -84,6 +84,8 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.Handle("POST /api/verify-email", h.RequireUser(h.rateLimited(h.resendConfirmation)))
 	mux.Handle("GET /api/auth/options", httpx.HandlerFunc(h.options))
 	mux.Handle("POST /api/auth/app-token", h.rateLimited(h.appToken))
+	mux.Handle("POST /api/password/forgot", h.rateLimited(h.forgotPassword))
+	mux.Handle("POST /api/password/reset", h.rateLimited(h.resetPassword))
 	if h.cfg.Demo != nil {
 		mux.Handle("POST /api/demo", h.rateLimited(h.startDemo))
 	}

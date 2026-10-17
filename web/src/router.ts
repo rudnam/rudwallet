@@ -33,3 +33,9 @@ export function href(page: string, params?: Record<string, string | number>): st
 export function navigate(page: string, params?: Record<string, string | number>) {
   location.hash = href(page, params);
 }
+
+/** navigate, replacing the current history entry, e.g. to drop a used link's token. */
+export function replaceRoute(page: string, params?: Record<string, string | number>) {
+  history.replaceState(null, '', href(page, params));
+  window.dispatchEvent(new HashChangeEvent('hashchange'));
+}

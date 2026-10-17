@@ -45,19 +45,31 @@ async function signUp(page) {
 
 const MAIL_API = process.env.MAIL_API || 'http://mail:8025'; // the mail catcher in e2e/compose.yml
 
-/** The newest confirmation link the app emailed to "to", read from the mail catcher. */
-async function confirmationLink(request, to) {
-  let text = '';
+/** The link in the newest email to "to" that has one matching pattern, read from the mail catcher. */
+async function emailedLink(request, to, pattern) {
+  let link = null;
   await base
     .expect(async () => {
       const found = await (await request.get(`${MAIL_API}/api/v1/search?query=${encodeURIComponent(`to:"${to}"`)}`)).json();
-      base.expect(found.messages.length).toBeGreaterThan(0);
-      text = (await (await request.get(`${MAIL_API}/api/v1/message/${found.messages[0].ID}`)).json()).Text;
+      for (const m of found.messages) {
+        const text = (await (await request.get(`${MAIL_API}/api/v1/message/${m.ID}`)).json()).Text;
+        link = text.match(pattern);
+        if (link) break;
+      }
+      base.expect(link, `no link like ${pattern} emailed to ${to}`).not.toBeNull();
     })
     .toPass({ timeout: 10_000 });
-  const link = text.match(/https?:\/\/\S+\/api\/verify-email\?token=[\w-]+/);
-  base.expect(link, text).not.toBeNull();
   return link[0];
+}
+
+/** The newest confirmation link the app emailed to "to". */
+function confirmationLink(request, to) {
+  return emailedLink(request, to, /https?:\/\/\S+\/api\/verify-email\?token=[\w-]+/);
+}
+
+/** The newest password reset link the app emailed to "to". */
+function resetLink(request, to) {
+  return emailedLink(request, to, /https?:\/\/\S+\/app\/#\/reset\?token=[\w-]+/);
 }
 
 const PAYPAY = 'jp.ne.paypay.android.app';
@@ -79,4 +91,4 @@ async function sendNotifications(request, ...notifications) {
   return (await res.json()).notifications;
 }
 
-module.exports = { test, expect: base.expect, signUp, uniqueEmail, PASSWORD, confirmationLink, PAYPAY, payPayCard, sendNotifications };
+module.exports = { test, expect: base.expect, signUp, uniqueEmail, PASSWORD, confirmationLink, resetLink, PAYPAY, payPayCard, sendNotifications };

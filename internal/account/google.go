@@ -50,11 +50,13 @@ type optionsResponse struct {
 	Google bool `json:"google"`
 	// Demo: visitors can try a demo without an account (POST /api/demo).
 	Demo bool `json:"demo"`
+	// Reset: a forgotten password can be reset by email (reset.go).
+	Reset bool `json:"reset"`
 }
 
 // options tells the sign-in page which ways to sign in exist.
 func (h *Handler) options(w http.ResponseWriter, r *http.Request) error {
-	httpx.WriteJSON(w, http.StatusOK, optionsResponse{Google: h.cfg.Google != nil, Demo: h.cfg.Demo != nil})
+	httpx.WriteJSON(w, http.StatusOK, optionsResponse{Google: h.cfg.Google != nil, Demo: h.cfg.Demo != nil, Reset: h.cfg.Mail != nil})
 	return nil
 }
 

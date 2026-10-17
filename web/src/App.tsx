@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, ApiError, errorMessage, type Me } from './api';
 import { AuthForm } from './components/AuthForm';
+import { ResetPasswordForm } from './components/ResetPasswordForm';
 import { Icon, icons, Logo, Plus } from './components/Icon';
 import { TransactionForm } from './components/TransactionForm';
 import { BudgetsPage } from './features/budgets/BudgetsPage';
@@ -12,7 +13,7 @@ import { SettingsPage } from './features/settings/SettingsPage';
 import { StatsPage } from './features/stats/StatsPage';
 import { onAppLinks } from './native';
 import { initialNotice, signinErrors, type Notice } from './notice';
-import { href, navigate, useRoute } from './router';
+import { href, navigate, replaceRoute, useRoute } from './router';
 import { t, tx, type Key } from './i18n';
 import { LanguagePicker } from './features/settings/LanguageSettings';
 import { ToastProvider, useToast } from './toast';
@@ -38,7 +39,7 @@ const demoRequested = (() => {
 type Session =
   | { status: 'loading'; demo?: boolean }
   | { status: 'signed-out'; notice?: Notice | null; mode?: 'sign-up' }
-  | { status: 'signed-in'; me: Me }
+  | { status: 'signed-in'; me: Me; notice?: string }
   | { status: 'error'; message: string };
 
 export function App() {
@@ -120,6 +121,28 @@ export function App() {
     setSession({ status: 'signed-out', notice });
   }
 
+  // The emailed reset link, whether or not this browser is signed in.
+  if (route.page === 'reset' && (session.status === 'signed-in' || session.status === 'signed-out')) {
+    return (
+      <main className="splash">
+        <div className="auth">
+          <div className="auth-brand">
+            <Logo />
+            <span className="auth-name">{appName}</span>
+          </div>
+          <ResetPasswordForm
+            token={route.params.get('token') ?? ''}
+            onDone={(me) => {
+              // Off the reset page, without leaving the used link in the history.
+              replaceRoute('home');
+              setSession({ status: 'signed-in', me, notice: t('Your new password is saved.') });
+            }}
+            onCancel={() => replaceRoute('home')}
+          />
+        </div>
+      </main>
+    );
+  }
   if (session.status === 'signed-in' && route.page === 'connect') {
     return (
       <main className="splash">
@@ -139,6 +162,7 @@ export function App() {
         <WalletProvider me={session.me}>
           <Shell
             me={session.me}
+            notice={session.notice}
             onSignOut={signOut}
             onCreateAccount={leaveDemo}
             onDeleted={() => signedOut({ message: t('Your account and everything in it were deleted.'), ok: true })}
@@ -195,11 +219,14 @@ const subpages: Record<string, string> = {};
 
 function Shell({
   me,
+  notice,
   onSignOut,
   onCreateAccount,
   onDeleted,
 }: {
   me: Me;
+  /** Shown once as a toast, e.g. after a new password is saved. */
+  notice?: string;
   onSignOut: () => void;
   onCreateAccount: () => void;
   onDeleted: () => void;
@@ -212,6 +239,9 @@ function Shell({
     if (initialNotice && !noticeShown) toast(initialNotice.message);
     noticeShown = true;
   }, [toast]);
+  useEffect(() => {
+    if (notice) toast(notice);
+  }, [notice, toast]);
   const [adding, setAdding] = useState(false);
   // Bumped after adding a record, so the page reloads its data.
   const [version, setVersion] = useState(0);

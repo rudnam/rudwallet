@@ -1,5 +1,5 @@
-// All records, a month at a time, with filters. Records can be chosen to
-// delete, categorise or move many at once.
+// All records, a month at a time, with filters; a search looks through every
+// month. Records can be chosen to delete, categorise or move many at once.
 import { useEffect, useState } from 'react';
 import { api, errorMessage, type BulkChange, type Transaction } from '../../api';
 import { TransactionForm } from '../../components/TransactionForm';
@@ -11,6 +11,9 @@ import { useRecords } from '../../useRecords';
 import { useWallet } from '../../wallet';
 import { t, tn } from '../../i18n';
 
+/** The most records the server sends at once (maxList in internal/wallet). */
+const maxRecords = 2000;
+
 export function RecordsPage({ route }: { route: Route }) {
   const w = useWallet();
   const p = route.params;
@@ -19,17 +22,18 @@ export function RecordsPage({ route }: { route: Route }) {
   const account = Number(p.get('account')) || undefined;
   const categoryParam = p.get('category');
   const category = categoryParam === 'none' ? 'none' : Number(categoryParam) || undefined;
-  const [q, setQ] = useState(p.get('q') ?? '');
+  const search = p.get('q') ?? '';
+  const [q, setQ] = useState(search);
   const [open, setOpen] = useState<Transaction | null>(null);
   // While choosing records: the chosen IDs.
   const [selected, setSelected] = useState<Set<number> | null>(null);
 
   const { records, error, reload } = useRecords({
-    from: month,
-    to: addMonths(month, 1),
+    from: search ? undefined : month,
+    to: search ? undefined : addMonths(month, 1),
     account_id: account,
     category_id: category,
-    q: p.get('q') ?? undefined,
+    q: search || undefined,
   });
 
   // A different month or filter starts the choice afresh.
@@ -65,15 +69,31 @@ export function RecordsPage({ route }: { route: Route }) {
           </button>
         )}
       </header>
-      <div className="card month-picker">
-        <button type="button" className="link" aria-label={t('Previous month')} onClick={() => set({ month: ym(addMonths(month, -1)) })}>
-          ‹
-        </button>
-        <strong>{formatMonth(month)}</strong>
-        <button type="button" className="link" aria-label={t('Next month')} onClick={() => set({ month: ym(addMonths(month, 1)) })}>
-          ›
-        </button>
-      </div>
+      {search ? (
+        <div className="card search-scope">
+          <strong>{t('Results from every month')}</strong>
+          <button
+            type="button"
+            className="link"
+            onClick={() => {
+              setQ('');
+              set({ q: undefined });
+            }}
+          >
+            {t('Back to {month}', { month: formatMonth(month) })}
+          </button>
+        </div>
+      ) : (
+        <div className="card month-picker">
+          <button type="button" className="link" aria-label={t('Previous month')} onClick={() => set({ month: ym(addMonths(month, -1)) })}>
+            ‹
+          </button>
+          <strong>{formatMonth(month)}</strong>
+          <button type="button" className="link" aria-label={t('Next month')} onClick={() => set({ month: ym(addMonths(month, 1)) })}>
+            ›
+          </button>
+        </div>
+      )}
       <div className="filters">
         <select aria-label={t('Account')} value={account ?? ''} onChange={(e) => set({ account: e.target.value })}>
           <option value="">{t('All accounts')}</option>
@@ -130,6 +150,9 @@ export function RecordsPage({ route }: { route: Route }) {
         </div>
       ) : (
         <>
+          {records.length >= maxRecords && (
+            <p className="muted small">{t('Showing the newest {n} matches. Add words or a filter to narrow the search.', { n: maxRecords.toLocaleString() })}</p>
+          )}
           {selected && (
             <BulkBar
               records={records}

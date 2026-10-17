@@ -4,7 +4,7 @@ import { t } from '../i18n';
 import { isApp, startGoogleSignIn } from '../native';
 import type { Notice } from '../notice';
 
-type Mode = 'sign-in' | 'sign-up';
+type Mode = 'sign-in' | 'sign-up' | 'forgot';
 
 export function AuthForm({
   onSignedIn,
@@ -26,6 +26,7 @@ export function AuthForm({
   const [busy, setBusy] = useState(false);
   const [google, setGoogle] = useState(false);
   const [demo, setDemo] = useState(false);
+  const [reset, setReset] = useState(false);
 
   useEffect(() => {
     api
@@ -33,6 +34,7 @@ export function AuthForm({
       .then((o) => {
         setGoogle(o.google);
         setDemo(!!o.demo);
+        setReset(!!o.reset);
       })
       .catch(() => {}); // the email form still works
   }, []);
@@ -43,6 +45,11 @@ export function AuthForm({
     setError('');
     setStatus('');
     try {
+      if (mode === 'forgot') {
+        await api.forgotPassword(email);
+        setStatus(t("If an account uses this email, we've sent it a link to choose a new password. The link works for an hour."));
+        return;
+      }
       onSignedIn(mode === 'sign-in' ? await api.signIn(email, password) : await api.signUp(email, password));
     } catch (err) {
       setError(errorMessage(err));
@@ -51,7 +58,42 @@ export function AuthForm({
     }
   }
 
+  function switchTo(next: Mode) {
+    setMode(next);
+    setError('');
+    setStatus('');
+  }
+
   const signingIn = mode === 'sign-in';
+  if (mode === 'forgot') {
+    return (
+      <form className="card stack" onSubmit={submit}>
+        <h1>{t('Reset your password')}</h1>
+        {status ? (
+          <p role="status" className="notice">
+            {status}
+          </p>
+        ) : (
+          <p className="muted">{t("Enter your account's email, and we'll send you a link to choose a new password.")}</p>
+        )}
+        <label className="field">
+          {t('Email')}
+          <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        </label>
+        {error && (
+          <p role="alert" className="error">
+            {error}
+          </p>
+        )}
+        <button type="submit" disabled={busy}>
+          {status ? t('Send again') : t('Send link')}
+        </button>
+        <button type="button" className="link" onClick={() => switchTo('sign-in')}>
+          {t('Back to sign in')}
+        </button>
+      </form>
+    );
+  }
   return (
     <form className="card stack" onSubmit={submit}>
       <h1>{signingIn ? t('Sign in') : t('Create an account')}</h1>
@@ -103,15 +145,12 @@ export function AuthForm({
       <button type="submit" disabled={busy}>
         {signingIn ? t('Sign in') : t('Create account')}
       </button>
-      <button
-        type="button"
-        className="link"
-        onClick={() => {
-          setMode(signingIn ? 'sign-up' : 'sign-in');
-          setError('');
-          setStatus('');
-        }}
-      >
+      {signingIn && reset && (
+        <button type="button" className="link" onClick={() => switchTo('forgot')}>
+          {t('Forgot your password?')}
+        </button>
+      )}
+      <button type="button" className="link" onClick={() => switchTo(signingIn ? 'sign-up' : 'sign-in')}>
         {signingIn ? t('New here? Create an account') : t('Have an account? Sign in')}
       </button>
       {demo && onDemo && (

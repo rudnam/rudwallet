@@ -383,6 +383,33 @@ test('a page seen before shows at once while it reloads, unless something change
   await expect(page.getByRole('button', { name: /Ramen Taro, -¥980/ })).toBeVisible();
 });
 
+test('searching records looks through every month', async ({ page }) => {
+  await signUp(page);
+  const { accounts } = await (await page.request.get('/api/wallet')).json();
+  const now = new Date();
+  const earlier = new Date(now.getFullYear(), now.getMonth() - 3, 10, 12);
+  for (const [when, amount] of [[now, 650], [earlier, 720]]) {
+    const data = { kind: 'expense', amount, account_id: accounts[0].id, occurred_at: when.toISOString(), payee: 'Blue Bottle' };
+    expect((await page.request.post('/api/transactions', { data })).status()).toBe(201);
+  }
+  await page.request.post('/api/transactions', { data: { kind: 'expense', amount: 300, account_id: accounts[0].id, occurred_at: earlier.toISOString(), payee: 'Lawson' } });
+
+  await page.goto('/app/#/records');
+  await expect(page.getByRole('button', { name: /Blue Bottle/ })).toHaveCount(1); // this month only
+  await page.getByLabel('Search records').fill('blue bottle');
+  await page.getByLabel('Search records').press('Enter');
+  await expect(page.getByText('Results from every month')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Blue Bottle/ })).toHaveCount(2);
+  await expect(page.getByRole('button', { name: /Lawson/ })).toHaveCount(0);
+  await expect(page.locator('.summary')).toContainText('¥1,370');
+  await page.screenshot({ path: test.info().outputPath('records-search.png'), fullPage: true });
+
+  await page.getByRole('button', { name: /^Back to / }).click();
+  await expect(page.getByLabel('Search records')).toHaveValue('');
+  await expect(page.getByRole('button', { name: 'Previous month' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Blue Bottle/ })).toHaveCount(1);
+});
+
 test('on a phone, the add record sheet drags down to close', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await signUp(page);
