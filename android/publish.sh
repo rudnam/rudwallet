@@ -12,7 +12,9 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-export AWS_PROFILE=${AWS_PROFILE:-rudnam-ec2} AWS_REGION=${AWS_REGION:-ap-southeast-2}
+# CI (android-release.yml) brings its own credentials; here, the CLI profile.
+[[ -n ${AWS_ACCESS_KEY_ID:-} ]] || export AWS_PROFILE=${AWS_PROFILE:-rudnam-ec2}
+export AWS_REGION=${AWS_REGION:-ap-southeast-2}
 bucket=rudnam-deploy-394567896817   # rudnam-infra: terraform output deploy_bucket
 site=https://wallet.rudnam.com
 
@@ -21,10 +23,12 @@ site=https://wallet.rudnam.com
 aws s3 cp --only-show-errors --content-type application/vnd.android.package-archive \
   wallet.apk "s3://$bucket/downloads/wallet-app/wallet.apk"
 
+# rudnam-downloads is a document that can only run that script for a known
+# app (rudnam-infra), so CI may run it too.
 id=$(aws ssm send-command \
-  --document-name AWS-RunShellScript \
+  --document-name rudnam-downloads \
   --targets Key=tag:Role,Values=apps \
-  --parameters 'commands=["/usr/local/bin/rudnam-downloads wallet-app"]' \
+  --parameters App=wallet-app \
   --comment "publish wallet.apk" \
   --query Command.CommandId --output text)
 for _ in $(seq 30); do
@@ -34,5 +38,11 @@ for _ in $(seq 30); do
 done
 [ "$status" = Success ] || { echo "copying onto the server: $status" >&2; exit 1; }
 
-echo "Published: $(curl -fsS "$site/api/downloads")"
+published=$(curl -fsS "$site/api/downloads")
+echo "Published: $published"
+# The server reads the version from the APK (once it runs the build that does).
+if [[ -n ${WALLET_VERSION_CODE:-} && $published == *'"version":'* && $published != *"\"version\":$WALLET_VERSION_CODE,"* ]]; then
+  echo "the site offers a different version than $WALLET_VERSION_CODE" >&2
+  exit 1
+fi
 echo "Download:  $site/download/wallet.apk"
