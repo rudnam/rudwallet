@@ -74,7 +74,8 @@ export function formatDay(d: Date): string {
   const key = dayKey(d);
   if (key === today) return t('Today');
   if (key === yesterday) return t('Yesterday');
-  return d.toLocaleDateString(locale(), { weekday: 'short', month: 'short', day: 'numeric' });
+  const year = d.getFullYear() === new Date().getFullYear() ? undefined : 'numeric';
+  return d.toLocaleDateString(locale(), { weekday: 'short', year, month: 'short', day: 'numeric' });
 }
 
 export function formatTime(d: Date): string {

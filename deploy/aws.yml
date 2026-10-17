@@ -1,6 +1,6 @@
 # Run on the AWS instance managed by rudnam/rudnam-infra, behind its shared
 # Caddy and CloudFront. GitHub Actions deploys this (see
-# .github/workflows/deploy.yml); the instance sets
+# .github/workflows/ci.yml); the instance sets
 #   COMPOSE_FILE=docker-compose.yml:deploy/aws.yml
 # and APP_IMAGE to the ECR image of the commit being deployed.
 #

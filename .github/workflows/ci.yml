@@ -34,6 +34,36 @@ jobs:
           path: e2e/test-results/
           if-no-files-found: ignore
 
+  # Builds the Android app (android/README.md) as a debug build, which needs
+  # no signing key, so its native code is checked on every change. Releases
+  # are still built and signed by hand with android/build.sh. Not required by
+  # deploy: the server doesn't ship with the app.
+  android:
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      # The web app, built for the app and copied in (the runner has the Android SDK).
+      - run: npm ci --no-audit --no-fund && npm run android
+        working-directory: web
+      - run: ./gradlew assembleDebug
+        working-directory: android
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
+
   # Signs in as the github-deploy IAM user (secrets AWS_ACCESS_KEY_ID and
   # AWS_SECRET_ACCESS_KEY), which can do nothing but assume the deploy role
   # for an hour. The role, and everything it can touch, is defined in

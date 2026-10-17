@@ -1,4 +1,4 @@
-const { test, expect, signUp, uniqueEmail, PASSWORD, confirmationLink } = require('./fixtures');
+const { test, expect, signUp, uniqueEmail, PASSWORD, confirmationLink, resetLink } = require('./fixtures');
 
 test('sign up, sign out and sign in again', async ({ page }) => {
   const email = uniqueEmail();
@@ -56,6 +56,40 @@ test('a new account is asked to confirm its email, and the emailed link does it'
   await expect(page.locator('.toast')).toHaveText('Your email address is confirmed.');
   await expect(page).toHaveURL(/^[^?]*$/); // the notice is taken out of the address
   await expect(reminder).toBeHidden();
+});
+
+test('a forgotten password is reset with the emailed link, which signs out everywhere else', async ({ page, request }) => {
+  const email = await signUp(page);
+  // Also signed in somewhere else.
+  expect((await request.post('/api/login', { data: { email, password: PASSWORD } })).status()).toBe(200);
+  await page.request.post('/api/logout');
+
+  await page.goto('/app/');
+  await page.getByRole('button', { name: 'Forgot your password?' }).click();
+  await expect(page.getByRole('heading', { name: 'Reset your password' })).toBeVisible();
+  await page.getByLabel('Email').fill(email);
+  await page.getByRole('button', { name: 'Send link' }).click();
+  await expect(page.getByRole('status')).toContainText("If an account uses this email, we've sent it a link");
+  await page.screenshot({ path: test.info().outputPath('forgot-password.png'), fullPage: true });
+
+  const link = await resetLink(page.request, email);
+  await page.goto(link);
+  await expect(page.getByRole('heading', { name: 'Choose a new password' })).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath('reset-password.png'), fullPage: true });
+  await page.getByLabel('New password').fill('a brand new password');
+  await page.getByRole('button', { name: 'Save password' }).click();
+  await expect(page.getByText('Total balance')).toBeVisible();
+  await expect(page.locator('.toast')).toHaveText('Your new password is saved.');
+  await expect(page).not.toHaveURL(/token=/);
+  expect((await request.get('/api/me')).status()).toBe(401);
+
+  // The link works once.
+  await page.goto(link);
+  await page.getByLabel('New password').fill('yet another password');
+  await page.getByRole('button', { name: 'Save password' }).click();
+  await expect(page.getByRole('alert')).toHaveText('this link has expired or was already used; ask for a new one');
+  await page.getByRole('button', { name: 'Back to sign in' }).click();
+  await expect(page.getByText('Total balance')).toBeVisible(); // still signed in with the new password
 });
 
 test('Continue with Google sends the browser to Google', async ({ page }) => {

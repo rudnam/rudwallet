@@ -21,6 +21,8 @@ export interface AuthOptions {
   google: boolean;
   /** Visitors can try a demo without an account. Absent from older servers. */
   demo?: boolean;
+  /** A forgotten password can be reset by email. Absent from older servers. */
+  reset?: boolean;
 }
 
 export interface Settings {
@@ -403,6 +405,10 @@ export const api = {
   /** Signs in to a new demo account with sample data, named in the app's language and dated in this time zone. */
   startDemo: () => signedIn(request<Me>('POST', '/api/demo', { tz: Intl.DateTimeFormat().resolvedOptions().timeZone })),
   resendConfirmation: () => request<void>('POST', '/api/verify-email'),
+  /** Emails a link to reset the password, if an account uses this address. Answers the same either way. */
+  forgotPassword: (email: string) => request<void>('POST', '/api/password/forgot', { email }),
+  /** Sets a new password with the token from the emailed link, and signs in. */
+  resetPassword: (token: string, password: string) => signedIn(request<Me>('POST', '/api/password/reset', { token, password })),
   /** Deletes the account and everything in it. Confirm with the password, or for a Google-only account, the email. */
   deleteMe: async (confirm: { password: string } | { email: string }) => {
     await request<void>('DELETE', '/api/me', confirm);

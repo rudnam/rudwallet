@@ -318,6 +318,8 @@ button.bar-row:active:not(:disabled) { transform: none; }
 .month-picker { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .month-picker strong { font-family: var(--serif); font-size: 1.2rem; font-weight: 400; }
 .month-picker button.link { font-size: 1.4rem; padding: 2px 14px; color: var(--text); }
+.search-scope { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.search-scope strong { font-family: var(--serif); font-size: 1.2rem; font-weight: 400; }
 .filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .filters .search { grid-column: 1 / -1; }
 @media (min-width: 800px) { .filters { grid-template-columns: 1fr 1fr 1.5fr; } .filters .search { grid-column: auto; } }
@@ -511,6 +513,7 @@ button.chip.on { background: var(--accent-soft); border-color: var(--accent); fo
 .field .muted.small { font-weight: 400; }
 .tiles.summary { margin-top: 0; padding: 14px 18px; border-top: 1px solid var(--border); }
 .card.month-picker { padding: 8px; }
+.card.search-scope { padding: 8px 8px 8px 20px; }
 .month-picker button.link:disabled { opacity: 0.3; }
 .range-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px 14px; }
 .range-picker label { display: flex; flex-direction: column; gap: 4px; min-width: 0; }

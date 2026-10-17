@@ -18,6 +18,8 @@ You need a JDK 21, the Android SDK (`JAVA_HOME` and `ANDROID_HOME`, or the paths
 
 It builds the web app for the app (`npm run android` in `web/`, which also copies it in with `cap sync`), then signs both files with `android.keystore`, reading the passwords from `signing-key.txt`.
 
+CI builds a debug APK on every push and pull request (the `android` job in `.github/workflows/ci.yml`, kept for a week as the `android-debug-apk` artifact), so a change that breaks the native code fails there. It needs no signing key; releases are still built here.
+
 For each Play Store release, raise `versionCode` (and `versionName`) in `app/build.gradle`, then upload `wallet.aab` in the Play Console. Versions 1 and 2 were the earlier Trusted Web Activity app, which this replaces under the same package and key, so it installs as an update.
 
 The introduction page offers the APK as **Download for Android** while the server has one, with no restart needed. To put a new build on https://wallet.rudnam.com:

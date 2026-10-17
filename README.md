@@ -106,7 +106,7 @@ All settings are environment variables (read in `internal/config`).
 | `SECRETS_KEY` | empty | Encrypts what users save in the app: their Claude API keys (AES-256-GCM). 32+ characters, e.g. `openssl rand -base64 32`. Without it, users can't save a key. Keep it out of backups of the database, and don't change it: keys saved under an old one can't be read, and users are asked to add them again. |
 | `ANTHROPIC_BASE_URL` | Anthropic's API | Where Claude is reached. The browser tests point it at a fake (`e2e/fake-claude.js`). |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | empty | Show "Continue with Google" on the sign-in page. Needs `PUBLIC_ORIGIN`. See [Sign in with Google](#sign-in-with-google). |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `MAIL_FROM` | empty, `587` | Email a link to confirm each new account's address (port 587 with STARTTLS, or 465). `MAIL_FROM` is e.g. `Wallet <no-reply@example.com>`. Needs `PUBLIC_ORIGIN`. Without these, nobody is asked to confirm. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `MAIL_FROM` | empty, `587` | Email a link to confirm each new account's address, and links to reset forgotten passwords (port 587 with STARTTLS, or 465). `MAIL_FROM` is e.g. `Wallet <no-reply@example.com>`. Needs `PUBLIC_ORIGIN`. Without these, nobody is asked to confirm. |
 
 ### Sign in with Google
 
@@ -118,7 +118,7 @@ A Google sign-in uses the account with the same email if there is one. If that a
 
 ### Confirming email addresses
 
-With the `SMTP_*` settings, new accounts get an email with a link, and the app shows a reminder until it's opened. People can keep using the app meanwhile. Signing in with Google counts as confirmed. Any SMTP provider works (Resend, Amazon SES, Postmark, or a Gmail account with an app password). The email is in Japanese for someone using the app in Japanese.
+With the `SMTP_*` settings, new accounts get an email with a link, and the app shows a reminder until it's opened. The same settings turn on **Forgot your password?** on the sign-in page: it emails a link that works once, for an hour, to choose a new password, which signs out every other session. People can keep using the app meanwhile. Signing in with Google counts as confirmed. Any SMTP provider works (Resend, Amazon SES, Postmark, or a Gmail account with an app password). The email is in Japanese for someone using the app in Japanese.
 
 ## How the code is organized
 
@@ -130,7 +130,7 @@ The code is split by **feature**: each one owns its SQL, HTTP handlers and page.
 | `internal/config/` | Reads and validates every setting from the environment. |
 | `internal/db/` | Connection pool, migrations (`migrations/*.sql`, embedded), shared errors. |
 | `internal/httpx/` | HTTP plumbing every feature shares: handlers that return errors, JSON in and out, middleware (security headers, CSRF origin check, logging, panic recovery), rate limiting. |
-| `internal/account/` | Feature: sign-up, sign-in (password or Google), sessions, email confirmation, account deletion, and the `RequireUser` middleware. |
+| `internal/account/` | Feature: sign-up, sign-in (password or Google), sessions, email confirmation, password reset, account deletion, and the `RequireUser` middleware. |
 | `internal/mailer/` | Sends the app's own emails over SMTP. |
 | `internal/wallet/` | Feature: accounts, categories, records, budgets, settings, and the PayPay and BudgetBakers CSV imports. |
 | `internal/inbox/` | Feature: email automation. Forwarding addresses, the inbound webhook, and turning emails into records (`parse/` reads emails and knows the senders; `claude.go` is the AI fallback). |
@@ -165,17 +165,19 @@ Follow `internal/wallet` or `internal/inbox`; a feature is about five files:
 | POST | `/api/logout` | – | `204`. Ending a demo deletes it. |
 | GET | `/api/me` | user | `{email, has_password, confirm_email, demo}` |
 | DELETE | `/api/me` | user | `204`. Deletes the account and all its data. Body `{password}`, or `{email}` for accounts without a password. |
-| GET | `/api/auth/options` | – | `{google, demo}`: which ways to sign in exist, and whether visitors can try a demo |
+| GET | `/api/auth/options` | – | `{google, demo, reset}`: which ways to sign in exist, whether visitors can try a demo, and whether a forgotten password can be reset by email |
 | POST | `/api/demo` | – | Body `{tz}` (the visitor's time zone). Signs in to a new demo account filled with sample data, named in the `Accept-Language` language; `201` with `/api/me`'s answer. Only when `DEMO` is on; rate-limited like sign-up. |
 | GET | `/api/auth/google`, `/api/auth/google/callback` | – | Sign in with Google (redirects) |
 | GET | `/api/verify-email?token=` | – | The link in a confirmation email; redirects to the app |
 | POST | `/api/verify-email` | user | `204`. Sends the confirmation email again. |
+| POST | `/api/password/forgot` | – | Body `{email}`. `204` whether or not an account uses it; if one does, a link to `/app/#/reset?token=…` is emailed (at most one a minute). `404` without the `SMTP_*` settings. Rate-limited like sign-in. |
+| POST | `/api/password/reset` | – | Body `{token, password}`, the token from that link (single use, an hour). Sets the password, confirms the email, ends every other session and signs in: returns `/api/me`'s answer, like sign-in. `400` if the link expired or was used. |
 | GET | `/api/wallet` | user | `{settings, accounts, categories, review_count}`. Creates default categories and a Cash account on first call, named in Japanese when `Accept-Language` prefers `ja`. |
 | PUT | `/api/settings` | user | `{currency, auto_confirm, default_account_id}`. The currency is fixed once records exist (`409`). |
 | POST, PUT, DELETE | `/api/accounts[/{id}]` | user | Accounts: `{name, kind, initial_balance, color, archived}` |
 | POST, PUT, DELETE | `/api/categories[/{id}]` | user | Categories: `{name, kind, icon, color}` |
 | GET | `/api/categories/missing` | user | The default categories the user doesn't have (added since they signed up, or deleted), to add with POST |
-| GET | `/api/transactions` | user | Records, newest first. Query: `from`, `to` (RFC 3339), `account_id`, `category_id` (or `none`), `q`, `status` |
+| GET | `/api/transactions` | user | Records, newest first, at most 2000. Query: `from`, `to` (RFC 3339; both optional), `account_id`, `category_id` (or `none`), `q`, `status`. The Records page searches with `q` and no dates, across every month. |
 | POST, PUT, DELETE | `/api/transactions[/{id}]` | user | Records: `{kind, amount, account_id, to_account_id, category_id, occurred_at, payee, note, status}`. Confirming an emailed record learns its shop and card; with `remember: false` on the update, the shop's learned category is left as it was. |
 | POST | `/api/transactions/bulk` | user | Changes many records at once. Body `{ids, action}`: `delete`, `categorize` with `category_id` (`null` clears it; only records of the category's kind change, never transfers), `move` with `account_id`, or `confirm` (records to review with a category and an amount, not flagged as possible duplicates; shops and cards are learned only if nothing was learned for them yet). Up to 2000 IDs. `{changed, skipped}` |
 | GET | `/api/rules` | user | What confirmed payments taught the app: `{payees: [{key, payee, category_id, records}], cards: [{source, account_id, records}]}` |
