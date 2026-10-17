@@ -102,6 +102,14 @@ services:
     volumes:
       - .:/e2e
 
+# The Go caches are shared by every checkout and worktree, so a new one
+# starts warm instead of recompiling everything. External, so that
+# `down --volumes` (preview.sh) and the preview's reaper leave them alone;
+# verify.sh and preview.sh create them.
 volumes:
   gomod:
+    external: true
+    name: wallet-app-gomod
   gobuild:
+    external: true
+    name: wallet-app-gobuild
