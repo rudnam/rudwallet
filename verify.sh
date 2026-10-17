@@ -47,6 +47,13 @@ docker volume create wallet-app-gobuild >/dev/null
 golog=''
 trap 'down; rm -f "$golog"' EXIT
 
+# Pull the browser image while the app builds, not after: it's large, and a
+# fresh machine (CI) or a new Playwright version has to download it.
+pullpid=''
+if [[ $mode == all || $mode == e2e ]]; then
+  dc --profile e2e pull -q e2e >/dev/null 2>&1 & pullpid=$!
+fi
+
 status=0
 step() { printf '\n\033[1m== %s\033[0m\n' "$*"; }
 gostep="Go: vet and tests (with integration tests)"
@@ -66,6 +73,7 @@ if [[ $mode == all || $mode == e2e ]]; then
   step "Build and start the app"
   if dc up -d --build --wait server; then
     step "Browser tests (Playwright $PW_VERSION)"
+    wait "$pullpid" || true   # if the pull failed, the run below pulls again
     # Reinstall only when node_modules is missing or out of date.
     dc --profile e2e run --rm e2e sh -c \
       'npm ls @playwright/test >/dev/null 2>&1 || npm ci --no-audit --no-fund --loglevel=error; npx playwright test "$@"' \
