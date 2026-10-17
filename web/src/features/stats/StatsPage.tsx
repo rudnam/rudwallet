@@ -504,7 +504,7 @@ function MonthAhead({
   const title = t('Rest of {month}', { month: period.from.toLocaleDateString(locale(), { month: 'long' }) });
 
   return (
-    <div className="card stack trends" aria-label={title}>
+    <div className="card stack month-ahead" aria-label={title}>
       <h2>{title}</h2>
       <div>
         <strong className="block">{t('Heading for about {amount}', { amount: w.money(heading((s) => s.spent)) })}</strong>
