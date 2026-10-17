@@ -13,10 +13,10 @@ export function WidgetSettings() {
   return (
     <>
       <p className="muted lede">
-        {isApp ? t('Keep this month in view from your home screen.') : t('The Wallet app for Android keeps this month in view from your home screen.')}{' '}
+        {isApp ? t('Keep this month in view from your home screen.') : t('The RudWallet app for Android keeps this month in view from your home screen.')}{' '}
         {tx('Touch and hold an empty part of the home screen, tap {widgets}, and find {wallet}:', {
           widgets: <strong>{t('Widgets')}</strong>,
-          wallet: <strong>Wallet</strong>,
+          wallet: <strong>RudWallet</strong>,
         })}
       </p>
       <ul className="list card flush" aria-label={t('Widgets')}>

@@ -66,7 +66,7 @@ export function NotificationSettings() {
 
       {!isApp ? (
         <p className="notice small">
-          {tx("This works in the Wallet app for Android, which reads your phone's payment notifications. Open {where} there to switch it on.", {
+          {tx("This works in the RudWallet app for Android, which reads your phone's payment notifications. Open {where} there to switch it on.", {
             where: <strong>{t('Settings › Payment notifications')}</strong>,
           })}
         </p>
@@ -77,8 +77,8 @@ export function NotificationSettings() {
           <div className="row">
             <span className="grow" data-testid="notification-access">
               {access
-                ? tx("{on} Wallet reads PayPay's and Google Wallet's notifications.", { on: <strong>{t('On.')}</strong> })
-                : tx('{off} Wallet needs notification access to read them.', { off: <strong>{t('Off.')}</strong> })}
+                ? tx("{on} RudWallet reads PayPay's and Google Wallet's notifications.", { on: <strong>{t('On.')}</strong> })
+                : tx('{off} RudWallet needs notification access to read them.', { off: <strong>{t('Off.')}</strong> })}
             </span>
             <button type="button" className={access ? 'link' : undefined} onClick={open}>
               {access ? t('Turn off') : t('Allow access')}
@@ -86,8 +86,8 @@ export function NotificationSettings() {
           </div>
           {!access && (
             <p className="muted small">
-              {tx('Android shows a list of apps: turn on {wallet}. If the switch is greyed out, open {where} for Wallet, then try again.', {
-                wallet: <strong>Wallet</strong>,
+              {tx('Android shows a list of apps: turn on {wallet}. If the switch is greyed out, open {where} for RudWallet, then try again.', {
+                wallet: <strong>RudWallet</strong>,
                 where: <strong>{t('App info › ⋮ › Allow restricted settings')}</strong>,
               })}
             </p>

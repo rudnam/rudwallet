@@ -99,7 +99,7 @@ func Load(getenv func(string) string) (Config, error) {
 	}
 	if c.SMTPHost != "" {
 		if _, err := mail.ParseAddress(c.MailFrom); err != nil {
-			r.errs = append(r.errs, errors.New("SMTP_HOST needs MAIL_FROM, e.g. Wallet <no-reply@example.com>"))
+			r.errs = append(r.errs, errors.New("SMTP_HOST needs MAIL_FROM, e.g. RudWallet <no-reply@example.com>"))
 		}
 		if c.PublicOrigin == "" {
 			r.errs = append(r.errs, errors.New("SMTP_HOST needs PUBLIC_ORIGIN, which the emailed links point to"))

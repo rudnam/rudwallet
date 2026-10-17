@@ -16,7 +16,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 /** Lets the web app see and change whether payment notifications are read (web/src/native.ts). */
 @CapacitorPlugin(name = "PaymentNotifications")
 public class NotificationsPlugin extends Plugin {
-    /** {enabled}: whether Wallet has notification access. */
+    /** {enabled}: whether RudWallet has notification access. */
     @PluginMethod
     public void status(PluginCall call) {
         boolean enabled = NotificationManagerCompat.getEnabledListenerPackages(getContext())
@@ -31,7 +31,7 @@ public class NotificationsPlugin extends Plugin {
     public void openSettings(PluginCall call) {
         Intent i;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // Straight to Wallet's own switch.
+            // Straight to RudWallet's own switch.
             i = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS);
             i.putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,
                     new ComponentName(getContext(), PaymentListener.class).flattenToString());
