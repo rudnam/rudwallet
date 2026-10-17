@@ -148,6 +148,39 @@ func TestPayPayNotifications(t *testing.T) {
 	}
 }
 
+// A billed PayPay Card payment gives only its date. Notified days later, it
+// is recorded at noon that day; notified the same day, at the notification's
+// time.
+func TestPayPayBilledNotification(t *testing.T) {
+	ts := newTestServer(t)
+	c := newClient(t, ts)
+	c.signup("a@example.com")
+	billed := func(when time.Time, day string) wallet.Transaction {
+		t.Helper()
+		n := post(t, c, notify.Incoming{Package: payPay, When: when.UnixMilli(),
+			Title: "支払いが完了しました", Text: "お店：ソフトバンクM\n金額：7,065円\n日時：" + day})[0]
+		if n.Status != "payment" || n.TransactionID == nil {
+			t.Fatalf("notification %+v", n)
+		}
+		for _, r := range records(t, c) {
+			if r.ID == *n.TransactionID {
+				return r
+			}
+		}
+		t.Fatalf("no record %d", *n.TransactionID)
+		return wallet.Transaction{}
+	}
+	late := billed(time.Date(2026, 10, 17, 22, 25, 0, 0, time.UTC), "2026年10月15日")
+	if late.Payee != "ソフトバンクM" || late.Amount != 7065 || late.SourceLabel != "PayPay Card" ||
+		!late.OccurredAt.Equal(time.Date(2026, 10, 15, 3, 0, 0, 0, time.UTC)) {
+		t.Errorf("billed days later %+v", late)
+	}
+	when := time.Date(2026, 9, 15, 1, 30, 0, 0, time.UTC) // 10:30 in Japan
+	if r := billed(when, "2026年9月15日"); !r.OccurredAt.Equal(when) {
+		t.Errorf("billed the same day %+v", r)
+	}
+}
+
 func TestNotificationMatchesManualRecord(t *testing.T) {
 	ts := newTestServer(t)
 	c := newClient(t, ts)

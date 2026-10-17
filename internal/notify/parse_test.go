@@ -45,6 +45,8 @@ func TestParse(t *testing.T) {
 		// PayPay, as the app words them (full-width colons and all).
 		{name: "paypay card", pkg: pp, title: "支払いを受け付けました", text: "お店：ベルマート豊橋店\n金額：1,291円\n日時：2026年10月16日 20:19",
 			status: "payment", amount: 1291, currency: "JPY", merchant: "ベルマート豊橋店", source: "PayPay Card"},
+		{name: "paypay card, billed", pkg: pp, title: "支払いが完了しました", text: "お店：ソフトバンクM\n金額：7,065円\n日時：2026年10月15日",
+			status: "payment", amount: 7065, currency: "JPY", merchant: "ソフトバンクM", source: "PayPay Card"},
 		{name: "paypay balance", pkg: pp, title: "PayPay", text: "取引が完了しました。\n金額：1,550円\n取引番号：05093837355250737154\n店舗名：GOアプリ",
 			status: "payment", amount: 1550, currency: "JPY", merchant: "GOアプリ", source: "PayPay"},
 		{name: "paypay online", pkg: pp, title: "PayPay", text: "Uber Eatsへの支払いが完了しました。\n金額: 3,994円\n取引番号: 05093583565634363396",
@@ -80,5 +82,13 @@ func TestParsePayPayTime(t *testing.T) {
 	r := Parse(pp, "支払いを受け付けました", "お店：Visa国内加盟店\n金額：864円\n日時：2026年10月16日 18:20")
 	if want := time.Date(2026, 10, 16, 9, 20, 0, 0, time.UTC); !r.Payment.OccurredAt.Equal(want) {
 		t.Errorf("occurred at %v, want %v", r.Payment.OccurredAt, want)
+	}
+}
+
+// A billed payment gives only its date: noon that day, Japan time.
+func TestParsePayPayDate(t *testing.T) {
+	r := Parse(pp, "支払いが完了しました", "お店：ソフトバンクM\n金額：7,065円\n日時：2026年10月15日")
+	if want := time.Date(2026, 10, 15, 3, 0, 0, 0, time.UTC); !r.DayOnly || !r.Payment.OccurredAt.Equal(want) {
+		t.Errorf("occurred at %v (day only %v), want %v", r.Payment.OccurredAt, r.DayOnly, want)
 	}
 }

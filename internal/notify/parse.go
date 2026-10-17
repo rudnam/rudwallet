@@ -24,6 +24,9 @@ type Read struct {
 	Status  string
 	Detail  string
 	Payment wallet.Payment
+	// DayOnly is set when the notification gave the payment's date but not
+	// its time: Payment.OccurredAt is then noon that day, Japan time.
+	DayOnly bool
 }
 
 var (
@@ -101,8 +104,9 @@ var (
 	// halfWidth, so the colon is ASCII).
 	payPayField = regexp.MustCompile(`(?m)^\s*(お店|店舗名|金額|日時)\s*:\s*(.+?)\s*$`)
 	// "Uber Eatsへの支払いが完了しました。"
-	payPayTo   = regexp.MustCompile(`^(.+?)への支払いが完了しました`)
-	payPayTime = regexp.MustCompile(`^(\d{4})年(\d{1,2})月(\d{1,2})日\s*(\d{1,2}):(\d{2})$`)
+	payPayTo = regexp.MustCompile(`^(.+?)への支払いが完了しました`)
+	// "2026年10月16日 20:19", or the date alone: "2026年10月15日".
+	payPayTime = regexp.MustCompile(`^(\d{4})年(\d{1,2})月(\d{1,2})日(?:\s*(\d{1,2}):(\d{2}))?$`)
 	// A payment that was cancelled is money back.
 	payPayCancel = regexp.MustCompile(`取り?消`)
 )
@@ -111,7 +115,9 @@ var (
 var jst = time.FixedZone("JST", 9*60*60)
 
 // payPay reads the PayPay app's payment notifications. A PayPay Card
-// payment is titled 支払いを受け付けました, with お店, 金額 and 日時 lines.
+// payment is titled 支払いを受け付けました, with お店, 金額 and 日時 lines;
+// a billed one (a phone bill) is titled 支払いが完了しました, with the same
+// lines and a 日時 without the time.
 // A payment from the PayPay balance is titled PayPay and reads
 // 取引が完了しました。 with 金額, 取引番号 and 店舗名 lines, or
 // "Uber Eatsへの支払いが完了しました。" with 金額 and 取引番号. The two are
@@ -123,12 +129,18 @@ func payPay(title, text string) Read {
 		fields[m[1]] = m[2]
 	}
 	p := wallet.Payment{Currency: "JPY", Refund: refundRe.MatchString(all) || payPayCancel.MatchString(all)}
+	dayOnly := false
 	switch {
-	case strings.Contains(title, "支払いを受け付けました"):
+	case strings.Contains(title, "支払いを受け付けました"), strings.Contains(title, "支払いが完了しました"):
 		p.Source, p.Merchant = "PayPay Card", fields["お店"]
 		if m := payPayTime.FindStringSubmatch(fields["日時"]); m != nil {
 			n := func(i int) int { v, _ := strconv.Atoi(m[i]); return v }
-			p.OccurredAt = time.Date(n(1), time.Month(n(2)), n(3), n(4), n(5), 0, 0, jst)
+			if m[4] == "" {
+				dayOnly = true
+				p.OccurredAt = time.Date(n(1), time.Month(n(2)), n(3), 12, 0, 0, 0, jst)
+			} else {
+				p.OccurredAt = time.Date(n(1), time.Month(n(2)), n(3), n(4), n(5), 0, 0, jst)
+			}
 		}
 	case strings.Contains(text, "取引が完了しました"), strings.Contains(text, "支払いが完了しました"):
 		p.Source, p.Merchant = "PayPay", fields["店舗名"]
@@ -148,7 +160,7 @@ func payPay(title, text string) Read {
 	if p.Amount, ok = minorUnits(strings.TrimSpace(strings.TrimSuffix(amount, "円")), 0); !ok || p.Amount <= 0 {
 		return Read{Status: "unparsed", Detail: "Couldn't read the amount " + amount + "."}
 	}
-	return Read{Status: "payment", Payment: p}
+	return Read{Status: "payment", Payment: p, DayOnly: dayOnly}
 }
 
 // minorUnits turns "1,280" or "4.50" into an amount in minor units.
