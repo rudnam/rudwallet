@@ -158,8 +158,11 @@ func (s *Service) Receive(ctx context.Context, userID int64, in Incoming, now ti
 	n.Status, n.Detail = r.Status, r.Detail
 	if r.Status == "payment" {
 		p := r.Payment
-		if p.OccurredAt.IsZero() { // the time the notification itself gives, if any, is better
+		switch {
+		case p.OccurredAt.IsZero(): // the time the notification itself gives, if any, is better
 			p.OccurredAt = at
+		case !p.Day.IsZero() && !at.Before(p.Day) && at.Before(p.Day.Add(24*time.Hour)):
+			p.OccurredAt = at // the notification came the day it was paid
 		}
 		t, matched, err := s.wallet.CreateFromNotification(ctx, userID, p)
 		if err != nil {

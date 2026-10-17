@@ -101,8 +101,9 @@ var (
 	// halfWidth, so the colon is ASCII).
 	payPayField = regexp.MustCompile(`(?m)^\s*(お店|店舗名|金額|日時)\s*:\s*(.+?)\s*$`)
 	// "Uber Eatsへの支払いが完了しました。"
-	payPayTo   = regexp.MustCompile(`^(.+?)への支払いが完了しました`)
-	payPayTime = regexp.MustCompile(`^(\d{4})年(\d{1,2})月(\d{1,2})日\s*(\d{1,2}):(\d{2})$`)
+	payPayTo = regexp.MustCompile(`^(.+?)への支払いが完了しました`)
+	// "2026年10月16日 20:19", or the date alone: "2026年10月15日".
+	payPayTime = regexp.MustCompile(`^(\d{4})年(\d{1,2})月(\d{1,2})日(?:\s*(\d{1,2}):(\d{2}))?$`)
 	// A payment that was cancelled is money back.
 	payPayCancel = regexp.MustCompile(`取り?消`)
 )
@@ -111,7 +112,9 @@ var (
 var jst = time.FixedZone("JST", 9*60*60)
 
 // payPay reads the PayPay app's payment notifications. A PayPay Card
-// payment is titled 支払いを受け付けました, with お店, 金額 and 日時 lines.
+// payment is titled 支払いを受け付けました, with お店, 金額 and 日時 lines;
+// a billed one (a phone bill) is titled 支払いが完了しました, with the same
+// lines and a 日時 without the time.
 // A payment from the PayPay balance is titled PayPay and reads
 // 取引が完了しました。 with 金額, 取引番号 and 店舗名 lines, or
 // "Uber Eatsへの支払いが完了しました。" with 金額 and 取引番号. The two are
@@ -124,11 +127,16 @@ func payPay(title, text string) Read {
 	}
 	p := wallet.Payment{Currency: "JPY", Refund: refundRe.MatchString(all) || payPayCancel.MatchString(all)}
 	switch {
-	case strings.Contains(title, "支払いを受け付けました"):
+	case strings.Contains(title, "支払いを受け付けました"), strings.Contains(title, "支払いが完了しました"):
 		p.Source, p.Merchant = "PayPay Card", fields["お店"]
 		if m := payPayTime.FindStringSubmatch(fields["日時"]); m != nil {
 			n := func(i int) int { v, _ := strconv.Atoi(m[i]); return v }
-			p.OccurredAt = time.Date(n(1), time.Month(n(2)), n(3), n(4), n(5), 0, 0, jst)
+			if m[4] == "" { // the date alone: noon that day, unless the notification came that day
+				p.Day = time.Date(n(1), time.Month(n(2)), n(3), 0, 0, 0, 0, jst)
+				p.OccurredAt = p.Day.Add(12 * time.Hour)
+			} else {
+				p.OccurredAt = time.Date(n(1), time.Month(n(2)), n(3), n(4), n(5), 0, 0, jst)
+			}
 		}
 	case strings.Contains(text, "取引が完了しました"), strings.Contains(text, "支払いが完了しました"):
 		p.Source, p.Merchant = "PayPay", fields["店舗名"]
