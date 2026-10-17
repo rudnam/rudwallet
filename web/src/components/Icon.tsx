@@ -27,6 +27,7 @@ export const icons = {
   close: 'M6 6l12 12M18 6L6 18',
   copy: 'M9 9h11v11H9zM5 15H4V4h11v1',
   mail: 'M3 6h18v12H3zM3 7l9 6 9-6',
+  download: 'M12 4v11M7 10.5l5 5 5-5M5 20h14',
   warning: 'M12 4l9.5 16h-19zM12 10v4M12 17h.01',
   stop: 'M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M12 7.5v5.5M12 16.5h.01',
   transfer: 'M4 8h15l-3.5-3.5M20 16H5l3.5 3.5',

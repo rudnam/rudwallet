@@ -17,6 +17,7 @@ import { href, navigate, replaceRoute, useRoute } from './router';
 import { t, tx, type Key } from './i18n';
 import { LanguagePicker } from './features/settings/LanguageSettings';
 import { ToastProvider, useToast } from './toast';
+import { useUpdate } from './updates';
 import { useWallet, WalletProvider } from './wallet';
 
 /** The app's name, shown in the sidebar and on the sign-in screen. Also in index.html and the manifest. */
@@ -320,6 +321,7 @@ function Shell({
       </nav>
       <main className="page" key={`${route.page}-${version}`}>
         {me.demo && <DemoBanner onCreateAccount={onCreateAccount} />}
+        <UpdateBanner />
         {me.confirm_email && <ConfirmEmail email={me.email} />}
         {page}
       </main>
@@ -343,6 +345,28 @@ function DemoBanner({ onCreateAccount }: { onCreateAccount: () => void }) {
       <button type="button" className="secondary" onClick={onCreateAccount}>
         {t('Create your account')}
       </button>
+    </div>
+  );
+}
+
+/** In the Android app, when the server has a newer build (updates.ts). */
+function UpdateBanner() {
+  const { update, install, later } = useUpdate();
+  if (!update) return null;
+  return (
+    <div className="notice update-banner" role="note">
+      <Icon d={icons.download} className="inline-icon" />
+      <span className="grow">
+        {update.name ? t('RudWallet {version} is available.', { version: update.name }) : t('A new version of RudWallet is available.')}
+      </span>
+      <span className="update-actions">
+        <button type="button" className="link" onClick={later}>
+          {t('Later')}
+        </button>
+        <button type="button" onClick={install}>
+          {t('Update')}
+        </button>
+      </span>
     </div>
   );
 }

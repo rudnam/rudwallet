@@ -421,6 +421,9 @@ li.record:hover:not(:disabled) { background: none; } /* a row to read, not to ta
 .confirm-email { display: flex; align-items: center; gap: 10px; margin-bottom: var(--space); }
 .demo-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: var(--space); background: var(--accent-soft); }
 .demo-banner .grow { min-width: 14rem; }
+.update-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: var(--space); background: var(--accent-soft); }
+.update-banner .grow { min-width: 14rem; }
+.update-actions { display: flex; align-items: center; gap: 12px; margin-left: auto; }
 .demo-offer { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--border); }
 .confirm-email .inline-icon { flex: none; }
 .notice.warn { background: color-mix(in srgb, var(--status-warning) 16%, var(--surface)); }

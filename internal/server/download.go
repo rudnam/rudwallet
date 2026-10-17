@@ -3,8 +3,10 @@ package server
 import (
 	"errors"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/rudnam/wallet-app/internal/httpx"
@@ -15,19 +17,25 @@ const apkPath = "/download/wallet.apk"
 
 // downloads tells the introduction page what it can offer: the APK, while
 // the file at file exists, so a new build can be dropped in without a
-// restart. Otherwise android is null.
+// restart. Otherwise android is null. The Android app also reads it to
+// learn that a newer version is out: version is the APK's versionCode,
+// left out if it can't be read.
 func downloads(file string) http.Handler {
 	type download struct {
-		URL     string    `json:"url"`
-		Size    int64     `json:"size"`
-		Updated time.Time `json:"updated"`
+		URL         string    `json:"url"`
+		Size        int64     `json:"size"`
+		Updated     time.Time `json:"updated"`
+		Version     int64     `json:"version,omitempty"`
+		VersionName string    `json:"version_name,omitempty"`
 	}
+	var versions apkVersions
 	return httpx.HandlerFunc(func(w http.ResponseWriter, r *http.Request) error {
 		var android *download
 		if info, err := statAPK(file); err != nil {
 			return err
 		} else if info != nil {
-			android = &download{URL: apkPath, Size: info.Size(), Updated: info.ModTime().UTC()}
+			v := versions.get(file, info)
+			android = &download{URL: apkPath, Size: info.Size(), Updated: info.ModTime().UTC(), Version: v.Code, VersionName: v.Name}
 		}
 		httpx.WriteJSON(w, http.StatusOK, map[string]any{"android": android})
 		return nil
@@ -69,4 +77,26 @@ func statAPK(file string) (fs.FileInfo, error) {
 		return nil, nil
 	}
 	return info, err
+}
+
+// apkVersions remembers the version read from the APK until the file changes.
+type apkVersions struct {
+	mu      sync.Mutex
+	size    int64
+	modTime time.Time
+	v       apkVersion
+}
+
+func (c *apkVersions) get(file string, info fs.FileInfo) apkVersion {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.size == info.Size() && c.modTime.Equal(info.ModTime()) {
+		return c.v
+	}
+	v, err := readAPKVersion(file)
+	if err != nil {
+		slog.Warn("reading the APK's version", "file", file, "err", err)
+	}
+	c.size, c.modTime, c.v = info.Size(), info.ModTime(), v
+	return v
 }
