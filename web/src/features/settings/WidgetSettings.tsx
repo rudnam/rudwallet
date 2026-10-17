@@ -12,8 +12,8 @@ export function WidgetSettings() {
   return (
     <>
       <p className="muted lede">
-        {isApp ? 'Keep this month in view from your home screen.' : 'The Wallet app for Android keeps this month in view from your home screen.'}{' '}
-        Touch and hold an empty part of the home screen, tap <strong>Widgets</strong>, and find <strong>Wallet</strong>:
+        {isApp ? 'Keep this month in view from your home screen.' : 'The RudWallet app for Android keeps this month in view from your home screen.'}{' '}
+        Touch and hold an empty part of the home screen, tap <strong>Widgets</strong>, and find <strong>RudWallet</strong>:
       </p>
       <ul className="list card flush" aria-label="Widgets">
         {widgets.map((w) => (

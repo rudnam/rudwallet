@@ -20,8 +20,8 @@
         <item quantity="one">%d payment to review</item>
         <item quantity="other">%d payments to review</item>
     </plurals>
-    <string name="widget_sign_in">Sign in to Wallet to see this month</string>
-    <string name="widget_offline">Can’t reach Wallet right now</string>
+    <string name="widget_sign_in">Sign in to RudWallet to see this month</string>
+    <string name="widget_offline">Can’t reach RudWallet right now</string>
     <string name="widget_no_budgets">No budgets yet. Tap to add one.</string>
 
     <!-- Sample figures for the widget picker's previews. -->

@@ -30,9 +30,9 @@ func (h *Handler) sendConfirmation(ctx context.Context, userID int64, email stri
 	link := h.cfg.PublicOrigin + "/api/verify-email?token=" + token
 	return h.cfg.Mail.Send(ctx, mailer.Message{
 		To:      email,
-		Subject: "Confirm your email for Wallet",
+		Subject: "Confirm your email for RudWallet",
 		Body: fmt.Sprintf("Hello,\n\nPlease confirm that this is your email address by opening this link:\n\n%s\n\n"+
-			"The link works for %d hours. If you didn't create a Wallet account, you can ignore this email.\n",
+			"The link works for %d hours. If you didn't create a RudWallet account, you can ignore this email.\n",
 			link, int(confirmationTTL.Hours())),
 	})
 }

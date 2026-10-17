@@ -48,7 +48,7 @@ export function NotificationSettings() {
 
       {!isApp ? (
         <p className="notice small">
-          This works in the Wallet app for Android, which reads your phone's payment notifications. Open{' '}
+          This works in the RudWallet app for Android, which reads your phone's payment notifications. Open{' '}
           <strong>Settings › Payment notifications</strong> there to switch it on.
         </p>
       ) : access === null ? (
@@ -59,11 +59,11 @@ export function NotificationSettings() {
             <span className="grow" data-testid="notification-access">
               {access ? (
                 <>
-                  <strong>On.</strong> Wallet reads Google Wallet's notifications.
+                  <strong>On.</strong> RudWallet reads Google Wallet's notifications.
                 </>
               ) : (
                 <>
-                  <strong>Off.</strong> Wallet needs notification access to read them.
+                  <strong>Off.</strong> RudWallet needs notification access to read them.
                 </>
               )}
             </span>
@@ -73,8 +73,8 @@ export function NotificationSettings() {
           </div>
           {!access && (
             <p className="muted small">
-              Android shows a list of apps: turn on <strong>Wallet</strong>. If the switch is greyed out, open{' '}
-              <strong>App info › ⋮ › Allow restricted settings</strong> for Wallet, then try again.
+              Android shows a list of apps: turn on <strong>RudWallet</strong>. If the switch is greyed out, open{' '}
+              <strong>App info › ⋮ › Allow restricted settings</strong> for RudWallet, then try again.
             </p>
           )}
         </div>

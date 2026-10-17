@@ -12,7 +12,7 @@ import java.util.Set;
 /**
  * Sends payment apps' notifications to the server, which turns payments into
  * records to review (internal/notify). Android runs this while the user has
- * given Wallet notification access (Settings › Payment notifications in the
+ * given RudWallet notification access (Settings › Payment notifications in the
  * app). Every other app's notifications are ignored here and never leave the
  * phone.
  */

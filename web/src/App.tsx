@@ -17,7 +17,7 @@ import { ToastProvider, useToast } from './toast';
 import { useWallet, WalletProvider } from './wallet';
 
 /** The app's name, shown in the sidebar and on the sign-in screen. Also in index.html and the manifest. */
-export const appName = 'Wallet';
+export const appName = 'RudWallet';
 
 type Session =
   | { status: 'loading' }

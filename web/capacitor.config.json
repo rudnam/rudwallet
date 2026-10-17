@@ -1,6 +1,6 @@
 {
   "appId": "com.rudnam.wallet",
-  "appName": "Wallet",
+  "appName": "RudWallet",
   "webDir": "dist-android",
   "android": { "path": "../android" },
   "plugins": {

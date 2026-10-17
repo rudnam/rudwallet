@@ -1,6 +1,6 @@
-# Wallet
+# RudWallet
 
-**Wallet** tracks your money: accounts, categories, records, budgets, a
+**RudWallet** tracks your money: accounts, categories, records, budgets, a
 monthly overview, and stats over any period with trends. Payment emails become records for you: forward your card's
 payment emails to your private address and each one waits under *To review*
 with the shop, amount and time filled in. Confirming one teaches it the shop's
@@ -104,7 +104,7 @@ All settings are environment variables (read in `internal/config`).
 | `SECRETS_KEY` | empty | Encrypts what users save in the app: their Claude API keys (AES-256-GCM). 32+ characters, e.g. `openssl rand -base64 32`. Without it, users can't save a key. Keep it out of backups of the database, and don't change it: keys saved under an old one can't be read, and users are asked to add them again. |
 | `ANTHROPIC_BASE_URL` | Anthropic's API | Where Claude is reached. The browser tests point it at a fake (`e2e/fake-claude.js`). |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | empty | Show "Continue with Google" on the sign-in page. Needs `PUBLIC_ORIGIN`. See [Sign in with Google](#sign-in-with-google). |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `MAIL_FROM` | empty, `587` | Email a link to confirm each new account's address (port 587 with STARTTLS, or 465). `MAIL_FROM` is e.g. `Wallet <no-reply@example.com>`. Needs `PUBLIC_ORIGIN`. Without these, nobody is asked to confirm. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `MAIL_FROM` | empty, `587` | Email a link to confirm each new account's address (port 587 with STARTTLS, or 465). `MAIL_FROM` is e.g. `RudWallet <no-reply@example.com>`. Needs `PUBLIC_ORIGIN`. Without these, nobody is asked to confirm. |
 
 ### Sign in with Google
 
