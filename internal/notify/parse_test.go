@@ -88,7 +88,10 @@ func TestParsePayPayTime(t *testing.T) {
 // A billed payment gives only its date: noon that day, Japan time.
 func TestParsePayPayDate(t *testing.T) {
 	r := Parse(pp, "支払いが完了しました", "お店：ソフトバンクM\n金額：7,065円\n日時：2026年10月15日")
-	if want := time.Date(2026, 10, 15, 3, 0, 0, 0, time.UTC); !r.DayOnly || !r.Payment.OccurredAt.Equal(want) {
-		t.Errorf("occurred at %v (day only %v), want %v", r.Payment.OccurredAt, r.DayOnly, want)
+	if want := time.Date(2026, 10, 15, 3, 0, 0, 0, time.UTC); !r.Payment.OccurredAt.Equal(want) {
+		t.Errorf("occurred at %v, want %v", r.Payment.OccurredAt, want)
+	}
+	if want := time.Date(2026, 10, 14, 15, 0, 0, 0, time.UTC); !r.Payment.Day.Equal(want) {
+		t.Errorf("day %v, want %v", r.Payment.Day, want)
 	}
 }

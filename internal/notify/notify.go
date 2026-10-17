@@ -161,7 +161,7 @@ func (s *Service) Receive(ctx context.Context, userID int64, in Incoming, now ti
 		switch {
 		case p.OccurredAt.IsZero(): // the time the notification itself gives, if any, is better
 			p.OccurredAt = at
-		case r.DayOnly && sameDay(p.OccurredAt, at):
+		case !p.Day.IsZero() && !at.Before(p.Day) && at.Before(p.Day.Add(24*time.Hour)):
 			p.OccurredAt = at // the notification came the day it was paid
 		}
 		t, matched, err := s.wallet.CreateFromNotification(ctx, userID, p)
@@ -174,13 +174,6 @@ func (s *Service) Receive(ctx context.Context, userID int64, in Incoming, now ti
 		}
 	}
 	return s.store.finish(ctx, userID, n)
-}
-
-// sameDay reports whether a and b fall on the same date in Japan time.
-func sameDay(a, b time.Time) bool {
-	ay, am, ad := a.In(jst).Date()
-	by, bm, bd := b.In(jst).Date()
-	return ay == by && am == bm && ad == bd
 }
 
 // ---------- HTTP ----------

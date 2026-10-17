@@ -24,9 +24,6 @@ type Read struct {
 	Status  string
 	Detail  string
 	Payment wallet.Payment
-	// DayOnly is set when the notification gave the payment's date but not
-	// its time: Payment.OccurredAt is then noon that day, Japan time.
-	DayOnly bool
 }
 
 var (
@@ -129,15 +126,14 @@ func payPay(title, text string) Read {
 		fields[m[1]] = m[2]
 	}
 	p := wallet.Payment{Currency: "JPY", Refund: refundRe.MatchString(all) || payPayCancel.MatchString(all)}
-	dayOnly := false
 	switch {
 	case strings.Contains(title, "支払いを受け付けました"), strings.Contains(title, "支払いが完了しました"):
 		p.Source, p.Merchant = "PayPay Card", fields["お店"]
 		if m := payPayTime.FindStringSubmatch(fields["日時"]); m != nil {
 			n := func(i int) int { v, _ := strconv.Atoi(m[i]); return v }
-			if m[4] == "" {
-				dayOnly = true
-				p.OccurredAt = time.Date(n(1), time.Month(n(2)), n(3), 12, 0, 0, 0, jst)
+			if m[4] == "" { // the date alone: noon that day, unless the notification came that day
+				p.Day = time.Date(n(1), time.Month(n(2)), n(3), 0, 0, 0, 0, jst)
+				p.OccurredAt = p.Day.Add(12 * time.Hour)
 			} else {
 				p.OccurredAt = time.Date(n(1), time.Month(n(2)), n(3), n(4), n(5), 0, 0, jst)
 			}
@@ -160,7 +156,7 @@ func payPay(title, text string) Read {
 	if p.Amount, ok = minorUnits(strings.TrimSpace(strings.TrimSuffix(amount, "円")), 0); !ok || p.Amount <= 0 {
 		return Read{Status: "unparsed", Detail: "Couldn't read the amount " + amount + "."}
 	}
-	return Read{Status: "payment", Payment: p, DayOnly: dayOnly}
+	return Read{Status: "payment", Payment: p}
 }
 
 // minorUnits turns "1,280" or "4.50" into an amount in minor units.

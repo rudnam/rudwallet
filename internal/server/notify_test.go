@@ -181,6 +181,31 @@ func TestPayPayBilledNotification(t *testing.T) {
 	}
 }
 
+// PayPay can report a card payment twice: 支払いを受け付けました as it is
+// made, then 支払いが完了しました, with only the date, hours or a day later.
+// The second is the same payment, not a new one.
+func TestPayPayCompletedAfterAccepted(t *testing.T) {
+	ts := newTestServer(t)
+	c := newClient(t, ts)
+	c.signup("a@example.com")
+	accepted := post(t, c, notify.Incoming{Package: payPay, When: time.Date(2026, 10, 15, 1, 23, 0, 0, time.UTC).UnixMilli(),
+		Title: "支払いを受け付けました", Text: "お店：ソフトバンクM\n金額：7,065円\n日時：2026年10月15日 10:23"})[0]
+	completed := post(t, c, notify.Incoming{Package: payPay, When: time.Date(2026, 10, 16, 0, 40, 0, 0, time.UTC).UnixMilli(),
+		Title: "支払いが完了しました", Text: "お店：ソフトバンクM\n金額：7,065円\n日時：2026年10月15日"})[0]
+	if accepted.Status != "payment" || completed.Status != "matched" || *completed.TransactionID != *accepted.TransactionID {
+		t.Fatalf("accepted %+v, completed %+v", accepted, completed)
+	}
+	if n := len(records(t, c)); n != 1 {
+		t.Errorf("%d records, want 1", n)
+	}
+	// Another payment of the same amount that day is a payment of its own.
+	again := post(t, c, notify.Incoming{Package: payPay, When: time.Date(2026, 10, 16, 0, 41, 0, 0, time.UTC).UnixMilli(),
+		Title: "支払いが完了しました", Text: "お店：ソフトバンクM\n金額：7,065円\n日時：2026年10月15日"})[0]
+	if again.Status != "payment" || *again.TransactionID == *accepted.TransactionID {
+		t.Errorf("second completed %+v", again)
+	}
+}
+
 func TestNotificationMatchesManualRecord(t *testing.T) {
 	ts := newTestServer(t)
 	c := newClient(t, ts)

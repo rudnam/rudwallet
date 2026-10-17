@@ -266,6 +266,12 @@ type Payment struct {
 	// Source names what paid (e.g. the card), so the account can be learned.
 	Source string
 	Note   string
+	// Day is set when the notification gave the date but not the time: the
+	// start of that day. Such a notification can come after another one
+	// from the same source that reported the payment as it was made
+	// (PayPay's 支払いが完了しました after 支払いを受け付けました), so that
+	// record, the same amount on the same day, is this payment.
+	Day time.Time
 }
 
 // SameMoment is how far apart two reports of one payment can be: a record
@@ -307,6 +313,9 @@ func (s *Store) CreateFromNotification(ctx context.Context, userID int64, p Paym
 	learned, err := s.learnedAccount(ctx, userID, p.Source)
 	if err != nil {
 		return t, false, err
+	}
+	if same, ok, err := s.reportedBefore(ctx, userID, t, p.Day); err != nil || ok {
+		return same, ok, err
 	}
 	if same, ok, err := s.samePayment(ctx, userID, t, learned); err != nil || ok {
 		return same, ok, err
@@ -367,6 +376,31 @@ func (s *Store) samePayment(ctx context.Context, userID int64, t Transaction, le
 		   AND NOT EXISTS (SELECT 1 FROM payment_notifications n WHERE n.transaction_id = transactions.id)
 		 ORDER BY abs(extract(epoch FROM occurred_at - $4::timestamptz)), id LIMIT 1`,
 		userID, t.Kind, t.Amount, t.OccurredAt, fmt.Sprintf("%d seconds", int(SameMoment.Seconds())), learned))
+	if errors.Is(err, sql.ErrNoRows) {
+		return t, false, nil
+	}
+	if err != nil {
+		return t, false, err
+	}
+	return same, true, nil
+}
+
+// reportedBefore finds the record an earlier notification from the same
+// source made for this payment, when this notification gives only its day:
+// the same amount during that day, not already matched by another
+// notification.
+func (s *Store) reportedBefore(ctx context.Context, userID int64, t Transaction, day time.Time) (Transaction, bool, error) {
+	if day.IsZero() || t.Amount <= 0 {
+		return t, false, nil
+	}
+	same, err := scanTx(s.db.QueryRowContext(ctx,
+		`SELECT `+txColumns+` FROM transactions
+		 WHERE user_id = $1 AND kind = $2 AND amount = $3
+		   AND occurred_at >= $4 AND occurred_at < $4::timestamptz + interval '1 day'
+		   AND source = 'notification' AND source_label = $5
+		   AND NOT EXISTS (SELECT 1 FROM payment_notifications n WHERE n.transaction_id = transactions.id AND n.status = 'matched')
+		 ORDER BY (payee = $6) DESC, occurred_at, id LIMIT 1`,
+		userID, t.Kind, t.Amount, day, t.SourceLabel, t.Payee))
 	if errors.Is(err, sql.ErrNoRows) {
 		return t, false, nil
 	}
