@@ -6,8 +6,8 @@ package account
 // password, so nobody can sign in to it again; its session ends after
 // Config.DemoTTL, and expired demos are deleted, with everything in them,
 // whenever a new one starts or the visitor ends theirs. Demos can't reach
-// outside the app: features that would (forwarding addresses, saving API
-// keys, access tokens) refuse them through NotInDemo.
+// outside the app: features that would (access tokens) refuse them through
+// NotInDemo.
 
 import (
 	"context"

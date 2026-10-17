@@ -81,7 +81,7 @@ var cardDigits = regexp.MustCompile(`(\d{4})$`)
 const payPayBalance = "PayPay残高"
 
 // payPayRulePrefix marks the account remembered for a 取引方法 in
-// source_rules, apart from the card names that emails use.
+// source_rules, apart from the card names that notifications use.
 const payPayRulePrefix = "paypay-csv:"
 
 // PayPayMethod is one way of paying found in a PayPay export, with the
@@ -239,8 +239,8 @@ func (rs payeeRuleSet) match(payee string) *int64 {
 // remembered category, if an expense, as before previews had them.
 //
 // Rows are keyed by their 取引番号, so importing overlapping periods adds
-// each payment once. A payment already recorded another way (from its email,
-// or by hand) in the same account, for the same amount, within a day, is
+// each payment once. A payment already recorded another way (from its
+// notification, or by hand) in the same account, for the same amount, within a day, is
 // skipped and counted as Matched.
 func (s *Store) ImportPayPay(ctx context.Context, userID int64, data []byte, accounts map[string]int64, categories []CategoryChoice) (ImportResult, error) {
 	res := ImportResult{Problems: []string{}}

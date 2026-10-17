@@ -254,10 +254,9 @@ func PayeeKey(payee string) string {
 	return strings.TrimRight(strings.Join(strings.Fields(b.String()), " "), "*・ ")
 }
 
-// ---------- Records from emails and notifications ----------
+// ---------- Records from notifications ----------
 
-// Payment is a payment read from an email or a phone notification, ready to
-// record.
+// Payment is a payment read from a phone notification, ready to record.
 type Payment struct {
 	Amount     int64
 	Currency   string
@@ -269,39 +268,28 @@ type Payment struct {
 	Note   string
 }
 
-// SameMoment is how far apart two reports of one payment can be: a card's
-// email and the phone's notification both arrive within minutes of paying.
+// SameMoment is how far apart two reports of one payment can be: a record
+// typed in at the till and the phone's notification are minutes apart.
 const SameMoment = 15 * time.Minute
 
-// CreateFromEmail records an emailed payment, unless the phone already
-// reported it: a record from a notification for the same amount within
-// SameMoment, which no other email claimed, is returned instead (matched),
-// and gets the card's account if it is still waiting for review.
-func (s *Store) CreateFromEmail(ctx context.Context, userID int64, p Payment) (t Transaction, matched bool, err error) {
-	return s.createPayment(ctx, userID, p, "email")
-}
-
 // CreateFromNotification records a payment from a phone notification,
-// unless it was already recorded another way (its email, an import, or by
-// hand): that record is returned instead (matched). Each record matches at
-// most one notification, so two equal payments in a row stay two.
-func (s *Store) CreateFromNotification(ctx context.Context, userID int64, p Payment) (t Transaction, matched bool, err error) {
-	return s.createPayment(ctx, userID, p, "notification")
-}
-
-// createPayment picks the account learned for the card (else the default
+// unless it was already recorded another way (an import, or by hand): that
+// record is returned instead (matched). Each record matches at most one
+// notification, so two equal payments in a row stay two.
+//
+// A new record gets the account learned for the card (else the default
 // account, else the first one) and the category learned for the merchant.
-// The record waits for review unless the user turned on auto-confirm and the
+// It waits for review unless the user turned on auto-confirm and the
 // category is known. A record with the same amount within a day is flagged
 // as a possible duplicate, and never confirmed automatically.
-func (s *Store) createPayment(ctx context.Context, userID int64, p Payment, source string) (Transaction, bool, error) {
+func (s *Store) CreateFromNotification(ctx context.Context, userID int64, p Payment) (Transaction, bool, error) {
 	st, err := s.Settings(ctx, userID)
 	if err != nil {
 		return Transaction{}, false, err
 	}
 	t := Transaction{
 		Kind: "expense", Amount: p.Amount, OccurredAt: p.OccurredAt, Payee: p.Merchant, Note: p.Note,
-		Status: "review", Source: source, SourceLabel: p.Source,
+		Status: "review", Source: "notification", SourceLabel: p.Source,
 	}
 	if p.Refund {
 		t.Kind = "income"
@@ -320,7 +308,7 @@ func (s *Store) createPayment(ctx context.Context, userID int64, p Payment, sour
 	if err != nil {
 		return t, false, err
 	}
-	if same, ok, err := s.samePayment(ctx, userID, t, source, learned); err != nil || ok {
+	if same, ok, err := s.samePayment(ctx, userID, t, learned); err != nil || ok {
 		return same, ok, err
 	}
 
@@ -344,11 +332,11 @@ func (s *Store) createPayment(ctx context.Context, userID int64, p Payment, sour
 		`SELECT id FROM transactions
 		 WHERE user_id = $1 AND kind = $2 AND amount = $3 AND amount > 0
 		   AND occurred_at BETWEEN $4::timestamptz - interval '1 day' AND $4::timestamptz + interval '1 day'
-		   -- Two alerts about the same card are two payments (the same alert
-		   -- twice is caught before this): compare with other sources.
-		   AND NOT (source = $5 AND source_label = $6)
+		   -- Two notifications about the same card are two payments (the same
+		   -- one twice is caught before this): compare with other sources.
+		   AND NOT (source = 'notification' AND source_label = $5)
 		 ORDER BY abs(extract(epoch FROM occurred_at - $4::timestamptz)) LIMIT 1`,
-		userID, t.Kind, t.Amount, t.OccurredAt, source, t.SourceLabel).Scan(&dup)
+		userID, t.Kind, t.Amount, t.OccurredAt, t.SourceLabel).Scan(&dup)
 	switch {
 	case err == nil:
 		t.DuplicateOfID = &dup
@@ -362,22 +350,12 @@ func (s *Store) createPayment(ctx context.Context, userID int64, p Payment, sour
 	return t, false, err
 }
 
-// samePayment finds the record of this payment reported the other way: for
-// an email, a notification's record no email has claimed; for a
-// notification, any record no notification has claimed. It must have the
-// same amount, within SameMoment. A record the user already confirmed must
-// also be in the account learned for this card, if there is one.
-func (s *Store) samePayment(ctx context.Context, userID int64, t Transaction, source string, learned *int64) (Transaction, bool, error) {
+// samePayment finds the record of this payment made another way: one no
+// notification has claimed, with the same amount, within SameMoment. A
+// record the user already confirmed must also be in the account learned for
+// this card, if there is one.
+func (s *Store) samePayment(ctx context.Context, userID int64, t Transaction, learned *int64) (Transaction, bool, error) {
 	if t.Amount <= 0 {
-		return t, false, nil
-	}
-	var other string
-	switch source {
-	case "email":
-		other = `source = 'notification' AND NOT EXISTS (SELECT 1 FROM inbound_emails e WHERE e.transaction_id = transactions.id)`
-	case "notification":
-		other = `source <> 'notification' AND NOT EXISTS (SELECT 1 FROM payment_notifications n WHERE n.transaction_id = transactions.id)`
-	default:
 		return t, false, nil
 	}
 	same, err := scanTx(s.db.QueryRowContext(ctx,
@@ -385,7 +363,8 @@ func (s *Store) samePayment(ctx context.Context, userID int64, t Transaction, so
 		 WHERE user_id = $1 AND kind = $2 AND amount = $3
 		   AND occurred_at BETWEEN $4::timestamptz - $5::interval AND $4::timestamptz + $5::interval
 		   AND (status = 'review' OR $6::bigint IS NULL OR account_id = $6)
-		   AND `+other+`
+		   AND source <> 'notification'
+		   AND NOT EXISTS (SELECT 1 FROM payment_notifications n WHERE n.transaction_id = transactions.id)
 		 ORDER BY abs(extract(epoch FROM occurred_at - $4::timestamptz)), id LIMIT 1`,
 		userID, t.Kind, t.Amount, t.OccurredAt, fmt.Sprintf("%d seconds", int(SameMoment.Seconds())), learned))
 	if errors.Is(err, sql.ErrNoRows) {
@@ -393,15 +372,6 @@ func (s *Store) samePayment(ctx context.Context, userID int64, t Transaction, so
 	}
 	if err != nil {
 		return t, false, err
-	}
-	// The card's email knows which account paid better than the phone does.
-	if source == "email" && same.Status == "review" && learned != nil && same.AccountID != *learned {
-		same, err = scanTx(s.db.QueryRowContext(ctx,
-			`UPDATE transactions SET account_id = $3 WHERE user_id = $1 AND id = $2 RETURNING `+txColumns,
-			userID, same.ID, *learned))
-		if err != nil {
-			return same, false, err
-		}
 	}
 	return same, true, nil
 }

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title data-ja="Wallet: お金のことを、静かに整えて">Wallet: your money, quietly kept in order</title>
-<meta name="description" content="Track accounts, budgets and spending. Payment emails and Google Wallet notifications become records for you." data-ja-content="口座、予算、支出を記録。支払いメールやGoogleウォレットの通知が、そのまま記録になります。">
+<meta name="description" content="Track accounts, budgets and spending. PayPay and Google Wallet payment notifications become records for you." data-ja-content="口座、予算、支出を記録。PayPayやGoogleウォレットの決済通知が、そのまま記録になります。">
 <meta name="theme-color" content="#f5f3ec" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#1f1e1c" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
@@ -33,7 +33,7 @@
   <section class="landing-hero">
     <div class="landing-pitch">
       <h1 data-ja="お金のことを、静かに整えて。">Your money, quietly kept in order.</h1>
-      <p class="landing-lead" data-ja="支払いのメールや通知が、そのまま記録になります。あなたは確認するだけ。あとのお金の管理は自然と整います。">Payment emails and notifications become records for you. You check them, and the rest of your money takes care of itself.</p>
+      <p class="landing-lead" data-ja="スマホに届く決済通知が、そのまま記録になります。あなたは確認するだけ。あとのお金の管理は自然と整います。">Your phone's payment notifications become records for you. You check them, and the rest of your money takes care of itself.</p>
       <div class="landing-actions">
         <a class="button" href="/app/" data-ja="はじめる">Get started</a>
         <a class="button secondary" href="/app/?demo" data-demo-hidden hidden data-ja="デモを試す">Try the demo</a>
@@ -51,7 +51,7 @@
         <span class="landing-dot"></span>
         <div class="grow">
           <strong>IKEAオンライン</strong>
-          <span class="muted small block" data-ja="メールから · 確認待ち">From an email · to review</span>
+          <span class="muted small block" data-ja="PayPayの通知から · 確認待ち">From PayPay · to review</span>
         </div>
         <span class="landing-amount">−¥4,994</span>
       </div>
@@ -67,33 +67,33 @@
   <section class="landing-section how" aria-labelledby="how-title">
     <div class="landing-head reveal">
       <span class="eyebrow" data-ja="しくみ">How it works</span>
-      <h2 id="how-title" data-ja="支払いメールが届けば、記録ができあがる。">A payment email in, a record out.</h2>
+      <h2 id="how-title" data-ja="決済通知が届けば、記録ができあがる。">A payment notification in, a record out.</h2>
     </div>
     <div class="how-body">
       <div class="how-stage" data-step="1" aria-hidden="true">
         <div class="card how-mail">
           <div class="how-from">
-            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M3 6h18v12H3zM3 7l9 6 9-6"/></svg>
+            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5h4"/></svg>
             <div class="grow">
-              <strong>PayPayカード</strong>
-              <span class="muted small block">to pay-k3x9q2m4ab@in…</span>
+              <strong>PayPay</strong>
+              <span class="muted small block" data-ja="通知">Notification</span>
             </div>
             <span class="muted small">13:21</span>
           </div>
-          <div class="how-subject">PayPayカード ゴールド（Visa）利用速報</div>
+          <div class="how-subject">支払いを受け付けました</div>
           <div class="how-lines">
-            <span class="how-field">テスト書店オンライン</span>
-            <span class="how-field">2026年10月11日 13:21</span>
-            <span class="how-field">3,280円</span>
+            <span class="how-field">お店：テスト書店</span>
+            <span class="how-field">金額：3,280円</span>
+            <span class="how-field">日時：2026年10月11日 13:21</span>
           </div>
         </div>
         <div class="card how-record">
           <span class="how-glyph">
-            <svg class="nav-icon how-pending" viewBox="0 0 24 24"><path d="M3 6h18v12H3zM3 7l9 6 9-6"/></svg>
+            <svg class="nav-icon how-pending" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5h4"/></svg>
             <svg class="nav-icon how-done" viewBox="0 0 24 24"><path d="M5 8h14l-1 12.5H6zM9 10V6.5a3 3 0 0 1 6 0V10"/></svg>
           </span>
           <div class="grow">
-            <strong>テスト書店オンライン</strong>
+            <strong>テスト書店</strong>
             <span class="muted small block">
               <span class="how-pending" data-ja="確認待ち · 10月11日 13:21">To review · Oct 11, 13:21</span>
               <span class="how-done" data-ja="買い物 · PayPayカード">Shopping · PayPay Card</span>
@@ -110,13 +110,13 @@
       <ol class="how-steps">
         <li class="how-step" data-step="1">
           <span class="how-num">1</span>
-          <h3 data-ja="カードのメールを転送する。">Forward your card's emails.</h3>
-          <p data-ja="あなた専用のアドレスが届きます。メールのフィルタひとつでカードの利用通知だけをそこへ送り、受信箱のほかのメールが読まれることはありません。">You get a private address. One mail filter sends your card's payment alerts there, and nothing else in your inbox is ever read.</p>
+          <h3 data-ja="Androidアプリで通知をオンに。">Turn on notifications in the Android app.</h3>
+          <p data-ja="通知へのアクセスを一度許可するだけ。読むのはPayPayとGoogleウォレットの決済通知だけで、ほかの通知がスマホの外に出ることはありません。">Allow notification access once. Only PayPay's and Google Wallet's payment notifications are read; nothing else ever leaves your phone.</p>
         </li>
         <li class="how-step" data-step="2">
           <span class="how-num">2</span>
           <h3 data-ja="1件ずつ、確認を待つ。">Each one waits for a look.</h3>
-          <p data-ja="お店、金額、日時はメールから読み取って入力済み。確認するまで、支払いは&lt;em&gt;確認待ち&lt;/em&gt;に置かれます。">The shop, amount and time are read from the email and filled in. The payment waits under <em>To review</em> until you have checked it.</p>
+          <p data-ja="お店、金額、日時は通知から読み取って入力済み。確認するまで、支払いは&lt;em&gt;確認待ち&lt;/em&gt;に置かれます。">The shop, amount and time are read from the notification and filled in. The payment waits under <em>To review</em> until you have checked it.</p>
         </li>
         <li class="how-step" data-step="3">
           <span class="how-num">3</span>
@@ -166,7 +166,7 @@
     <div class="android-text reveal">
       <span class="eyebrow" data-ja="Androidでは">On Android</span>
       <h2 id="android-title" data-ja="タッチ決済にも対応。">Tap to pay is covered too.</h2>
-      <p data-ja="Googleウォレットの決済通知も同じように記録になります。通知とカードのメールの両方で届いた支払いは、1回だけ記録されます。">Google Wallet's payment notifications become records the same way. When a payment is reported by both the notification and the card's email, it's recorded once.</p>
+      <p data-ja="Googleウォレットの決済通知も同じように記録になります。手で入力済みの支払いに通知が届いても、記録は1回だけです。">Google Wallet's payment notifications become records the same way. When you already typed a payment in, its notification is matched to it and it's recorded once.</p>
       <p data-ja="ホーム画面のウィジェットで今月の支出と予算を確認でき、ワンタップで記録も追加できます。">Home screen widgets show this month's spending and your budgets, with a button to add a record in a tap.</p>
       <div class="android-get" data-apk-hidden hidden>
         <a class="button" id="apk-link" href="/download/wallet.apk" download data-ja="Android版をダウンロード">Download for Android</a>
@@ -180,7 +180,7 @@
           <span data-ja="ローソンで¥680">¥680 at ローソン</span>
         </div>
         <div class="card merge-source">
-          <span class="eyebrow" data-ja="カードのメール">Card email</span>
+          <span class="eyebrow" data-ja="手入力">Typed in</span>
           <span>680円 ローソン</span>
         </div>
         <svg class="merge-lines" viewBox="0 0 200 40" preserveAspectRatio="none"><path pathLength="1" d="M50 0C50 24 100 16 100 40"/><path pathLength="1" d="M150 0C150 24 100 16 100 40"/></svg>
@@ -201,7 +201,7 @@
 
   <section class="landing-close reveal">
     <h2 data-ja="まずはカード1枚から。">Start with one card.</h2>
-    <p class="muted" data-ja="口座を追加してメールを転送すれば、あとは記録が届くのを待つだけ。">Add an account, forward its emails, and let the records come to you.</p>
+    <p class="muted" data-ja="口座を追加して通知をオンにすれば、あとは記録が届くのを待つだけ。">Add an account, turn on notifications, and let the records come to you.</p>
     <div class="landing-actions">
       <a class="button" href="/app/" data-ja="はじめる">Get started</a>
       <a class="button secondary" href="/app/?demo" data-demo-hidden hidden data-ja="デモを試す">Try the demo</a>

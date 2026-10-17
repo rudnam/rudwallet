@@ -19,7 +19,8 @@ import java.util.Set;
 public class PaymentListener extends NotificationListenerService {
     /** The apps whose notifications are sent. The server knows the same list. */
     static final Set<String> APPS = new HashSet<>(Arrays.asList(
-            "com.google.android.apps.walletnfcrel" // Google Wallet
+            "com.google.android.apps.walletnfcrel", // Google Wallet
+            "jp.ne.paypay.android.app" // PayPay
     ));
 
     @Override

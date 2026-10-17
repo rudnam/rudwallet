@@ -1,8 +1,7 @@
 // Package wallet is the money tracker: accounts, categories, records
-// (transactions), budgets, and the user's settings. Emailed payments arrive
-// through internal/inbox, which creates records here with CreateFromEmail,
-// and the phone's payment notifications through internal/notify, with
-// CreateFromNotification.
+// (transactions), budgets, and the user's settings. The phone's payment
+// notifications arrive through internal/notify, which creates records here
+// with CreateFromNotification.
 package wallet
 
 import (

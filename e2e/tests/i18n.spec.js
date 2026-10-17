@@ -2,7 +2,7 @@
 // switch on the sign-in screen or in Settings › Language, and the choice is
 // kept for the introduction page too. Also saves screenshots of the main
 // screens in Japanese at phone and desktop width.
-const { test, expect, uniqueEmail, PASSWORD, confirmationLink, payPayEmail, deliverEmail, inboxAddress } = require('./fixtures');
+const { test, expect, uniqueEmail, PASSWORD, confirmationLink, payPayCard, sendNotifications } = require('./fixtures');
 
 test.describe('on a phone set to Japanese', () => {
   test.use({ locale: 'ja-JP' });
@@ -96,7 +96,7 @@ async function seed(page) {
   for (const res of await Promise.all(records.map((r) => api.post('/api/transactions', { data: r })))) expect(res.status()).toBe(201);
   await api.post('/api/budgets', { data: { name: '外食', category_id: cat('食費'), amount: 5000 } });
   await api.post('/api/budgets', { data: { name: '全体', category_id: null, amount: 120000 } });
-  await deliverEmail(api, await inboxAddress(page), payPayEmail({ merchant: 'IKEAオンライン', yen: 4994, when: new Date(), id: `ja-${Date.now()}-${Math.random()}` }));
+  await sendNotifications(api, payPayCard({ merchant: 'IKEAオンライン', yen: 4994, when: new Date() }));
 }
 
 for (const [name, viewport] of [
@@ -161,9 +161,9 @@ for (const [name, viewport] of [
       await expect(page.getByRole('radiogroup', { name: '言語' })).toBeVisible();
       await shot('9-settings-language');
 
-      await page.goto('/app/#/settings?section=email');
-      await expect(page.getByTestId('inbox-address')).toBeVisible();
-      await shot('10-settings-email');
+      await page.goto('/app/#/settings?section=notifications');
+      await expect(page.getByRole('list', { name: '最近の通知' })).toBeVisible();
+      await shot('10-settings-notifications');
     });
   });
 }

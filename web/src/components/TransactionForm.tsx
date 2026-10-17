@@ -14,7 +14,7 @@ interface Props {
   onClose: () => void;
   /** Called after a save or delete, so the page can reload. */
   onSaved: () => void;
-  /** Starting values for a new record, e.g. from an email. */
+  /** Starting values for a new record. */
   draft?: { payee?: string; note?: string; occurred_at?: string };
 }
 
@@ -260,8 +260,8 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
         {reviewing && (
           <p className="notice small">
             {record.source_label
-              ? t('From an email ({card}). Check it, pick a category, and confirm. Next time, this shop and card are filled in for you.', { card: record.source_label })
-              : t('From an email. Check it, pick a category, and confirm. Next time, this shop and card are filled in for you.')}
+              ? t('From a notification ({card}). Check it, pick a category, and confirm. Next time, this shop and card are filled in for you.', { card: record.source_label })
+              : t('From a notification. Check it, pick a category, and confirm. Next time, this shop and card are filled in for you.')}
           </p>
         )}
         {duplicate && (

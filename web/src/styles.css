@@ -407,7 +407,6 @@ li.record:hover:not(:disabled) { background: none; } /* a row to read, not to ta
 .rule-row select { min-width: 0; max-width: 14rem; }
 .rule-row input.grow { min-width: 10rem; }
 .review-item .row.wrap { flex-wrap: nowrap; }
-.email-body { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.8rem; max-height: 300px; overflow: auto; background: var(--sunken); padding: 10px; border-radius: 8px; }
 
 .empty { align-items: center; text-align: center; padding: 40px 24px; }
 .empty p { margin: 0; }
@@ -423,7 +422,6 @@ li.record:hover:not(:disabled) { background: none; } /* a row to read, not to ta
 .demo-offer { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--border); }
 .confirm-email .inline-icon { flex: none; }
 .notice.warn { background: color-mix(in srgb, var(--status-warning) 16%, var(--surface)); }
-.notice-card { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
 
 /* ---------- Dialogs: a sheet from the bottom on phones ---------- */
 .dialog {
@@ -620,5 +618,3 @@ button.chip.on { background: var(--accent-soft); border-color: var(--accent); fo
   .suggestion.pick { grid-template-columns: auto auto 1fr; }
   .mapper-bar select { flex: 1 1 100%; }
 }
-.key-row { justify-content: space-between; row-gap: 4px; }
-.nowrap { white-space: nowrap; }

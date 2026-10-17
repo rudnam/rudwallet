@@ -19,7 +19,7 @@ export const icons = {
   up: 'M4 17l6-6 4 4 6-7M15 8h5v5',
   down: 'M4 7l6 6 4-4 6 7M15 16h5v-5',
   level: 'M4 12h16M15 7l5 5-5 5',
-  review: 'M3 6h18v12H3zM3 7l9 6 9-6',
+  review: 'M4 13l2.5-8h11L20 13v6H4zM4 13h4.5l1 2h5l1-2H20',
   budgets: 'M12 3a9 9 0 1 0 9 9h-9zM15 3.5A9 9 0 0 1 20.5 9H15z',
   settings:
     'M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1',

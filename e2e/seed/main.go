@@ -90,9 +90,18 @@ func main() {
 		}
 		c.must("POST", "/api/budgets", map[string]any{"name": b.Name, "category_id": cat, "amount": b.Amount}, nil)
 	}
-	// The sample's emailed payments are left to preview.sh, which delivers
-	// real sample emails through the inbound webhook.
-	log.Printf("Seeded %s: %d accounts, %d records, %d budgets", *email, len(s.Accounts)+1, len(s.Records), len(s.Budgets))
+	// Payments to review arrive as the phone would send them: PayPay Card
+	// payment notifications.
+	jst := time.FixedZone("JST", 9*60*60)
+	var ns []map[string]any
+	for _, p := range s.Review {
+		ns = append(ns, map[string]any{
+			"package": "jp.ne.paypay.android.app", "when": p.At.UnixMilli(), "title": "支払いを受け付けました",
+			"text": fmt.Sprintf("お店：%s\n金額：%d円\n日時：%s", p.Merchant, p.Amount, p.At.In(jst).Format("2006年1月2日 15:04")),
+		})
+	}
+	c.must("POST", "/api/notifications", map[string]any{"notifications": ns}, nil)
+	log.Printf("Seeded %s: %d accounts, %d records, %d budgets, %d payments to review", *email, len(s.Accounts)+1, len(s.Records), len(s.Budgets), len(ns))
 }
 
 type client struct {

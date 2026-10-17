@@ -1,7 +1,7 @@
 // Screenshots of the main screens at phone and desktop width. They land in
 // e2e/test-results/ (and in CI's artifacts), so you can look at a change
 // without running anything. Add your own screens here.
-const { test, expect, signUp, payPayEmail, deliverEmail, inboxAddress } = require('./fixtures');
+const { test, expect, signUp, payPayCard, sendNotifications } = require('./fixtures');
 
 /** Fills a fresh account with a believable month, through the API. */
 async function seed(page) {
@@ -39,12 +39,12 @@ async function seed(page) {
   for (const res of await Promise.all(earlier.map((r) => api.post('/api/transactions', { data: r })))) expect(res.status()).toBe(201);
   await api.post('/api/budgets', { data: { name: 'Eating out', category_id: cat('Food & Drinks'), amount: 5000 } });
   await api.post('/api/budgets', { data: { name: 'Everything', category_id: null, amount: 120000 } });
-  // Payments from emails: one confirmed earlier, which taught its shop and
-  // card; two at shops with a rule, and one at a new shop, waiting for review.
-  const to = await inboxAddress(page);
-  const email = (merchant, yen, ago = 0) =>
-    deliverEmail(api, to, payPayEmail({ merchant, yen, when: new Date(Date.now() - ago), id: `screens-${Date.now()}-${Math.random()}` }));
-  const amazon = await email('Amazon.co.jp', 2980, 86400_000);
+  // Payments from PayPay's notifications: one confirmed earlier, which taught
+  // its shop and card; two at shops with a rule, and one at a new shop,
+  // waiting for review.
+  const paid = async (merchant, yen, ago = 0) =>
+    (await sendNotifications(api, payPayCard({ merchant, yen, when: new Date(Date.now() - ago) })))[0];
+  const amazon = await paid('Amazon.co.jp', 2980, 86400_000);
   const r = (await (await api.get('/api/transactions?status=review')).json()).find((t) => t.id === amazon.transaction_id);
   const confirmed = await api.put(`/api/transactions/${r.id}`, {
     data: { kind: r.kind, amount: r.amount, account_id: card.id, to_account_id: null, category_id: cat('Shopping'), occurred_at: r.occurred_at, payee: r.payee, note: r.note, status: 'confirmed' },
@@ -53,19 +53,11 @@ async function seed(page) {
   for (const [payee, category] of [['セブン－イレブン', 'Food & Drinks'], ['スギ薬局', 'Health']]) {
     expect((await api.put('/api/rules/payees', { data: { payee, category_id: cat(category) } })).status()).toBe(200);
   }
-  await email('セブン－イレブン', 612, 7200_000);
-  await email('スギ薬局 大曽根店', 1280, 5400_000);
-  await email('IKEAオンライン', 4994);
-  // The phone's notifications: the same payment (matched to the email) and one that isn't a payment.
-  const wallet = 'com.google.android.apps.walletnfcrel';
-  await api.post('/api/notifications', {
-    data: {
-      notifications: [
-        { package: wallet, when: Date.now() - 3600_000, title: 'Google Wallet', text: 'Visa •••• 1234 is ready to use' },
-        { package: wallet, when: Date.now(), title: 'IKEA', text: '¥4,994 with Visa •••• 1234' },
-      ],
-    },
-  });
+  await paid('セブン－イレブン', 612, 7200_000);
+  await paid('スギ薬局 大曽根店', 1280, 5400_000);
+  await paid('IKEAオンライン', 4994);
+  // A Google Wallet notification that isn't a payment.
+  await sendNotifications(api, { package: 'com.google.android.apps.walletnfcrel', when: Date.now() - 3600_000, title: 'Google Wallet', text: 'Visa •••• 1234 is ready to use' });
 }
 
 for (const [name, viewport] of [
@@ -124,9 +116,10 @@ for (const [name, viewport] of [
     await page.goto('/app/#/review');
     await expect(page.getByRole('listitem', { name: 'IKEAオンライン' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Confirm 2 with a category' })).toBeVisible();
-    // A category other than the shop's rule asks whether to keep it.
-    await page.getByLabel('Category for セブン－イレブン').selectOption({ label: 'Groceries' });
-    await expect(page.getByLabel(/Use Groceries for セブン－イレブン from now on/)).toBeVisible();
+    // A category other than the shop's rule asks whether to keep it. (The
+    // notification's full-width dash is read as a plain one.)
+    await page.getByLabel('Category for セブン-イレブン').selectOption({ label: 'Groceries' });
+    await expect(page.getByLabel(/Use Groceries for セブン-イレブン from now on/)).toBeVisible();
     await shot('3-review');
 
     await page.goto('/app/#/records');
@@ -163,10 +156,6 @@ for (const [name, viewport] of [
     await page.goto('/app/#/settings');
     await expect(page.getByRole('navigation', { name: 'Settings sections' })).toBeVisible();
     await shot('7-settings');
-
-    await page.getByRole('link', { name: /Email automation/ }).click();
-    await expect(page.getByTestId('inbox-address')).toBeVisible();
-    await shot('8-settings-email');
 
     await page.goto('/app/#/settings?section=rules');
     await expect(page.getByRole('list', { name: 'Shops' }).getByRole('listitem', { name: 'Amazon.co.jp' })).toBeVisible();
@@ -215,13 +204,10 @@ for (const [name, viewport] of [
     await page.goto('/app/#/settings?section=notifications');
     await expect(page.getByRole('list', { name: 'Recent notifications' })).toBeVisible();
     await shot('10-settings-notifications');
-    // Claude: add a key (e2e/fake-claude.js accepts this one), connect an app, sort records.
+    // Claude: connect an app.
     await page.goto('/app/#/settings?section=claude');
-    await expect(page.getByLabel('Anthropic API key')).toBeVisible();
+    await expect(page.getByTestId('mcp-url')).toBeVisible();
     await shot('12-settings-claude');
-    await page.getByLabel('Anthropic API key').fill('sk-ant-e2e-good-key-0000');
-    await page.getByRole('button', { name: 'Save key' }).click();
-    await expect(page.getByText('Key ending in 0000')).toBeVisible();
     await page.getByLabel('New connection').fill('Claude Desktop');
     await page.getByRole('button', { name: 'Make a token' }).click();
     await expect(page.getByTestId('mcp-token')).toBeVisible();
@@ -233,15 +219,6 @@ for (const [name, viewport] of [
     await page.goto(`/oauth/authorize?${authorize}`);
     await expect(page.getByRole('heading', { name: 'Connect Claude' })).toBeVisible();
     await shot('13-connect-claude');
-
-    const overview = await (await page.request.get('/api/wallet')).json();
-    for (const [payee, amount] of [['セブン－イレブン 刈谷店', 540], ['セブン－イレブン 刈谷店', 312], ['スギ薬局 知立店', 1980], ['JR東海 定期', 15200], ['合同会社ミステリー', 3300]]) {
-      await page.request.post('/api/transactions', { data: { kind: 'expense', amount, account_id: overview.accounts[0].id, occurred_at: new Date().toISOString(), payee } });
-    }
-    await page.goto('/app/#/organize');
-    await page.getByRole('button', { name: 'Suggest categories' }).click();
-    await expect(page.getByRole('list', { name: 'Suggested categories' }).getByRole('listitem')).toHaveCount(4);
-    await shot('14-sort-records');
 
     await page.goto('/app/#/settings');
     await page.getByRole('button', { name: 'Delete account' }).click();

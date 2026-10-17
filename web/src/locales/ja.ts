@@ -54,10 +54,8 @@ export const ja = {
   'Try the demo': 'デモを試す',
   'Sample data, deleted within a day': 'サンプルデータ（1日以内に削除）',
   'End demo': 'デモを終了',
-  'In the demo, emails can’t be forwarded. With an account you get a private address: forward your card’s payment emails there, and each one becomes a record for you to confirm.':
-    'デモではメールを転送できません。アカウントを作成すると専用のアドレスが届き、カードの支払いメールを転送すると1通ずつ確認待ちの記録になります。',
-  'With your own Anthropic API key, Claude sorts records that have no category and reads payment emails from any shop. Claude Desktop and Claude Code can also connect to your wallet.':
-    'ご自身のAnthropic APIキーを登録すると、Claudeがカテゴリのない記録を仕分け、どのお店の支払いメールも読み取ります。Claude DesktopやClaude Codeからつなぐこともできます。',
+  'Connect the Claude app, Claude Desktop or Claude Code to your wallet, and Claude can sort records that have no category and answer questions about your spending.':
+    'ClaudeアプリやClaude Desktop、Claude Codeをつなぐと、Claudeがカテゴリのない記録を仕分けたり、支出についての質問に答えたりできます。',
   'Claude needs an account of your own; it isn’t available in the demo.': 'Claudeの機能を使うにはアカウントが必要です。デモでは使えません。',
 
   // Category icons
@@ -106,10 +104,10 @@ export const ja = {
   "Couldn't restore: {error}": '元に戻せませんでした: {error}',
   'Review payment': '支払いを確認',
   'Edit record': '記録を編集',
-  'From an email ({card}). Check it, pick a category, and confirm. Next time, this shop and card are filled in for you.':
-    'メールから読み取りました（{card}）。内容を確認し、カテゴリを選んで確定してください。次回からはこのお店とカードが自動で入ります。',
-  'From an email. Check it, pick a category, and confirm. Next time, this shop and card are filled in for you.':
-    'メールから読み取りました。内容を確認し、カテゴリを選んで確定してください。次回からはこのお店とカードが自動で入ります。',
+  'From a notification ({card}). Check it, pick a category, and confirm. Next time, this shop and card are filled in for you.':
+    '通知から読み取りました（{card}）。内容を確認し、カテゴリを選んで確定してください。次回からはこのお店とカードが自動で入ります。',
+  'From a notification. Check it, pick a category, and confirm. Next time, this shop and card are filled in for you.':
+    '通知から読み取りました。内容を確認し、カテゴリを選んで確定してください。次回からはこのお店とカードが自動で入ります。',
   "You already have a record of the same amount around this time. If it's the same payment, delete this one.":
     '同じ時間帯に同じ金額の記録がすでにあります。同じ支払いなら、こちらを削除してください。',
   Type: '種類',
@@ -174,8 +172,10 @@ export const ja = {
   'Add your accounts': '口座を登録する',
   'Your bank, cards and e-money, with what’s in them today.': '銀行、カード、電子マネーを、今日の残高とあわせて。',
   'Add account': '口座を追加',
-  'Forward your payment emails': '支払いメールを転送する',
-  'Card alerts become records by themselves.': 'カードの利用通知が自動で記録になります。',
+  'Turn on payment notifications':
+    '決済通知をオンにする',
+  'PayPay and Google Wallet payments become records by themselves.':
+    'PayPayやGoogleウォレットの支払いが自動で記録になります。',
   'Set up': '設定する',
   'Set a monthly budget': '月の予算を決める',
   'See at a glance how much is left.': '残りがひと目でわかります。',
@@ -301,27 +301,13 @@ export const ja = {
   '{amount}, usually {before}': '{amount}（いつもは{before}）',
 
   // To review
-  "Payments read from your emails and your phone's notifications. Pick a category and confirm; next time it's remembered.":
-    'メールやスマホの通知から読み取った支払いです。カテゴリを選んで確定すると、次回から覚えておきます。',
+  "Payments read from your phone's notifications. Pick a category and confirm; next time it's remembered.":
+    'スマホの通知から読み取った支払いです。カテゴリを選んで確定すると、次回から覚えておきます。',
   'All caught up.': '確認待ちはありません。',
-  'Payments from forwarded emails and Google Wallet appear here. Set up {email} or {notifications}.':
-    '転送したメールやGoogleウォレットの支払いがここに届きます。{email}や{notifications}を設定しましょう。',
-  'email automation': 'メール連携',
+  'Payments from PayPay and Google Wallet appear here. Set up {notifications}.':
+    'PayPayやGoogleウォレットの支払いがここに届きます。{notifications}を設定しましょう。',
   'payment notifications': '決済通知',
-  'Confirm Gmail forwarding': 'Gmailの転送を承認',
-  "Gmail sent a confirmation to your forwarding address. Open the link to allow forwarding, or enter code {code} in Gmail's settings.":
-    'Gmailから転送用アドレスに確認メールが届きました。リンクを開いて転送を許可するか、Gmailの設定で確認コード {code} を入力してください。',
-  'Gmail sent a confirmation to your forwarding address. Open the link to allow forwarding.':
-    'Gmailから転送用アドレスに確認メールが届きました。リンクを開いて転送を許可してください。',
-  'Confirm forwarding': '転送を承認',
   'Payments to review': '確認待ちの支払い',
-  'Emails that need you': '確認が必要なメール',
-  "These couldn't be read automatically. Add them yourself, or set them aside.":
-    '自動では読み取れませんでした。手動で追加するか、対象外にしてください。',
-  'Unread emails': '読み取れなかったメール',
-  '(no subject)': '（件名なし）',
-  'Show email': 'メールを表示',
-  'Add as record': '記録として追加',
   'Not a payment': '支払いではない',
   Payment: '支払い',
   'Confirmed {payee}': '{payee}を確定しました',
@@ -330,40 +316,13 @@ export const ja = {
   'Category for {name}': '{name}のカテゴリ',
 
   // Sort records (Claude)
-  'Sorted {n} record': '{n}件を仕分けました',
-  'Sorted {n} records': '{n}件を仕分けました',
-  'Sort records': '記録を仕分ける',
-  'Claude suggests a category for each shop or payee. Check them, then file the records.':
-    'お店や支払先ごとにClaudeがカテゴリを提案します。確認してから記録に反映してください。',
-  'Add your Claude key first.': '先にClaudeのAPIキーを登録してください。',
-  'Sorting uses your own Anthropic API key.': '仕分けにはご自身のAnthropic APIキーを使います。',
-  'Add it in Settings': '設定で登録する',
-  'Every record has a category. Nothing to sort.': 'すべての記録にカテゴリがあります。仕分けるものはありません。',
-  '{n} record has no category.': 'カテゴリのない記録が{n}件あります。',
-  '{n} records have no category.': 'カテゴリのない記録が{n}件あります。',
-  'You left {n} payee as they were.': '{n}件の支払先はそのままにしました。',
-  'You left {n} payees as they were.': '{n}件の支払先はそのままにしました。',
-  'Start over': '最初からやり直す',
-  'Claude is reading your payees…': 'Claudeが支払先を読んでいます…',
-  'Suggest categories': 'カテゴリを提案してもらう',
-  'This can take up to a minute for a long list.': '件数が多いと1分ほどかかることがあります。',
-  'Nothing left to suggest.': '提案できるものは残っていません。',
-  'Suggested categories': '提案されたカテゴリ',
   income: '収入',
   '{n} record': '{n}件',
   '{n} records': '{n}件',
-  'no suggestion': '提案なし',
-  'Leave as is': 'そのまま',
-  '{n} more payee after these.': 'このあとに支払先があと{n}件あります。',
-  '{n} more payees after these.': 'このあとに支払先があと{n}件あります。',
   Cancel: 'キャンセル',
-  'Filing…': '反映中…',
-  'File {n} record': '{n}件に反映',
-  'File {n} records': '{n}件に反映',
 
   // Settings
   'Settings sections': '設定の項目',
-  'Email automation': 'メール連携',
   'Payment notifications': '決済通知',
   Claude: 'Claude',
   Categories: 'カテゴリ',
@@ -373,7 +332,8 @@ export const ja = {
   'Home screen widgets': 'ホーム画面ウィジェット',
   Language: '言語',
   'Auto-confirm on': '自動確定オン',
-  'Sort, connect apps': '仕分け、アプリ連携',
+  'Connect apps':
+    'アプリ連携',
   '{n} account': '{n}口座',
   '{n} accounts': '{n}口座',
   '{n} category': '{n}カテゴリ',
@@ -381,8 +341,8 @@ export const ja = {
   'Signed in as': 'ログイン中',
   'Sign out': 'ログアウト',
   'Delete account': 'アカウントを削除',
-  "This deletes {email} and everything in it: accounts, records, budgets, categories and your forwarding address. It can't be undone.":
-    '{email} と、その中のすべて（口座、記録、予算、カテゴリ、転送用アドレス）を削除します。元に戻せません。',
+  "This deletes {email} and everything in it: accounts, records, budgets and categories. It can't be undone.":
+    '{email} と、その中のすべて（口座、記録、予算、カテゴリ）を削除します。元に戻せません。',
   'Your password': 'パスワード',
   'Type your email to confirm': '確認のためメールアドレスを入力',
   'Delete everything': 'すべて削除',
@@ -457,7 +417,8 @@ export const ja = {
   'Imported {n} record': '{n}件を取り込みました',
   'Imported {n} records': '{n}件を取り込みました',
   'skipped {n} already imported': '取り込み済みの{n}件はスキップ',
-  'skipped {n} already recorded from emails or by hand': 'メールや手入力で記録済みの{n}件はスキップ',
+  'skipped {n} already recorded from notifications or by hand':
+    '通知や手入力で記録済みの{n}件はスキップ',
   'created {n} account': '{n}口座を作成',
   'created {n} accounts': '{n}口座を作成',
   'created {n} category': '{n}カテゴリを作成',
@@ -483,8 +444,6 @@ export const ja = {
   'Import {n} payment': '{n}件を取り込む',
   'Import {n} payments': '{n}件を取り込む',
   'Reading the file…': 'ファイルを読み込んでいます…',
-  "In BudgetBakers' Wallet app, export your records as CSV (on the web app: Records → Export), then choose the file here. Accounts and categories are matched by name and created when missing. Importing the same file twice adds nothing new.":
-    'BudgetBakersのWalletアプリで記録をCSVに書き出し（Web版: Records → Export）、ここでそのファイルを選んでください。口座とカテゴリは名前で照合し、なければ作成します。同じファイルを2回取り込んでも重複はしません。',
   'CSV file': 'CSVファイル',
 
   // Settings › Import: choosing where records go
@@ -523,59 +482,26 @@ export const ja = {
   'Show all {n} shops': '{n}件のお店をすべて表示',
   'Show all {n} categories': '{n}件のカテゴリをすべて表示',
 
-  // Settings › Email automation
-  'Get a new address? Mail sent to the old one will be refused, so update your Gmail forwarding too.':
-    '新しいアドレスを発行しますか？古いアドレス宛てのメールは受け取れなくなるので、Gmailの転送設定も更新してください。',
-  'Forward your payment emails here and each one becomes a record for you to confirm.': '支払いメールをここに転送すると、1通ずつ確認待ちの記録になります。',
-  'Your private forwarding address': 'あなた専用の転送用アドレス',
+  // Copying, and where notified payments go
   Copied: 'コピーしました',
-  'Copy address': 'アドレスをコピー',
-  'Get a new address': '新しいアドレスを発行',
-  'In Gmail on a computer, open {menu}, choose {add} and paste your address.': 'パソコンのGmailで{menu}を開き、{add}を選んでアドレスを貼り付けます。',
-  'Settings → See all settings → Forwarding and POP/IMAP': '設定 → すべての設定を表示 → メール転送と POP/IMAP',
-  'Add a forwarding address': '転送先アドレスを追加',
-  "Gmail sends a confirmation to it. It shows up under {review} with a {button} button. Leave Gmail's own forwarding {off}: only the filter below should forward.":
-    'Gmailからそのアドレスに確認メールが届き、{review}に{button}ボタンとともに表示されます。Gmail自体の転送は{off}のままにしてください。転送するのは下のフィルタだけです。',
   off: '無効',
-  'Search Gmail for (tap to copy):': 'Gmailで次のように検索します（タップでコピー）:',
-  'Open the search options (☰), click {create}, tick {forward}, and pick your address.':
-    '検索オプション（☰）を開いて{create}をクリックし、{forward}にチェックを入れてアドレスを選びます。',
-  'Create filter': 'フィルタを作成',
-  'Forward it to': '次のアドレスに転送する',
-  'Each PayPay Card usage alert (利用速報) becomes a record, including online and tap-to-pay purchases. If other PayPay Card emails arrive, purchase verifications and monthly statements are recognised and skipped, so nothing is counted twice.':
-    'PayPayカードの利用速報は、ネットやタッチ決済の支払いも含めて1通ずつ記録になります。ほかのPayPayカードのメールが届いても、本人認証や月の請求確定のお知らせは見分けてスキップするので、二重に数えることはありません。',
-  'Receipts from other shops are read by the AI reader, so you can forward those too.': 'ほかのお店のレシートはAIが読み取るので、それらも転送できます。',
-  'Other senders need a rule; until then they wait for you under To review.': 'ほかの送信元にはルールが必要です。それまでは確認待ちに届きます。',
-  'Or {add} and Claude reads them.': 'または{add}と、Claudeが読み取ります。',
-  'add your Claude key': 'ClaudeのAPIキーを登録する',
-  "Forwarding isn't switched on for this server yet (it needs an inbound mail domain; see docs/email.md). You can still test with an email below.":
-    'このサーバーではまだ転送が有効になっていません（受信用のメールドメインが必要です。docs/email.md を参照）。下のメールでテストはできます。',
   "Confirm payments automatically when the shop's category is already known": 'お店のカテゴリがわかっている支払いは自動で確定する',
-  'Emailed payments go to': 'メールの支払いの記録先',
+  'Payments go to': '支払いの記録先',
   'The first account, until you pick one for a card': 'カードごとに選ぶまでは最初の口座',
   'When you confirm a payment in another account, that card is remembered for next time.':
     '別の口座で支払いを確定すると、そのカードの口座を次回から覚えておきます。',
-  'Test with an email': 'メールでテストする',
-  'In Gmail, open a payment email, choose {menu}, copy everything, and paste it here.':
-    'Gmailで支払いメールを開き、{menu}を選んで全文をコピーし、ここに貼り付けてください。',
-  '⋮ → Show original': '⋮ → メッセージのソースを表示',
-  'Email source': 'メールのソース',
-  'Read email': 'メールを読み取る',
-  'This email was already received.': 'このメールはすでに受信済みです。',
-  'Found a payment. It is waiting under To review.': '支払いが見つかりました。確認待ちに追加されています。',
-  'Recent emails': '最近のメール',
   Recorded: '記録済み',
   'Needs you': '要確認',
-  'Gmail confirmation': 'Gmailの確認',
 
   // Settings › Payment notifications
-  'Pay with Google Wallet and the payment waits under {review} moments later, with the shop, amount and card filled in.':
-    'Googleウォレットで支払うと、すぐにお店・金額・カードが入った状態で{review}に届きます。',
+  'Pay with PayPay or Google Wallet and the payment waits under {review} moments later, with the shop, amount and card filled in.':
+    'PayPayやGoogleウォレットで支払うと、すぐにお店・金額・カードが入った状態で{review}に届きます。',
   "This works in the Wallet app for Android, which reads your phone's payment notifications. Open {where} there to switch it on.":
     'これはAndroid版のWalletアプリで使えます。アプリがスマホの決済通知を読み取ります。アプリで{where}を開いてオンにしてください。',
   'Settings › Payment notifications': '設定 › 決済通知',
   'Checking…': '確認中…',
-  "{on} Wallet reads Google Wallet's notifications.": '{on} WalletがGoogleウォレットの通知を読み取ります。',
+  "{on} Wallet reads PayPay's and Google Wallet's notifications.":
+    '{on} WalletがPayPayとGoogleウォレットの通知を読み取ります。',
   'On.': 'オン。',
   '{off} Wallet needs notification access to read them.': '{off} 読み取るには、Walletに通知へのアクセスを許可してください。',
   'Off.': 'オフ。',
@@ -584,40 +510,16 @@ export const ja = {
   'Android shows a list of apps: turn on {wallet}. If the switch is greyed out, open {where} for Wallet, then try again.':
     'アプリの一覧が表示されたら{wallet}をオンにします。スイッチがグレーで押せない場合は、Walletの{where}を開いてからもう一度お試しください。',
   'App info › ⋮ › Allow restricted settings': 'アプリ情報 › ⋮ › 制限付き設定を許可',
-  "Only Google Wallet's notifications are read; everything else stays on your phone. Each payment is recorded once: if its card's email arrives too, or you already added it, the two are matched instead of counted twice. Notifications that arrive while you're offline are sent later.":
-    '読み取るのはGoogleウォレットの通知だけで、それ以外はスマホから出ません。支払いは1回だけ記録されます。カードのメールも届いた場合や、すでに追加済みの場合は、二重に数えずに照合します。オフラインの間に届いた通知はあとで送信されます。',
+  "Only PayPay's and Google Wallet's notifications are read; everything else stays on your phone. Each payment is recorded once: if you already added it, the two are matched instead of counted twice. Notifications that arrive while you're offline are sent later.":
+    '読み取るのはPayPayとGoogleウォレットの通知だけで、それ以外はスマホから出ません。支払いは1回だけ記録されます。すでに追加済みの場合は、二重に数えずに照合します。オフラインの間に届いた通知はあとで送信されます。',
   'Recent notifications': '最近の通知',
   'Already recorded': '記録済みと照合',
 
   // Settings › Claude
-  'Claude is connected': 'Claudeと接続しました',
-  'Remove your Claude API key? Claude stops sorting records and reading emails for you.':
-    'ClaudeのAPIキーを削除しますか？Claudeによる記録の仕分けとメールの読み取りが止まります。',
-  'Key removed': 'キーを削除しました',
-  'Anthropic API key': 'Anthropic APIキー',
-  "Make one in the Claude Console at console.anthropic.com, under API keys. It's checked with Claude, then stored encrypted.":
-    'Claude Console（console.anthropic.com）の「API keys」で作成できます。Claudeで確認してから、暗号化して保存します。',
-  'Save key': 'キーを保存',
-  'Your API key': 'あなたのAPIキー',
-  'With your own key, Claude sorts records that have no category and reads payment emails from any shop. What Claude does is billed to your Anthropic account.':
-    'ご自身のキーを登録すると、Claudeがカテゴリのない記録を仕分け、どのお店の支払いメールも読み取ります。料金はご自身のAnthropicアカウントに請求されます。',
-  "This server can't store API keys yet. Whoever runs it needs to set {setting}, which keeps saved keys encrypted.":
-    'このサーバーではまだAPIキーを保存できません。保存したキーを暗号化するため、運営者が{setting}を設定する必要があります。',
-  "Your saved key can't be read any more, because the server's encryption secret changed. Add it again.":
-    'サーバーの暗号化キーが変わったため、保存済みのキーを読み取れなくなりました。もう一度登録してください。',
   Connected: '接続済み',
-  'Key ending in {hint}': '末尾が{hint}のキー',
-  Replace: '置き換える',
-  Remove: '削除',
-  'What Claude does for you': 'Claudeにできること',
-  'Every record has a category.': 'すべての記録にカテゴリがあります。',
   Open: '開く',
-  'Read payment emails': '支払いメールの読み取り',
-  'Receipts from shops without a built-in rule are read by Claude.': '組み込みのルールがないお店のレシートは、Claudeが読み取ります。',
   'Disconnect "{name}"? It can no longer reach your wallet.': '「{name}」の接続を解除しますか？あなたのデータにアクセスできなくなります。',
   'Connect Claude to your wallet': 'ClaudeとWalletをつなぐ',
-  "Let Claude Desktop, Claude Code or another MCP client look through your records and tidy them: sort records, fix categories, and answer questions about your spending. It doesn't need your API key; each app gets its own token.":
-    'Claude DesktopやClaude CodeなどのMCPクライアントから、記録を見て整理できます。記録の仕分けやカテゴリの修正、支出についての質問への回答など。APIキーは不要で、アプリごとにトークンを発行します。',
   'MCP server address': 'MCPサーバーのアドレス',
   "Copy this token now. It won't be shown again.": 'このトークンを今コピーしてください。二度と表示されません。',
   'New connection': '新しい接続',
@@ -636,8 +538,8 @@ export const ja = {
   // Settings › Shops and cards (what confirming payments taught the app)
   'Shops and cards': 'お店とカード',
   'What was learned': '覚えた内容',
-  "When you confirm a payment from an email or a notification, its shop's category and its card's account are remembered, and the next payment there is filled in for you. Payments at a shop's branches (a name that starts with the shop's) share its category.":
-    'メールや通知の支払いを確定すると、お店のカテゴリとカードの口座を覚え、次からの支払いに自動で入ります。支店（お店の名前で始まる名前）での支払いも同じカテゴリになります。',
+  "When you confirm a payment from a notification, its shop's category and its card's account are remembered, and the next payment there is filled in for you. Payments at a shop's branches (a name that starts with the shop's) share its category.":
+    '通知の支払いを確定すると、お店のカテゴリとカードの口座を覚え、次からの支払いに自動で入ります。支店（お店の名前で始まる名前）での支払いも同じカテゴリになります。',
   Shops: 'お店',
   'No shops yet. Confirm a payment under {review}, or add one below.': 'まだお店はありません。{review}で支払いを確定するか、下で追加してください。',
   '{name} added': '{name}を追加しました',
@@ -653,14 +555,14 @@ export const ja = {
   'No cards yet. A card is remembered when you confirm its first payment.': 'まだカードはありません。最初の支払いを確定すると、そのカードを覚えます。',
   'Account for {name}': '{name}の口座',
   'Archived account': 'アーカイブ済みの口座',
-  "A forgotten card's payments go to the account chosen under {email} until you confirm one elsewhere.":
-    '削除したカードの支払いは、別の口座で確定するまで{email}で選んだ口座に入ります。',
+  "A forgotten card's payments go to the account chosen under {notifications} until you confirm one elsewhere.":
+    '削除したカードの支払いは、別の口座で確定するまで{notifications}で選んだ口座に入ります。',
   'Pick a category': 'カテゴリを選択',
   'See and change what was remembered under {rules}.': '覚えた内容は{rules}で確認・変更できます。',
 
   // Connecting an app such as Claude (OAuth)
-  "Let Claude look through your records and tidy them: sort records, fix categories, and answer questions about your spending. It doesn't need your API key.":
-    'Claudeが記録を見て整理できます。記録の仕分けやカテゴリの修正、支出についての質問への回答など。APIキーは不要です。',
+  'Let Claude look through your records and tidy them: sort records, fix categories, and answer questions about your spending.':
+    'Claudeが記録を見て整理できます。記録の仕分けやカテゴリの修正、支出についての質問への回答など。',
   'In the Claude app': 'Claudeアプリ',
   '{where} (claude.ai, desktop or mobile): open Settings → Connectors, add a custom connector with the address below, then click Connect and allow it here. Leave the OAuth fields empty.':
     '{where}（claude.ai、デスクトップ、モバイル）で 設定 → コネクタ を開き、下のアドレスでカスタムコネクタを追加して「連携」を押し、ここで許可してください。OAuthの欄は空のままにします。',
@@ -779,19 +681,13 @@ export const jaServer: Record<string, string> = {
   // The browser's own, when the server can't be reached
   'Failed to fetch': 'サーバーに接続できませんでした',
 
-  // What became of an email or a notification
-  'Not a payment, according to the AI reader.': 'AIの判断では支払いではありません。',
-  'No rule for this sender yet. Add the payment yourself, or add a Claude API key in Settings so the AI reader can read emails like this.':
-    'この送信元のルールはまだありません。支払いを手動で追加するか、設定でClaudeのAPIキーを登録するとAIが読み取れるようになります。',
-  "The AI reader couldn't read this email. Add the payment yourself.": 'AIがこのメールを読み取れませんでした。支払いを手動で追加してください。',
-  'The phone already reported this payment, so it is recorded once.': 'この支払いはスマホから記録済みのため、1回だけ記録しました。',
-  'Purchase verification, not a payment. The usage alert that follows is recorded instead.': '本人認証のお知らせで、支払いではありません。続いて届く利用速報を記録します。',
-  'Monthly statement. Its payments were already recorded one by one.': '月の請求のお知らせです。支払いは1件ずつ記録済みです。',
-  'Not a payment alert.': '利用通知ではありません。',
+  // What became of a notification
   "Already recorded, so it wasn't added again.": '記録済みのため、追加しませんでした。',
   'Not from a payment app this server reads.': 'このサーバーが読み取る決済アプリの通知ではありません。',
   'No amount, so not a payment.': '金額がないため、支払いではありません。',
   'Not a payment made (declined, a balance or a top-up).': '支払いではありません（拒否、残高、チャージなど）。',
+  'Not a PayPay payment.': 'PayPayの支払いではありません。',
+  'No amount in the notification.': '通知に金額がありません。',
   "Couldn't read the amount {amount}.": '金額 {amount} を読み取れませんでした。',
 
   // Rows an import left out

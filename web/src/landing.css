@@ -71,7 +71,7 @@
 .how-done { opacity: 0; }
 
 /* The stage's states. They apply only once landing.ts runs (.live);
-   without it, the email and its record both simply show. */
+   without it, the notification and its record both simply show. */
 .how.live .how-step:not(.on) { opacity: 0.38; }
 .how.live .how-step.on .how-num { border-color: var(--accent); background: var(--accent); color: var(--accent-text); }
 .how.live .how-stage[data-step='1'] .how-record { opacity: 0; transform: translateY(14px); }

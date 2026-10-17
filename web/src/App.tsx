@@ -6,7 +6,6 @@ import { TransactionForm } from './components/TransactionForm';
 import { BudgetsPage } from './features/budgets/BudgetsPage';
 import { ConnectPage, rememberConnect, resumeConnect } from './features/settings/ConnectPage';
 import { HomePage } from './features/home/HomePage';
-import { OrganizePage } from './features/organize/OrganizePage';
 import { RecordsPage } from './features/records/RecordsPage';
 import { ReviewPage } from './features/review/ReviewPage';
 import { SettingsPage } from './features/settings/SettingsPage';
@@ -192,7 +191,7 @@ const pages: { page: string; label: Key; icon: string }[] = [
 ];
 
 /** Pages outside the main navigation, and the entry they belong under. */
-const subpages: Record<string, string> = { organize: 'settings' };
+const subpages: Record<string, string> = {};
 
 function Shell({
   me,
@@ -227,7 +226,7 @@ function Shell({
     setAdding(true);
   }, [route]);
 
-  // Emails arrive while the app is open: reload balances and the review
+  // Payments arrive while the app is open: reload balances and the review
   // count on every page change and whenever the app comes back into view.
   useEffect(() => {
     refresh();
@@ -251,9 +250,6 @@ function Shell({
       break;
     case 'budgets':
       page = <BudgetsPage />;
-      break;
-    case 'organize':
-      page = <OrganizePage />;
       break;
     case 'settings':
       page = <SettingsPage route={route} me={me} onSignOut={onSignOut} onDeleted={onDeleted} />;
