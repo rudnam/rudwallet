@@ -63,6 +63,8 @@ export APP_VERSION
 
 echo "Previewing $APP_VERSION"
 dc down --volumes --remove-orphans >/dev/null 2>&1 || true
+docker volume create wallet-app-gomod >/dev/null   # Go caches for the seed,
+docker volume create wallet-app-gobuild >/dev/null # shared with verify.sh
 if [[ -n $restore ]]; then
   dc up -d --wait db
   echo "Restoring $restore"
