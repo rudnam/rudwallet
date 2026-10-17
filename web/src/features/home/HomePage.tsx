@@ -4,7 +4,7 @@ import { api, type Budget, type Transaction } from '../../api';
 import { CategoryBars, DailyColumns, Meter, type BarItem } from '../../components/charts';
 import { TransactionForm } from '../../components/TransactionForm';
 import { TransactionList } from '../../components/TransactionList';
-import { addMonths, daysInMonth, formatCompact, monthStart } from '../../money';
+import { addMonths, daysInMonth, formatCompact, monthPace, monthStart } from '../../money';
 import { href, navigate } from '../../router';
 import { CategoryIcon, Icon, icons } from '../../components/Icon';
 import { AccountForm } from '../settings/SettingsPage';
@@ -30,6 +30,7 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
   const accounts = w.accounts.filter((a) => !a.archived);
   const total = accounts.reduce((s, a) => s + a.balance, 0);
   const byCategory = spendingByCategory(confirmed, w);
+  const pace = spent > 0 ? monthPace(spent, month) : null;
   const daily = new Array<number>(daysInMonth(month)).fill(0);
   for (const t of confirmed) if (t.kind === 'expense') daily[new Date(t.occurred_at).getDate() - 1] += t.amount;
 
@@ -71,6 +72,14 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
           <Tile label={t('Income')} value={w.money(income)} className="income" />
           <Tile label={t('Net')} value={w.money(income - spent, true)} />
         </div>
+        {pace !== null && (
+          <p className="muted small pace">
+            {t('At this pace, about {amount} by the end of {month}.', {
+              amount: w.money(pace),
+              month: month.toLocaleDateString(locale(), { month: 'long' }),
+            })}
+          </p>
+        )}
       </div>
 
       <div className="accounts" aria-label={t('Accounts')} role="list">
@@ -123,7 +132,12 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
           {budgets.map((b) => (
             <div key={b.id} className="stack tight">
               <span>{b.name}</span>
-              <Meter spent={budgetSpent(b, confirmed)} limit={b.amount} format={(n) => w.money(n)} />
+              <Meter
+                spent={budgetSpent(b, confirmed)}
+                limit={b.amount}
+                pace={monthPace(budgetSpent(b, confirmed), month)}
+                format={(n) => w.money(n)}
+              />
             </div>
           ))}
         </div>

@@ -173,7 +173,22 @@ function niceMax(v: number): number {
 }
 
 /** A budget meter: the fill turns warning at 80% and critical past 100%. */
-export function Meter({ spent, limit, format }: { spent: number; limit: number; format: (n: number) => string }) {
+/**
+ * A budget's spending against its limit. With pace (the month-end projection,
+ * see monthPace), it also says where the month is heading while the budget
+ * still has room.
+ */
+export function Meter({
+  spent,
+  limit,
+  format,
+  pace,
+}: {
+  spent: number;
+  limit: number;
+  format: (n: number) => string;
+  pace?: number | null;
+}) {
   const pct = limit > 0 ? spent / limit : 0;
   const state = pct > 1 ? 'over' : pct >= 0.8 ? 'warn' : 'ok';
   const status =
@@ -206,6 +221,13 @@ export function Meter({ spent, limit, format }: { spent: number; limit: number; 
         </span>
         <span className="meter-status">{status}</span>
       </div>
+      {pace != null && state !== 'over' && (
+        <p className={`meter-pace small${pace > limit ? ' warn' : ''}`}>
+          {pace > limit
+            ? t('On pace for {amount}, {over} over', { amount: format(pace), over: format(pace - limit) })
+            : t('On pace for {amount}', { amount: format(pace) })}
+        </p>
+      )}
     </div>
   );
 }

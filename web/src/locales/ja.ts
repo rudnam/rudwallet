@@ -160,6 +160,8 @@ export const ja = {
   'Over by {amount}': '{amount}超過',
   '{amount} left': '残り{amount}',
   '{spent} of {limit}': '{spent} / {limit}',
+  'On pace for {amount}': 'このペースで月末に{amount}',
+  'On pace for {amount}, {over} over': 'このペースで月末に{amount}（{over}超過）',
 
   // Home
   'Good morning': 'おはようございます',
@@ -170,6 +172,7 @@ export const ja = {
   'Waiting for a quick check': 'ひと目確認してください',
   'Total balance': '総残高',
   'Spent this month': '今月の支出',
+  'At this pace, about {amount} by the end of {month}.': 'このペースだと、{month}末には約{amount}になります。',
   Net: '収支',
   Accounts: '口座',
   'Where it went in {month}': '{month}の支出内訳',

@@ -318,6 +318,9 @@ button.bar-row:active:not(:disabled) { transform: none; }
 .meter .row { margin-top: 6px; }
 .meter-status { font-weight: 600; }
 .meter.over .meter-status { color: var(--status-critical); }
+.meter-pace { margin: 2px 0 0; color: var(--muted); }
+.meter-pace.warn { color: var(--status-warning); }
+.hero .pace { margin: 12px 0 0; }
 
 /* ---------- Records ---------- */
 .month-picker { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

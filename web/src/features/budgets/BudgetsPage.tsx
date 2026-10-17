@@ -4,7 +4,7 @@ import { api, errorMessage, type Budget } from '../../api';
 import { Meter } from '../../components/charts';
 import { Dialog } from '../../components/Dialog';
 import { CategoryIcon, Icon, icons } from '../../components/Icon';
-import { addMonths, amountInput, formatMonth, monthStart, parseAmount } from '../../money';
+import { addMonths, amountInput, formatMonth, monthPace, monthStart, parseAmount } from '../../money';
 import { useRecords } from '../../useRecords';
 import { useWallet } from '../../wallet';
 import { t } from '../../i18n';
@@ -56,6 +56,7 @@ export function BudgetsPage() {
         <ul className="list" aria-label={t('Budgets')}>
           {budgets.map((b) => {
             const c = w.category(b.category_id);
+            const spent = budgetSpent(b, records ?? []);
             return (
               <li key={b.id} className="card stack tight">
                 <div className="row">
@@ -74,7 +75,7 @@ export function BudgetsPage() {
                     {t('Edit')}
                   </button>
                 </div>
-                <Meter spent={budgetSpent(b, records ?? [])} limit={b.amount} format={(n) => w.money(n)} />
+                <Meter spent={spent} limit={b.amount} pace={monthPace(spent, month)} format={(n) => w.money(n)} />
               </li>
             );
           })}

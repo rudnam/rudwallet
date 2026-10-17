@@ -58,6 +58,18 @@ export function daysInMonth(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
 }
 
+/**
+ * What spending so far this month comes to by the month's end, at the same
+ * rate per day. Null for any other month, and in the first two days, when a
+ * single purchase would swing it wildly.
+ */
+export function monthPace(spent: number, month: Date, now = new Date()): number | null {
+  if (now.getFullYear() !== month.getFullYear() || now.getMonth() !== month.getMonth()) return null;
+  const day = now.getDate();
+  if (day < 3) return null;
+  return Math.round((spent / day) * daysInMonth(month));
+}
+
 export function formatMonth(d: Date): string {
   return d.toLocaleDateString(locale(), { year: 'numeric', month: 'long' });
 }

@@ -114,6 +114,38 @@ test('a new account, a transfer, and a budget that runs over', async ({ page }) 
   await expect(page.getByRole('list', { name: 'Budgets' })).toContainText('Over by ¥200');
 });
 
+test('the overview and budgets say where the month is heading', async ({ page }) => {
+  // The 10th of this month: ¥4,000 spent so far is ¥400 a day.
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  await page.clock.setFixedTime(new Date(y, m, 10, 12));
+  await signUp(page);
+  const api = page.request;
+  const overview = await (await api.get('/api/wallet')).json();
+  const food = overview.categories.find((c) => c.name === 'Food & Drinks').id;
+  for (const [d, amount] of [[2, 1500], [6, 2500]]) {
+    const r = { kind: 'expense', amount, account_id: overview.accounts[0].id, category_id: food, occurred_at: new Date(y, m, d, 12).toISOString() };
+    expect((await api.post('/api/transactions', { data: r })).status()).toBe(201);
+  }
+  expect((await api.post('/api/budgets', { data: { name: 'Eating out', category_id: food, amount: 10000 } })).status()).toBe(201);
+  expect((await api.post('/api/budgets', { data: { name: 'Everything', category_id: null, amount: 50000 } })).status()).toBe(201);
+
+  const yen = (n) => '¥' + n.toLocaleString('en-US');
+  const pace = 400 * new Date(y, m + 1, 0).getDate();
+  const month = new Date(y, m, 1).toLocaleDateString('en-US', { month: 'long' });
+  await page.goto('/app/#/');
+  await expect(page.locator('.hero')).toContainText(`At this pace, about ${yen(pace)} by the end of ${month}.`);
+
+  await page.goto('/app/#/budgets');
+  const budgets = page.getByRole('list', { name: 'Budgets' });
+  await expect(budgets.getByRole('listitem').filter({ hasText: 'Eating out' })).toContainText(
+    `On pace for ${yen(pace)}, ${yen(pace - 10000)} over`,
+  );
+  await expect(budgets.getByRole('listitem').filter({ hasText: 'Everything' })).toContainText(`On pace for ${yen(pace)}`);
+  await expect(budgets.getByRole('listitem').filter({ hasText: 'Everything' })).not.toContainText('over');
+});
+
 test('the currency can change until there are records', async ({ page }) => {
   await signUp(page);
   await page.goto('/app/#/settings?section=general');
