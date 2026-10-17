@@ -493,7 +493,9 @@ function MonthAhead({ now, budgets, days, period }: { now: Stats; budgets: Budge
             {budgets.map((b) => {
               const c = w.category(b.category_id);
               const spent = forBudget(b)(now);
-              const to = heading(forBudget(b));
+              // The most a day that keeps within it, against the rate so far.
+              const allowed = Math.floor((b.amount - spent) / left);
+              const rate = Math.round(spent / days);
               return (
                 <li key={b.id}>
                   {c ? (
@@ -508,11 +510,11 @@ function MonthAhead({ now, budgets, days, period }: { now: Stats; budgets: Budge
                     {spent >= b.amount ? (
                       <strong className="over">{t('Over by {amount}', { amount: w.money(spent - b.amount) })}</strong>
                     ) : (
-                      <strong>{t('{amount} a day', { amount: w.money(Math.floor((b.amount - spent) / left)) })}</strong>
+                      <strong>{t('Up to {amount} a day', { amount: w.money(allowed) })}</strong>
                     )}
                     <span className="muted small block">
-                      {to > b.amount && spent < b.amount && <Icon d={icons.warning} className="inline-icon" />}{' '}
-                      {t('Heading for about {amount}', { amount: w.money(to) })}
+                      {spent < b.amount && rate > allowed && <Icon d={icons.warning} className="inline-icon" />}{' '}
+                      {t('Now {amount} a day', { amount: w.money(rate) })}
                     </span>
                   </span>
                 </li>

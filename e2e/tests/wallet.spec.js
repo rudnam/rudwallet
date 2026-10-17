@@ -145,8 +145,9 @@ test('Stats says where the month is heading, and what budgets leave per day', as
   await expect(card).toContainText(`To stay within budget, ${left} days left`);
   const perDay = card.getByRole('list', { name: 'Per day to stay within budget' });
   const eating = perDay.getByRole('listitem').filter({ hasText: 'Eating out' });
-  await expect(eating).toContainText(`${yen(Math.floor(6000 / left))} a day`);
-  await expect(eating).toContainText(`Heading for about ${yen(400 * len)}`);
+  // The most a day that keeps within ¥10,000, against ¥400 a day so far.
+  await expect(eating).toContainText(`Up to ${yen(Math.floor(6000 / left))} a day`);
+  await expect(eating).toContainText('Now ¥400 a day');
   await expect(perDay.getByRole('listitem').filter({ hasText: 'Everything' })).toContainText('Over by ¥4,000');
 
   // The overview stays as it was.

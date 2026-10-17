@@ -322,7 +322,8 @@ export const ja = {
   'To stay within budget, {n} day left': '予算内に収めるには（残り{n}日）',
   'To stay within budget, {n} days left': '予算内に収めるには（残り{n}日）',
   'Per day to stay within budget': '予算内に収める1日あたりの額',
-  '{amount} a day': '1日{amount}',
+  'Up to {amount} a day': '1日{amount}まで',
+  'Now {amount} a day': '今は1日{amount}',
   'Lower than usual': 'いつもより少ない',
   '{amount}, usually {before}': '{amount}（いつもは{before}）',
 
