@@ -38,7 +38,7 @@ type SMTP struct {
 	Port     int
 	Username string
 	Password string
-	From     string // e.g. "Wallet <no-reply@example.com>"
+	From     string // e.g. "RudWallet <no-reply@example.com>"
 }
 
 func (s *SMTP) Send(ctx context.Context, m Message) error {

@@ -496,19 +496,19 @@ export const ja = {
   // Settings › Payment notifications
   'Pay with PayPay or Google Wallet and the payment waits under {review} moments later, with the shop, amount and card filled in.':
     'PayPayやGoogleウォレットで支払うと、すぐにお店・金額・カードが入った状態で{review}に届きます。',
-  "This works in the Wallet app for Android, which reads your phone's payment notifications. Open {where} there to switch it on.":
-    'これはAndroid版のWalletアプリで使えます。アプリがスマホの決済通知を読み取ります。アプリで{where}を開いてオンにしてください。',
+  "This works in the RudWallet app for Android, which reads your phone's payment notifications. Open {where} there to switch it on.":
+    'これはAndroid版のRudWalletアプリで使えます。アプリがスマホの決済通知を読み取ります。アプリで{where}を開いてオンにしてください。',
   'Settings › Payment notifications': '設定 › 決済通知',
   'Checking…': '確認中…',
-  "{on} Wallet reads PayPay's and Google Wallet's notifications.":
-    '{on} WalletがPayPayとGoogleウォレットの通知を読み取ります。',
+  "{on} RudWallet reads PayPay's and Google Wallet's notifications.":
+    '{on} RudWalletがPayPayとGoogleウォレットの通知を読み取ります。',
   'On.': 'オン。',
-  '{off} Wallet needs notification access to read them.': '{off} 読み取るには、Walletに通知へのアクセスを許可してください。',
+  '{off} RudWallet needs notification access to read them.': '{off} 読み取るには、RudWalletに通知へのアクセスを許可してください。',
   'Off.': 'オフ。',
   'Turn off': 'オフにする',
   'Allow access': 'アクセスを許可',
-  'Android shows a list of apps: turn on {wallet}. If the switch is greyed out, open {where} for Wallet, then try again.':
-    'アプリの一覧が表示されたら{wallet}をオンにします。スイッチがグレーで押せない場合は、Walletの{where}を開いてからもう一度お試しください。',
+  'Android shows a list of apps: turn on {wallet}. If the switch is greyed out, open {where} for RudWallet, then try again.':
+    'アプリの一覧が表示されたら{wallet}をオンにします。スイッチがグレーで押せない場合は、RudWalletの{where}を開いてからもう一度お試しください。',
   'App info › ⋮ › Allow restricted settings': 'アプリ情報 › ⋮ › 制限付き設定を許可',
   "Only PayPay's and Google Wallet's notifications are read; everything else stays on your phone. Each payment is recorded once: if you already added it, the two are matched instead of counted twice. Notifications that arrive while you're offline are sent later.":
     '読み取るのはPayPayとGoogleウォレットの通知だけで、それ以外はスマホから出ません。支払いは1回だけ記録されます。すでに追加済みの場合は、二重に数えずに照合します。オフラインの間に届いた通知はあとで送信されます。',
@@ -519,7 +519,7 @@ export const ja = {
   Connected: '接続済み',
   Open: '開く',
   'Disconnect "{name}"? It can no longer reach your wallet.': '「{name}」の接続を解除しますか？あなたのデータにアクセスできなくなります。',
-  'Connect Claude to your wallet': 'ClaudeとWalletをつなぐ',
+  'Connect Claude to your wallet': 'ClaudeとRudWalletをつなぐ',
   'MCP server address': 'MCPサーバーのアドレス',
   "Copy this token now. It won't be shown again.": 'このトークンを今コピーしてください。二度と表示されません。',
   'New connection': '新しい接続',
@@ -568,9 +568,9 @@ export const ja = {
     '{where}（claude.ai、デスクトップ、モバイル）で 設定 → コネクタ を開き、下のアドレスでカスタムコネクタを追加して「連携」を押し、ここで許可してください。OAuthの欄は空のままにします。',
   'How to connect with a token': 'トークンで接続する方法',
   'Connected {day}': '{day}に接続',
-  'Sign in to connect an app such as Claude to your wallet.': 'ClaudeなどのアプリをWalletにつなぐには、ログインしてください。',
+  'Sign in to connect an app such as Claude to your wallet.': 'ClaudeなどのアプリをRudWalletにつなぐには、ログインしてください。',
   'Connect {app}': '{app}と接続',
-  '{app} is asking to reach your wallet, signed in as {email}. It will be able to:': '{app}が、{email} でログイン中のWalletへのアクセスを求めています。次のことができるようになります:',
+  '{app} is asking to reach your wallet, signed in as {email}. It will be able to:': '{app}が、{email} でログイン中のRudWalletへのアクセスを求めています。次のことができるようになります:',
   'see your accounts, records and categories': '口座、記録、カテゴリを見る',
   'change the category or account of records, and add categories': '記録のカテゴリや口座を変更し、カテゴリを追加する',
   "It can't add or delete records, or see your password or API key. You can disconnect it at any time in Settings → Claude.":
@@ -578,7 +578,7 @@ export const ja = {
   "You'll go back to {host}.": '{host} に戻ります。',
   Deny: '拒否',
   Allow: '許可',
-  'Go to your wallet': 'Walletを開く',
+  'Go to your wallet': 'RudWalletを開く',
 
   // To review: confirming many at once
   'Confirmed {n} payment': '{n}件の支払いを確定しました',
@@ -590,7 +590,7 @@ export const ja = {
 
   // Settings › Home screen widgets
   'Keep this month in view from your home screen.': '今月の様子をホーム画面からいつでも確認できます。',
-  'The Wallet app for Android keeps this month in view from your home screen.': 'Android版のWalletアプリなら、今月の様子をホーム画面からいつでも確認できます。',
+  'The RudWallet app for Android keeps this month in view from your home screen.': 'Android版のRudWalletアプリなら、今月の様子をホーム画面からいつでも確認できます。',
   'Touch and hold an empty part of the home screen, tap {widgets}, and find {wallet}:':
     'ホーム画面の何もないところを長押しして{widgets}をタップし、{wallet}を探してください:',
   Widgets: 'ウィジェット',

@@ -1,6 +1,6 @@
-# Wallet
+# RudWallet
 
-**Wallet** tracks your money: accounts, categories, records, budgets, a
+**RudWallet** tracks your money: accounts, categories, records, budgets, a
 monthly overview, and stats over any period with trends. In the Android app,
 PayPay's and Google Wallet's payment notifications become records for you:
 each one waits under *To review* with the shop, amount and time filled in.
@@ -101,7 +101,7 @@ All settings are environment variables (read in `internal/config`).
 | `ANDROID_PACKAGE`, `ANDROID_CERT_FINGERPRINTS` | empty | The Android app's package, which Sign in with Google in the app returns to, and its signing keys, published in `/.well-known/assetlinks.json`. See [android/README.md](android/README.md). |
 | `ANDROID_APK` | empty | Path of the Android app's APK. While the file exists, the introduction page offers it at `/download/wallet.apk`. `docker-compose.yml` sets `/downloads/wallet.apk`, mounted from `downloads/`, which `./android/build.sh` fills. |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | empty | Show "Continue with Google" on the sign-in page. Needs `PUBLIC_ORIGIN`. See [Sign in with Google](#sign-in-with-google). |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `MAIL_FROM` | empty, `587` | Email a link to confirm each new account's address (port 587 with STARTTLS, or 465). `MAIL_FROM` is e.g. `Wallet <no-reply@example.com>`. Needs `PUBLIC_ORIGIN`. Without these, nobody is asked to confirm. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `MAIL_FROM` | empty, `587` | Email a link to confirm each new account's address (port 587 with STARTTLS, or 465). `MAIL_FROM` is e.g. `RudWallet <no-reply@example.com>`. Needs `PUBLIC_ORIGIN`. Without these, nobody is asked to confirm. |
 
 ### Sign in with Google
 

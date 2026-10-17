@@ -81,7 +81,7 @@ func (h *Handler) resourceMetadata(w http.ResponseWriter, r *http.Request) {
 	o := h.origin(r)
 	writePublicJSON(w, map[string]any{
 		"resource":                 o + "/mcp",
-		"resource_name":            "Wallet",
+		"resource_name":            "RudWallet",
 		"authorization_servers":    []string{o},
 		"bearer_methods_supported": []string{"header"},
 	})

@@ -24,7 +24,7 @@ test('a Google Wallet payment waits for review, once', async ({ page }) => {
 
   await page.goto('/app/#/settings');
   await page.getByRole('link', { name: /Payment notifications/ }).click();
-  await expect(page.getByText('This works in the Wallet app for Android')).toBeVisible();
+  await expect(page.getByText('This works in the RudWallet app for Android')).toBeVisible();
   const list = page.getByRole('list', { name: 'Recent notifications' });
   await expect(list.getByRole('listitem')).toHaveCount(2);
   await expect(list.getByRole('listitem').filter({ hasText: 'Lawson' })).toContainText('Recorded');

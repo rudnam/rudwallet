@@ -1,6 +1,6 @@
 {
-  "name": "Wallet",
-  "short_name": "Wallet",
+  "name": "RudWallet",
+  "short_name": "RudWallet",
   "id": "/",
   "start_url": "/app/",
   "scope": "/",
