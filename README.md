@@ -42,9 +42,10 @@ docker compose up -d --build    # http://localhost:8080 (the app is at /app/)
 ./preview.sh --ref ai/new-feature     # a branch, without checking it out
 ./preview.sh --restore backup.sql.gz  # with a copy of production data (see Production)
 ./preview.sh down                     # stop it and delete its data
+PREVIEW_MINUTES=0 ./preview.sh        # keep it until `down` (default: it stops after 120 minutes)
 ```
 
-Sign in as `preview@example.com` / `preview-password`. A fresh preview comes with six months of sample records, accounts and budgets (`e2e/seed`) and a few payment emails to review. The preview runs exactly the image production would run, in its own Compose project with its own database, so it cannot touch the live app or its data. `/healthz` shows which version you are looking at.
+Sign in as `preview@example.com` / `preview-password`. A fresh preview comes with six months of sample records, accounts and budgets (`e2e/seed`) and a few payment emails to review. The preview runs exactly the image production would run, in its own Compose project with its own database, so it cannot touch the live app or its data. `/healthz` shows which version you are looking at. It cleans up after itself: it stops, data and all, after two hours, or when the Claude Code session in that folder ends. `verify.sh` tears its stack down when it exits, and clears what a killed run left before it starts.
 
 You can also skip running anything: `./verify.sh` saves screenshots of the main screens at phone and desktop width in `e2e/test-results/`, and CI attaches them to every push and pull request as the `e2e-results` artifact.
 
@@ -199,7 +200,7 @@ Follow `internal/wallet` or `internal/inbox`; a feature is about five files:
 | POST | `/api/ai/categorize?offset=` | user | `{suggestions, remaining}`: a category Claude suggests (or `null`) for the next 100 payees whose confirmed records have none, skipping `offset`. Changes nothing. `409` without a key. |
 | POST | `/api/ai/categorize/apply` | user | Body `{items: [{payee, kind, category_id}]}`. Files each payee's uncategorised records and remembers the category for its emails. `{updated}` |
 | GET, POST, DELETE | `/api/mcp/tokens[/{id}]` | user | Access tokens for MCP clients: `{id, name, created_at, last_used_at, signed_in}`; `signed_in` marks a connection made by signing in. `POST {name}` also returns the `token`, once. Deleting a connection revokes its tokens. |
-| POST | `/mcp` | MCP token | The MCP server (Streamable HTTP, JSON responses only). `Authorization: Bearer <token>`; without one, `401` with `WWW-Authenticate: Bearer resource_metadata="…"` for clients that sign in. Tools: `get_overview`, `list_records`, `list_uncategorized_payees`, `categorize_payees`, `set_record_category`, `create_category`, `delete_category`, `spending_by_category`. |
+| POST | `/mcp` | MCP token | The MCP server (Streamable HTTP, JSON responses only). `Authorization: Bearer <token>`; without one, `401` with `WWW-Authenticate: Bearer resource_metadata="…"` for clients that sign in. Tools: `get_overview`, `list_records`, `list_uncategorized_payees`, `categorize_payees`, `set_record_category`, `set_record_account`, `create_category`, `delete_category`, `spending_by_category`. |
 | GET | `/.well-known/oauth-protected-resource[/mcp]`, `/.well-known/oauth-authorization-server` | – | Sign-in metadata for MCP clients (RFC 9728, RFC 8414). The issuer is `PUBLIC_ORIGIN`, or the request's own address. |
 | POST | `/oauth/register` | – | Dynamic client registration (RFC 7591). JSON `{client_name, redirect_uris}`; redirect URIs must be https, http on localhost, or a reverse-domain app scheme. `201 {client_id, …}`. 10 a minute per IP. |
 | GET | `/oauth/authorize` | – | Checks the client, its redirect URI and PKCE (S256 only), then sends the browser to the web app's Connect page (`/app/#/connect`). |

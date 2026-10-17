@@ -9,7 +9,9 @@
 # Needs only Docker. Uses its own Compose project (<folder>-verify) with the
 # database in tmpfs, so it never touches the local stack or its data, and it
 # tears everything down when it exits, except the Go module and build caches,
-# which it keeps so the next run compiles only what changed. Screenshots of
+# which it keeps so the next run compiles only what changed. A run that was
+# killed outright (or whose Docker crashed) can't tear down; the next run
+# clears what it left before starting. Screenshots of
 # failed browser tests land in e2e/test-results/.
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -38,8 +40,10 @@ unset COMPOSE_FILE COMPOSE_PROJECT_NAME
 project=${PWD##*/}; project=${project,,}-verify
 dc() { docker compose -p "$project" -f e2e/compose.yml "$@"; }
 # No --volumes: the database is in tmpfs, and the Go caches should stay.
+down() { dc --profile go --profile e2e down --remove-orphans --timeout 1 >/dev/null 2>&1 || true; }
+down   # whatever an earlier run left behind
 golog=''
-trap 'dc --profile go --profile e2e down --remove-orphans --timeout 1 >/dev/null 2>&1 || true; rm -f "$golog"' EXIT
+trap 'down; rm -f "$golog"' EXIT
 
 status=0
 step() { printf '\n\033[1m== %s\033[0m\n' "$*"; }
