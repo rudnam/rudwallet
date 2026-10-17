@@ -1,180 +1,28 @@
-// Claude: the user's own Anthropic API key, which turns on sorting records
-// and the AI email reader, and access tokens that let an MCP client (Claude
-// Desktop, Claude Code) connect to the wallet.
+// Claude: access tokens that let an MCP client (the Claude app, Claude
+// Desktop, Claude Code) connect to the wallet, to sort records and answer
+// questions about spending.
 import { useEffect, useState, type FormEvent } from 'react';
-import { api, errorMessage, type AIStatus, type MCPToken } from '../../api';
+import { api, errorMessage, type MCPToken } from '../../api';
 import { Icon, icons } from '../../components/Icon';
 import { formatDay } from '../../money';
 import { server } from '../../native';
-import { href } from '../../router';
-import { useToast } from '../../toast';
 import { useWallet } from '../../wallet';
-import { t, t as tr, tn, tx } from '../../i18n';
+import { t, t as tr, tx } from '../../i18n';
 
 export function ClaudeSettings() {
   const { me } = useWallet();
   if (me.demo) {
-    // A demo can't save a key or make tokens: it would reach outside the app.
+    // A demo can't make tokens: it would reach outside the app.
     return (
       <div className="card stack">
         <p className="small">
-          {t('With your own Anthropic API key, Claude sorts records that have no category and reads payment emails from any shop. Claude Desktop and Claude Code can also connect to your wallet.')}
+          {t('Connect the Claude app, Claude Desktop or Claude Code to your wallet, and Claude can sort records that have no category and answer questions about your spending.')}
         </p>
         <p className="notice small">{t('Claude needs an account of your own; it isn’t available in the demo.')}</p>
       </div>
     );
   }
-  return (
-    <>
-      <ApiKey />
-      <Connections />
-    </>
-  );
-}
-
-function ApiKey() {
-  const toast = useToast();
-  const [status, setStatus] = useState<AIStatus | null>(null);
-  const [editing, setEditing] = useState(false);
-  const [key, setKey] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    api.ai().then(setStatus, (err) => setError(errorMessage(err)));
-  }, []);
-
-  async function save(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError('');
-    try {
-      setStatus(await api.setAIKey(key));
-      setKey('');
-      setEditing(false);
-      toast(t('Claude is connected'));
-    } catch (err) {
-      setError(errorMessage(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function remove() {
-    if (!confirm(t('Remove your Claude API key? Claude stops sorting records and reading emails for you.'))) return;
-    try {
-      await api.deleteAIKey();
-      setStatus(await api.ai());
-      toast(t('Key removed'));
-    } catch (err) {
-      setError(errorMessage(err));
-    }
-  }
-
-  const form = (
-    <form className="stack tight" onSubmit={save}>
-      <label className="field">
-        {t('Anthropic API key')}
-        <input
-          type="password"
-          autoComplete="off"
-          spellCheck={false}
-          placeholder="sk-ant-…"
-          required
-          value={key}
-          onChange={(e) => setKey(e.target.value)}
-        />
-        <span className="muted small">
-          {t("Make one in the Claude Console at console.anthropic.com, under API keys. It's checked with Claude, then stored encrypted.")}
-        </span>
-      </label>
-      <div className="row end">
-        {editing && (
-          <button type="button" className="link" onClick={() => setEditing(false)}>
-            {t('Cancel')}
-          </button>
-        )}
-        <button type="submit" disabled={busy || !key.trim()}>
-          {busy ? t('Checking…') : t('Save key')}
-        </button>
-      </div>
-    </form>
-  );
-
-  return (
-    <div className="card stack">
-      <h2>{t('Your API key')}</h2>
-      <p className="small">
-        {t('With your own key, Claude sorts records that have no category and reads payment emails from any shop. What Claude does is billed to your Anthropic account.')}
-      </p>
-      {status === null && !error && <p className="muted">{t('Loading…')}</p>}
-      {status && !status.can_save && !status.has_key && (
-        <p className="notice warn small">
-          {tx("This server can't store API keys yet. Whoever runs it needs to set {setting}, which keeps saved keys encrypted.", {
-            setting: <code>SECRETS_KEY</code>,
-          })}
-        </p>
-      )}
-      {status?.can_save && !status.has_key && form}
-      {status?.key_unreadable && (
-        <>
-          <p className="notice warn small" role="status">
-            {t("Your saved key can't be read any more, because the server's encryption secret changed. Add it again.")}
-          </p>
-          {status.can_save && form}
-        </>
-      )}
-      {status?.has_key && !status.key_unreadable && (
-        <>
-          <div className="row wrap key-row">
-            <span className="row">
-              <span className="badge status-payment">
-                <Icon d={icons.check} className="inline-icon" /> {t('Connected')}
-              </span>
-              <span className="muted small nowrap">{t('Key ending in {hint}', { hint: status.key_hint })}</span>
-            </span>
-            {!editing && (
-              <span className="row">
-                <button type="button" className="link" onClick={() => setEditing(true)}>
-                  {t('Replace')}
-                </button>
-                <button type="button" className="link danger" onClick={remove}>
-                  {t('Remove')}
-                </button>
-              </span>
-            )}
-          </div>
-          {editing && form}
-          <ul className="list rows" aria-label={t('What Claude does for you')}>
-            <li className="row">
-              <span className="grow">
-                <span className="block">{t('Sort records')}</span>
-                <span className="muted small">
-                  {status.uncategorized === 0
-                    ? t('Every record has a category.')
-                    : tn(status.uncategorized, '{n} record has no category.', '{n} records have no category.')}
-                </span>
-              </span>
-              <a className="button secondary" href={href('organize')}>
-                {t('Open')}
-              </a>
-            </li>
-            <li className="row">
-              <span className="grow">
-                <span className="block">{t('Read payment emails')}</span>
-                <span className="muted small">{t('Receipts from shops without a built-in rule are read by Claude.')}</span>
-              </span>
-            </li>
-          </ul>
-        </>
-      )}
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
-    </div>
-  );
+  return <Connections />;
 }
 
 /** Where MCP clients connect: this site, or in the Android app, its server. */
@@ -245,7 +93,7 @@ function Connections() {
     <div className="card stack">
       <h2>{t('Connect Claude to your wallet')}</h2>
       <p className="small">
-        {t("Let Claude look through your records and tidy them: sort records, fix categories, and answer questions about your spending. It doesn't need your API key.")}
+        {t('Let Claude look through your records and tidy them: sort records, fix categories, and answer questions about your spending.')}
       </p>
       <p className="small">
         {tx('{where} (claude.ai, desktop or mobile): open Settings → Connectors, add a custom connector with the address below, then click Connect and allow it here. Leave the OAuth fields empty.', {

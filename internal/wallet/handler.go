@@ -47,6 +47,7 @@ func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) ht
 	route("GET /api/transactions", h.listTransactions)
 	route("POST /api/transactions", h.createTransaction)
 	route("POST /api/transactions/bulk", h.bulkTransactions)
+	route("POST /api/transactions/restore", h.restoreTransactions)
 	route("PUT /api/transactions/{id}", h.updateTransaction)
 	route("DELETE /api/transactions/{id}", h.deleteTransaction)
 
@@ -383,7 +384,7 @@ type transactionInput struct {
 	Payee       string    `json:"payee"`
 	Note        string    `json:"note"`
 	Status      string    `json:"status"`
-	// Remember, when false, confirms a record from an email or a
+	// Remember, when false, confirms a record from a
 	// notification without changing the category learned for its shop.
 	Remember *bool `json:"remember"`
 }
@@ -421,7 +422,7 @@ func (h *Handler) createTransaction(w http.ResponseWriter, r *http.Request) erro
 	if err != nil {
 		return err
 	}
-	t.Status = "confirmed" // only emails create records to review
+	t.Status = "confirmed" // only notifications create records to review
 	t, err = h.store.Create(r.Context(), userID(r), t)
 	if err := storeErr(err, "record"); err != nil {
 		return err

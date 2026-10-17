@@ -153,6 +153,10 @@ export interface BulkResult {
   skipped: number;
 }
 
+export interface RestoreResult {
+  restored: number;
+}
+
 /** Confirmed income and expenses over a period; transfers count as neither. */
 export interface Stats {
   spent: number;
@@ -161,21 +165,6 @@ export interface Stats {
   categories: { category_id: number | null; kind: 'expense' | 'income'; amount: number; count: number }[];
   /** Totals per day (YYYY-MM-DD, in the time zone asked for), oldest first. Days without records are left out. */
   days: { day: string; spent: number; income: number }[];
-}
-
-export interface InboundEmail {
-  id: number;
-  from: string;
-  subject: string;
-  received_at: string;
-  status: 'payment' | 'ignored' | 'unparsed' | 'forwarding';
-  parser: string;
-  detail: string;
-  body_text: string;
-  confirm_url: string;
-  transaction_id: number | null;
-  dismissed: boolean;
-  duplicate?: boolean;
 }
 
 /** A payment app's notification the Android app sent, and what became of it. */
@@ -187,23 +176,16 @@ export interface PaymentNotification {
   title: string;
   text: string;
   posted_at: string;
-  /** 'matched': the payment was already recorded (e.g. from its email), so nothing was added. */
+  /** 'matched': the payment was already recorded (e.g. by hand), so nothing was added. */
   status: 'payment' | 'matched' | 'ignored' | 'unparsed';
   detail: string;
   transaction_id: number | null;
 }
 
-export interface Inbox {
-  /** Empty when the server has no inbound mail domain configured. */
-  address: string;
-  ai_enabled: boolean;
-  emails: InboundEmail[];
-}
-
 export interface ImportResult {
   imported: number;
   duplicates: number;
-  /** Rows already recorded another way, e.g. from their email (PayPay only). */
+  /** Rows already recorded another way, e.g. from their notification (PayPay only). */
   matched: number;
   accounts_created: number;
   categories_created: number;
@@ -271,42 +253,6 @@ export interface BudgetBakersPreview {
   categories: ImportCategory[];
   new_categories: Category[];
   problems: string[];
-}
-
-/** The user's Claude features. The key itself is never sent back. */
-export interface AIStatus {
-  /** False when the server has no SECRETS_KEY to encrypt keys with. */
-  can_save: boolean;
-  has_key: boolean;
-  /** The saved key can't be decrypted any more (the server's secret changed): add it again. */
-  key_unreadable: boolean;
-  /** The key's last four characters. */
-  key_hint: string;
-  /** Confirmed records without a category, which Claude can sort. */
-  uncategorized: number;
-}
-
-/** A payee's uncategorised records, and the category Claude suggests (null: none fits). */
-export interface CategorySuggestion {
-  payee: string;
-  kind: CategoryKind;
-  count: number;
-  total: number;
-  note: string;
-  category_id: number | null;
-}
-
-export interface CategorySuggestions {
-  suggestions: CategorySuggestion[];
-  /** Payees after this batch. */
-  remaining: number;
-}
-
-/** Files a payee's uncategorised records under a category. */
-export interface PayeeCategory {
-  payee: string;
-  kind: CategoryKind;
-  category_id: number;
 }
 
 /** An access token for an MCP client such as Claude Desktop. */
@@ -434,6 +380,8 @@ export const api = {
   updateTransaction: (id: number, t: TransactionInput) => request<Transaction>('PUT', `/api/transactions/${id}`, t),
   deleteTransaction: (id: number) => request<void>('DELETE', `/api/transactions/${id}`),
   bulkTransactions: (change: BulkChange) => request<BulkResult>('POST', '/api/transactions/bulk', change),
+  /** Brings back records deleted in the last day. */
+  restoreTransactions: (ids: number[]) => request<RestoreResult>('POST', '/api/transactions/restore', { ids }),
 
   stats: (from: Date, to: Date, accountId?: number) => {
     const p = new URLSearchParams({ from: from.toISOString(), to: to.toISOString(), tz: Intl.DateTimeFormat().resolvedOptions().timeZone });
@@ -445,11 +393,6 @@ export const api = {
   createBudget: (b: Omit<Budget, 'id'>) => request<Budget>('POST', '/api/budgets', b),
   updateBudget: (id: number, b: Omit<Budget, 'id'>) => request<Budget>('PUT', `/api/budgets/${id}`, b),
   deleteBudget: (id: number) => request<void>('DELETE', `/api/budgets/${id}`),
-
-  inbox: () => request<Inbox>('GET', '/api/inbox'),
-  newAddress: () => request<Inbox>('POST', '/api/inbox/address'),
-  uploadEmail: (raw: string) => request<InboundEmail>('POST', '/api/inbox/emails', raw, 'message/rfc822'),
-  dismissEmail: (id: number) => request<void>('POST', `/api/inbox/emails/${id}/dismiss`),
 
   notifications: () => request<{ notifications: PaymentNotification[] }>('GET', '/api/notifications'),
 
@@ -463,16 +406,7 @@ export const api = {
   seen: {
     transactions: (f: TransactionFilter = {}) => lastSeen.get(`/api/transactions${query(f)}`) as Transaction[] | undefined,
     budgets: () => lastSeen.get('/api/budgets') as Budget[] | undefined,
-    inbox: () => lastSeen.get('/api/inbox') as Inbox | undefined,
   },
-
-  ai: () => request<AIStatus>('GET', '/api/ai'),
-  /** Saves the user's Anthropic API key, after Claude accepts it. */
-  setAIKey: (key: string) => request<AIStatus>('PUT', '/api/ai/key', { key }),
-  deleteAIKey: () => request<void>('DELETE', '/api/ai/key'),
-  /** Claude's suggestions for the next batch of uncategorised payees, after skipping offset of them. */
-  suggestCategories: (offset = 0) => request<CategorySuggestions>('POST', `/api/ai/categorize?offset=${offset}`),
-  applyCategories: (items: PayeeCategory[]) => request<{ updated: number }>('POST', '/api/ai/categorize/apply', { items }),
 
   mcpTokens: () => request<MCPToken[]>('GET', '/api/mcp/tokens'),
   createMCPToken: (name: string) => request<MCPToken>('POST', '/api/mcp/tokens', { name }),

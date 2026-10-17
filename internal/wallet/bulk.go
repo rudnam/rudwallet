@@ -22,10 +22,9 @@ type BulkResult struct {
 	Skipped int `json:"skipped"`
 }
 
-// BulkDelete deletes the user's records among ids.
+// BulkDelete deletes the user's records among ids; Restore can undo it.
 func (s *Store) BulkDelete(ctx context.Context, userID int64, ids []int64) (int, error) {
-	return affected(s.db.ExecContext(ctx,
-		`DELETE FROM transactions WHERE user_id = $1 AND id = ANY($2::bigint[])`, userID, pq.Array(ids)))
+	return s.trash(ctx, userID, ids)
 }
 
 // BulkCategorize gives the user's records among ids a category, or none

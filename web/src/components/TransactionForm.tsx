@@ -1,8 +1,8 @@
 // Add, edit, or review a record.
 import { useEffect, useState, type FormEvent } from 'react';
-import { api, errorMessage, type Transaction, type TransactionKind } from '../api';
-import { t } from '../i18n';
-import { amountInput, currencySymbol, parseAmount, toLocalInput } from '../money';
+import { api, errorMessage, type Transaction, type TransactionInput, type TransactionKind } from '../api';
+import { t, type Key } from '../i18n';
+import { amountInput, currencySymbol, formatDay, formatTime, parseAmount, toLocalInput } from '../money';
 import { useToast } from '../toast';
 import { useWallet } from '../wallet';
 import { Dialog } from './Dialog';
@@ -14,7 +14,7 @@ interface Props {
   onClose: () => void;
   /** Called after a save or delete, so the page can reload. */
   onSaved: () => void;
-  /** Starting values for a new record, e.g. from an email. */
+  /** Starting values for a new record. */
   draft?: { payee?: string; note?: string; occurred_at?: string };
 }
 
@@ -23,6 +23,11 @@ const lastAccountKey = 'wallet:last-account';
 
 /** What the user did last time at each payee, from recent records. */
 type Habit = { category_id: number | null; account_id: number; kind: TransactionKind };
+
+/** One field an edit changes, as the user reads it. */
+type Change = { field: string; from: string; to: string };
+
+const kindNames: Record<TransactionKind, Key> = { expense: 'Expense', income: 'Income', transfer: 'Transfer' };
 
 export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
   const w = useWallet();
@@ -47,6 +52,8 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
   const [habits, setHabits] = useState<Map<string, Habit>>(new Map());
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  // An edit waiting for the user to check what it changes.
+  const [pending, setPending] = useState<{ input: TransactionInput; changes: Change[] } | null>(null);
 
   // Suggest payees from the last few months; picking one fills in its category.
   useEffect(() => {
@@ -84,7 +91,6 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
       setError(exp === 0 ? t('Enter an amount, like 1200.') : t('Enter an amount, like 12.50.'));
       return;
     }
-    setBusy(true);
     setError('');
     const input = {
       kind,
@@ -92,24 +98,103 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
       account_id: accountId,
       to_account_id: kind === 'transfer' ? toAccountId : null,
       category_id: kind === 'transfer' ? null : categoryId,
-      occurred_at: new Date(when).toISOString(),
+      // An untouched date keeps its seconds, so it doesn't count as a change.
+      occurred_at: record && when === toLocalInput(new Date(record.occurred_at)) ? record.occurred_at : new Date(when).toISOString(),
       payee: kind === 'transfer' ? '' : payee,
       note,
       status: 'confirmed' as const,
     };
+    // Editing a saved record: show what changes before saving it.
+    if (record && !reviewing) {
+      const changes = describeChanges(record, input);
+      if (changes.length === 0) {
+        onClose();
+        return;
+      }
+      setPending({ input, changes });
+      return;
+    }
+    await commit(input);
+  }
+
+  async function commit(input: TransactionInput) {
+    setBusy(true);
+    setError('');
     try {
       if (record) await api.updateTransaction(record.id, input);
       else await api.createTransaction(input);
       if (!record) localStorage.setItem(lastAccountKey, String(accountId));
       await w.refresh();
-      toast(reviewing ? t('Confirmed') : record ? t('Saved') : t('Added {amount}', { amount: w.money(minor) }));
+      if (record && !reviewing) toast(t('Saved'), { label: t('Undo'), run: () => undo(record) });
+      else toast(reviewing ? t('Confirmed') : t('Added {amount}', { amount: w.money(input.amount) }));
       onSaved();
       onClose();
     } catch (err) {
+      setPending(null);
       setError(errorMessage(err));
     } finally {
       setBusy(false);
     }
+  }
+
+  // Puts the record back as it was before the edit. The form is closed by
+  // now, so this uses only what it captured.
+  async function undo(before: Transaction) {
+    try {
+      await api.updateTransaction(before.id, {
+        kind: before.kind,
+        amount: before.amount,
+        account_id: before.account_id,
+        to_account_id: before.to_account_id,
+        category_id: before.category_id,
+        occurred_at: before.occurred_at,
+        payee: before.payee,
+        note: before.note,
+        status: before.status,
+        // Restoring an old category doesn't teach it to the shop again.
+        remember: false,
+      });
+      await w.refresh();
+      toast(t('Change undone'));
+      onSaved();
+    } catch (err) {
+      toast(t("Couldn't undo: {error}", { error: errorMessage(err) }));
+    }
+  }
+
+  // Brings back the record just deleted, with its id and links.
+  async function restore(id: number) {
+    try {
+      await api.restoreTransactions([id]);
+      await w.refresh();
+      toast(t('Record restored'));
+      onSaved();
+    } catch (err) {
+      toast(t("Couldn't restore: {error}", { error: errorMessage(err) }));
+    }
+  }
+
+  /** The fields an edit changes, old and new, in the order the form shows them. */
+  function describeChanges(before: Transaction, after: TransactionInput): Change[] {
+    const name = (id: number | null) => w.account(id)?.name ?? t('None');
+    const category = (id: number | null) => w.category(id)?.name ?? t('None');
+    const when = (iso: string) => {
+      const d = new Date(iso);
+      return `${formatDay(d)}, ${formatTime(d)}`;
+    };
+    const text = (s: string) => s || t('None');
+    const transfer = after.kind === 'transfer' || before.kind === 'transfer';
+    const fields: [Key, string, string][] = [
+      ['Type', t(kindNames[before.kind]), t(kindNames[after.kind])],
+      ['Amount', w.money(before.amount), w.money(after.amount)],
+      ['Category', category(before.category_id), category(after.category_id)],
+      [after.kind === 'income' ? 'From whom' : 'Payee', text(before.payee), text(after.payee)],
+      [transfer ? 'From' : 'Account', name(before.account_id), name(after.account_id)],
+      ['To', name(before.to_account_id), name(after.to_account_id)],
+      ['Date', when(before.occurred_at), when(after.occurred_at)],
+      ['Note', text(before.note), text(after.note)],
+    ];
+    return fields.filter(([, from, to]) => from !== to).map(([field, from, to]) => ({ field: t(field), from, to }));
   }
 
   async function remove() {
@@ -118,7 +203,7 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
     try {
       await api.deleteTransaction(record.id);
       await w.refresh();
-      toast(t('Deleted'));
+      toast(t('Deleted'), { label: t('Undo'), run: () => restore(record.id) });
       onSaved();
       onClose();
     } catch (err) {
@@ -141,14 +226,42 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
   );
 
   const title = reviewing ? t('Review payment') : record ? t('Edit record') : t('New record');
+  if (pending) {
+    return (
+      <Dialog title={t('Save changes?')} onClose={onClose}>
+        <div className="stack">
+          <ul className="changes" aria-label={t('Changes')}>
+            {pending.changes.map((c) => (
+              <li key={c.field}>
+                <span className="muted small">{c.field}</span>
+                <span>
+                  <s className="muted">{c.from}</s>
+                  <Icon d={icons.level} className="inline-icon muted" />
+                  <span>{c.to}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div className="row end">
+            <button type="button" className="secondary" disabled={busy} onClick={() => setPending(null)}>
+              {t('Back')}
+            </button>
+            <button type="button" disabled={busy} autoFocus onClick={() => commit(pending.input)}>
+              {t('Save changes')}
+            </button>
+          </div>
+        </div>
+      </Dialog>
+    );
+  }
   return (
     <Dialog title={title} onClose={onClose}>
       <form className="stack" onSubmit={save}>
         {reviewing && (
           <p className="notice small">
             {record.source_label
-              ? t('From an email ({card}). Check it, pick a category, and confirm. Next time, this shop and card are filled in for you.', { card: record.source_label })
-              : t('From an email. Check it, pick a category, and confirm. Next time, this shop and card are filled in for you.')}
+              ? t('From a notification ({card}). Check it, pick a category, and confirm. Next time, this shop and card are filled in for you.', { card: record.source_label })
+              : t('From a notification. Check it, pick a category, and confirm. Next time, this shop and card are filled in for you.')}
           </p>
         )}
         {duplicate && (

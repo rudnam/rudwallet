@@ -43,7 +43,7 @@ func fill(ctx context.Context, w *wallet.Store, userID int64, lang string, now t
 		}
 		accounts[a.Key] = created.ID
 	}
-	// Emailed payments go to the card, as they would once the person picked it.
+	// Notified payments go to the card, as they would once the person picked it.
 	settings, err := w.Settings(ctx, userID)
 	if err != nil {
 		return err
@@ -97,9 +97,9 @@ func fill(ctx context.Context, w *wallet.Store, userID int64, lang string, now t
 			return fmt.Errorf("budget %s: %w", b.Name, err)
 		}
 	}
-	// Payments from the card's emails, waiting under To review as real ones would.
+	// Payments from the phone's notifications, waiting under To review as real ones would.
 	for _, p := range s.Review {
-		if _, _, err := w.CreateFromEmail(ctx, userID, wallet.Payment{
+		if _, _, err := w.CreateFromNotification(ctx, userID, wallet.Payment{
 			Amount: p.Amount, Currency: "JPY", Merchant: p.Merchant, OccurredAt: p.At, Source: p.Source,
 		}); err != nil {
 			return fmt.Errorf("payment %s: %w", p.Merchant, err)

@@ -230,7 +230,7 @@ func (h *Handler) dispatch(r *http.Request, userID int64, req rpcRequest) (any, 
 		return map[string]any{
 			"protocolVersion": version,
 			"capabilities":    map[string]any{"tools": map[string]any{}},
-			"serverInfo":      map[string]any{"name": "wallet", "title": "Wallet", "version": h.cfg.Version},
+			"serverInfo":      map[string]any{"name": "wallet", "title": "RudWallet", "version": h.cfg.Version},
 			"instructions":    instructions,
 		}, nil
 	case "ping":

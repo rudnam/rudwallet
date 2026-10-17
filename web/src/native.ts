@@ -64,7 +64,7 @@ export async function notificationAccess(): Promise<boolean | null> {
   }
 }
 
-/** Opens Android's notification access page at Wallet's switch. */
+/** Opens Android's notification access page at RudWallet's switch. */
 export function openNotificationAccess(): Promise<void> {
   return paymentNotifications.openSettings();
 }

@@ -48,7 +48,7 @@ export function RulesSettings() {
       <div className="card stack">
         <p className="small">
           {t(
-            "When you confirm a payment from an email or a notification, its shop's category and its card's account are remembered, and the next payment there is filled in for you. Payments at a shop's branches (a name that starts with the shop's) share its category.",
+            "When you confirm a payment from a notification, its shop's category and its card's account are remembered, and the next payment there is filled in for you. Payments at a shop's branches (a name that starts with the shop's) share its category.",
           )}
         </p>
         {error && (
@@ -140,8 +140,8 @@ export function RulesSettings() {
           </ul>
         )}
         <p className="muted small">
-          {tx("A forgotten card's payments go to the account chosen under {email} until you confirm one elsewhere.", {
-            email: <a href={href('settings', { section: 'email' })}>{t('Email automation')}</a>,
+          {tx("A forgotten card's payments go to the account chosen under {notifications} until you confirm one elsewhere.", {
+            notifications: <a href={href('settings', { section: 'notifications' })}>{t('Payment notifications')}</a>,
           })}
         </p>
       </div>

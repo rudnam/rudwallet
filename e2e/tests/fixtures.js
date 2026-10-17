@@ -72,46 +72,23 @@ function resetLink(request, to) {
   return emailedLink(request, to, /https?:\/\/\S+\/app\/#\/reset\?token=[\w-]+/);
 }
 
-const INBOUND_SECRET = 'e2e-inbound-secret-0123456789'; // matches e2e/compose.yml
+const PAYPAY = 'jp.ne.paypay.android.app';
 
 /**
- * A PayPay Card usage alert (利用速報) laid out like the real ones: UTF-8
- * text, base64, and the sender's name in ISO-2022-JP. when is a Date.
+ * A PayPay Card payment notification as the PayPay app words it, with
+ * full-width colons and the time in Japan time. when is a Date.
  */
-function payPayEmail({ merchant, yen, when, id }) {
-  // PayPay writes Japan time, e.g. 2026年10月11日 13:21.
+function payPayCard({ merchant, yen, when }) {
   const jst = new Date(when.getTime() + 9 * 3600_000);
   const stamp = `${jst.getUTCFullYear()}年${jst.getUTCMonth() + 1}月${jst.getUTCDate()}日 ${jst.getUTCHours()}:${String(jst.getUTCMinutes()).padStart(2, '0')}`;
-  const body = `PayPayカード ゴールド（Visa）利用速報\n\n${merchant}\n${stamp}\n${yen.toLocaleString('en-US')}円\n\nPayPayで取引履歴とポイントを確認\n`;
-  const subject = Buffer.from('PayPayカード ゴールド（Visa）利用速報').toString('base64');
-  return [
-    'From: =?ISO-2022-JP?Q?PayPay=1B=24B=25+!=3C=25I=1B=28B?= <paypaycard-info@mail.paypay-card.co.jp>',
-    'To: user@example.com',
-    `Subject: =?UTF-8?B?${subject}?=`,
-    'MIME-Version: 1.0',
-    'Content-Type: text/plain; charset=UTF-8',
-    'Content-Transfer-Encoding: base64',
-    `Message-ID: <${id}@ap-northeast-1.amazonses.com>`,
-    `Date: ${when.toUTCString()}`,
-    '',
-    Buffer.from(body).toString('base64'),
-  ].join('\r\n');
+  return { package: PAYPAY, when: when.getTime(), title: '支払いを受け付けました', text: `お店：${merchant}\n金額：${yen.toLocaleString('en-US')}円\n日時：${stamp}` };
 }
 
-/** Delivers an email to the inbound webhook, as the mail provider would. */
-async function deliverEmail(request, to, raw) {
-  const res = await request.post('/api/inbound/email', {
-    headers: { Authorization: `Bearer ${INBOUND_SECRET}`, 'X-Inbound-To': to, 'Content-Type': 'message/rfc822' },
-    data: raw,
-  });
+/** Sends notifications as the Android app would, and returns what each became. */
+async function sendNotifications(request, ...notifications) {
+  const res = await request.post('/api/notifications', { data: { notifications } });
   base.expect(res.status(), await res.text()).toBe(200);
-  return res.json();
+  return (await res.json()).notifications;
 }
 
-/** The signed-in user's forwarding address. */
-async function inboxAddress(page) {
-  const res = await page.request.get('/api/inbox');
-  return (await res.json()).address;
-}
-
-module.exports = { test, expect: base.expect, signUp, uniqueEmail, PASSWORD, confirmationLink, resetLink, payPayEmail, deliverEmail, inboxAddress };
+module.exports = { test, expect: base.expect, signUp, uniqueEmail, PASSWORD, confirmationLink, resetLink, PAYPAY, payPayCard, sendNotifications };

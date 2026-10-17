@@ -15,5 +15,5 @@ test('Settings explains the widgets', async ({ page }) => {
   await page.getByRole('link', { name: /Home screen widgets/ }).click();
   const list = page.getByRole('list', { name: 'Widgets' });
   for (const name of ['This month', 'Budgets', 'New record']) await expect(list).toContainText(name);
-  await expect(page.getByText('The Wallet app for Android')).toBeVisible();
+  await expect(page.getByText('The RudWallet app for Android')).toBeVisible();
 });

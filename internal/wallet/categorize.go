@@ -90,7 +90,7 @@ type PayeeCategory struct {
 }
 
 // Categorize gives each payee's uncategorised, confirmed records its
-// category, and remembers the category for the payee's future emails. It
+// category, and remembers the category for the payee's future payments. It
 // returns how many records changed. Every category must be the user's own
 // and of the payee's kind.
 func (s *Store) Categorize(ctx context.Context, userID int64, items []PayeeCategory) (int, error) {
@@ -192,7 +192,7 @@ func (s *Store) SetCategory(ctx context.Context, userID, id int64, categoryID *i
 
 // SetAccount moves one record to another account, keeping the rest. For a
 // transfer, accountID is the account it comes from, and toAccountID, if
-// given, the one it goes to. A payment from an email or a notification also
+// given, the one it goes to. A payment from a notification (or, before, an email) also
 // teaches its card's account, as correcting it in the app does.
 func (s *Store) SetAccount(ctx context.Context, userID, id, accountID int64, toAccountID *int64) (Transaction, error) {
 	t, err := s.Get(ctx, userID, id)

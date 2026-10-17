@@ -9,7 +9,7 @@
 # Needs only Docker. Uses its own Compose project (<folder>-verify) with the
 # database in tmpfs, so it never touches the local stack or its data, and it
 # tears everything down when it exits, except the Go module and build caches,
-# which it keeps so the next run compiles only what changed. A run that was
+# which every checkout shares so a run compiles only what changed. A run that was
 # killed outright (or whose Docker crashed) can't tear down; the next run
 # clears what it left before starting. Screenshots of
 # failed browser tests land in e2e/test-results/.
@@ -42,8 +42,17 @@ dc() { docker compose -p "$project" -f e2e/compose.yml "$@"; }
 # No --volumes: the database is in tmpfs, and the Go caches should stay.
 down() { dc --profile go --profile e2e down --remove-orphans --timeout 1 >/dev/null 2>&1 || true; }
 down   # whatever an earlier run left behind
+docker volume create wallet-app-gomod >/dev/null
+docker volume create wallet-app-gobuild >/dev/null
 golog=''
 trap 'down; rm -f "$golog"' EXIT
+
+# Pull the browser image while the app builds, not after: it's large, and a
+# fresh machine (CI) or a new Playwright version has to download it.
+pullpid=''
+if [[ $mode == all || $mode == e2e ]]; then
+  dc --profile e2e pull -q e2e >/dev/null 2>&1 & pullpid=$!
+fi
 
 status=0
 step() { printf '\n\033[1m== %s\033[0m\n' "$*"; }
@@ -64,6 +73,7 @@ if [[ $mode == all || $mode == e2e ]]; then
   step "Build and start the app"
   if dc up -d --build --wait server; then
     step "Browser tests (Playwright $PW_VERSION)"
+    wait "$pullpid" || true   # if the pull failed, the run below pulls again
     # Reinstall only when node_modules is missing or out of date.
     dc --profile e2e run --rm e2e sh -c \
       'npm ls @playwright/test >/dev/null 2>&1 || npm ci --no-audit --no-fund --loglevel=error; npx playwright test "$@"' \

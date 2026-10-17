@@ -34,17 +34,17 @@ func (h *Handler) sendConfirmation(ctx context.Context, userID int64, email, lan
 	if lang == "ja" {
 		return h.cfg.Mail.Send(ctx, mailer.Message{
 			To:      email,
-			Subject: "Walletのメールアドレスの確認",
+			Subject: "RudWalletのメールアドレスの確認",
 			Body: fmt.Sprintf("こんにちは。\n\n次のリンクを開いて、このメールアドレスがあなたのものであることを確認してください。\n\n%s\n\n"+
-				"リンクの有効期限は%d時間です。Walletのアカウントを作成した覚えがない場合は、このメールは無視してください。\n",
+				"リンクの有効期限は%d時間です。RudWalletのアカウントを作成した覚えがない場合は、このメールは無視してください。\n",
 				link, hours),
 		})
 	}
 	return h.cfg.Mail.Send(ctx, mailer.Message{
 		To:      email,
-		Subject: "Confirm your email for Wallet",
+		Subject: "Confirm your email for RudWallet",
 		Body: fmt.Sprintf("Hello,\n\nPlease confirm that this is your email address by opening this link:\n\n%s\n\n"+
-			"The link works for %d hours. If you didn't create a Wallet account, you can ignore this email.\n",
+			"The link works for %d hours. If you didn't create a RudWallet account, you can ignore this email.\n",
 			link, hours),
 	})
 }

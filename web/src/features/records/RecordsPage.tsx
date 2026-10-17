@@ -207,13 +207,27 @@ function BulkBar({
           : change.action === 'move'
             ? tn(res.changed, 'Moved {n} record.', 'Moved {n} records.')
             : tn(res.changed, 'Recategorised {n} record.', 'Recategorised {n} records.');
-      toast(res.skipped > 0 ? `${done} ${t('{n} didn’t fit and stayed as they were.', { n: res.skipped })}` : done);
+      toast(
+        res.skipped > 0 ? `${done} ${t('{n} didn’t fit and stayed as they were.', { n: res.skipped })}` : done,
+        change.action === 'delete' && res.changed > 0 ? { label: t('Undo'), run: () => restore(change.ids) } : undefined,
+      );
       if (change.action === 'delete') onSelect(new Set());
       await Promise.all([onChanged(), w.refresh()]);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
       setBusy(false);
+    }
+  }
+
+  // Brings back the records just deleted.
+  async function restore(deleted: number[]) {
+    try {
+      const res = await api.restoreTransactions(deleted);
+      toast(tn(res.restored, 'Restored {n} record.', 'Restored {n} records.'));
+      await Promise.all([onChanged(), w.refresh()]);
+    } catch (err) {
+      toast(t("Couldn't restore: {error}", { error: errorMessage(err) }));
     }
   }
 
@@ -276,7 +290,7 @@ function BulkBar({
             type="button"
             className="link danger"
             disabled={busy}
-            onClick={() => confirm(tn(n, 'Delete {n} record? This can’t be undone.', 'Delete {n} records? This can’t be undone.')) && apply({ ids, action: 'delete' })}
+            onClick={() => confirm(tn(n, 'Delete {n} record?', 'Delete {n} records?')) && apply({ ids, action: 'delete' })}
           >
             {t('Delete')}
           </button>

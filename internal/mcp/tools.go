@@ -184,7 +184,7 @@ var toolList = []*tool{
 		Title: "Set a record's account",
 		Description: "Move one record to another of the user's accounts (IDs from get_overview). " +
 			"For a transfer, account_id is the account it comes from; to_account_id, if given, is the one it goes to, and must differ. " +
-			"A payment read from an email or a notification also teaches the app that its card belongs to the new account, so later payments by that card go there.",
+			"A payment read from a notification also teaches the app that its card belongs to the new account, so later payments by that card go there.",
 		InputSchema: object(map[string]any{
 			"record_id":     map[string]any{"type": "integer"},
 			"account_id":    map[string]any{"type": "integer"},

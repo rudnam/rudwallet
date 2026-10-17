@@ -1,6 +1,6 @@
 # Notes for AI agents
 
-Go API (`internal/`, one package per feature), PostgreSQL, and a React + TypeScript frontend (`web/src/`, built by Vite into `web/dist/` and embedded in the binary). The Android app (`android/`) is the same web app packaged with Capacitor, plus native widgets. README.md explains the layout, the API and how to add a feature; follow `internal/wallet` or `internal/inbox`. Deploys and migrations: README.md, "Production". Email automation: `docs/email.md`. The Android app: `android/README.md`.
+Go API (`internal/`, one package per feature), PostgreSQL, and a React + TypeScript frontend (`web/src/`, built by Vite into `web/dist/` and embedded in the binary). The Android app (`android/`) is the same web app packaged with Capacitor, plus native widgets. README.md explains the layout, the API and how to add a feature; follow `internal/wallet` or `internal/notify`. Deploys and migrations: README.md, "Production". The Android app, and its reader for payment notifications: `android/README.md`.
 
 ## Verify your work before calling it done
 

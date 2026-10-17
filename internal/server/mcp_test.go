@@ -174,22 +174,22 @@ func TestMCP(t *testing.T) {
 	if r, _ := tool(t, ts.URL, tok.Token, "set_record_account", map[string]any{"record_id": transfer.ID, "account_id": card.ID, "to_account_id": cash}); r["account_id"] != float64(card.ID) || r["to_account_id"] != float64(cash) {
 		t.Errorf("reverse transfer %v", r)
 	}
-	// Moving an emailed payment teaches its card's account; a manual record
+	// Moving a notified payment teaches its card's account; a manual record
 	// teaches nothing.
 	var rules wallet.Rules
 	if alice.do("GET", "/api/rules", nil, &rules); len(rules.Cards) != 0 {
 		t.Errorf("a manual record taught a card %+v", rules.Cards)
 	}
 	day := time.Date(2026, 9, 20, 4, 0, 0, 0, time.UTC)
-	emailed := pay(t, alice, "m1", "ローソン", 550, day)
-	if emailed.AccountID == card.ID {
-		t.Fatalf("payment already on the card %+v", emailed)
+	notified := pay(t, alice, "ローソン", 550, day)
+	if notified.AccountID == card.ID {
+		t.Fatalf("payment already on the card %+v", notified)
 	}
-	tool(t, ts.URL, tok.Token, "set_record_account", map[string]any{"record_id": emailed.ID, "account_id": card.ID})
+	tool(t, ts.URL, tok.Token, "set_record_account", map[string]any{"record_id": notified.ID, "account_id": card.ID})
 	if alice.do("GET", "/api/rules", nil, &rules); len(rules.Cards) != 1 || rules.Cards[0].AccountID != card.ID {
 		t.Errorf("card rules %+v", rules.Cards)
 	}
-	if next := pay(t, alice, "m2", "ローソン", 300, day.Add(time.Hour)); next.AccountID != card.ID {
+	if next := pay(t, alice, "ローソン", 300, day.Add(time.Hour)); next.AccountID != card.ID {
 		t.Errorf("the card's next payment went to %d, not the card", next.AccountID)
 	}
 	sp, _ := tool(t, ts.URL, tok.Token, "spending_by_category", map[string]any{"from": "2026-10-01", "to": "2026-11-01"})

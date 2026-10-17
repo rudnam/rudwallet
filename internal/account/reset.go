@@ -77,7 +77,7 @@ func (h *Handler) sendReset(ctx context.Context, email, lang string) error {
 	if lang == "ja" {
 		return h.cfg.Mail.Send(ctx, mailer.Message{
 			To:      email,
-			Subject: "Walletのパスワードの再設定",
+			Subject: "RudWalletのパスワードの再設定",
 			Body: fmt.Sprintf("こんにちは。\n\n次のリンクを開いて、新しいパスワードを設定してください。\n\n%s\n\n"+
 				"リンクの有効期限は1時間で、一度だけ使えます。パスワードの再設定を依頼した覚えがない場合は、このメールは無視してください。パスワードは変わりません。\n",
 				link),
@@ -85,7 +85,7 @@ func (h *Handler) sendReset(ctx context.Context, email, lang string) error {
 	}
 	return h.cfg.Mail.Send(ctx, mailer.Message{
 		To:      email,
-		Subject: "Reset your Wallet password",
+		Subject: "Reset your RudWallet password",
 		Body: fmt.Sprintf("Hello,\n\nTo choose a new password, open this link:\n\n%s\n\n"+
 			"The link works once, for an hour. If you didn't ask to reset your password, you can ignore this email; your password stays the same.\n",
 			link),

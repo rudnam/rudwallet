@@ -162,19 +162,17 @@ const setupDoneKey = 'wallet:setup-dismissed';
 
 /**
  * The first things a new user does, ticked off as they go: their real
- * accounts, email forwarding and a budget. Hidden once done or dismissed.
+ * accounts, payment notifications and a budget. Hidden once done or dismissed.
  */
 function SetUp({ hasRecords, hasBudget }: { hasRecords: boolean; hasBudget: boolean }) {
   const w = useWallet();
   const [hidden, setHidden] = useState(() => localStorage.getItem(setupDoneKey) === '1');
-  const [forwarding, setForwarding] = useState<boolean | null>(() => {
-    const seen = api.seen.inbox();
-    return seen ? seen.emails.length > 0 : null;
-  });
+  // Done once the phone has sent a payment app's notification.
+  const [notified, setNotified] = useState<boolean | null>(null);
   const [addingAccount, setAddingAccount] = useState(false);
 
   useEffect(() => {
-    if (!hidden) api.inbox().then((i) => setForwarding(i.emails.length > 0), () => setForwarding(false));
+    if (!hidden) api.notifications().then((r) => setNotified(r.notifications.length > 0), () => setNotified(false));
   }, [hidden]);
 
   const steps = [
@@ -189,10 +187,10 @@ function SetUp({ hasRecords, hasBudget }: { hasRecords: boolean; hasBudget: bool
       ),
     },
     {
-      done: !!forwarding,
-      title: t('Forward your payment emails'),
-      detail: t('Card alerts become records by themselves.'),
-      action: <a href={href('settings', { section: 'email' })}>{t('Set up')}</a>,
+      done: !!notified,
+      title: t('Turn on payment notifications'),
+      detail: t('PayPay and Google Wallet payments become records by themselves.'),
+      action: <a href={href('settings', { section: 'notifications' })}>{t('Set up')}</a>,
     },
     {
       done: hasBudget,
@@ -202,7 +200,7 @@ function SetUp({ hasRecords, hasBudget }: { hasRecords: boolean; hasBudget: bool
     },
   ];
   const left = steps.filter((s) => !s.done).length;
-  if (hidden || forwarding === null || left === 0) return null;
+  if (hidden || notified === null || left === 0) return null;
 
   return (
     <div className="card stack setup" aria-label={t('Get set up')}>

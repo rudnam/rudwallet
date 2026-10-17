@@ -40,10 +40,6 @@ services:
       # Every browser test signs up its own user, all from this one IP.
       AUTH_RATE_LIMIT: "1000"
       LOG_LEVEL: debug
-      # Email automation on, so forwarding addresses show and the tests (and
-      # preview.sh) can deliver mail to the webhook like the provider would.
-      INBOUND_DOMAIN: in.example.test
-      INBOUND_SECRET: e2e-inbound-secret-0123456789
       # Links in emails point here; preview.yml changes it to localhost.
       PUBLIC_ORIGIN: http://server:8080
       # The Android app's package, which Google sign-in in the app returns to.
@@ -55,14 +51,10 @@ services:
       # tests stop at the redirect (the Go tests cover the rest).
       GOOGLE_CLIENT_ID: e2e-client.apps.googleusercontent.com
       GOOGLE_CLIENT_SECRET: e2e-client-secret
-      # Claude features go to the fake Claude below (preview.yml uses the real one).
-      ANTHROPIC_BASE_URL: http://claude:8090
-      # Encrypts users' saved API keys.
-      SECRETS_KEY: e2e-secrets-key-0123456789abcdefghij
       # Confirmation emails go to the mail catcher below.
       SMTP_HOST: mail
       SMTP_PORT: "1025"
-      MAIL_FROM: Wallet <no-reply@example.test>
+      MAIL_FROM: RudWallet <no-reply@example.test>
     volumes:
       - ./fake.apk:/downloads/wallet.apk:ro
     healthcheck:
@@ -89,23 +81,11 @@ services:
       TEST_DATABASE_URL: postgres://app:verify@db:5432/app_test?sslmode=disable
     volumes:
       - ..:/src:ro
-      - gomod:/go/pkg/mod
-      - gobuild:/root/.cache/go-build
+      # GO_MOD_CACHE and GO_BUILD_CACHE, if set, are host directories used
+      # instead of the volumes (CI keeps them between runs with actions/cache).
+      - ${GO_MOD_CACHE:-gomod}:/go/pkg/mod
+      - ${GO_BUILD_CACHE:-gobuild}:/root/.cache/go-build
     command: ["sh", "-c", "go vet ./... && go test -p 1 -count=1 ./..."]
-
-  # A fake Anthropic API for the browser tests (fake-claude.js).
-  claude:
-    image: mcr.microsoft.com/playwright:v${PW_VERSION:?run through verify.sh}-noble
-    profiles: [e2e]
-    working_dir: /e2e
-    volumes:
-      - .:/e2e:ro
-    command: ["node", "fake-claude.js"]
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:8090/health').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
-      interval: 1s
-      timeout: 3s
-      retries: 30
 
   # Playwright browser tests against the app. The image tag comes from
   # @playwright/test's version in package.json (see verify.sh).
@@ -117,8 +97,6 @@ services:
     depends_on:
       server:
         condition: service_healthy
-      claude:
-        condition: service_healthy
     environment:
       HOME: /tmp
       BASE_URL: http://server:8080
@@ -126,6 +104,14 @@ services:
     volumes:
       - .:/e2e
 
+# The Go caches are shared by every checkout and worktree, so a new one
+# starts warm instead of recompiling everything. External, so that
+# `down --volumes` (preview.sh) and the preview's reaper leave them alone;
+# verify.sh and preview.sh create them.
 volumes:
   gomod:
+    external: true
+    name: wallet-app-gomod
   gobuild:
+    external: true
+    name: wallet-app-gobuild

@@ -12,14 +12,15 @@ import java.util.Set;
 /**
  * Sends payment apps' notifications to the server, which turns payments into
  * records to review (internal/notify). Android runs this while the user has
- * given Wallet notification access (Settings › Payment notifications in the
+ * given RudWallet notification access (Settings › Payment notifications in the
  * app). Every other app's notifications are ignored here and never leave the
  * phone.
  */
 public class PaymentListener extends NotificationListenerService {
     /** The apps whose notifications are sent. The server knows the same list. */
     static final Set<String> APPS = new HashSet<>(Arrays.asList(
-            "com.google.android.apps.walletnfcrel" // Google Wallet
+            "com.google.android.apps.walletnfcrel", // Google Wallet
+            "jp.ne.paypay.android.app" // PayPay
     ));
 
     @Override

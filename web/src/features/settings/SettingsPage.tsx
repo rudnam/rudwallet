@@ -1,6 +1,6 @@
 // Settings: a short menu; each entry opens its own page (?section=…), with
-// a way back. Email automation, payment notifications, what they learned,
-// accounts, categories, currency, and import.
+// a way back. Payment notifications, what they learned, Claude, accounts,
+// categories, currency, and import.
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { api, errorMessage, type Me, type Account, type AccountKind, type Category, type ImportResult, type PayPayPreview, type BudgetBakersPreview } from '../../api';
 import { CategoryIcon, glyphKey, glyphs, Icon, icons, Plus } from '../../components/Icon';
@@ -10,7 +10,6 @@ import { href, type Route } from '../../router';
 import { useToast } from '../../toast';
 import { useWallet } from '../../wallet';
 import { WidgetSettings } from './WidgetSettings';
-import { EmailSettings } from './EmailSettings';
 import { NotificationSettings } from './NotificationSettings';
 import { ClaudeSettings } from './ClaudeSettings';
 import { LanguageSettings } from './LanguageSettings';
@@ -32,7 +31,6 @@ export const accountKinds: Record<AccountKind, { label: Key; glyph: string; colo
 const swatches = ['#c8463d', '#d97757', '#b08a3e', '#4f8a4c', '#2a8a8a', '#3b6ea8', '#5b4a8a', '#a8508a', '#6f6c63'];
 
 const sections: { id: string; label: Key; title: Key; glyph: string }[] = [
-  { id: 'email', label: 'Email automation', title: 'Email automation', glyph: 'mail' },
   { id: 'notifications', label: 'Payment notifications', title: 'Payment notifications', glyph: 'card' },
   { id: 'rules', label: 'Shops and cards', title: 'Shops and cards', glyph: 'shopping' },
   { id: 'claude', label: 'Claude', title: 'Claude', glyph: 'spark' },
@@ -68,7 +66,6 @@ export function SettingsPage({
           </a>
           <h1>{t(open.title)}</h1>
         </header>
-        {open.id === 'email' && <EmailSettings />}
         {open.id === 'notifications' && <NotificationSettings />}
         {open.id === 'rules' && <RulesSettings />}
         {open.id === 'claude' && <ClaudeSettings />}
@@ -84,9 +81,9 @@ export function SettingsPage({
 
   const active = w.accounts.filter((a) => !a.archived).length;
   const summary: Record<string, string> = {
-    email: w.settings.auto_confirm ? t('Auto-confirm on') : '',
+    notifications: w.settings.auto_confirm ? t('Auto-confirm on') : '',
     rules: t('What was learned'),
-    claude: t('Sort, connect apps'),
+    claude: t('Connect apps'),
     accounts: tn(active, '{n} account', '{n} accounts'),
     categories: tn(w.categories.length, '{n} category', '{n} categories'),
     general: w.settings.currency,
@@ -176,7 +173,7 @@ function DeleteAccount({ me, onClose, onDeleted }: { me: Me; onClose: () => void
     <Dialog title={t('Delete account')} onClose={onClose}>
       <form className="stack" onSubmit={submit}>
         <p className="muted">
-          {tx("This deletes {email} and everything in it: accounts, records, budgets, categories and your forwarding address. It can't be undone.", {
+          {tx("This deletes {email} and everything in it: accounts, records, budgets and categories. It can't be undone.", {
             email: <strong>{me.email}</strong>,
           })}
         </p>
@@ -627,7 +624,7 @@ function ImportSummary({ result }: { result: ImportResult }) {
       {[
         tn(result.imported, 'Imported {n} record', 'Imported {n} records'),
         result.duplicates > 0 && t('skipped {n} already imported', { n: result.duplicates }),
-        result.matched > 0 && t('skipped {n} already recorded from emails or by hand', { n: result.matched }),
+        result.matched > 0 && t('skipped {n} already recorded from notifications or by hand', { n: result.matched }),
         result.accounts_created > 0 && tn(result.accounts_created, 'created {n} account', 'created {n} accounts'),
         result.categories_created > 0 && tn(result.categories_created, 'created {n} category', 'created {n} categories'),
       ]
@@ -637,7 +634,7 @@ function ImportSummary({ result }: { result: ImportResult }) {
       {result.imported > 0 && (
         <>
           {' '}
-          {tx('Records without a category can be {sorted}.', { sorted: <a href={href('organize')}>{t('sorted by Claude')}</a> })}
+          {tx('Records without a category can be {sorted}.', { sorted: <a href={href('settings', { section: 'claude' })}>{t('sorted by Claude')}</a> })}
         </>
       )}
       {result.problems.length > 0 && (
