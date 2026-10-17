@@ -133,18 +133,18 @@ test('the overview and budgets say where the month is heading', async ({ page })
 
   const yen = (n) => '¥' + n.toLocaleString('en-US');
   const pace = 400 * new Date(y, m + 1, 0).getDate();
-  const month = new Date(y, m, 1).toLocaleDateString('en-US', { month: 'long' });
   // Signing up left the overview open, before these records existed.
   await page.reload();
-  await expect(page.locator('.hero')).toContainText(`At this pace, about ${yen(pace)} by the end of ${month}.`);
+  const compact = '¥' + new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }).format(pace);
+  await expect(page.locator('.hero')).toContainText(`On pace for ${compact}`);
 
   await page.goto('/app/#/budgets');
   const budgets = page.getByRole('list', { name: 'Budgets' });
-  await expect(budgets.getByRole('listitem').filter({ hasText: 'Eating out' })).toContainText(
-    `On pace for ${yen(pace)}, ${yen(pace - 10000)} over`,
-  );
-  await expect(budgets.getByRole('listitem').filter({ hasText: 'Everything' })).toContainText(`On pace for ${yen(pace)}`);
-  await expect(budgets.getByRole('listitem').filter({ hasText: 'Everything' })).not.toContainText('over');
+  // Only the budget that's heading past its limit says so; the other just
+  // shows the faint bar ahead of its fill.
+  await expect(budgets.getByRole('listitem').filter({ hasText: 'Eating out' })).toContainText(`On pace for ${yen(pace)}`);
+  await expect(budgets.getByRole('listitem').filter({ hasText: 'Everything' })).not.toContainText('On pace');
+  await expect(budgets.getByRole('listitem').filter({ hasText: 'Everything' }).locator('.meter-ahead')).toBeVisible();
 });
 
 test('the currency can change until there are records', async ({ page }) => {

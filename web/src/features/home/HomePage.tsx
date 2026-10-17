@@ -68,18 +68,14 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
         <span className="muted">{t('Total balance')}</span>
         <span className="hero-figure">{w.money(total)}</span>
         <div className="tiles">
-          <Tile label={t('Spent this month')} value={w.money(spent)} />
+          <Tile
+            label={t('Spent this month')}
+            value={w.money(spent)}
+            hint={pace !== null ? t('On pace for {amount}', { amount: formatCompact(pace, w.settings) }) : undefined}
+          />
           <Tile label={t('Income')} value={w.money(income)} className="income" />
           <Tile label={t('Net')} value={w.money(income - spent, true)} />
         </div>
-        {pace !== null && (
-          <p className="muted small pace">
-            {t('At this pace, about {amount} by the end of {month}.', {
-              amount: w.money(pace),
-              month: month.toLocaleDateString(locale(), { month: 'long' }),
-            })}
-          </p>
-        )}
       </div>
 
       <div className="accounts" aria-label={t('Accounts')} role="list">
@@ -261,11 +257,12 @@ function SetUp({ hasRecords, hasBudget }: { hasRecords: boolean; hasBudget: bool
   );
 }
 
-function Tile({ label, value, className }: { label: string; value: string; className?: string }) {
+function Tile({ label, value, hint, className }: { label: string; value: string; hint?: string; className?: string }) {
   return (
     <div className="tile">
       <span className="muted small">{label}</span>
       <strong className={className}>{value}</strong>
+      {hint && <span className="muted small tile-hint">{hint}</span>}
     </div>
   );
 }

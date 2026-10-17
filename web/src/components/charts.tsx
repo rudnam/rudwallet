@@ -175,8 +175,8 @@ function niceMax(v: number): number {
 /** A budget meter: the fill turns warning at 80% and critical past 100%. */
 /**
  * A budget's spending against its limit. With pace (the month-end projection,
- * see monthPace), it also says where the month is heading while the budget
- * still has room.
+ * see monthPace), a faint bar ahead of the fill shows where the month is
+ * heading, and a note appears when that is past the limit.
  */
 export function Meter({
   spent,
@@ -203,6 +203,7 @@ export function Meter({
     ) : (
       t('{amount} left', { amount: format(limit - spent) })
     );
+  const heading = pace != null && state !== 'over' && pace > spent ? pace : null;
   return (
     <div className={`meter ${state}`}>
       <div
@@ -213,6 +214,12 @@ export function Meter({
         aria-valuenow={Math.min(spent, limit)}
         aria-valuetext={t('{spent} of {limit}', { spent: format(spent), limit: format(limit) })}
       >
+        {heading !== null && (
+          <span
+            className={`meter-ahead${heading > limit ? ' warn' : ''}`}
+            style={{ width: `${Math.min(heading / limit, 1) * 100}%` }}
+          />
+        )}
         <span className="meter-fill" style={{ width: `${Math.min(pct, 1) * 100}%` }} />
       </div>
       <div className="row small">
@@ -221,11 +228,9 @@ export function Meter({
         </span>
         <span className="meter-status">{status}</span>
       </div>
-      {pace != null && state !== 'over' && (
-        <p className={`meter-pace small${pace > limit ? ' warn' : ''}`}>
-          {pace > limit
-            ? t('On pace for {amount}, {over} over', { amount: format(pace), over: format(pace - limit) })
-            : t('On pace for {amount}', { amount: format(pace) })}
+      {heading !== null && heading > limit && (
+        <p className="meter-pace muted small">
+          <Icon d={icons.warning} className="inline-icon" /> {t('On pace for {amount}', { amount: format(heading) })}
         </p>
       )}
     </div>
