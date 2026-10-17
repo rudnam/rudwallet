@@ -318,7 +318,6 @@ export const ja = {
   'Higher than usual': 'いつもより多い',
   'Rest of {month}': '{month}の残り',
   'Heading for about {amount}': '月末には約{amount}の見込み',
-  '{spent} so far, plus what the rest of a month usually costs.': 'ここまでの{spent}に、月の残りでいつもかかる分を足しました。',
   '{spent} so far, at the same rate per day.': 'ここまでの{spent}から、同じ1日あたりのペースで見込みました。',
   'To stay within budget, {n} day left': '予算内に収めるには（残り{n}日）',
   'To stay within budget, {n} days left': '予算内に収めるには（残り{n}日）',
