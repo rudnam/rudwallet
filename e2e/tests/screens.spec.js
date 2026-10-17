@@ -137,6 +137,19 @@ for (const [name, viewport] of [
     await page.getByRole('checkbox', { name: /Chubu Electric/ }).check();
     await shot('4-records-select');
     await page.getByRole('button', { name: 'Done' }).click();
+    // Editing a record shows what changes before saving, then offers an undo.
+    await page.getByRole('button', { name: /コメダ珈琲店/ }).click();
+    const edit = page.getByRole('dialog', { name: 'Edit record' });
+    await edit.getByLabel('Amount (JPY)').fill('1680');
+    await edit.getByLabel('Note').fill('With Aya');
+    await edit.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByRole('list', { name: 'Changes' })).toBeVisible();
+    await shot('4-records-edit-confirm');
+    await page.getByRole('button', { name: 'Save changes' }).click();
+    await expect(page.getByRole('button', { name: 'Undo' })).toBeVisible();
+    await shot('4-records-edit-undo');
+    await page.getByRole('button', { name: 'Undo' }).click();
+    await expect(page.getByRole('button', { name: /コメダ珈琲店, -¥1,430/ })).toBeVisible();
 
     await page.getByRole('button', { name: 'Add record' }).click();
     await expect(page.getByRole('dialog', { name: 'New record' })).toBeVisible();

@@ -230,7 +230,11 @@ func (s *Store) learn(ctx context.Context, userID int64, t Transaction, category
 }
 
 func (s *Store) Delete(ctx context.Context, userID, id int64) error {
-	return rowsChanged(s.db.ExecContext(ctx, `DELETE FROM transactions WHERE user_id = $1 AND id = $2`, userID, id))
+	n, err := s.trash(ctx, userID, []int64{id})
+	if err == nil && n == 0 {
+		return db.ErrNotFound
+	}
+	return err
 }
 
 // PayeeKey normalises a merchant name for matching: full-width letters and

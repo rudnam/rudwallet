@@ -132,7 +132,7 @@ The code is split by **feature**: each one owns its SQL, HTTP handlers and page.
 | `internal/httpx/` | HTTP plumbing every feature shares: handlers that return errors, JSON in and out, middleware (security headers, CSRF origin check, logging, panic recovery), rate limiting. |
 | `internal/account/` | Feature: sign-up, sign-in (password or Google), sessions, email confirmation, account deletion, and the `RequireUser` middleware. |
 | `internal/mailer/` | Sends the app's own emails over SMTP. |
-| `internal/wallet/` | Feature: accounts, categories, records, budgets, settings, and the PayPay and BudgetBakers CSV imports. |
+| `internal/wallet/` | Feature: accounts, categories, records (deleted ones kept a day so they can be restored), budgets, settings, and the PayPay and BudgetBakers CSV imports. |
 | `internal/inbox/` | Feature: email automation. Forwarding addresses, the inbound webhook, and turning emails into records (`parse/` reads emails and knows the senders; `claude.go` is the AI fallback). |
 | `internal/notify/` | Feature: payment notifications the Android app sends (Google Wallet), read into records (`parse.go` knows the apps). A payment already recorded from its email, an import or by hand is matched, not added. |
 | `internal/ai/` | Feature: Claude with the user's own API key. Stores the key encrypted (`seal.go`), and suggests categories for uncategorised records (`claude.go`). |
@@ -176,8 +176,9 @@ Follow `internal/wallet` or `internal/inbox`; a feature is about five files:
 | POST, PUT, DELETE | `/api/categories[/{id}]` | user | Categories: `{name, kind, icon, color}` |
 | GET | `/api/categories/missing` | user | The default categories the user doesn't have (added since they signed up, or deleted), to add with POST |
 | GET | `/api/transactions` | user | Records, newest first. Query: `from`, `to` (RFC 3339), `account_id`, `category_id` (or `none`), `q`, `status` |
-| POST, PUT, DELETE | `/api/transactions[/{id}]` | user | Records: `{kind, amount, account_id, to_account_id, category_id, occurred_at, payee, note, status}`. Confirming an emailed record learns its shop and card; with `remember: false` on the update, the shop's learned category is left as it was. |
+| POST, PUT, DELETE | `/api/transactions[/{id}]` | user | Records: `{kind, amount, account_id, to_account_id, category_id, occurred_at, payee, note, status}`. Confirming an emailed record learns its shop and card; with `remember: false` on the update, the shop's learned category is left as it was. A deleted record is kept for a day, for restore. |
 | POST | `/api/transactions/bulk` | user | Changes many records at once. Body `{ids, action}`: `delete`, `categorize` with `category_id` (`null` clears it; only records of the category's kind change, never transfers), `move` with `account_id`, or `confirm` (records to review with a category and an amount, not flagged as possible duplicates; shops and cards are learned only if nothing was learned for them yet). Up to 2000 IDs. `{changed, skipped}` |
+| POST | `/api/transactions/restore` | user | Undoes deletes from the last day. Body `{ids}`; each record comes back with its ID and is linked again to its emails, notifications and duplicates. One deleted with its account, or imported again since, stays gone. Up to 2000 IDs. `{restored}`, or 404 if none came back |
 | GET | `/api/rules` | user | What confirmed payments taught the app: `{payees: [{key, payee, category_id, records}], cards: [{source, account_id, records}]}` |
 | PUT, DELETE | `/api/rules/payees` | user | Set a shop's category (body `{payee, category_id}`, returns the rule), or forget it (`?payee=`, `204`) |
 | PUT, DELETE | `/api/rules/cards` | user | Move a learned card to another account (body `{source, account_id}`), or forget it (`?source=`). `204` |
