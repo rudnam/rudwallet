@@ -4,7 +4,7 @@ import { api, type Budget, type Transaction } from '../../api';
 import { CategoryBars, DailyColumns, Meter, type BarItem } from '../../components/charts';
 import { TransactionForm } from '../../components/TransactionForm';
 import { TransactionList } from '../../components/TransactionList';
-import { addMonths, daysInMonth, formatCompact, monthPace, monthStart } from '../../money';
+import { addMonths, daysInMonth, formatCompact, monthStart } from '../../money';
 import { href, navigate } from '../../router';
 import { CategoryIcon, Icon, icons } from '../../components/Icon';
 import { AccountForm } from '../settings/SettingsPage';
@@ -30,7 +30,6 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
   const accounts = w.accounts.filter((a) => !a.archived);
   const total = accounts.reduce((s, a) => s + a.balance, 0);
   const byCategory = spendingByCategory(confirmed, w);
-  const pace = spent > 0 ? monthPace(spent, month) : null;
   const daily = new Array<number>(daysInMonth(month)).fill(0);
   for (const t of confirmed) if (t.kind === 'expense') daily[new Date(t.occurred_at).getDate() - 1] += t.amount;
 
@@ -68,11 +67,7 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
         <span className="muted">{t('Total balance')}</span>
         <span className="hero-figure">{w.money(total)}</span>
         <div className="tiles">
-          <Tile
-            label={t('Spent this month')}
-            value={w.money(spent)}
-            hint={pace !== null ? t('On pace for {amount}', { amount: formatCompact(pace, w.settings) }) : undefined}
-          />
+          <Tile label={t('Spent this month')} value={w.money(spent)} />
           <Tile label={t('Income')} value={w.money(income)} className="income" />
           <Tile label={t('Net')} value={w.money(income - spent, true)} />
         </div>
@@ -128,12 +123,7 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
           {budgets.map((b) => (
             <div key={b.id} className="stack tight">
               <span>{b.name}</span>
-              <Meter
-                spent={budgetSpent(b, confirmed)}
-                limit={b.amount}
-                pace={monthPace(budgetSpent(b, confirmed), month)}
-                format={(n) => w.money(n)}
-              />
+              <Meter spent={budgetSpent(b, confirmed)} limit={b.amount} format={(n) => w.money(n)} />
             </div>
           ))}
         </div>
@@ -257,12 +247,11 @@ function SetUp({ hasRecords, hasBudget }: { hasRecords: boolean; hasBudget: bool
   );
 }
 
-function Tile({ label, value, hint, className }: { label: string; value: string; hint?: string; className?: string }) {
+function Tile({ label, value, className }: { label: string; value: string; className?: string }) {
   return (
     <div className="tile">
       <span className="muted small">{label}</span>
       <strong className={className}>{value}</strong>
-      {hint && <span className="muted small tile-hint">{hint}</span>}
     </div>
   );
 }
