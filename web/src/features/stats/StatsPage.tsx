@@ -38,11 +38,9 @@ export function StatsPage({ route }: { route: Route }) {
   // The three periods before, each only up to the same point as this one,
   // so half a month is compared with the first halves of earlier months.
   const past = [1, 2, 3].map((n) => samePoint(shift(period, -n), days));
-  // For the month in progress, across all accounts: those months in full too,
-  // to see what the rest of a month usually costs.
+  // The month in progress, across all accounts, also shows where it's heading.
   const ahead = period.span === 'month' && ongoing && !account;
-  const full = ahead ? [1, 2, 3].map((n) => shift(period, -n)) : [];
-  const [stats, setStats] = useState<{ now: Stats; past: Stats[]; full: Stats[] } | null>(null);
+  const [stats, setStats] = useState<{ now: Stats; past: Stats[] } | null>(null);
   const [budgets, setBudgets] = useState<Budget[]>(() => api.seen.budgets() ?? []);
   const [error, setError] = useState('');
 
@@ -55,9 +53,8 @@ export function StatsPage({ route }: { route: Route }) {
     let current = true;
     setStats(null);
     const ask = (q: Period) => api.stats(q.from, q.to, account);
-    Promise.all([ask(period), ...past.map(ask), ...full.map(ask)]).then(
-      ([now, ...before]) =>
-        current && (setStats({ now, past: before.slice(0, past.length), full: before.slice(past.length) }), setError('')),
+    Promise.all([ask(period), ...past.map(ask)]).then(
+      ([now, ...before]) => current && (setStats({ now, past: before }), setError('')),
       (err) => current && setError(errorMessage(err)),
     );
     return () => {
@@ -180,7 +177,7 @@ export function StatsPage({ route }: { route: Route }) {
       {stats && days > 0 && <Trends now={stats.now} past={stats.past} period={period} days={days} ongoing={ongoing} />}
 
       {stats && ahead && (
-        <MonthAhead now={stats.now} past={stats.past} full={stats.full} budgets={budgets} days={days} period={period} />
+        <MonthAhead now={stats.now} budgets={budgets} days={days} period={period} />
       )}
 
       <div className="card stack">
@@ -466,37 +463,14 @@ function Trends({ now, past, period, days, ongoing }: { now: Stats; past: Stats[
 }
 
 /**
- * The month in progress: where its spending is heading, and how much each
- * budget leaves to spend per day. The rest of the month is expected to cost
- * what it usually has, so rent paid on the 1st isn't counted again; without
- * earlier months, the same per day as so far.
+ * The month in progress: where its spending is heading at the same rate per
+ * day as so far, and how much each budget leaves to spend per day.
  */
-function MonthAhead({
-  now,
-  past,
-  full,
-  budgets,
-  days,
-  period,
-}: {
-  now: Stats;
-  past: Stats[];
-  full: Stats[];
-  budgets: Budget[];
-  days: number;
-  period: Period;
-}) {
+function MonthAhead({ now, budgets, days, period }: { now: Stats; budgets: Budget[]; days: number; period: Period }) {
   const w = useWallet();
   const len = lengthInDays(period);
   const left = len - days + 1; // today included
-  const months = full.map((f, i) => ({ full: f, partial: past[i] })).filter((m) => m.full.days.length > 0);
-  const heading = (spentIn: (s: Stats) => number) =>
-    Math.round(
-      spentIn(now) +
-        (months.length > 0
-          ? months.reduce((sum, m) => sum + Math.max(0, spentIn(m.full) - spentIn(m.partial)), 0) / months.length
-          : (spentIn(now) / days) * (len - days)),
-    );
+  const heading = (spentIn: (s: Stats) => number) => Math.round((spentIn(now) / days) * len);
   const forBudget = (b: Budget) => (s: Stats) =>
     b.category_id === null
       ? s.spent
@@ -509,9 +483,7 @@ function MonthAhead({
       <div>
         <strong className="block">{t('Heading for about {amount}', { amount: w.money(heading((s) => s.spent)) })}</strong>
         <span className="muted small block">
-          {months.length > 0
-            ? t('{spent} so far, plus what the rest of a month usually costs.', { spent: w.money(now.spent) })
-            : t('{spent} so far, at the same rate per day.', { spent: w.money(now.spent) })}
+          {t('{spent} so far, at the same rate per day.', { spent: w.money(now.spent) })}
         </span>
       </div>
       {budgets.length > 0 && (
@@ -521,7 +493,9 @@ function MonthAhead({
             {budgets.map((b) => {
               const c = w.category(b.category_id);
               const spent = forBudget(b)(now);
-              const to = heading(forBudget(b));
+              // The most a day that keeps within it, against the rate so far.
+              const allowed = Math.floor((b.amount - spent) / left);
+              const rate = Math.round(spent / days);
               return (
                 <li key={b.id}>
                   {c ? (
@@ -536,11 +510,11 @@ function MonthAhead({
                     {spent >= b.amount ? (
                       <strong className="over">{t('Over by {amount}', { amount: w.money(spent - b.amount) })}</strong>
                     ) : (
-                      <strong>{t('{amount} a day', { amount: w.money(Math.floor((b.amount - spent) / left)) })}</strong>
+                      <strong>{t('Up to {amount} a day', { amount: w.money(allowed) })}</strong>
                     )}
                     <span className="muted small block">
-                      {to > b.amount && spent < b.amount && <Icon d={icons.warning} className="inline-icon" />}{' '}
-                      {t('Heading for about {amount}', { amount: w.money(to) })}
+                      {spent < b.amount && rate > allowed && <Icon d={icons.warning} className="inline-icon" />}{' '}
+                      {t('Now {amount} a day', { amount: w.money(rate) })}
                     </span>
                   </span>
                 </li>
