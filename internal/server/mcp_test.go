@@ -202,7 +202,7 @@ func TestMCP(t *testing.T) {
 	if r, msg := tool(t, ts.URL, tok.Token, "delete_category", map[string]any{"category_id": cat["id"]}); r["deleted_category_id"] != cat["id"] {
 		t.Errorf("delete category %v %q", r, msg)
 	}
-	if recs, _ := tool(t, ts.URL, tok.Token, "list_records", map[string]any{"uncategorized": true}); len(recs["records"].([]any)) != 1 {
+	if recs, _ := tool(t, ts.URL, tok.Token, "list_records", map[string]any{"uncategorized": true, "query": "Gym"}); len(recs["records"].([]any)) != 1 {
 		t.Errorf("gym not uncategorised after delete: %v", recs)
 	}
 	if _, msg := tool(t, ts.URL, tok.Token, "delete_category", map[string]any{"category_id": cat["id"]}); !strings.Contains(msg, "no such category") {
