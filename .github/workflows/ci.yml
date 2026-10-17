@@ -98,9 +98,11 @@ jobs:
     permissions:
       contents: read
     env:
-      # The repository name is also the ECR repository, the Compose project on
-      # the instance and the app's name in rudnam-infra.
-      APP: ${{ github.event.repository.name }}
+      # The app's name in rudnam-infra: its ECR repository, its folder in the
+      # deploy bucket and its Compose project on the instance (and so its
+      # database volume). Fixed, not the repository name, which became
+      # rudwallet in the rebrand; the deploy role may only touch wallet-app.
+      APP: wallet-app
       AWS_REGION: ap-southeast-2
       SHA: ${{ inputs.sha || github.sha }}
     steps:
