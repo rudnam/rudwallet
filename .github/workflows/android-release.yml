@@ -82,7 +82,7 @@ jobs:
     env:
       AWS_REGION: ap-southeast-2
       # The upload key's certificate (android/README.md); the build must be signed with it.
-      UPLOAD_CERT_SHA256: a15890f7aa46cf833dd8f53be2b851ef8243d32ecf4e3049193fe906d88a046d
+      UPLOAD_CERT_SHA256: 82077ffc52bc0c277faea26fd033d4030c5f8d9d563d7094e848641854e3cb61
       GH_TOKEN: ${{ github.token }}
       SHA: ${{ needs.decide.outputs.sha }}
     steps:
