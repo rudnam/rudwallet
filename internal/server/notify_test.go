@@ -5,12 +5,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rudnam/wallet-app/internal/inbox"
 	"github.com/rudnam/wallet-app/internal/notify"
 	"github.com/rudnam/wallet-app/internal/wallet"
 )
 
-const googleWallet = "com.google.android.apps.walletnfcrel"
+const (
+	googleWallet = "com.google.android.apps.walletnfcrel"
+	payPay       = "jp.ne.paypay.android.app"
+)
 
 type notifications struct {
 	Notifications []notify.Notification `json:"notifications"`
@@ -35,9 +37,6 @@ func records(t *testing.T, c *client) []wallet.Transaction {
 	c.do("GET", "/api/transactions", nil, &all)
 	return all
 }
-
-// The paypay-usage.eml fixture's payment: ¥3,280 at 2026-10-11 13:21 JST.
-var emailedPayment = time.Date(2026, 10, 11, 4, 21, 0, 0, time.UTC)
 
 func TestNotificationPayment(t *testing.T) {
 	ts := newTestServer(t)
@@ -81,7 +80,7 @@ func TestNotificationPayment(t *testing.T) {
 		t.Errorf("second payment %+v", second[0])
 	}
 
-	// Confirming teaches the card's account and the shop's category, like an email.
+	// Confirming teaches the card's account and the shop's category.
 	var card wallet.Account
 	alice.do("POST", "/api/accounts", map[string]any{"name": "PayPay Card", "kind": "credit_card"}, &card)
 	food := categoryID(t, o, "Food & Drinks")
@@ -117,56 +116,35 @@ func TestNotificationPayment(t *testing.T) {
 	}
 }
 
-// The phone's notification and the card's email are one payment, whichever
-// arrives first.
-func TestNotificationAndEmailAreOnePayment(t *testing.T) {
-	ts := newTestServer(t, withInbound)
+// PayPay's notifications: a card payment and a balance payment learn their
+// accounts apart, and an offer is not a payment.
+func TestPayPayNotifications(t *testing.T) {
+	ts := newTestServer(t)
 	c := newClient(t, ts)
 	c.signup("a@example.com")
-	var v inboxView
-	c.do("GET", "/api/inbox", nil, &v)
-	tap := func(at time.Time) notify.Incoming {
-		return notify.Incoming{Package: googleWallet, When: at.UnixMilli(), Title: "TEST BOOKS", Text: "¥3,280 with Visa •••• 1234"}
+	got := post(t, c,
+		notify.Incoming{Package: payPay, When: time.Date(2026, 10, 16, 11, 19, 30, 0, time.UTC).UnixMilli(),
+			Title: "支払いを受け付けました", Text: "お店：ベルマート豊橋店\n金額：1,291円\n日時：2026年10月16日 20:19"},
+		notify.Incoming{Package: payPay, When: time.Date(2026, 10, 16, 12, 0, 0, 0, time.UTC).UnixMilli(),
+			Title: "PayPay", Text: "Uber Eatsへの支払いが完了しました。\n金額: 3,994円\n取引番号: 05093583565634363396"},
+		notify.Incoming{Package: payPay, When: time.Date(2026, 10, 16, 13, 0, 0, 0, time.UTC).UnixMilli(),
+			Title: "PayPay", Text: "今だけ最大10%戻ってくる！"},
+	)
+	if got[0].Status != "payment" || got[1].Status != "payment" || got[2].Status != "ignored" || got[0].App != "PayPay" {
+		t.Fatalf("notifications %+v", got)
 	}
-
-	// Notification first, email a few minutes later.
-	n := post(t, c, tap(emailedPayment.Add(20*time.Second)))[0]
-	var e inbox.Email
-	deliver(c, v.Address, fixture(t, "paypay-usage.eml"), &e)
-	if e.Status != "payment" || e.TransactionID == nil || *e.TransactionID != *n.TransactionID {
-		t.Fatalf("email %+v not matched to notification %+v", e, n)
+	byID := map[int64]wallet.Transaction{}
+	for _, r := range records(t, c) {
+		byID[r.ID] = r
 	}
-	all := records(t, c)
-	if len(all) != 1 || all[0].DuplicateOfID != nil {
-		t.Fatalf("records %+v", all)
+	card, balance := byID[*got[0].TransactionID], byID[*got[1].TransactionID]
+	// The card payment's time is the one in its text, in Japan time.
+	if card.Payee != "ベルマート豊橋店" || card.Amount != 1291 || card.SourceLabel != "PayPay Card" ||
+		!card.OccurredAt.Equal(time.Date(2026, 10, 16, 11, 19, 0, 0, time.UTC)) {
+		t.Errorf("card payment %+v", card)
 	}
-
-	// Another user, the email first, then the notification.
-	b := newClient(t, ts)
-	b.signup("b@example.com")
-	b.do("GET", "/api/inbox", nil, &v)
-	deliver(b, v.Address, fixture(t, "paypay-usage.eml"), &e)
-	if e.TransactionID == nil {
-		t.Fatalf("email %+v", e)
-	}
-	n = post(t, b, tap(emailedPayment.Add(time.Minute)))[0]
-	if n.Status != "matched" || n.TransactionID == nil || *n.TransactionID != *e.TransactionID {
-		t.Errorf("notification %+v not matched to email %+v", n, e)
-	}
-	if got := len(records(t, b)); got != 1 {
-		t.Errorf("%d records, want 1", got)
-	}
-
-	// Another tap of the same amount, with nothing left to match: a new
-	// record, flagged since it's within a day of the other.
-	n = post(t, b, tap(emailedPayment.Add(30*time.Minute)))[0]
-	if n.Status != "payment" {
-		t.Errorf("another payment %+v", n)
-	}
-	for _, x := range records(t, b) {
-		if x.ID == *n.TransactionID && x.DuplicateOfID == nil {
-			t.Errorf("another payment not flagged: %+v", x)
-		}
+	if balance.Payee != "Uber Eats" || balance.Amount != 3994 || balance.SourceLabel != "PayPay" {
+		t.Errorf("balance payment %+v", balance)
 	}
 }
 
@@ -207,5 +185,94 @@ func TestNotificationRejects(t *testing.T) {
 	}
 	if code := c.do("POST", "/api/notifications", map[string]any{"notifications": many}, nil); code != 413 {
 		t.Errorf("too many: %d", code)
+	}
+}
+
+// Email automation and users' own Claude keys are gone; older Android builds
+// still ask about them, and get an empty answer rather than an error.
+func TestRemovedFeaturesAnswerEmpty(t *testing.T) {
+	ts := newTestServer(t)
+	c := newClient(t, ts)
+	if code := c.do("GET", "/api/inbox", nil, nil); code != 401 {
+		t.Errorf("signed out: %d", code)
+	}
+	c.signup("a@example.com")
+	var inbox struct {
+		Address string `json:"address"`
+		Emails  []any  `json:"emails"`
+	}
+	if code := c.do("GET", "/api/inbox", nil, &inbox); code != 200 || inbox.Address != "" || inbox.Emails == nil || len(inbox.Emails) != 0 {
+		t.Errorf("inbox: %d %+v", code, inbox)
+	}
+	var ai struct {
+		CanSave bool `json:"can_save"`
+		HasKey  bool `json:"has_key"`
+	}
+	if code := c.do("GET", "/api/ai", nil, &ai); code != 200 || ai.CanSave || ai.HasKey {
+		t.Errorf("ai: %d %+v", code, ai)
+	}
+	if code := c.send("/api/inbound/email", "message/rfc822", []byte("Subject: hi\r\n\r\nhello"), nil, nil); code != 404 {
+		t.Errorf("inbound email: %d, want 404", code)
+	}
+}
+
+// A restored record from a notification keeps where it came from, its
+// notification, and the flag on the record it duplicates.
+func TestRestoreNotifiedRecord(t *testing.T) {
+	ts := newTestServer(t)
+	c := newClient(t, ts)
+	c.signup("a@example.com")
+	o := overview(t, c)
+	when := time.Date(2026, 10, 5, 23, 0, 0, 0, time.UTC)
+	var manual wallet.Transaction
+	c.do("POST", "/api/transactions", map[string]any{"kind": "expense", "amount": 1820, "account_id": o.Accounts[0].ID,
+		"occurred_at": when.Add(-time.Hour), "payee": "lunch"}, &manual)
+	n := post(t, c, notify.Incoming{Package: payPay, When: when.UnixMilli(), Title: "支払いを受け付けました",
+		Text: "お店：大戸屋\n金額：1,820円\n日時：2026年10月6日 08:00"})[0]
+	if n.Status != "payment" || n.TransactionID == nil {
+		t.Fatalf("notification %+v", n)
+	}
+	notified := *n.TransactionID
+	link := func() *int64 {
+		var list notifications
+		c.do("GET", "/api/notifications", nil, &list)
+		return list.Notifications[0].TransactionID
+	}
+	review := func() wallet.Transaction {
+		var l []wallet.Transaction
+		c.do("GET", "/api/transactions?status=review", nil, &l)
+		if len(l) != 1 {
+			t.Fatalf("%d records to review, want 1", len(l))
+		}
+		return l[0]
+	}
+	before := review()
+	if before.DuplicateOfID == nil || *before.DuplicateOfID != manual.ID {
+		t.Fatalf("want a possible duplicate of %d: %+v", manual.ID, before)
+	}
+
+	c.do("DELETE", fmt.Sprintf("/api/transactions/%d", notified), nil, nil)
+	if link() != nil {
+		t.Fatal("notification still linked to a deleted record")
+	}
+	if code := c.do("POST", "/api/transactions/restore", map[string]any{"ids": []int64{notified}}, nil); code != 200 {
+		t.Fatalf("restore: %d", code)
+	}
+	after := review()
+	if after.ID != notified || after.Source != "notification" || after.SourceLabel != before.SourceLabel || after.Status != "review" {
+		t.Errorf("restored %+v, want %+v", after, before)
+	}
+	if l := link(); l == nil || *l != notified {
+		t.Errorf("notification links to %v, want %d", l, notified)
+	}
+
+	// The record it duplicates: deleting it clears the flag, restoring it puts it back.
+	c.do("DELETE", fmt.Sprintf("/api/transactions/%d", manual.ID), nil, nil)
+	if review().DuplicateOfID != nil {
+		t.Fatal("still flagged as a duplicate of a deleted record")
+	}
+	c.do("POST", "/api/transactions/restore", map[string]any{"ids": []int64{manual.ID}}, nil)
+	if d := review().DuplicateOfID; d == nil || *d != manual.ID {
+		t.Errorf("duplicate of %v, want %d", d, manual.ID)
 	}
 }

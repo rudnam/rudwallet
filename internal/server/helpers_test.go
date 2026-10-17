@@ -6,6 +6,7 @@ package server_test
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -28,6 +29,13 @@ func init() {
 // the config first.
 func newTestServer(t *testing.T, edit ...func(*config.Config)) *httptest.Server {
 	t.Helper()
+	ts, _ := newTestServerDB(t, edit...)
+	return ts
+}
+
+// newTestServerDB is newTestServer that also gives the test its database.
+func newTestServerDB(t *testing.T, edit ...func(*config.Config)) (*httptest.Server, *sql.DB) {
+	t.Helper()
 	conn := testdb.Open(t)
 	cfg := config.Config{AllowSignup: true, AuthRateLimit: 1000}
 	for _, e := range edit {
@@ -41,7 +49,7 @@ func newTestServer(t *testing.T, edit ...func(*config.Config)) *httptest.Server 
 	}
 	ts := httptest.NewServer(server.New(cfg, conn, static, "test"))
 	t.Cleanup(ts.Close)
-	return ts
+	return ts, conn
 }
 
 // client is a browser-like API client with its own cookie jar.

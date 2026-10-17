@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/rudnam/wallet-app/internal/wallet"
 )
@@ -12,7 +13,10 @@ import (
 // sends only these (PaymentListener.java); add a package there too.
 var apps = map[string]string{
 	"com.google.android.apps.walletnfcrel": "Google Wallet",
+	payPayApp:                              "PayPay",
 }
+
+const payPayApp = "jp.ne.paypay.android.app"
 
 // Read is what a notification turned out to be.
 type Read struct {
@@ -45,6 +49,9 @@ func Parse(pkg, title, text string) Read {
 		return Read{Status: "ignored", Detail: "Not from a payment app this server reads."}
 	}
 	title, text = halfWidth(strings.TrimSpace(title)), halfWidth(strings.TrimSpace(text))
+	if pkg == payPayApp {
+		return payPay(title, text)
+	}
 	all := title + "\n" + text
 	m := amountRe.FindStringSubmatch(all)
 	if m == nil {
@@ -85,6 +92,61 @@ func Parse(pkg, title, text string) Read {
 				break
 			}
 		}
+	}
+	return Read{Status: "payment", Payment: p}
+}
+
+var (
+	// A labelled line of a PayPay notification, e.g. "金額:1,291円" (after
+	// halfWidth, so the colon is ASCII).
+	payPayField = regexp.MustCompile(`(?m)^\s*(お店|店舗名|金額|日時)\s*:\s*(.+?)\s*$`)
+	// "Uber Eatsへの支払いが完了しました。"
+	payPayTo   = regexp.MustCompile(`^(.+?)への支払いが完了しました`)
+	payPayTime = regexp.MustCompile(`^(\d{4})年(\d{1,2})月(\d{1,2})日\s*(\d{1,2}):(\d{2})$`)
+	// A payment that was cancelled is money back.
+	payPayCancel = regexp.MustCompile(`取り?消`)
+)
+
+// jst is Japan time, which PayPay's times are in. Japan has no daylight saving.
+var jst = time.FixedZone("JST", 9*60*60)
+
+// payPay reads the PayPay app's payment notifications. A PayPay Card
+// payment is titled 支払いを受け付けました, with お店, 金額 and 日時 lines.
+// A payment from the PayPay balance is titled PayPay and reads
+// 取引が完了しました。 with 金額, 取引番号 and 店舗名 lines, or
+// "Uber Eatsへの支払いが完了しました。" with 金額 and 取引番号. The two are
+// told apart (Source), so each can go to its own account.
+func payPay(title, text string) Read {
+	all := title + "\n" + text
+	fields := map[string]string{}
+	for _, m := range payPayField.FindAllStringSubmatch(all, -1) {
+		fields[m[1]] = m[2]
+	}
+	p := wallet.Payment{Currency: "JPY", Refund: refundRe.MatchString(all) || payPayCancel.MatchString(all)}
+	switch {
+	case strings.Contains(title, "支払いを受け付けました"):
+		p.Source, p.Merchant = "PayPay Card", fields["お店"]
+		if m := payPayTime.FindStringSubmatch(fields["日時"]); m != nil {
+			n := func(i int) int { v, _ := strconv.Atoi(m[i]); return v }
+			p.OccurredAt = time.Date(n(1), time.Month(n(2)), n(3), n(4), n(5), 0, 0, jst)
+		}
+	case strings.Contains(text, "取引が完了しました"), strings.Contains(text, "支払いが完了しました"):
+		p.Source, p.Merchant = "PayPay", fields["店舗名"]
+		if m := payPayTo.FindStringSubmatch(text); m != nil && p.Merchant == "" {
+			p.Merchant = strings.TrimSpace(m[1])
+		}
+	default:
+		return Read{Status: "ignored", Detail: "Not a PayPay payment."}
+	}
+	if notPaymentRe.MatchString(all) {
+		return Read{Status: "ignored", Detail: "Not a payment made (declined, a balance or a top-up)."}
+	}
+	amount, ok := fields["金額"]
+	if !ok {
+		return Read{Status: "unparsed", Detail: "No amount in the notification."}
+	}
+	if p.Amount, ok = minorUnits(strings.TrimSpace(strings.TrimSuffix(amount, "円")), 0); !ok || p.Amount <= 0 {
+		return Read{Status: "unparsed", Detail: "Couldn't read the amount " + amount + "."}
 	}
 	return Read{Status: "payment", Payment: p}
 }

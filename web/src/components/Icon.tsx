@@ -1,6 +1,7 @@
 // Line icons, all drawn on a 24-unit grid with the same round 1.7px stroke,
 // so they read as one set. "h.01" segments render as dots.
 import type { CSSProperties } from 'react';
+import type { Key } from '../i18n';
 
 /** A line icon from a path. */
 export function Icon({ d, className = 'nav-icon' }: { d: string; className?: string }) {
@@ -18,7 +19,7 @@ export const icons = {
   up: 'M4 17l6-6 4 4 6-7M15 8h5v5',
   down: 'M4 7l6 6 4-4 6 7M15 16h5v-5',
   level: 'M4 12h16M15 7l5 5-5 5',
-  review: 'M3 6h18v12H3zM3 7l9 6 9-6',
+  review: 'M4 13l2.5-8h11L20 13v6H4zM4 13h4.5l1 2h5l1-2H20',
   budgets: 'M12 3a9 9 0 1 0 9 9h-9zM15 3.5A9 9 0 0 1 20.5 9H15z',
   settings:
     'M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1',
@@ -30,6 +31,7 @@ export const icons = {
   stop: 'M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M12 7.5v5.5M12 16.5h.01',
   transfer: 'M4 8h15l-3.5-3.5M20 16H5l3.5 3.5',
   dot: 'M12 12h.01',
+  globe: 'M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M3.5 9h17M3.5 15h17M12 3c-2.4 2.6-3.6 5.6-3.6 9s1.2 6.4 3.6 9M12 3c2.4 2.6 3.6 5.6 3.6 9s-1.2 6.4-3.6 9',
   spark: 'M12 3l1.8 5.7L19.5 10.5l-5.7 1.8L12 18l-1.8-5.7L4.5 10.5l5.7-1.8zM18.5 15.5l.7 2.1 2.1.7-2.1.7-.7 2.1-.7-2.1-2.1-.7 2.1-.7z',
 };
 
@@ -37,7 +39,7 @@ export const icons = {
  * Icons a category can wear. The key is what's stored in the category's
  * icon field (at most 8 characters, which the API allows).
  */
-export const glyphs: Record<string, { label: string; d: string }> = {
+export const glyphs: Record<string, { label: Key; d: string }> = {
   food: { label: 'Food', d: 'M4 12h16a8 8 0 0 1-16 0zM9 20.5h6M13 4l-2.5 8M18.5 5L14 12' },
   grocery: { label: 'Groceries', d: 'M3 4h2.5l2.2 11h10.6L20.5 8H6.4M9 19.5h.01M17 19.5h.01' },
   shopping: { label: 'Shopping', d: 'M5 8h14l-1 12.5H6zM9 10V6.5a3 3 0 0 1 6 0V10' },

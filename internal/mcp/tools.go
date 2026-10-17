@@ -180,6 +180,20 @@ var toolList = []*tool{
 		run:         setCategory,
 	},
 	{
+		Name:  "set_record_account",
+		Title: "Set a record's account",
+		Description: "Move one record to another of the user's accounts (IDs from get_overview). " +
+			"For a transfer, account_id is the account it comes from; to_account_id, if given, is the one it goes to, and must differ. " +
+			"A payment read from a notification also teaches the app that its card belongs to the new account, so later payments by that card go there.",
+		InputSchema: object(map[string]any{
+			"record_id":     map[string]any{"type": "integer"},
+			"account_id":    map[string]any{"type": "integer"},
+			"to_account_id": map[string]any{"type": "integer", "description": "Transfers only."},
+		}, "record_id", "account_id"),
+		Annotations: changes,
+		run:         setAccount,
+	},
+	{
 		Name:        "create_category",
 		Title:       "Create a category",
 		Description: "Add a category. Check get_overview first: reuse a fitting category rather than adding a near-duplicate.",
@@ -189,6 +203,17 @@ var toolList = []*tool{
 		}, "name", "kind"),
 		Annotations: map[string]any{"readOnlyHint": false, "destructiveHint": false, "idempotentHint": false, "openWorldHint": false},
 		run:         createCategory,
+	},
+	{
+		Name:  "delete_category",
+		Title: "Delete a category",
+		Description: "Delete a category. Its records become uncategorised, and its budgets and remembered payees are deleted with it. " +
+			"It can't be undone: ask the user first.",
+		InputSchema: object(map[string]any{
+			"category_id": map[string]any{"type": "integer"},
+		}, "category_id"),
+		Annotations: map[string]any{"readOnlyHint": false, "destructiveHint": true, "idempotentHint": true, "openWorldHint": false},
+		run:         deleteCategory,
 	},
 	{
 		Name:        "spending_by_category",
@@ -397,6 +422,22 @@ func setCategory(c *call, args json.RawMessage) (any, error) {
 	return map[string]any{"id": t.ID, "category_id": t.CategoryID}, nil
 }
 
+func setAccount(c *call, args json.RawMessage) (any, error) {
+	var in struct {
+		RecordID    int64  `json:"record_id"`
+		AccountID   int64  `json:"account_id"`
+		ToAccountID *int64 `json:"to_account_id"`
+	}
+	if err := decode(args, &in); err != nil {
+		return nil, err
+	}
+	t, err := c.h.wallet.SetAccount(c.r.Context(), c.userID, in.RecordID, in.AccountID, in.ToAccountID)
+	if err != nil {
+		return nil, walletErr(err, "record")
+	}
+	return map[string]any{"id": t.ID, "account_id": t.AccountID, "to_account_id": t.ToAccountID}, nil
+}
+
 func createCategory(c *call, args json.RawMessage) (any, error) {
 	var in struct{ Name, Kind string }
 	if err := decode(args, &in); err != nil {
@@ -414,6 +455,19 @@ func createCategory(c *call, args json.RawMessage) (any, error) {
 		return nil, walletErr(err, "category")
 	}
 	return outCategory{cat.ID, cat.Name, cat.Kind}, nil
+}
+
+func deleteCategory(c *call, args json.RawMessage) (any, error) {
+	var in struct {
+		CategoryID int64 `json:"category_id"`
+	}
+	if err := decode(args, &in); err != nil {
+		return nil, err
+	}
+	if err := c.h.wallet.DeleteCategory(c.r.Context(), c.userID, in.CategoryID); err != nil {
+		return nil, walletErr(err, "category")
+	}
+	return map[string]any{"deleted_category_id": in.CategoryID}, nil
 }
 
 func spending(c *call, args json.RawMessage) (any, error) {

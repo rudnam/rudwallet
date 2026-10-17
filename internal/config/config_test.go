@@ -58,3 +58,24 @@ func TestReportsEveryError(t *testing.T) {
 		}
 	}
 }
+
+func TestDemoFollowsSignup(t *testing.T) {
+	for _, c := range []struct {
+		env  map[string]string
+		want bool
+	}{
+		{map[string]string{}, true},
+		{map[string]string{"ALLOW_SIGNUP": "false"}, false},
+		{map[string]string{"ALLOW_SIGNUP": "false", "DEMO": "true"}, true},
+		{map[string]string{"DEMO": "false"}, false},
+	} {
+		c.env["DATABASE_URL"] = "postgres://x"
+		got, err := Load(env(c.env))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.Demo != c.want {
+			t.Errorf("%v: Demo = %v, want %v", c.env, got.Demo, c.want)
+		}
+	}
+}

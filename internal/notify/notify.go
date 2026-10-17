@@ -1,11 +1,11 @@
 // Package notify turns the phone's payment notifications into records. The
-// Android app listens for notifications from payment apps such as Google
-// Wallet (android/…/notify/PaymentListener.java), keeps them while offline,
+// Android app listens for notifications from payment apps (Google Wallet
+// and PayPay) (android/…/notify/PaymentListener.java), keeps them while offline,
 // and sends them to POST /api/notifications.
 //
 // A payment is recorded once, however it is reported: the same notification
 // sent again is recognised by its app and time, and a payment already
-// recorded another way (the card's email, an import, or by hand) is matched
+// recorded another way (an import, or by hand) is matched
 // rather than added (wallet.CreateFromNotification).
 package notify
 
@@ -158,7 +158,9 @@ func (s *Service) Receive(ctx context.Context, userID int64, in Incoming, now ti
 	n.Status, n.Detail = r.Status, r.Detail
 	if r.Status == "payment" {
 		p := r.Payment
-		p.OccurredAt = at
+		if p.OccurredAt.IsZero() { // the time the notification itself gives, if any, is better
+			p.OccurredAt = at
+		}
 		t, matched, err := s.wallet.CreateFromNotification(ctx, userID, p)
 		if err != nil {
 			return n, err

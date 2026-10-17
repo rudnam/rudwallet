@@ -20,7 +20,13 @@ It builds the web app for the app (`npm run android` in `web/`, which also copie
 
 For each Play Store release, raise `versionCode` (and `versionName`) in `app/build.gradle`, then upload `wallet.aab` in the Play Console. Versions 1 and 2 were the earlier Trusted Web Activity app, which this replaces under the same package and key, so it installs as an update.
 
-The build is also copied to `downloads/wallet.apk`, which `docker-compose.yml` mounts for the server: the introduction page offers it as **Download for Android** while the file is there, with no restart needed. On a server elsewhere, copy `android/wallet.apk` to `downloads/` next to its `docker-compose.yml`.
+The introduction page offers the APK as **Download for Android** while the server has one, with no restart needed. To put a new build on https://wallet.rudnam.com:
+
+```sh
+./android/build.sh && ./android/publish.sh   # needs: aws login --profile rudnam-ec2
+```
+
+`publish.sh` uploads it to the deploy bucket on AWS and copies it onto the server; every deploy copies it again. `build.sh` also copies it to `downloads/wallet.apk`, which the local stack (`docker compose up`) offers the same way.
 
 A copy installed from the Play Store is signed by Google, so installing `wallet.apk` over it fails; uninstall it first.
 
@@ -44,11 +50,11 @@ They read `GET /api/widget` with the app's session, so they work once the app is
 
 ## Payment notifications
 
-`app/src/main/java/com/rudnam/wallet/notify` reads Google Wallet's payment notifications. The user turns it on in Settings › Payment notifications, which opens Android's notification access page; until then Android doesn't run it.
+`app/src/main/java/com/rudnam/wallet/notify` reads PayPay's and Google Wallet's payment notifications. The user turns it on in Settings › Payment notifications, which opens Android's notification access page; until then Android doesn't run it.
 
-- `PaymentListener` is a `NotificationListenerService`. It sees every notification but keeps only those from the apps in its `APPS` list (Google Wallet), so nothing else leaves the phone. To add an app, add its package there and a rule in `internal/notify/parse.go`.
+- `PaymentListener` is a `NotificationListenerService`. It sees every notification but keeps only those from the apps in its `APPS` list (Google Wallet and PayPay), so nothing else leaves the phone. To add an app, add its package there and a rule in `internal/notify/parse.go`.
 - `Outbox` keeps them in SharedPreferences and sends them to `POST /api/notifications` with the app's session: at once, with the next notification, or when the app is next left (up to 7 days, 200 notifications). Sending one twice is harmless.
-- The server reads the text (so a change in Google Wallet's wording needs only a server deploy) and records each payment once: a notification sent again is recognised by its app and time, and a payment already recorded from its email, an import or by hand is matched, not added.
+- The server reads the text (so a change in an app's wording needs only a server deploy) and records each payment once: a notification sent again is recognised by its app and time, and a payment already recorded from an import or by hand is matched, not added.
 - An APK installed outside the Play Store gets *restricted settings* on Android 13+: the notification access switch is greyed out until App info › ⋮ › Allow restricted settings.
 
 ## Icons

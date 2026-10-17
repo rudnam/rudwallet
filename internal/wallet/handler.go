@@ -39,6 +39,7 @@ func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) ht
 	route("PUT /api/accounts/{id}", h.updateAccount)
 	route("DELETE /api/accounts/{id}", h.deleteAccount)
 
+	route("GET /api/categories/missing", h.missingCategories)
 	route("POST /api/categories", h.createCategory)
 	route("PUT /api/categories/{id}", h.updateCategory)
 	route("DELETE /api/categories/{id}", h.deleteCategory)
@@ -46,6 +47,7 @@ func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) ht
 	route("GET /api/transactions", h.listTransactions)
 	route("POST /api/transactions", h.createTransaction)
 	route("POST /api/transactions/bulk", h.bulkTransactions)
+	route("POST /api/transactions/restore", h.restoreTransactions)
 	route("PUT /api/transactions/{id}", h.updateTransaction)
 	route("DELETE /api/transactions/{id}", h.deleteTransaction)
 
@@ -116,6 +118,10 @@ func color(s, def string) (string, error) {
 // ---------- Overview and settings ----------
 
 func (h *Handler) overview(w http.ResponseWriter, r *http.Request) error {
+	// The app opens a new wallet here, so its categories are named in the app's language.
+	if err := h.store.SetUp(r.Context(), userID(r), httpx.Language(r)); err != nil {
+		return err
+	}
 	o, err := h.store.Overview(r.Context(), userID(r))
 	if err != nil {
 		return err
@@ -257,6 +263,16 @@ func (in categoryInput) category() (Category, error) {
 	return Category{Name: n, Kind: in.Kind, Icon: icon, Color: c}, nil
 }
 
+// missingCategories lists the default categories the user doesn't have.
+func (h *Handler) missingCategories(w http.ResponseWriter, r *http.Request) error {
+	cats, err := h.store.MissingDefaults(r.Context(), userID(r))
+	if err != nil {
+		return err
+	}
+	httpx.WriteJSON(w, http.StatusOK, cats)
+	return nil
+}
+
 func (h *Handler) createCategory(w http.ResponseWriter, r *http.Request) error {
 	var in categoryInput
 	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
@@ -368,7 +384,7 @@ type transactionInput struct {
 	Payee       string    `json:"payee"`
 	Note        string    `json:"note"`
 	Status      string    `json:"status"`
-	// Remember, when false, confirms a record from an email or a
+	// Remember, when false, confirms a record from a
 	// notification without changing the category learned for its shop.
 	Remember *bool `json:"remember"`
 }
@@ -406,7 +422,7 @@ func (h *Handler) createTransaction(w http.ResponseWriter, r *http.Request) erro
 	if err != nil {
 		return err
 	}
-	t.Status = "confirmed" // only emails create records to review
+	t.Status = "confirmed" // only notifications create records to review
 	t, err = h.store.Create(r.Context(), userID(r), t)
 	if err := storeErr(err, "record"); err != nil {
 		return err
@@ -530,31 +546,45 @@ func (h *Handler) deleteBudget(w http.ResponseWriter, r *http.Request) error {
 
 // ---------- Import ----------
 
-// importBudgetBakers takes the CSV file as the request body.
-// tz_offset is the browser's Date.getTimezoneOffset(), in minutes.
+// importBudgetBakers takes the CSV file as the request body, or JSON:
+// {"csv", "accounts": [AccountChoice], "categories": [CategoryChoice]}.
+// With ?preview=1 (and the CSV file) it only reads the file and suggests
+// where its accounts and categories go. tz_offset is the browser's
+// Date.getTimezoneOffset(), in minutes.
 func (h *Handler) importBudgetBakers(w http.ResponseWriter, r *http.Request) error {
 	offset, _ := strconv.Atoi(r.URL.Query().Get("tz_offset"))
 	if offset < -14*60 || offset > 14*60 {
 		offset = 0
 	}
-	data, err := readCSV(w, r)
+	zone := time.FixedZone("", -offset*60)
+	data, choices, err := readImport(w, r)
 	if err != nil {
 		return err
 	}
-	res, err := h.store.ImportBudgetBakers(r.Context(), userID(r), data, time.FixedZone("", -offset*60))
-	if err := storeErr(err, "record"); err != nil {
+	if r.URL.Query().Get("preview") == "1" {
+		p, err := h.store.PreviewBudgetBakers(r.Context(), userID(r), data, zone)
+		if err := storeErr(err, "record"); err != nil {
+			return err
+		}
+		httpx.WriteJSON(w, http.StatusOK, p)
+		return nil
+	}
+	res, err := h.store.ImportBudgetBakers(r.Context(), userID(r), data, zone, choices)
+	if err := storeErr(err, "account"); err != nil {
 		return err
 	}
 	httpx.WriteJSON(w, http.StatusOK, res)
 	return nil
 }
 
-// importPayPay takes a PayPay transaction history CSV as the request body.
+// importPayPay takes a PayPay transaction history CSV as the request body,
+// or JSON: {"csv", "accounts": [AccountChoice], "categories": [CategoryChoice]}.
 // With ?preview=1 it only reads the file and suggests an account for each
-// way of paying in it. Otherwise it imports, sending each way of paying to
-// the account given as ?account=<id>:<取引方法> (0, or none: the suggestion).
+// way of paying in it and a category for each shop. Otherwise it imports,
+// sending each way of paying to the account chosen for it, given either in
+// the JSON or as ?account=<id>:<取引方法> (0, or none: the suggestion).
 func (h *Handler) importPayPay(w http.ResponseWriter, r *http.Request) error {
-	data, err := readCSV(w, r)
+	data, choices, err := readImport(w, r)
 	if err != nil {
 		return err
 	}
@@ -575,12 +605,43 @@ func (h *Handler) importPayPay(w http.ResponseWriter, r *http.Request) error {
 		}
 		accounts[method] = id
 	}
-	res, err := h.store.ImportPayPay(r.Context(), userID(r), data, accounts)
+	var categories []CategoryChoice
+	if choices != nil {
+		for _, a := range choices.Accounts {
+			if a.AccountID < 0 {
+				return httpx.Errorf(http.StatusBadRequest, "no such account")
+			}
+			accounts[a.Name] = a.AccountID
+		}
+		categories = choices.Categories
+	}
+	res, err := h.store.ImportPayPay(r.Context(), userID(r), data, accounts, categories)
 	if err := storeErr(err, "account"); err != nil {
 		return err
 	}
 	httpx.WriteJSON(w, http.StatusOK, res)
 	return nil
+}
+
+// readImport reads an import: the CSV file as the body, or JSON with the
+// file and the choices made in its preview (nil without them).
+func readImport(w http.ResponseWriter, r *http.Request) ([]byte, *ImportChoices, error) {
+	if mt, _, _ := mime.ParseMediaType(r.Header.Get("Content-Type")); mt != "application/json" {
+		data, err := readCSV(w, r)
+		return data, nil, err
+	}
+	var in struct {
+		CSV string `json:"csv"`
+		ImportChoices
+	}
+	// JSON escapes can double the file's size.
+	if err := httpx.ReadJSON(w, r, 2*maxImport, &in); err != nil {
+		return nil, nil, err
+	}
+	if len(in.CSV) > maxImport {
+		return nil, nil, httpx.Errorf(http.StatusRequestEntityTooLarge, "the file is over %d MB", maxImport>>20)
+	}
+	return []byte(in.CSV), &in.ImportChoices, nil
 }
 
 // readCSV reads an uploaded CSV file. Requiring the text/csv type means a

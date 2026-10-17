@@ -1,8 +1,14 @@
 package notify
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
-const gw = "com.google.android.apps.walletnfcrel"
+const (
+	gw = "com.google.android.apps.walletnfcrel"
+	pp = "jp.ne.paypay.android.app"
+)
 
 func TestParse(t *testing.T) {
 	tests := []struct {
@@ -35,6 +41,22 @@ func TestParse(t *testing.T) {
 			status: "ignored"},
 		{name: "too many decimals", pkg: gw, title: "Shop", text: "¥550.5",
 			status: "unparsed"},
+
+		// PayPay, as the app words them (full-width colons and all).
+		{name: "paypay card", pkg: pp, title: "支払いを受け付けました", text: "お店：ベルマート豊橋店\n金額：1,291円\n日時：2026年10月16日 20:19",
+			status: "payment", amount: 1291, currency: "JPY", merchant: "ベルマート豊橋店", source: "PayPay Card"},
+		{name: "paypay balance", pkg: pp, title: "PayPay", text: "取引が完了しました。\n金額：1,550円\n取引番号：05093837355250737154\n店舗名：GOアプリ",
+			status: "payment", amount: 1550, currency: "JPY", merchant: "GOアプリ", source: "PayPay"},
+		{name: "paypay online", pkg: pp, title: "PayPay", text: "Uber Eatsへの支払いが完了しました。\n金額: 3,994円\n取引番号: 05093583565634363396",
+			status: "payment", amount: 3994, currency: "JPY", merchant: "Uber Eats", source: "PayPay"},
+		{name: "paypay refund", pkg: pp, title: "支払いを受け付けました", text: "お店：スギ薬局グループ\n金額：7,480円\n返金されました",
+			status: "payment", amount: 7480, currency: "JPY", merchant: "スギ薬局グループ", source: "PayPay Card", refund: true},
+		{name: "paypay top-up", pkg: pp, title: "PayPay", text: "チャージが完了しました。\n金額：5,000円",
+			status: "ignored"},
+		{name: "paypay offer", pkg: pp, title: "PayPay", text: "今だけ最大10%戻ってくる！",
+			status: "ignored"},
+		{name: "paypay without the amount", pkg: pp, title: "PayPay", text: "取引が完了しました。",
+			status: "unparsed"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -50,5 +72,13 @@ func TestParse(t *testing.T) {
 				t.Errorf("payment %+v", p)
 			}
 		})
+	}
+}
+
+// A PayPay Card payment carries its own time, in Japan time.
+func TestParsePayPayTime(t *testing.T) {
+	r := Parse(pp, "支払いを受け付けました", "お店：Visa国内加盟店\n金額：864円\n日時：2026年10月16日 18:20")
+	if want := time.Date(2026, 10, 16, 9, 20, 0, 0, time.UTC); !r.Payment.OccurredAt.Equal(want) {
+		t.Errorf("occurred at %v, want %v", r.Payment.OccurredAt, want)
 	}
 }

@@ -19,7 +19,9 @@ import (
 
 const confirmationTTL = 48 * time.Hour
 
-func (h *Handler) sendConfirmation(ctx context.Context, userID int64, email string) error {
+// sendConfirmation emails the link, in lang ("en" or "ja": the language the
+// app was in when the person signed up or asked again).
+func (h *Handler) sendConfirmation(ctx context.Context, userID int64, email, lang string) error {
 	token, hash, err := newSessionToken() // same shape: random token, stored hashed
 	if err != nil {
 		return err
@@ -28,12 +30,22 @@ func (h *Handler) sendConfirmation(ctx context.Context, userID int64, email stri
 		return err
 	}
 	link := h.cfg.PublicOrigin + "/api/verify-email?token=" + token
+	hours := int(confirmationTTL.Hours())
+	if lang == "ja" {
+		return h.cfg.Mail.Send(ctx, mailer.Message{
+			To:      email,
+			Subject: "RudWalletのメールアドレスの確認",
+			Body: fmt.Sprintf("こんにちは。\n\n次のリンクを開いて、このメールアドレスがあなたのものであることを確認してください。\n\n%s\n\n"+
+				"リンクの有効期限は%d時間です。RudWalletのアカウントを作成した覚えがない場合は、このメールは無視してください。\n",
+				link, hours),
+		})
+	}
 	return h.cfg.Mail.Send(ctx, mailer.Message{
 		To:      email,
 		Subject: "Confirm your email for RudWallet",
 		Body: fmt.Sprintf("Hello,\n\nPlease confirm that this is your email address by opening this link:\n\n%s\n\n"+
 			"The link works for %d hours. If you didn't create a RudWallet account, you can ignore this email.\n",
-			link, int(confirmationTTL.Hours())),
+			link, hours),
 	})
 }
 
@@ -46,7 +58,7 @@ func (h *Handler) resendConfirmation(w http.ResponseWriter, r *http.Request) err
 	if u.EmailVerified {
 		return httpx.Errorf(http.StatusConflict, "your email is already confirmed")
 	}
-	if err := h.sendConfirmation(r.Context(), u.ID, u.Email); err != nil {
+	if err := h.sendConfirmation(r.Context(), u.ID, u.Email, httpx.Language(r)); err != nil {
 		slog.ErrorContext(r.Context(), "send confirmation email", "user", u.ID, "err", err)
 		return httpx.Errorf(http.StatusBadGateway, "the email could not be sent; try again in a few minutes")
 	}

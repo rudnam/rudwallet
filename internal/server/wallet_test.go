@@ -48,6 +48,24 @@ func TestWalletSetUpOnFirstVisit(t *testing.T) {
 	}
 }
 
+func TestWalletSetUpInJapanese(t *testing.T) {
+	ts := newTestServer(t)
+	c := newClient(t, ts)
+	c.signup("a@example.com")
+	c.headers["Accept-Language"] = "ja"
+	o := overview(t, c)
+	if len(o.Accounts) != 1 || o.Accounts[0].Name != "現金" {
+		t.Fatalf("accounts %+v", o.Accounts)
+	}
+	categoryID(t, o, "食費")
+	categoryID(t, o, "給与")
+	// The names are the person's own from then on: English later changes nothing.
+	c.headers["Accept-Language"] = "en"
+	if again := overview(t, c); again.Accounts[0].Name != "現金" || len(again.Categories) != len(o.Categories) {
+		t.Errorf("set up again in English: %+v", again)
+	}
+}
+
 func TestRecordsAndBalances(t *testing.T) {
 	ts := newTestServer(t)
 	alice, bob := newClient(t, ts), newClient(t, ts)
@@ -253,6 +271,117 @@ func TestImportBudgetBakers(t *testing.T) {
 	}
 }
 
+// The preview suggests where each BudgetBakers category goes: the user's own
+// of that name, the default it fits, or a new one; the import follows the
+// user's choices.
+func TestImportBudgetBakersChoices(t *testing.T) {
+	ts := newTestServer(t)
+	c, other := newClient(t, ts), newClient(t, ts)
+	c.signup("a@example.com")
+	other.signup("b@example.com")
+	o := overview(t, c)
+	cash, food, salary := o.Accounts[0].ID, categoryID(t, o, "Food & Drinks"), categoryID(t, o, "Salary")
+	// As for a user who signed up before Phone & Internet was a default.
+	if code := c.do("DELETE", fmt.Sprintf("/api/categories/%d", categoryID(t, o, "Phone & Internet")), nil, nil); code != 204 {
+		t.Fatalf("delete category: %d", code)
+	}
+	var missing []wallet.Category
+	c.do("GET", "/api/categories/missing", nil, &missing)
+	if len(missing) != 1 || missing[0].Name != "Phone & Internet" || missing[0].Icon != "phone" {
+		t.Errorf("missing defaults: %+v", missing)
+	}
+
+	csv := []byte(strings.Join([]string{
+		"account;category;currency;amount;ref_currency_amount;type;payment_type;note;date;transfer;payee;labels",
+		"Wallet;Restaurant, fast-food;JPY;1200;1200;Expense;Cash;;2026-10-01T03:00:00.000Z;false;Ramen Shop;",
+		"Wallet;Restaurant, fast-food;JPY;800;800;Expense;Cash;;2026-10-02T03:00:00.000Z;false;Soba;",
+		"Wallet;Phone, cell phone;JPY;5000;5000;Expense;Cash;;2026-10-03T03:00:00.000Z;false;Docomo;",
+		"Wallet;Coffee beans;JPY;1500;1500;Expense;Cash;;2026-10-04T03:00:00.000Z;false;Roastery;",
+		"Wallet;Bar, cafe;JPY;600;600;Expense;Cash;;2026-10-05T03:00:00.000Z;false;Doutor;",
+		"Bank;Wage, invoices;JPY;300000;300000;Income;Transfer;;2026-10-25T00:00:00.000Z;false;;",
+	}, "\n"))
+	var p wallet.BudgetBakersPreview
+	if code := c.send("/api/import/budgetbakers?preview=1", "text/csv", csv, nil, &p); code != 200 {
+		t.Fatalf("preview: %d", code)
+	}
+	groups := map[string]wallet.ImportCategory{}
+	for _, g := range p.Categories {
+		groups[g.Name] = g
+	}
+	if p.Records != 6 || len(p.Categories) != 5 || len(p.Accounts) != 2 || p.Accounts[0].Name != "Wallet" || p.Accounts[0].NewKind != "cash" {
+		t.Errorf("preview %+v", p)
+	}
+	if g := groups["Restaurant, fast-food"]; g.CategoryID == nil || *g.CategoryID != food || g.Count != 2 || g.Total != 2000 {
+		t.Errorf("Restaurant, fast-food should go to Food & Drinks: %+v", g)
+	}
+	if g := groups["Phone, cell phone"]; g.CategoryID != nil || g.NewName != "Phone & Internet" {
+		t.Errorf("Phone, cell phone should go to a new Phone & Internet: %+v", g)
+	}
+	if g := groups["Coffee beans"]; g.CategoryID != nil || g.NewName != "Coffee beans" {
+		t.Errorf("an unknown category is suggested as itself: %+v", g)
+	}
+	if g := groups["Wage, invoices"]; g.CategoryID == nil || *g.CategoryID != salary || g.Kind != "income" {
+		t.Errorf("Wage, invoices should go to Salary: %+v", g)
+	}
+
+	choose := func(cats []wallet.CategoryChoice) int {
+		return c.do("POST", "/api/import/budgetbakers", map[string]any{
+			"csv":        string(csv),
+			"accounts":   []wallet.AccountChoice{{Name: "Wallet", AccountID: cash}},
+			"categories": cats,
+		}, nil)
+	}
+	otherFood := categoryID(t, overview(t, other), "Food & Drinks")
+	if code := choose([]wallet.CategoryChoice{{Name: "Bar, cafe", Kind: "expense", CategoryID: otherFood}}); code != 400 {
+		t.Errorf("another user's category: %d, want 400", code)
+	}
+	if code := choose([]wallet.CategoryChoice{{Name: "Wage, invoices", Kind: "income", CategoryID: food}}); code != 400 {
+		t.Errorf("an expense category for income: %d, want 400", code)
+	}
+
+	var res wallet.ImportResult
+	code := c.do("POST", "/api/import/budgetbakers", map[string]any{
+		"csv":      string(csv),
+		"accounts": []wallet.AccountChoice{{Name: "Wallet", AccountID: cash}},
+		"categories": []wallet.CategoryChoice{
+			{Name: "Restaurant, fast-food", Kind: "expense", CategoryID: food},
+			{Name: "Phone, cell phone", Kind: "expense", NewName: "Phone & Internet"},
+			{Name: "Coffee beans", Kind: "expense", NewName: "Coffee"},
+			{Name: "Bar, cafe", Kind: "expense"},
+			{Name: "Wage, invoices", Kind: "income", CategoryID: salary},
+		},
+	}, &res)
+	if code != 200 || res.Imported != 6 || res.AccountsCreated != 1 || res.CategoriesCreated != 2 {
+		t.Fatalf("import: %d %+v (want 6 records, only Bank created, Phone & Internet and Coffee)", code, res)
+	}
+	o = overview(t, c)
+	byName := map[string]wallet.Category{}
+	for _, cat := range o.Categories {
+		byName[cat.Name] = cat
+	}
+	if byName["Phone & Internet"].Icon != "phone" || byName["Restaurant, fast-food"].ID != 0 {
+		t.Errorf("categories after import: %+v", o.Categories)
+	}
+	var list []wallet.Transaction
+	c.do("GET", "/api/transactions", nil, &list)
+	got := map[string]*int64{}
+	for _, r := range list {
+		got[r.Payee] = r.CategoryID
+		if r.Kind == "expense" && r.AccountID != cash {
+			t.Errorf("Wallet's records go to Cash: %+v", r)
+		}
+	}
+	want := map[string]*int64{"Ramen Shop": &food, "Soba": &food, "Docomo": ptr(byName["Phone & Internet"].ID),
+		"Roastery": ptr(byName["Coffee"].ID), "Doutor": nil}
+	for payee, w := range want {
+		if g := got[payee]; (g == nil) != (w == nil) || g != nil && *g != *w {
+			t.Errorf("%s: category %v, want %v", payee, g, w)
+		}
+	}
+}
+
+func ptr(n int64) *int64 { return &n }
+
 // Newer Wallet exports leave amounts unsigned and give the direction in type.
 func TestImportBudgetBakersUnsignedAmounts(t *testing.T) {
 	ts := newTestServer(t)
@@ -373,6 +502,88 @@ func TestImportPayPay(t *testing.T) {
 	}
 	if code := c.send("/api/import/paypay", "text/csv", []byte("a,b\n1,2"), nil, nil); code != 400 {
 		t.Errorf("not a PayPay export: %d", code)
+	}
+}
+
+// The PayPay preview groups payments by shop and suggests a category for
+// each; the categories chosen for shops are remembered.
+func TestImportPayPayCategories(t *testing.T) {
+	ts := newTestServer(t)
+	c := newClient(t, ts)
+	c.signup("a@example.com")
+	o := overview(t, c)
+	groceries, rewards := categoryID(t, o, "Groceries"), categoryID(t, o, "Rewards & Cashback")
+	csv := strings.Join([]string{
+		"取引日,出金金額（円）,入金金額（円）,海外出金金額,通貨,変換レート（円）,利用国,取引内容,取引先,取引方法,支払い区分,利用者,取引番号",
+		"2026/10/01 08:15,\"1,200\",-,-,-,-,-,支払い,ローソン 渋谷店,PayPay残高,-,本人,c-01",
+		"2026/10/02 08:15,300,-,-,-,-,-,支払い,ローソン 渋谷店,PayPay残高,-,本人,c-02",
+		"2026/10/03 07:52,\"3,616\",-,22,USD,164.364,US,支払い,ANTHROPIC* CLAUDE SUB,PayPay残高,-,本人,c-03",
+		"2026/10/04 12:00,980,-,-,-,-,-,支払い,JR東日本,PayPay残高,-,本人,c-04",
+		"2026/10/05 10:00,-,15,-,-,-,-,ポイント、残高の獲得,PayPay,PayPayポイント,-,本人,c-05",
+	}, "\n")
+	var p wallet.PayPayPreview
+	if code := c.send("/api/import/paypay?preview=1", "text/csv", []byte(csv), nil, &p); code != 200 {
+		t.Fatalf("preview: %d", code)
+	}
+	groups := map[string]wallet.ImportCategory{}
+	for _, g := range p.Categories {
+		groups[g.Name] = g
+	}
+	if len(p.Categories) != 4 {
+		t.Errorf("want 4 groups: %+v", p.Categories)
+	}
+	if g := groups["ローソン 渋谷店"]; g.Count != 2 || g.Total != 1500 || g.CategoryID == nil || *g.CategoryID != categoryID(t, o, "Food & Drinks") {
+		t.Errorf("a konbini is suggested Food & Drinks: %+v", g)
+	}
+	if g := groups["JR東日本"]; g.CategoryID == nil || *g.CategoryID != categoryID(t, o, "Transport") {
+		t.Errorf("JR is suggested Transport: %+v", g)
+	}
+	if g := groups["ANTHROPIC* CLAUDE SUB"]; g.CategoryID != nil || g.NewName != "" {
+		t.Errorf("an unknown shop gets no suggestion: %+v", g)
+	}
+	if g := groups["PayPay"]; g.Kind != "income" || g.CategoryID == nil || *g.CategoryID != rewards {
+		t.Errorf("points earned are suggested Rewards & Cashback: %+v", g)
+	}
+
+	var res wallet.ImportResult
+	code := c.do("POST", "/api/import/paypay", map[string]any{
+		"csv": csv,
+		"categories": []wallet.CategoryChoice{
+			{Name: "ローソン 渋谷店", Kind: "expense", CategoryID: groceries},
+			{Name: "ANTHROPIC* CLAUDE SUB", Kind: "expense", NewName: "Subscriptions"},
+			{Name: "JR東日本", Kind: "expense"},
+			{Name: "PayPay", Kind: "income", CategoryID: rewards},
+		},
+	}, &res)
+	if code != 200 || res.Imported != 5 || res.CategoriesCreated != 1 {
+		t.Fatalf("import: %d %+v", code, res)
+	}
+	var list []wallet.Transaction
+	c.do("GET", "/api/transactions", nil, &list)
+	for _, r := range list {
+		switch {
+		case r.Payee == "ローソン 渋谷店" && (r.CategoryID == nil || *r.CategoryID != groceries),
+			r.Payee == "JR東日本" && r.CategoryID != nil,
+			r.Kind == "income" && (r.CategoryID == nil || *r.CategoryID != rewards),
+			r.Payee == "ANTHROPIC* CLAUDE SUB" && r.CategoryID == nil:
+			t.Errorf("record %+v", r)
+		}
+	}
+	// Expense choices are remembered for the shop; income teaches nothing.
+	var rules wallet.Rules
+	c.do("GET", "/api/rules", nil, &rules)
+	learned := map[string]int64{}
+	for _, r := range rules.Payees {
+		learned[r.Key] = r.CategoryID
+	}
+	if len(learned) != 2 || learned["ローソン 渋谷店"] != groceries || learned["paypay"] != 0 {
+		t.Errorf("rules learned: %+v", rules.Payees)
+	}
+	c.send("/api/import/paypay?preview=1", "text/csv", []byte(csv), nil, &p)
+	for _, g := range p.Categories {
+		if g.Name == "ローソン 渋谷店" && (!g.Learned || *g.CategoryID != groceries) {
+			t.Errorf("the shop's category is remembered: %+v", g)
+		}
 	}
 }
 
@@ -640,5 +851,89 @@ func TestBulkRecords(t *testing.T) {
 	}
 	if bob.do("GET", "/api/transactions", nil, &list); len(list) != 1 {
 		t.Errorf("bob has %d records, want 1", len(list))
+	}
+}
+
+func TestRestoreDeletedRecords(t *testing.T) {
+	ts := newTestServer(t)
+	alice, bob := newClient(t, ts), newClient(t, ts)
+	alice.signup("alice@example.com")
+	bob.signup("bob@example.com")
+	o := overview(t, alice)
+	cash := o.Accounts[0].ID
+	food := categoryID(t, o, "Food & Drinks")
+	at := time.Date(2026, 10, 5, 12, 30, 15, 0, time.UTC)
+	create := func(r map[string]any) wallet.Transaction {
+		t.Helper()
+		var tx wallet.Transaction
+		if code := alice.do("POST", "/api/transactions", r, &tx); code != 201 {
+			t.Fatalf("create %v: %d", r, code)
+		}
+		return tx
+	}
+	restore := func(c *client, ids ...int64) (int, wallet.RestoreResult) {
+		var res wallet.RestoreResult
+		return c.do("POST", "/api/transactions/restore", map[string]any{"ids": ids}, &res), res
+	}
+	list := func() []wallet.Transaction {
+		var l []wallet.Transaction
+		alice.do("GET", "/api/transactions", nil, &l)
+		return l
+	}
+	lunch := create(map[string]any{"kind": "expense", "amount": 900, "account_id": cash, "category_id": food, "occurred_at": at, "payee": "Ramen", "note": "egg"})
+
+	// A deleted record comes back as it was, with its id.
+	if code := alice.do("DELETE", fmt.Sprintf("/api/transactions/%d", lunch.ID), nil, nil); code != 204 {
+		t.Fatalf("delete: %d", code)
+	}
+	if l := list(); len(l) != 0 {
+		t.Fatalf("still listed: %+v", l)
+	}
+	// Not by someone else.
+	if code, _ := restore(bob, lunch.ID); code != 404 {
+		t.Errorf("bob restores alice's record: %d, want 404", code)
+	}
+	if code, res := restore(alice, lunch.ID); code != 200 || res.Restored != 1 {
+		t.Fatalf("restore: %d %+v", code, res)
+	}
+	l := list()
+	if len(l) != 1 || l[0].ID != lunch.ID || l[0].Amount != 900 || l[0].Payee != "Ramen" || l[0].Note != "egg" ||
+		l[0].CategoryID == nil || *l[0].CategoryID != food || !l[0].OccurredAt.Equal(at) || !l[0].CreatedAt.Equal(lunch.CreatedAt) {
+		t.Errorf("restored %+v, want %+v", l, lunch)
+	}
+	if b := overview(t, alice).Accounts[0].Balance; b != -900 {
+		t.Errorf("balance %d, want -900", b)
+	}
+	// Once only.
+	if code, _ := restore(alice, lunch.ID); code != 404 {
+		t.Errorf("second restore: %d, want 404", code)
+	}
+
+	// A bulk delete comes back in one go.
+	dinner := create(map[string]any{"kind": "expense", "amount": 2000, "account_id": cash, "occurred_at": at})
+	var bulk wallet.BulkResult
+	alice.do("POST", "/api/transactions/bulk", map[string]any{"ids": []int64{lunch.ID, dinner.ID}, "action": "delete"}, &bulk)
+	if bulk.Changed != 2 {
+		t.Fatalf("bulk delete %+v", bulk)
+	}
+	if code, res := restore(alice, lunch.ID, dinner.ID, lunch.ID); code != 200 || res.Restored != 2 {
+		t.Errorf("restore both: %d %+v", code, res)
+	}
+	if l := list(); len(l) != 2 {
+		t.Errorf("after restoring both: %d records", len(l))
+	}
+
+	// A record deleted with its account is gone for good.
+	var bank wallet.Account
+	alice.do("POST", "/api/accounts", map[string]any{"name": "Bank", "kind": "bank"}, &bank)
+	rent := create(map[string]any{"kind": "expense", "amount": 50000, "account_id": bank.ID, "occurred_at": at})
+	alice.do("DELETE", fmt.Sprintf("/api/transactions/%d", rent.ID), nil, nil)
+	alice.do("DELETE", fmt.Sprintf("/api/accounts/%d", bank.ID), nil, nil)
+	if code, _ := restore(alice, rent.ID); code != 404 {
+		t.Errorf("restore into a deleted account: %d, want 404", code)
+	}
+
+	if code, _ := restore(alice); code != 400 {
+		t.Errorf("no ids: %d, want 400", code)
 	}
 }

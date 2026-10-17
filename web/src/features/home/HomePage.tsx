@@ -10,6 +10,8 @@ import { CategoryIcon, Icon, icons } from '../../components/Icon';
 import { AccountForm } from '../settings/SettingsPage';
 import { useRecords } from '../../useRecords';
 import { useWallet } from '../../wallet';
+import { t, tn, tx } from '../../i18n';
+import { locale } from '../../language';
 
 export function HomePage({ onAdd }: { onAdd: () => void }) {
   const w = useWallet();
@@ -36,7 +38,7 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
       <header className="page-head">
         <div>
           <span className="eyebrow">
-            {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+            {new Date().toLocaleDateString(locale(), { weekday: 'long', month: 'long', day: 'numeric' })}
           </span>
           <h1>{greeting()}</h1>
         </div>
@@ -48,10 +50,8 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
             <Icon d={icons.review} />
           </span>
           <span className="grow">
-            <strong>
-              {w.review_count} {w.review_count === 1 ? 'payment' : 'payments'} to review
-            </strong>
-            <span className="muted small block">Waiting for a quick check</span>
+            <strong>{tn(w.review_count, '{n} payment to review', '{n} payments to review')}</strong>
+            <span className="muted small block">{t('Waiting for a quick check')}</span>
           </span>
           <span className="chev" aria-hidden="true">
             ›
@@ -59,21 +59,21 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
         </a>
       )}
 
-      {records !== null && budgets !== null && (
+      {records !== null && budgets !== null && !w.me.demo && (
         <SetUp hasRecords={(records ?? []).length > 0} hasBudget={budgets.length > 0} />
       )}
 
       <div className="card hero">
-        <span className="muted">Total balance</span>
+        <span className="muted">{t('Total balance')}</span>
         <span className="hero-figure">{w.money(total)}</span>
         <div className="tiles">
-          <Tile label="Spent this month" value={w.money(spent)} />
-          <Tile label="Income" value={w.money(income)} className="income" />
-          <Tile label="Net" value={w.money(income - spent, true)} />
+          <Tile label={t('Spent this month')} value={w.money(spent)} />
+          <Tile label={t('Income')} value={w.money(income)} className="income" />
+          <Tile label={t('Net')} value={w.money(income - spent, true)} />
         </div>
       </div>
 
-      <div className="accounts" aria-label="Accounts" role="list">
+      <div className="accounts" aria-label={t('Accounts')} role="list">
         {accounts.map((a) => (
           <a key={a.id} role="listitem" className="card account-card" href={href('records', { account: a.id })}>
             <span className="row">
@@ -87,11 +87,11 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
 
       <div className="card stack">
         <div className="section-head">
-          <h2>Where it went in {month.toLocaleDateString(undefined, { month: 'long' })}</h2>
-          <a href={href('stats')}>More stats</a>
+          <h2>{t('Where it went in {month}', { month: month.toLocaleDateString(locale(), { month: 'long' }) })}</h2>
+          <a href={href('stats')}>{t('More stats')}</a>
         </div>
         {byCategory.length === 0 ? (
-          <p className="muted">No spending recorded this month yet.</p>
+          <p className="muted">{t('No spending recorded this month yet.')}</p>
         ) : (
           <>
             <CategoryBars
@@ -102,7 +102,7 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
             <DailyColumns
               values={daily}
               labelFor={(i) =>
-                new Date(month.getFullYear(), month.getMonth(), i + 1).toLocaleDateString(undefined, {
+                new Date(month.getFullYear(), month.getMonth(), i + 1).toLocaleDateString(locale(), {
                   month: 'short',
                   day: 'numeric',
                 })
@@ -117,8 +117,8 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
       {budgets && budgets.length > 0 && (
         <div className="card stack">
           <div className="section-head">
-            <h2>Budgets</h2>
-            <a href={href('budgets')}>All budgets</a>
+            <h2>{t('Budgets')}</h2>
+            <a href={href('budgets')}>{t('All budgets')}</a>
           </div>
           {budgets.map((b) => (
             <div key={b.id} className="stack tight">
@@ -131,20 +131,20 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
 
       <div className="stack">
         <div className="section-head">
-          <h2>Latest records</h2>
-          <a href={href('records')}>All records</a>
+          <h2>{t('Latest records')}</h2>
+          <a href={href('records')}>{t('All records')}</a>
         </div>
         {records === null ? (
-          <p className="muted">Loading…</p>
+          <p className="muted">{t('Loading…')}</p>
         ) : records.length === 0 ? (
           <div className="card stack empty">
-            <p className="muted">Nothing recorded this month yet.</p>
+            <p className="muted">{t('Nothing recorded this month yet.')}</p>
             <button type="button" className="secondary" onClick={onAdd}>
-              Add a record
+              {t('Add a record')}
             </button>
           </div>
         ) : (
-          <TransactionList records={records.slice(0, 6)} onOpen={setOpen} label="Latest records" />
+          <TransactionList records={records.slice(0, 6)} onOpen={setOpen} label={t('Latest records')} />
         )}
       </div>
 
@@ -155,62 +155,58 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
 
 function greeting(): string {
   const h = new Date().getHours();
-  return h < 5 ? 'Good evening' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+  return h < 5 ? t('Good evening') : h < 12 ? t('Good morning') : h < 18 ? t('Good afternoon') : t('Good evening');
 }
 
 const setupDoneKey = 'wallet:setup-dismissed';
 
 /**
  * The first things a new user does, ticked off as they go: their real
- * accounts, email forwarding and a budget. Hidden once done or dismissed.
+ * accounts, payment notifications and a budget. Hidden once done or dismissed.
  */
 function SetUp({ hasRecords, hasBudget }: { hasRecords: boolean; hasBudget: boolean }) {
   const w = useWallet();
   const [hidden, setHidden] = useState(() => localStorage.getItem(setupDoneKey) === '1');
-  const [forwarding, setForwarding] = useState<boolean | null>(() => {
-    const seen = api.seen.inbox();
-    return seen ? seen.emails.length > 0 : null;
-  });
+  // Done once the phone has sent a payment app's notification.
+  const [notified, setNotified] = useState<boolean | null>(null);
   const [addingAccount, setAddingAccount] = useState(false);
 
   useEffect(() => {
-    if (!hidden) api.inbox().then((i) => setForwarding(i.emails.length > 0), () => setForwarding(false));
+    if (!hidden) api.notifications().then((r) => setNotified(r.notifications.length > 0), () => setNotified(false));
   }, [hidden]);
 
   const steps = [
     {
       done: w.accounts.length > 1,
-      title: 'Add your accounts',
-      detail: 'Your bank, cards and e-money, with what’s in them today.',
+      title: t('Add your accounts'),
+      detail: t('Your bank, cards and e-money, with what’s in them today.'),
       action: (
         <button type="button" className="link" onClick={() => setAddingAccount(true)}>
-          Add account
+          {t('Add account')}
         </button>
       ),
     },
     {
-      done: !!forwarding,
-      title: 'Forward your payment emails',
-      detail: 'Card alerts become records by themselves.',
-      action: <a href={href('settings', { section: 'email' })}>Set up</a>,
+      done: !!notified,
+      title: t('Turn on payment notifications'),
+      detail: t('PayPay and Google Wallet payments become records by themselves.'),
+      action: <a href={href('settings', { section: 'notifications' })}>{t('Set up')}</a>,
     },
     {
       done: hasBudget,
-      title: 'Set a monthly budget',
-      detail: 'See at a glance how much is left.',
-      action: <a href={href('budgets')}>Add budget</a>,
+      title: t('Set a monthly budget'),
+      detail: t('See at a glance how much is left.'),
+      action: <a href={href('budgets')}>{t('Add budget')}</a>,
     },
   ];
   const left = steps.filter((s) => !s.done).length;
-  if (hidden || forwarding === null || left === 0) return null;
+  if (hidden || notified === null || left === 0) return null;
 
   return (
-    <div className="card stack setup" aria-label="Get set up">
+    <div className="card stack setup" aria-label={t('Get set up')}>
       <div className="section-head">
-        <h2>Get set up</h2>
-        <span className="muted small">
-          {steps.length - left} of {steps.length}
-        </span>
+        <h2>{t('Get set up')}</h2>
+        <span className="muted small">{t('{done} of {total}', { done: steps.length - left, total: steps.length })}</span>
         <button
           type="button"
           className="link"
@@ -219,7 +215,7 @@ function SetUp({ hasRecords, hasBudget }: { hasRecords: boolean; hasBudget: bool
             setHidden(true);
           }}
         >
-          Hide
+          {t('Hide')}
         </button>
       </div>
       <ol className="setup-steps">
@@ -230,7 +226,7 @@ function SetUp({ hasRecords, hasBudget }: { hasRecords: boolean; hasBudget: bool
             </span>
             <span className="grow">
               <strong>{s.title}</strong>
-              {s.done && <span className="sr-only"> (done)</span>}
+              {s.done && <span className="sr-only"> {t('(done)')}</span>}
               <span className="muted small block">{s.detail}</span>
             </span>
             {!s.done && s.action}
@@ -239,9 +235,11 @@ function SetUp({ hasRecords, hasBudget }: { hasRecords: boolean; hasBudget: bool
       </ol>
       {!hasRecords && (
         <p className="muted small">
-          Amounts are in {w.settings.currency}. <a href={href('settings', { section: 'general' })}>Change currency</a> before
-          your first record. Coming from BudgetBakers?{' '}
-          <a href={href('settings', { section: 'import' })}>Import your history</a>.
+          {tx('Amounts are in {currency}. {change} before your first record. Coming from BudgetBakers? {import}.', {
+            currency: w.settings.currency,
+            change: <a href={href('settings', { section: 'general' })}>{t('Change currency')}</a>,
+            import: <a href={href('settings', { section: 'import' })}>{t('Import your history')}</a>,
+          })}
         </p>
       )}
       {addingAccount && <AccountForm onClose={() => setAddingAccount(false)} />}
@@ -274,7 +272,7 @@ export function spendingByCategory(list: Transaction[], w: ReturnType<typeof use
       const c = k === 'none' ? undefined : w.category(k);
       return {
         key: k,
-        label: c?.name ?? 'No category',
+        label: c?.name ?? t('No category'),
         icon: <CategoryIcon icon={c?.icon} name={c?.name} color={c?.color} size="small" />,
         amount,
       };

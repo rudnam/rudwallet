@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Home screen widgets in Japanese, for phones set to Japanese (values/widget_strings.xml). -->
+<resources>
+    <string name="widget_month_label">今月</string>
+    <string name="widget_month_description">今月の支出、予算、確認待ちの支払い</string>
+    <string name="widget_budgets_label">予算</string>
+    <string name="widget_budgets_description">月の予算ごとの、使った額と残り</string>
+    <string name="widget_new_record_label">新しい記録</string>
+    <string name="widget_new_record_description">ワンタップで記録を追加</string>
+
+    <string name="widget_add">新しい記録</string>
+    <string name="widget_spent_in">%1$sの支出</string>
+    <string name="widget_budgets_in">予算 · %1$s</string>
+    <string name="widget_left_of">%2$sのうち残り%1$s</string>
+    <string name="widget_over_of">予算%2$sを%1$s超過</string>
+    <string name="widget_balance">総残高 %1$s</string>
+    <string name="widget_left">残り%1$s</string>
+    <string name="widget_over">%1$s超過</string>
+    <plurals name="widget_review">
+        <item quantity="other">確認待ちの支払いが%d件</item>
+    </plurals>
+    <string name="widget_sign_in">Walletにログインすると今月の様子が表示されます</string>
+    <string name="widget_offline">今はWalletに接続できません</string>
+    <string name="widget_no_budgets">予算はまだありません。タップして追加。</string>
+
+    <string name="widget_preview_month">10月の支出</string>
+    <string name="widget_preview_spent">¥84,320</string>
+    <string name="widget_preview_detail">¥120,000のうち残り¥35,680</string>
+    <string name="widget_preview_review">確認待ちの支払いが1件</string>
+    <string name="widget_preview_budgets">予算 · 10月</string>
+</resources>

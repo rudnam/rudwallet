@@ -1,7 +1,8 @@
 // Add, edit, or review a record.
 import { useEffect, useState, type FormEvent } from 'react';
-import { api, errorMessage, type Transaction, type TransactionKind } from '../api';
-import { amountInput, currencySymbol, parseAmount, toLocalInput } from '../money';
+import { api, errorMessage, type Transaction, type TransactionInput, type TransactionKind } from '../api';
+import { t, type Key } from '../i18n';
+import { amountInput, currencySymbol, formatDay, formatTime, parseAmount, toLocalInput } from '../money';
 import { useToast } from '../toast';
 import { useWallet } from '../wallet';
 import { Dialog } from './Dialog';
@@ -13,7 +14,7 @@ interface Props {
   onClose: () => void;
   /** Called after a save or delete, so the page can reload. */
   onSaved: () => void;
-  /** Starting values for a new record, e.g. from an email. */
+  /** Starting values for a new record. */
   draft?: { payee?: string; note?: string; occurred_at?: string };
 }
 
@@ -22,6 +23,11 @@ const lastAccountKey = 'wallet:last-account';
 
 /** What the user did last time at each payee, from recent records. */
 type Habit = { category_id: number | null; account_id: number; kind: TransactionKind };
+
+/** One field an edit changes, as the user reads it. */
+type Change = { field: string; from: string; to: string };
+
+const kindNames: Record<TransactionKind, Key> = { expense: 'Expense', income: 'Income', transfer: 'Transfer' };
 
 export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
   const w = useWallet();
@@ -46,6 +52,8 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
   const [habits, setHabits] = useState<Map<string, Habit>>(new Map());
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  // An edit waiting for the user to check what it changes.
+  const [pending, setPending] = useState<{ input: TransactionInput; changes: Change[] } | null>(null);
 
   // Suggest payees from the last few months; picking one fills in its category.
   useEffect(() => {
@@ -80,10 +88,9 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
     e.preventDefault();
     const minor = parseAmount(amount, exp);
     if (minor === null || minor <= 0) {
-      setError(exp === 0 ? 'Enter an amount, like 1200.' : 'Enter an amount, like 12.50.');
+      setError(exp === 0 ? t('Enter an amount, like 1200.') : t('Enter an amount, like 12.50.'));
       return;
     }
-    setBusy(true);
     setError('');
     const input = {
       kind,
@@ -91,33 +98,112 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
       account_id: accountId,
       to_account_id: kind === 'transfer' ? toAccountId : null,
       category_id: kind === 'transfer' ? null : categoryId,
-      occurred_at: new Date(when).toISOString(),
+      // An untouched date keeps its seconds, so it doesn't count as a change.
+      occurred_at: record && when === toLocalInput(new Date(record.occurred_at)) ? record.occurred_at : new Date(when).toISOString(),
       payee: kind === 'transfer' ? '' : payee,
       note,
       status: 'confirmed' as const,
     };
+    // Editing a saved record: show what changes before saving it.
+    if (record && !reviewing) {
+      const changes = describeChanges(record, input);
+      if (changes.length === 0) {
+        onClose();
+        return;
+      }
+      setPending({ input, changes });
+      return;
+    }
+    await commit(input);
+  }
+
+  async function commit(input: TransactionInput) {
+    setBusy(true);
+    setError('');
     try {
       if (record) await api.updateTransaction(record.id, input);
       else await api.createTransaction(input);
       if (!record) localStorage.setItem(lastAccountKey, String(accountId));
       await w.refresh();
-      toast(reviewing ? 'Confirmed' : record ? 'Saved' : `Added ${w.money(minor)}`);
+      if (record && !reviewing) toast(t('Saved'), { label: t('Undo'), run: () => undo(record) });
+      else toast(reviewing ? t('Confirmed') : t('Added {amount}', { amount: w.money(input.amount) }));
       onSaved();
       onClose();
     } catch (err) {
+      setPending(null);
       setError(errorMessage(err));
     } finally {
       setBusy(false);
     }
   }
 
+  // Puts the record back as it was before the edit. The form is closed by
+  // now, so this uses only what it captured.
+  async function undo(before: Transaction) {
+    try {
+      await api.updateTransaction(before.id, {
+        kind: before.kind,
+        amount: before.amount,
+        account_id: before.account_id,
+        to_account_id: before.to_account_id,
+        category_id: before.category_id,
+        occurred_at: before.occurred_at,
+        payee: before.payee,
+        note: before.note,
+        status: before.status,
+        // Restoring an old category doesn't teach it to the shop again.
+        remember: false,
+      });
+      await w.refresh();
+      toast(t('Change undone'));
+      onSaved();
+    } catch (err) {
+      toast(t("Couldn't undo: {error}", { error: errorMessage(err) }));
+    }
+  }
+
+  // Brings back the record just deleted, with its id and links.
+  async function restore(id: number) {
+    try {
+      await api.restoreTransactions([id]);
+      await w.refresh();
+      toast(t('Record restored'));
+      onSaved();
+    } catch (err) {
+      toast(t("Couldn't restore: {error}", { error: errorMessage(err) }));
+    }
+  }
+
+  /** The fields an edit changes, old and new, in the order the form shows them. */
+  function describeChanges(before: Transaction, after: TransactionInput): Change[] {
+    const name = (id: number | null) => w.account(id)?.name ?? t('None');
+    const category = (id: number | null) => w.category(id)?.name ?? t('None');
+    const when = (iso: string) => {
+      const d = new Date(iso);
+      return `${formatDay(d)}, ${formatTime(d)}`;
+    };
+    const text = (s: string) => s || t('None');
+    const transfer = after.kind === 'transfer' || before.kind === 'transfer';
+    const fields: [Key, string, string][] = [
+      ['Type', t(kindNames[before.kind]), t(kindNames[after.kind])],
+      ['Amount', w.money(before.amount), w.money(after.amount)],
+      ['Category', category(before.category_id), category(after.category_id)],
+      [after.kind === 'income' ? 'From whom' : 'Payee', text(before.payee), text(after.payee)],
+      [transfer ? 'From' : 'Account', name(before.account_id), name(after.account_id)],
+      ['To', name(before.to_account_id), name(after.to_account_id)],
+      ['Date', when(before.occurred_at), when(after.occurred_at)],
+      ['Note', text(before.note), text(after.note)],
+    ];
+    return fields.filter(([, from, to]) => from !== to).map(([field, from, to]) => ({ field: t(field), from, to }));
+  }
+
   async function remove() {
-    if (!record || !confirm('Delete this record?')) return;
+    if (!record || !confirm(t('Delete this record?'))) return;
     setBusy(true);
     try {
       await api.deleteTransaction(record.id);
       await w.refresh();
-      toast('Deleted');
+      toast(t('Deleted'), { label: t('Undo'), run: () => restore(record.id) });
       onSaved();
       onClose();
     } catch (err) {
@@ -139,31 +225,60 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
     </label>
   );
 
-  const title = reviewing ? 'Review payment' : record ? 'Edit record' : 'New record';
+  const title = reviewing ? t('Review payment') : record ? t('Edit record') : t('New record');
+  if (pending) {
+    return (
+      <Dialog title={t('Save changes?')} onClose={onClose}>
+        <div className="stack">
+          <ul className="changes" aria-label={t('Changes')}>
+            {pending.changes.map((c) => (
+              <li key={c.field}>
+                <span className="muted small">{c.field}</span>
+                <span>
+                  <s className="muted">{c.from}</s>
+                  <Icon d={icons.level} className="inline-icon muted" />
+                  <span>{c.to}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div className="row end">
+            <button type="button" className="secondary" disabled={busy} onClick={() => setPending(null)}>
+              {t('Back')}
+            </button>
+            <button type="button" disabled={busy} autoFocus onClick={() => commit(pending.input)}>
+              {t('Save changes')}
+            </button>
+          </div>
+        </div>
+      </Dialog>
+    );
+  }
   return (
     <Dialog title={title} onClose={onClose}>
       <form className="stack" onSubmit={save}>
         {reviewing && (
           <p className="notice small">
-            From an email{record.source_label ? ` (${record.source_label})` : ''}. Check it, pick a category, and confirm.
-            Next time, this shop and card are filled in for you.
+            {record.source_label
+              ? t('From a notification ({card}). Check it, pick a category, and confirm. Next time, this shop and card are filled in for you.', { card: record.source_label })
+              : t('From a notification. Check it, pick a category, and confirm. Next time, this shop and card are filled in for you.')}
           </p>
         )}
         {duplicate && (
           <p className="notice warn small" role="status">
-            <Icon d={icons.warning} className="inline-icon" /> You already have a record of the same amount around this time. If it's the same payment, delete this one.
+            <Icon d={icons.warning} className="inline-icon" /> {t("You already have a record of the same amount around this time. If it's the same payment, delete this one.")}
           </p>
         )}
-        <div className="segmented" role="radiogroup" aria-label="Type">
+        <div className="segmented" role="radiogroup" aria-label={t('Type')}>
           {(['expense', 'income', 'transfer'] as const).map((k) => (
             <label key={k} className={kind === k ? 'on' : ''}>
               <input type="radio" name="kind" value={k} checked={kind === k} onChange={() => changeKind(k)} />
-              {k === 'expense' ? 'Expense' : k === 'income' ? 'Income' : 'Transfer'}
+              {k === 'expense' ? t('Expense') : k === 'income' ? t('Income') : t('Transfer')}
             </label>
           ))}
         </div>
         <label className="amount-field">
-          <span className="sr-only">Amount ({w.settings.currency})</span>
+          <span className="sr-only">{t('Amount ({currency})', { currency: w.settings.currency })}</span>
           <span className="currency" aria-hidden="true">
             {currencySymbol(w.settings)}
           </span>
@@ -181,12 +296,12 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
         </label>
         {kind === 'transfer' ? (
           <div className="grid2">
-            {accountSelect('From', accountId, setAccountId)}
-            {accountSelect('To', toAccountId, setToAccountId)}
+            {accountSelect(t('From'), accountId, setAccountId)}
+            {accountSelect(t('To'), toAccountId, setToAccountId)}
           </div>
         ) : (
           <fieldset className="chip-pick">
-            <legend>Category</legend>
+            <legend>{t('Category')}</legend>
             <div className="chips">
               {categories.map((c) => (
                 <label key={c.id} className={categoryId === c.id ? 'chip on' : 'chip'}>
@@ -207,13 +322,13 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
         )}
         {kind !== 'transfer' && (
           <label className="field">
-            {kind === 'income' ? 'From whom' : 'Payee'}
+            {kind === 'income' ? t('From whom') : t('Payee')}
             <input
               value={payee}
               maxLength={500}
               list="payees"
               autoComplete="off"
-              placeholder={kind === 'income' ? 'Employer, friend…' : 'Shop or person'}
+              placeholder={kind === 'income' ? t('Employer, friend…') : t('Shop or person')}
               onChange={(e) => changePayee(e.target.value)}
             />
             <datalist id="payees">
@@ -224,15 +339,15 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
           </label>
         )}
         <div className="grid2">
-          {kind !== 'transfer' && accountSelect('Account', accountId, setAccountId)}
+          {kind !== 'transfer' && accountSelect(t('Account'), accountId, setAccountId)}
           <label className="field">
-            Date
+            {t('Date')}
             <input type="datetime-local" required value={when} onChange={(e) => setWhen(e.target.value)} />
           </label>
         </div>
         <label className="field">
-          Note
-          <input value={note} maxLength={500} placeholder="Optional" onChange={(e) => setNote(e.target.value)} />
+          {t('Note')}
+          <input value={note} maxLength={500} placeholder={t('Optional')} onChange={(e) => setNote(e.target.value)} />
         </label>
         {error && (
           <p role="alert" className="error">
@@ -242,12 +357,12 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
         <div className="row end">
           {record && (
             <button type="button" className="link danger" disabled={busy} onClick={remove}>
-              Delete
+              {t('Delete')}
             </button>
           )}
           <span className="grow" />
           <button type="submit" disabled={busy}>
-            {reviewing ? 'Confirm' : 'Save'}
+            {reviewing ? t('Confirm') : t('Save')}
           </button>
         </div>
       </form>

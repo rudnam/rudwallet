@@ -1,5 +1,7 @@
 // Typed client for the Go API. Shapes mirror the Go handlers' JSON.
 // Amounts are whole minor units of the user's currency (see Settings).
+import { serverText } from './i18n';
+import { language } from './language';
 import { appHeaders, saveSession, server } from './native';
 
 export interface Me {
@@ -8,6 +10,8 @@ export interface Me {
   has_password: boolean;
   /** The server emailed a link to confirm the address, and it hasn't been opened yet. */
   confirm_email: boolean;
+  /** A throwaway demo account full of sample data, deleted within a day. Absent from older servers. */
+  demo?: boolean;
   /** A new session's token, given to the Android app only (see native.ts). */
   token?: string;
 }
@@ -15,6 +19,8 @@ export interface Me {
 /** The ways this server offers to sign in. */
 export interface AuthOptions {
   google: boolean;
+  /** Visitors can try a demo without an account. Absent from older servers. */
+  demo?: boolean;
 }
 
 export interface Settings {
@@ -145,6 +151,10 @@ export interface BulkResult {
   skipped: number;
 }
 
+export interface RestoreResult {
+  restored: number;
+}
+
 /** Confirmed income and expenses over a period; transfers count as neither. */
 export interface Stats {
   spent: number;
@@ -153,21 +163,6 @@ export interface Stats {
   categories: { category_id: number | null; kind: 'expense' | 'income'; amount: number; count: number }[];
   /** Totals per day (YYYY-MM-DD, in the time zone asked for), oldest first. Days without records are left out. */
   days: { day: string; spent: number; income: number }[];
-}
-
-export interface InboundEmail {
-  id: number;
-  from: string;
-  subject: string;
-  received_at: string;
-  status: 'payment' | 'ignored' | 'unparsed' | 'forwarding';
-  parser: string;
-  detail: string;
-  body_text: string;
-  confirm_url: string;
-  transaction_id: number | null;
-  dismissed: boolean;
-  duplicate?: boolean;
 }
 
 /** A payment app's notification the Android app sent, and what became of it. */
@@ -179,23 +174,16 @@ export interface PaymentNotification {
   title: string;
   text: string;
   posted_at: string;
-  /** 'matched': the payment was already recorded (e.g. from its email), so nothing was added. */
+  /** 'matched': the payment was already recorded (e.g. by hand), so nothing was added. */
   status: 'payment' | 'matched' | 'ignored' | 'unparsed';
   detail: string;
   transaction_id: number | null;
 }
 
-export interface Inbox {
-  /** Empty when the server has no inbound mail domain configured. */
-  address: string;
-  ai_enabled: boolean;
-  emails: InboundEmail[];
-}
-
 export interface ImportResult {
   imported: number;
   duplicates: number;
-  /** Rows already recorded another way, e.g. from their email (PayPay only). */
+  /** Rows already recorded another way, e.g. from their notification (PayPay only). */
   matched: number;
   accounts_created: number;
   categories_created: number;
@@ -216,43 +204,53 @@ export interface PayPayPreview {
   from: string | null;
   to: string | null;
   methods: PayPayMethod[];
+  /** The payments by shop, each with a suggested category. */
+  categories: ImportCategory[];
+  /** Default categories the user doesn't have, which can be created on import. */
+  new_categories: Category[];
   problems: string[];
 }
 
-/** The user's Claude features. The key itself is never sent back. */
-export interface AIStatus {
-  /** False when the server has no SECRETS_KEY to encrypt keys with. */
-  can_save: boolean;
-  has_key: boolean;
-  /** The saved key can't be decrypted any more (the server's secret changed): add it again. */
-  key_unreadable: boolean;
-  /** The key's last four characters. */
-  key_hint: string;
-  /** Confirmed records without a category, which Claude can sort. */
-  uncategorized: number;
-}
-
-/** A payee's uncategorised records, and the category Claude suggests (null: none fits). */
-export interface CategorySuggestion {
-  payee: string;
-  kind: CategoryKind;
+/**
+ * Records in an import file that share a category (BudgetBakers) or a shop
+ * (PayPay), and where they're suggested to go: category_id, else a new
+ * category named new_name, else ('') none.
+ */
+export interface ImportCategory {
+  name: string;
+  kind: 'expense' | 'income';
   count: number;
   total: number;
-  note: string;
   category_id: number | null;
+  new_name: string;
+  /** The suggestion is what the user chose for this shop before. */
+  learned: boolean;
 }
 
-export interface CategorySuggestions {
-  suggestions: CategorySuggestion[];
-  /** Payees after this batch. */
-  remaining: number;
-}
-
-/** Files a payee's uncategorised records under a category. */
-export interface PayeeCategory {
-  payee: string;
-  kind: CategoryKind;
+/** Where a group's records go: a category, a new one by name, or neither for none. */
+export interface CategoryChoice {
+  name: string;
+  kind: 'expense' | 'income';
   category_id: number;
+  new_name: string;
+}
+
+/** One account in a BudgetBakers export, and the account suggested for it (null: a new one). */
+export interface BudgetBakersAccount {
+  name: string;
+  count: number;
+  account_id: number | null;
+  new_kind: AccountKind;
+}
+
+export interface BudgetBakersPreview {
+  records: number;
+  from: string | null;
+  to: string | null;
+  accounts: BudgetBakersAccount[];
+  categories: ImportCategory[];
+  new_categories: Category[];
+  problems: string[];
 }
 
 /** An access token for an MCP client such as Claude Desktop. */
@@ -263,6 +261,15 @@ export interface MCPToken {
   last_used_at: string | null;
   /** The token itself, only in the answer that created it. */
   token?: string;
+  /** True for a connection made by signing in from the app, false for a token made here. */
+  signed_in?: boolean;
+}
+
+/** An MCP client asking to connect, for the Connect page. */
+export interface MCPClientInfo {
+  client_name: string;
+  /** Where the browser goes back to after the user answers. */
+  redirect_host: string;
 }
 
 /** An error response from the API; message is safe to show the user. */
@@ -290,7 +297,12 @@ async function request<T>(method: string, path: string, body?: unknown, contentT
     const raw = contentType !== undefined;
     const res = await fetch(server + path, {
       method,
-      headers: { ...(body === undefined ? {} : { 'Content-Type': contentType ?? 'application/json' }), ...appHeaders() },
+      headers: {
+        ...(body === undefined ? {} : { 'Content-Type': contentType ?? 'application/json' }),
+        // The language the app shows, which a new account's categories are named in.
+        'Accept-Language': language(),
+        ...appHeaders(),
+      },
       body: body === undefined ? undefined : raw ? (body as BodyInit) : JSON.stringify(body),
     });
     if (res.status === 204) return undefined as T;
@@ -334,6 +346,8 @@ export const api = {
     await saveSession('');
   },
   authOptions: () => request<AuthOptions>('GET', '/api/auth/options'),
+  /** Signs in to a new demo account with sample data, named in the app's language and dated in this time zone. */
+  startDemo: () => signedIn(request<Me>('POST', '/api/demo', { tz: Intl.DateTimeFormat().resolvedOptions().timeZone })),
   resendConfirmation: () => request<void>('POST', '/api/verify-email'),
   /** Deletes the account and everything in it. Confirm with the password, or for a Google-only account, the email. */
   deleteMe: async (confirm: { password: string } | { email: string }) => {
@@ -349,6 +363,8 @@ export const api = {
   updateAccount: (id: number, a: Omit<Account, 'id' | 'balance'>) => request<Account>('PUT', `/api/accounts/${id}`, a),
   deleteAccount: (id: number) => request<void>('DELETE', `/api/accounts/${id}`),
 
+  /** Default categories the user doesn't have yet. */
+  missingCategories: () => request<Category[]>('GET', '/api/categories/missing'),
   createCategory: (c: Omit<Category, 'id'>) => request<Category>('POST', '/api/categories', c),
   updateCategory: (id: number, c: Omit<Category, 'id'>) => request<Category>('PUT', `/api/categories/${id}`, c),
   deleteCategory: (id: number) => request<void>('DELETE', `/api/categories/${id}`),
@@ -358,6 +374,8 @@ export const api = {
   updateTransaction: (id: number, t: TransactionInput) => request<Transaction>('PUT', `/api/transactions/${id}`, t),
   deleteTransaction: (id: number) => request<void>('DELETE', `/api/transactions/${id}`),
   bulkTransactions: (change: BulkChange) => request<BulkResult>('POST', '/api/transactions/bulk', change),
+  /** Brings back records deleted in the last day. */
+  restoreTransactions: (ids: number[]) => request<RestoreResult>('POST', '/api/transactions/restore', { ids }),
 
   stats: (from: Date, to: Date, accountId?: number) => {
     const p = new URLSearchParams({ from: from.toISOString(), to: to.toISOString(), tz: Intl.DateTimeFormat().resolvedOptions().timeZone });
@@ -369,11 +387,6 @@ export const api = {
   createBudget: (b: Omit<Budget, 'id'>) => request<Budget>('POST', '/api/budgets', b),
   updateBudget: (id: number, b: Omit<Budget, 'id'>) => request<Budget>('PUT', `/api/budgets/${id}`, b),
   deleteBudget: (id: number) => request<void>('DELETE', `/api/budgets/${id}`),
-
-  inbox: () => request<Inbox>('GET', '/api/inbox'),
-  newAddress: () => request<Inbox>('POST', '/api/inbox/address'),
-  uploadEmail: (raw: string) => request<InboundEmail>('POST', '/api/inbox/emails', raw, 'message/rfc822'),
-  dismissEmail: (id: number) => request<void>('POST', `/api/inbox/emails/${id}/dismiss`),
 
   notifications: () => request<{ notifications: PaymentNotification[] }>('GET', '/api/notifications'),
 
@@ -387,33 +400,37 @@ export const api = {
   seen: {
     transactions: (f: TransactionFilter = {}) => lastSeen.get(`/api/transactions${query(f)}`) as Transaction[] | undefined,
     budgets: () => lastSeen.get('/api/budgets') as Budget[] | undefined,
-    inbox: () => lastSeen.get('/api/inbox') as Inbox | undefined,
   },
-
-  ai: () => request<AIStatus>('GET', '/api/ai'),
-  /** Saves the user's Anthropic API key, after Claude accepts it. */
-  setAIKey: (key: string) => request<AIStatus>('PUT', '/api/ai/key', { key }),
-  deleteAIKey: () => request<void>('DELETE', '/api/ai/key'),
-  /** Claude's suggestions for the next batch of uncategorised payees, after skipping offset of them. */
-  suggestCategories: (offset = 0) => request<CategorySuggestions>('POST', `/api/ai/categorize?offset=${offset}`),
-  applyCategories: (items: PayeeCategory[]) => request<{ updated: number }>('POST', '/api/ai/categorize/apply', { items }),
 
   mcpTokens: () => request<MCPToken[]>('GET', '/api/mcp/tokens'),
   createMCPToken: (name: string) => request<MCPToken>('POST', '/api/mcp/tokens', { name }),
   deleteMCPToken: (id: number) => request<void>('DELETE', `/api/mcp/tokens/${id}`),
+  mcpClient: (clientId: string, redirectUri: string) =>
+    request<MCPClientInfo>('GET', `/api/mcp/authorize?${new URLSearchParams({ client_id: clientId, redirect_uri: redirectUri })}`),
+  /** Allows or denies a client; the answer says where to send the browser. */
+  mcpAuthorize: (r: { client_id: string; redirect_uri: string; code_challenge: string; state: string; allow: boolean }) =>
+    request<{ redirect_to: string }>('POST', '/api/mcp/authorize', r),
 
-  importBudgetBakers: (csv: string) =>
-    request<ImportResult>('POST', `/api/import/budgetbakers?tz_offset=${new Date().getTimezoneOffset()}`, csv, 'text/csv'),
+  previewBudgetBakers: (csv: string) =>
+    request<BudgetBakersPreview>('POST', `/api/import/budgetbakers?preview=1&tz_offset=${new Date().getTimezoneOffset()}`, csv, 'text/csv'),
+  /** accounts maps each account in the file to an account ID, or 0 for a new one. */
+  importBudgetBakers: (csv: string, accounts: Record<string, number>, categories: CategoryChoice[]) =>
+    request<ImportResult>('POST', `/api/import/budgetbakers?tz_offset=${new Date().getTimezoneOffset()}`, {
+      csv,
+      accounts: Object.entries(accounts).map(([name, account_id]) => ({ name, account_id })),
+      categories,
+    }),
   previewPayPay: (csv: string) => request<PayPayPreview>('POST', '/api/import/paypay?preview=1', csv, 'text/csv'),
   /** accounts maps each payment method to an account ID, or 0 for a new account. */
-  importPayPay: (csv: string, accounts: Record<string, number>) => {
-    const p = new URLSearchParams();
-    for (const [method, id] of Object.entries(accounts)) p.append('account', `${id}:${method}`);
-    return request<ImportResult>('POST', `/api/import/paypay?${p}`, csv, 'text/csv');
-  },
+  importPayPay: (csv: string, accounts: Record<string, number>, categories: CategoryChoice[]) =>
+    request<ImportResult>('POST', '/api/import/paypay', {
+      csv,
+      accounts: Object.entries(accounts).map(([name, account_id]) => ({ name, account_id })),
+      categories,
+    }),
 };
 
-/** A message to show for any thrown value. */
+/** A message to show for any thrown value, in the language in use when it's one the app knows. */
 export function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
+  return serverText(err instanceof Error ? err.message : String(err));
 }

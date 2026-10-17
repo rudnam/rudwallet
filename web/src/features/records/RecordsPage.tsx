@@ -9,6 +9,7 @@ import { navigate, type Route } from '../../router';
 import { useToast } from '../../toast';
 import { useRecords } from '../../useRecords';
 import { useWallet } from '../../wallet';
+import { t, tn } from '../../i18n';
 
 export function RecordsPage({ route }: { route: Route }) {
   const w = useWallet();
@@ -56,35 +57,35 @@ export function RecordsPage({ route }: { route: Route }) {
     <section className="stack">
       <header className="page-head">
         <div>
-          <h1>Records</h1>
+          <h1>{t('Records')}</h1>
         </div>
         {records && records.length > 0 && (
           <button type="button" className="secondary" onClick={() => setSelected(selected ? null : new Set())}>
-            {selected ? 'Done' : 'Select'}
+            {selected ? t('Done') : t('Select')}
           </button>
         )}
       </header>
       <div className="card month-picker">
-        <button type="button" className="link" aria-label="Previous month" onClick={() => set({ month: ym(addMonths(month, -1)) })}>
+        <button type="button" className="link" aria-label={t('Previous month')} onClick={() => set({ month: ym(addMonths(month, -1)) })}>
           ‹
         </button>
         <strong>{formatMonth(month)}</strong>
-        <button type="button" className="link" aria-label="Next month" onClick={() => set({ month: ym(addMonths(month, 1)) })}>
+        <button type="button" className="link" aria-label={t('Next month')} onClick={() => set({ month: ym(addMonths(month, 1)) })}>
           ›
         </button>
       </div>
       <div className="filters">
-        <select aria-label="Account" value={account ?? ''} onChange={(e) => set({ account: e.target.value })}>
-          <option value="">All accounts</option>
+        <select aria-label={t('Account')} value={account ?? ''} onChange={(e) => set({ account: e.target.value })}>
+          <option value="">{t('All accounts')}</option>
           {w.accounts.map((a) => (
             <option key={a.id} value={a.id}>
               {a.name}
             </option>
           ))}
         </select>
-        <select aria-label="Category" value={category ?? ''} onChange={(e) => set({ category: e.target.value })}>
-          <option value="">All categories</option>
-          <option value="none">No category</option>
+        <select aria-label={t('Category')} value={category ?? ''} onChange={(e) => set({ category: e.target.value })}>
+          <option value="">{t('All categories')}</option>
+          <option value="none">{t('No category')}</option>
           {w.categories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -99,20 +100,20 @@ export function RecordsPage({ route }: { route: Route }) {
             set({ q });
           }}
         >
-          <input type="search" aria-label="Search records" placeholder="Search payee or note" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input type="search" aria-label={t('Search records')} placeholder={t('Search payee or note')} value={q} onChange={(e) => setQ(e.target.value)} />
         </form>
       </div>
       <div className="card tiles summary">
         <div className="tile">
-          <span className="muted small">Spent</span>
+          <span className="muted small">{t('Spent')}</span>
           <strong>{w.money(out)}</strong>
         </div>
         <div className="tile">
-          <span className="muted small">Income</span>
+          <span className="muted small">{t('Income')}</span>
           <strong>{w.money(inc)}</strong>
         </div>
         <div className="tile">
-          <span className="muted small">Net</span>
+          <span className="muted small">{t('Net')}</span>
           <strong>{w.money(inc - out, true)}</strong>
         </div>
       </div>
@@ -122,10 +123,10 @@ export function RecordsPage({ route }: { route: Route }) {
         </p>
       )}
       {records === null ? (
-        <p className="muted">Loading…</p>
+        <p className="muted">{t('Loading…')}</p>
       ) : records.length === 0 ? (
         <div className="card stack empty">
-          <p className="muted">No records match.</p>
+          <p className="muted">{t('No records match.')}</p>
         </div>
       ) : (
         <>
@@ -172,17 +173,20 @@ function BulkBar({
   const [error, setError] = useState('');
   const n = selected.size;
   const all = n === records.length;
-  const noun = (k: number) => (k === 1 ? 'record' : 'records');
-
-  async function apply(change: BulkChange, done: string) {
+  async function apply(change: BulkChange) {
     setBusy(true);
     setError('');
     try {
       const res = await api.bulkTransactions(change);
+      const done =
+        change.action === 'delete'
+          ? tn(res.changed, 'Deleted {n} record.', 'Deleted {n} records.')
+          : change.action === 'move'
+            ? tn(res.changed, 'Moved {n} record.', 'Moved {n} records.')
+            : tn(res.changed, 'Recategorised {n} record.', 'Recategorised {n} records.');
       toast(
-        res.skipped > 0
-          ? `${done} ${res.changed} ${noun(res.changed)}. ${res.skipped} didn’t fit and stayed as they were.`
-          : `${done} ${res.changed} ${noun(res.changed)}.`,
+        res.skipped > 0 ? `${done} ${t('{n} didn’t fit and stayed as they were.', { n: res.skipped })}` : done,
+        change.action === 'delete' && res.changed > 0 ? { label: t('Undo'), run: () => restore(change.ids) } : undefined,
       );
       if (change.action === 'delete') onSelect(new Set());
       await Promise.all([onChanged(), w.refresh()]);
@@ -193,39 +197,50 @@ function BulkBar({
     }
   }
 
+  // Brings back the records just deleted.
+  async function restore(deleted: number[]) {
+    try {
+      const res = await api.restoreTransactions(deleted);
+      toast(tn(res.restored, 'Restored {n} record.', 'Restored {n} records.'));
+      await Promise.all([onChanged(), w.refresh()]);
+    } catch (err) {
+      toast(t("Couldn't restore: {error}", { error: errorMessage(err) }));
+    }
+  }
+
   const ids = [...selected];
   const expenseCats = w.categories.filter((c) => c.kind === 'expense');
   const incomeCats = w.categories.filter((c) => c.kind === 'income');
 
   return (
-    <div className="card bulk-bar" role="region" aria-label="Chosen records">
+    <div className="card bulk-bar" role="region" aria-label={t('Chosen records')}>
       <span className="bulk-count grow" aria-live="polite">
-        {n === 0 ? 'Choose records' : `${n} chosen`}
+        {n === 0 ? t('Choose records') : t('{n} chosen', { n })}
       </span>
       <button type="button" className="link" onClick={() => onSelect(all ? new Set() : new Set(records.map((t) => t.id)))}>
-        {all ? 'Choose none' : `Choose all ${records.length}`}
+        {all ? t('Choose none') : t('Choose all {n}', { n: records.length })}
       </button>
       {n > 0 && (
         <div className="bulk-actions">
           <select
-            aria-label="Set category"
+            aria-label={t('Set category')}
             value=""
             disabled={busy}
             onChange={(e) => {
               const v = e.target.value;
-              if (v) apply({ ids, action: 'categorize', category_id: v === 'none' ? null : Number(v) }, 'Recategorised');
+              if (v) apply({ ids, action: 'categorize', category_id: v === 'none' ? null : Number(v) });
             }}
           >
-            <option value="">Category…</option>
-            <option value="none">No category</option>
-            <optgroup label="Expenses">
+            <option value="">{t('Category…')}</option>
+            <option value="none">{t('No category')}</option>
+            <optgroup label={t('Expenses')}>
               {expenseCats.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
               ))}
             </optgroup>
-            <optgroup label="Income">
+            <optgroup label={t('Income')}>
               {incomeCats.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -234,12 +249,12 @@ function BulkBar({
             </optgroup>
           </select>
           <select
-            aria-label="Move to account"
+            aria-label={t('Move to account')}
             value=""
             disabled={busy}
-            onChange={(e) => e.target.value && apply({ ids, action: 'move', account_id: Number(e.target.value) }, 'Moved')}
+            onChange={(e) => e.target.value && apply({ ids, action: 'move', account_id: Number(e.target.value) })}
           >
-            <option value="">Account…</option>
+            <option value="">{t('Account…')}</option>
             {w.accounts
               .filter((a) => !a.archived)
               .map((a) => (
@@ -252,9 +267,9 @@ function BulkBar({
             type="button"
             className="link danger"
             disabled={busy}
-            onClick={() => confirm(`Delete ${n} ${noun(n)}? This can’t be undone.`) && apply({ ids, action: 'delete' }, 'Deleted')}
+            onClick={() => confirm(tn(n, 'Delete {n} record?', 'Delete {n} records?')) && apply({ ids, action: 'delete' })}
           >
-            Delete
+            {t('Delete')}
           </button>
         </div>
       )}

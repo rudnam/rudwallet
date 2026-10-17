@@ -1,6 +1,6 @@
 # Notes for AI agents
 
-Go API (`internal/`, one package per feature), PostgreSQL, and a React + TypeScript frontend (`web/src/`, built by Vite into `web/dist/` and embedded in the binary). The Android app (`android/`) is the same web app packaged with Capacitor, plus native widgets. README.md explains the layout, the API and how to add a feature; follow `internal/wallet` or `internal/inbox`. Deploys and migrations: README.md, "Production". Email automation: `docs/email.md`. The Android app: `android/README.md`.
+Go API (`internal/`, one package per feature), PostgreSQL, and a React + TypeScript frontend (`web/src/`, built by Vite into `web/dist/` and embedded in the binary). The Android app (`android/`) is the same web app packaged with Capacitor, plus native widgets. README.md explains the layout, the API and how to add a feature; follow `internal/wallet` or `internal/notify`. Deploys and migrations: README.md, "Production". The Android app, and its reader for payment notifications: `android/README.md`.
 
 ## Verify your work before calling it done
 
@@ -23,12 +23,12 @@ The user reviews changes by looking at them, not by deploying them. When you cha
 
 1. Extend a browser test in `e2e/tests/` (one file per feature; import `{ test, expect }` from `./fixtures`, which fails on any console error or CSP violation). For new screens, add a step to `e2e/tests/screens.spec.js`, which saves phone and desktop screenshots.
 2. Run `./verify.sh`, then **Read the screenshots** in `e2e/test-results/` and check the change looks right at both widths.
-3. On the user's machine, run `./preview.sh` and tell the user: "Preview at http://localhost:8081, sign in as preview@example.com / preview-password", plus what to click to see the change. In a cloud session the user can't open that address, so send them the screenshots instead.
+3. On the user's machine, run `./preview.sh` and tell the user: "Preview at http://localhost:8081, sign in as preview@example.com / preview-password", plus what to click to see the change. In a cloud session the user can't open that address, so send them the screenshots instead. You don't need to stop it: it stops by itself after two hours (`PREVIEW_MINUTES`) and when this session ends (`.claude/hooks/session-end.sh`, which also clears anything a killed `verify.sh` left).
 
 ## Rules
 
 - **Production is on AWS, deployed only by CI** when `main` changes (`.github/workflows/ci.yml`; infrastructure in rudnam/rudnam-infra). Nothing on this machine is production: the Compose project named after this folder is local development. `verify.sh` and `preview.sh` use their own projects (`<folder>-verify`, `<folder>-preview`). Don't push to `main` or run AWS commands against production unless asked.
-- Never edit a migration in `internal/db/migrations/` that may have been deployed; add a new file numbered one above the highest. The number is the version recorded in `schema_migrations`, so never reuse one: `002` was deleted, and a database that ran it would silently skip a new `002_*`. Keep each migration compatible with the previous release (see docs/deploy.md, "Migrations").
+- Never edit a migration in `internal/db/migrations/` that may have been deployed; add a new file numbered one above the highest. The number is the version recorded in `schema_migrations`, so never reuse one: `002` was deleted, and a database that ran it would silently skip a new `002_*`. Keep each migration compatible with the previous release (README.md, "Production").
 - **Keep the API backward compatible.** Phones run the web app from their installed Android build, which can be months old, against the current server. Add fields and endpoints; don't rename, remove or change the meaning of existing ones.
 - Every query on user data is scoped by user ID in the feature's `Store`. Another user's row is a 404, not a 403.
 - Handlers return errors: `httpx.Errorf(status, msg)` for messages the user should see, and any other error for a logged 500. Don't leak internal errors to the client.
