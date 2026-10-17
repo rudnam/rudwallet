@@ -1,19 +1,27 @@
-# Releases the Android app: Actions → Android release → Run workflow (from
-# main). It builds and signs the app with android/build.sh, publishes the
-# APK on wallet.rudnam.com with android/publish.sh (phones on a build that
-# checks are offered it, see web/src/updates.ts), and keeps both files as a
-# GitHub release, android-<versionCode>, whose .aab goes to the Play Console
-# by hand. The versionCode is one above the published APK (android/version.sh).
+# Releases the Android app. It builds and signs the app with
+# android/build.sh, publishes the APK on wallet.rudnam.com with
+# android/publish.sh (phones on a build that checks are offered it, see
+# web/src/updates.ts), and keeps both files as a GitHub release,
+# android-<versionCode>, whose .aab goes to the Play Console by hand. The
+# versionCode is one above the published APK (android/version.sh).
 #
-# The signing key is in the android-release environment, which only this
-# job uses: secrets ANDROID_KEYSTORE_BASE64 (base64 of android.keystore),
-# ANDROID_KEYSTORE_PASSWORD and ANDROID_KEY_PASSWORD. The environment asks
-# for an approval and only allows main, so a workflow on another branch
-# can't reach the key. AWS access is CI's deploy role (see ci.yml), which
+# It runs:
+#   - by itself, once CI has passed on main, when the commit came from a pull
+#     request labelled android-release (CLAUDE.md says when to add it);
+#   - by hand: Actions → Android release → Run workflow, on main.
+#
+# The signing key is in the android-release environment, which only the
+# release job uses and which only allows main: secrets ANDROID_KEYSTORE_BASE64
+# (base64 of android.keystore), ANDROID_KEYSTORE_PASSWORD and
+# ANDROID_KEY_PASSWORD. AWS access is CI's deploy role (see ci.yml), which
 # may upload to the bucket's downloads/wallet-app/ and run rudnam-downloads.
 name: Android release
 
 on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       version_name:
@@ -25,25 +33,62 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Whether to release, and which commit. No secrets here.
+  decide:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+    outputs:
+      release: ${{ steps.decide.outputs.release }}
+      sha: ${{ steps.decide.outputs.sha }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - id: decide
+        run: |
+          [[ $SHA =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Not a commit SHA: $SHA"; exit 1; }
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          if [[ $GITHUB_EVENT_NAME == workflow_dispatch ]]; then
+            ok=$(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$SHA" --status success --json databaseId --jq length)
+            [[ $ok -gt 0 ]] || { echo "::error::CI hasn't passed on ${SHA::7} (yet). Release once it has."; exit 1; }
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # The pull request this commit was merged from, if it has the label.
+          prs=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/pulls" \
+            --jq '[.[] | select(.merged_at != null and any(.labels[]; .name == "android-release")) | .number] | join(" ")')
+          if [[ -n $prs ]]; then
+            echo "Releasing: merged from #$prs, labelled android-release" >> "$GITHUB_STEP_SUMMARY"
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No release: ${SHA::7} didn't come from a pull request labelled android-release" >> "$GITHUB_STEP_SUMMARY"
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          fi
+
   release:
-    if: github.ref == 'refs/heads/main'
+    needs: decide
+    if: needs.decide.outputs.release == 'true'
     runs-on: ubuntu-latest
     environment: android-release
     permissions:
       contents: write # the GitHub release
-      actions: read # whether CI passed on this commit
     env:
       AWS_REGION: ap-southeast-2
       # The upload key's certificate (android/README.md); the build must be signed with it.
       UPLOAD_CERT_SHA256: a15890f7aa46cf833dd8f53be2b851ef8243d32ecf4e3049193fe906d88a046d
       GH_TOKEN: ${{ github.token }}
+      SHA: ${{ needs.decide.outputs.sha }}
     steps:
-      - name: Has CI passed on this commit?
-        run: |
-          ok=$(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$GITHUB_SHA" --status success --json databaseId --jq length)
-          [[ $ok -gt 0 ]] || { echo "::error::CI hasn't passed on ${GITHUB_SHA::7} (yet). Release once it has."; exit 1; }
-
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.decide.outputs.sha }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 26
@@ -117,7 +162,7 @@ jobs:
           tag=android-$WALLET_VERSION_CODE
           cp android/wallet.apk "rudwallet-$WALLET_VERSION_NAME.apk"
           cp android/wallet.aab "rudwallet-$WALLET_VERSION_NAME.aab"
-          gh release create "$tag" --target "$GITHUB_SHA" \
+          gh release create "$tag" --target "$SHA" \
             --title "Android $WALLET_VERSION_NAME" \
             --notes "versionCode $WALLET_VERSION_CODE, published on wallet.rudnam.com. Upload the .aab in the Play Console for a Play Store release." \
             "rudwallet-$WALLET_VERSION_NAME.apk" "rudwallet-$WALLET_VERSION_NAME.aab"

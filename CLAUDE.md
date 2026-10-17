@@ -35,6 +35,7 @@ The user reviews changes by looking at them, not by deploying them. When you cha
 - Handlers return errors: `httpx.Errorf(status, msg)` for messages the user should see, and any other error for a logged 500. Don't leak internal errors to the client.
 - Keep dependencies minimal: standard library first in Go; no new npm packages without a clear reason.
 - When you add or change an endpoint, a setting or a package, update its table in README.md (API, Configuration, or How the code is organized).
+- **Label a pull request `android-release` when it changes what ships inside the Android app**: anything under `web/src/`, `web/public/`, `web/index.html` or `android/` (other than its README and scripts). Once it's merged and CI passes on `main`, `.github/workflows/android-release.yml` builds, signs and publishes a new APK, and every phone on a recent build is offered it. Don't label server-only, test-only or docs-only changes: phones would be nagged to update for nothing. Say in the PR description whether you labelled it and why.
 
 ## Environment gotchas
 
