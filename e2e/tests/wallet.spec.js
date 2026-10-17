@@ -134,7 +134,8 @@ test('the overview and budgets say where the month is heading', async ({ page })
   const yen = (n) => '¥' + n.toLocaleString('en-US');
   const pace = 400 * new Date(y, m + 1, 0).getDate();
   const month = new Date(y, m, 1).toLocaleDateString('en-US', { month: 'long' });
-  await page.goto('/app/#/');
+  // Signing up left the overview open, before these records existed.
+  await page.reload();
   await expect(page.locator('.hero')).toContainText(`At this pace, about ${yen(pace)} by the end of ${month}.`);
 
   await page.goto('/app/#/budgets');
