@@ -9,6 +9,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/lib/pq"
 	"github.com/rudnam/wallet-app/internal/db"
 )
 
@@ -21,20 +22,25 @@ type Filter struct {
 	Uncategorized bool
 	Query         string
 	Status        string
+	// Tag lists only records with this tag, ignoring case.
+	Tag string
 }
 
 // maxList caps one page of records; a month of even heavy use fits.
 const maxList = 2000
 
 const txColumns = `id, kind, amount, account_id, to_account_id, category_id, occurred_at, payee, note,
-	status, source, source_label, duplicate_of_id, created_at`
+	status, source, source_label, duplicate_of_id, created_at, tags`
 
 func scanTx(row interface{ Scan(...any) error }) (Transaction, error) {
 	var t Transaction
 	var to, cat, dup sql.NullInt64
 	err := row.Scan(&t.ID, &t.Kind, &t.Amount, &t.AccountID, &to, &cat, &t.OccurredAt, &t.Payee, &t.Note,
-		&t.Status, &t.Source, &t.SourceLabel, &dup, &t.CreatedAt)
+		&t.Status, &t.Source, &t.SourceLabel, &dup, &t.CreatedAt, (*pq.StringArray)(&t.Tags))
 	t.ToAccountID, t.CategoryID, t.DuplicateOfID = ptr(to), ptr(cat), ptr(dup)
+	if t.Tags == nil {
+		t.Tags = []string{}
+	}
 	return t, err
 }
 
@@ -72,7 +78,11 @@ func (s *Store) List(ctx context.Context, userID int64, f Filter) ([]Transaction
 		add("status = $%d", f.Status)
 	}
 	if q := strings.TrimSpace(f.Query); q != "" {
-		add("(payee ILIKE $%[1]d OR note ILIKE $%[1]d)", "%"+escapeLike(q)+"%")
+		add("(payee ILIKE $%[1]d OR note ILIKE $%[1]d OR EXISTS (SELECT 1 FROM unnest(tags) g WHERE g ILIKE $%[1]d))",
+			"%"+escapeLike(q)+"%")
+	}
+	if tag := strings.TrimSpace(f.Tag); tag != "" {
+		add("EXISTS (SELECT 1 FROM unnest(tags) g WHERE lower(g) = lower($%d))", tag)
 	}
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT `+txColumns+` FROM transactions WHERE `+strings.Join(where, " AND ")+
@@ -164,18 +174,23 @@ func (s *Store) Create(ctx context.Context, userID int64, t Transaction) (Transa
 	if t.Status == "" {
 		t.Status = "confirmed"
 	}
+	tags, err := s.spellTags(ctx, userID, t.Tags)
+	if err != nil {
+		return t, err
+	}
 	return scanTx(s.db.QueryRowContext(ctx,
 		`INSERT INTO transactions (user_id, kind, amount, account_id, to_account_id, category_id, occurred_at,
-			payee, note, status, source, source_label, duplicate_of_id)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+			payee, note, status, source, source_label, duplicate_of_id, tags)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		 RETURNING `+txColumns,
 		userID, t.Kind, t.Amount, t.AccountID, t.ToAccountID, t.CategoryID, t.OccurredAt,
-		t.Payee, t.Note, t.Status, t.Source, t.SourceLabel, t.DuplicateOfID))
+		t.Payee, t.Note, t.Status, t.Source, t.SourceLabel, t.DuplicateOfID, pq.Array(tags)))
 }
 
 // Update saves the user's edits. When they confirm or correct a record that
 // came from an email or a notification, the merchant's category and the card's account are
-// remembered for next time; the category only if remember is set.
+// remembered for next time; the category only if remember is set. Nil tags
+// keep the record's tags: older apps don't send them.
 func (s *Store) Update(ctx context.Context, userID int64, t Transaction, remember bool) (Transaction, error) {
 	old, err := s.Get(ctx, userID, t.ID)
 	if err != nil {
@@ -189,12 +204,18 @@ func (s *Store) Update(ctx context.Context, userID int64, t Transaction, remembe
 	} else {
 		t.DuplicateOfID = old.DuplicateOfID
 	}
+	tags := old.Tags
+	if t.Tags != nil {
+		if tags, err = s.spellTags(ctx, userID, t.Tags); err != nil {
+			return t, err
+		}
+	}
 	updated, err := scanTx(s.db.QueryRowContext(ctx,
 		`UPDATE transactions SET kind = $3, amount = $4, account_id = $5, to_account_id = $6, category_id = $7,
-			occurred_at = $8, payee = $9, note = $10, status = $11, duplicate_of_id = $12
+			occurred_at = $8, payee = $9, note = $10, status = $11, duplicate_of_id = $12, tags = $13
 		 WHERE user_id = $1 AND id = $2 RETURNING `+txColumns,
 		userID, t.ID, t.Kind, t.Amount, t.AccountID, t.ToAccountID, t.CategoryID,
-		t.OccurredAt, t.Payee, t.Note, t.Status, t.DuplicateOfID))
+		t.OccurredAt, t.Payee, t.Note, t.Status, t.DuplicateOfID, pq.Array(tags)))
 	if errors.Is(err, sql.ErrNoRows) {
 		return t, db.ErrNotFound
 	}

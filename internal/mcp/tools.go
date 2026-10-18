@@ -283,17 +283,18 @@ func overview(c *call, _ json.RawMessage) (any, error) {
 }
 
 type outRecord struct {
-	ID         int64  `json:"id"`
-	OccurredAt string `json:"occurred_at"`
-	Kind       string `json:"kind"`
-	Amount     string `json:"amount"`
-	Account    string `json:"account"`
-	ToAccount  string `json:"to_account,omitempty"`
-	CategoryID *int64 `json:"category_id"`
-	Category   string `json:"category,omitempty"`
-	Payee      string `json:"payee"`
-	Note       string `json:"note"`
-	Status     string `json:"status"`
+	ID         int64    `json:"id"`
+	OccurredAt string   `json:"occurred_at"`
+	Kind       string   `json:"kind"`
+	Amount     string   `json:"amount"`
+	Account    string   `json:"account"`
+	ToAccount  string   `json:"to_account,omitempty"`
+	CategoryID *int64   `json:"category_id"`
+	Category   string   `json:"category,omitempty"`
+	Payee      string   `json:"payee"`
+	Note       string   `json:"note"`
+	Status     string   `json:"status"`
+	Tags       []string `json:"tags,omitempty"`
 }
 
 func listRecords(c *call, args json.RawMessage) (any, error) {
@@ -346,7 +347,7 @@ func listRecords(c *call, args json.RawMessage) (any, error) {
 	for _, t := range list {
 		amount, _ := c.money(t.Amount)
 		rec := outRecord{ID: t.ID, OccurredAt: t.OccurredAt.Format(time.RFC3339), Kind: t.Kind, Amount: amount,
-			Account: accounts[t.AccountID], CategoryID: t.CategoryID, Payee: t.Payee, Note: t.Note, Status: t.Status}
+			Account: accounts[t.AccountID], CategoryID: t.CategoryID, Payee: t.Payee, Note: t.Note, Status: t.Status, Tags: t.Tags}
 		if t.ToAccountID != nil {
 			rec.ToAccount = accounts[*t.ToAccountID]
 		}

@@ -61,6 +61,8 @@ type Transaction struct {
 	SourceLabel   string    `json:"source_label"`
 	DuplicateOfID *int64    `json:"duplicate_of_id"`
 	CreatedAt     time.Time `json:"created_at"`
+	// Tags are the user's own labels, in the order they added them; never nil.
+	Tags []string `json:"tags"`
 }
 
 type Budget struct {

@@ -76,6 +76,8 @@ export interface Transaction {
   source_label: string;
   duplicate_of_id: number | null;
   created_at: string;
+  /** The user's own labels, in the order they were added. */
+  tags: string[];
 }
 
 export type TransactionInput = Pick<
@@ -85,7 +87,15 @@ export type TransactionInput = Pick<
   status?: Transaction['status'];
   /** false: confirm without changing the category learned for the shop. Left out, it is learned. */
   remember?: boolean;
+  /** Left out, an update keeps the record's tags. */
+  tags?: string[];
 };
+
+/** A tag in use, and on how many records. */
+export interface Tag {
+  name: string;
+  count: number;
+}
 
 export interface Overview {
   settings: Settings;
@@ -110,6 +120,8 @@ export interface TransactionFilter {
   /** A category ID, or 'none' for uncategorised records. */
   category_id?: number | 'none';
   q?: string;
+  /** Records with this tag, ignoring case. */
+  tag?: string;
   status?: Transaction['status'];
 }
 
@@ -122,6 +134,8 @@ export type BulkChange = { ids: number[] } & (
   | { action: 'move'; account_id: number }
   /** Records to review that are ready: a category, an amount, not a possible duplicate. Teaches new shops and cards only. */
   | { action: 'confirm' }
+  /** Adds a tag to records without it, or takes it off. */
+  | { action: 'tag' | 'untag'; tag: string }
 );
 
 /** What confirmed payments taught the app, so the user can check it. */
@@ -325,6 +339,7 @@ function query(f: TransactionFilter): string {
   if (f.account_id) p.set('account_id', String(f.account_id));
   if (f.category_id) p.set('category_id', String(f.category_id));
   if (f.q) p.set('q', f.q);
+  if (f.tag) p.set('tag', f.tag);
   if (f.status) p.set('status', f.status);
   const s = p.toString();
   return s ? `?${s}` : '';
@@ -380,6 +395,8 @@ export const api = {
   updateTransaction: (id: number, t: TransactionInput) => request<Transaction>('PUT', `/api/transactions/${id}`, t),
   deleteTransaction: (id: number) => request<void>('DELETE', `/api/transactions/${id}`),
   bulkTransactions: (change: BulkChange) => request<BulkResult>('POST', '/api/transactions/bulk', change),
+  /** The tags on the user's records, the most used first. */
+  tags: () => request<Tag[]>('GET', '/api/tags'),
   /** Brings back records deleted in the last day. */
   restoreTransactions: (ids: number[]) => request<RestoreResult>('POST', '/api/transactions/restore', { ids }),
 
@@ -406,6 +423,7 @@ export const api = {
   seen: {
     transactions: (f: TransactionFilter = {}) => lastSeen.get(`/api/transactions${query(f)}`) as Transaction[] | undefined,
     budgets: () => lastSeen.get('/api/budgets') as Budget[] | undefined,
+    tags: () => lastSeen.get('/api/tags') as Tag[] | undefined,
   },
 
   mcpTokens: () => request<MCPToken[]>('GET', '/api/mcp/tokens'),

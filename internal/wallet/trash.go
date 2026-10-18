@@ -33,10 +33,10 @@ func (s *Store) trash(ctx context.Context, userID int64, ids []int64) (int, erro
 			DELETE FROM transactions WHERE user_id = $1 AND id = ANY($2::bigint[]) RETURNING `+txColumns+`, import_key
 		)
 		INSERT INTO deleted_transactions (id, user_id, kind, amount, account_id, to_account_id, category_id,
-			occurred_at, payee, note, status, source, source_label, duplicate_of_id, import_key, created_at,
+			occurred_at, payee, note, status, source, source_label, duplicate_of_id, import_key, created_at, tags,
 			notification_ids, duplicate_ids)
 		SELECT g.id, $1, g.kind, g.amount, g.account_id, g.to_account_id, g.category_id,
-			g.occurred_at, g.payee, g.note, g.status, g.source, g.source_label, g.duplicate_of_id, g.import_key, g.created_at,
+			g.occurred_at, g.payee, g.note, g.status, g.source, g.source_label, g.duplicate_of_id, g.import_key, g.created_at, g.tags,
 			ARRAY(SELECT p.id FROM payment_notifications p WHERE p.user_id = $1 AND p.transaction_id = g.id),
 			ARRAY(SELECT d.id FROM transactions d WHERE d.user_id = $1 AND d.duplicate_of_id = g.id)
 		FROM gone g`,
@@ -59,11 +59,11 @@ func (s *Store) Restore(ctx context.Context, userID int64, ids []int64) (int, er
 	defer tx.Rollback()
 	rows, err := tx.QueryContext(ctx,
 		`INSERT INTO transactions (id, user_id, kind, amount, account_id, to_account_id, category_id,
-			occurred_at, payee, note, status, source, source_label, duplicate_of_id, import_key, created_at)
+			occurred_at, payee, note, status, source, source_label, duplicate_of_id, import_key, created_at, tags)
 		OVERRIDING SYSTEM VALUE
 		SELECT d.id, d.user_id, d.kind, d.amount, d.account_id, d.to_account_id, d.category_id,
 			d.occurred_at, d.payee, d.note, d.status, d.source, d.source_label,
-			(SELECT t.id FROM transactions t WHERE t.user_id = $1 AND t.id = d.duplicate_of_id), d.import_key, d.created_at
+			(SELECT t.id FROM transactions t WHERE t.user_id = $1 AND t.id = d.duplicate_of_id), d.import_key, d.created_at, d.tags
 		FROM deleted_transactions d
 		WHERE d.user_id = $1 AND d.id = ANY($2::bigint[]) AND d.deleted_at >= now() - interval '`+trashKeep+`'
 		ON CONFLICT DO NOTHING

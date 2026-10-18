@@ -1,7 +1,9 @@
-// All records, a month at a time, with filters; a search looks through every
-// month. Records can be chosen to delete, categorise or move many at once.
+// All records, a month at a time, with filters; a search, or a tag, looks
+// through every month. Records can be chosen to delete, categorise, move or
+// tag many at once.
 import { useEffect, useState } from 'react';
-import { api, errorMessage, type BulkChange, type Transaction } from '../../api';
+import { api, errorMessage, type BulkChange, type Tag, type Transaction } from '../../api';
+import { cleanTag } from '../../components/TagField';
 import { TransactionForm } from '../../components/TransactionForm';
 import { TransactionList } from '../../components/TransactionList';
 import { addMonths, formatMonth, monthStart } from '../../money';
@@ -23,18 +25,27 @@ export function RecordsPage({ route }: { route: Route }) {
   const categoryParam = p.get('category');
   const category = categoryParam === 'none' ? 'none' : Number(categoryParam) || undefined;
   const search = p.get('q') ?? '';
+  const tag = p.get('tag') ?? '';
+  const everyMonth = !!(search || tag);
+  const [tags, setTags] = useState<Tag[]>(() => api.seen.tags() ?? []);
   const [q, setQ] = useState(search);
   const [open, setOpen] = useState<Transaction | null>(null);
   // While choosing records: the chosen IDs.
   const [selected, setSelected] = useState<Set<number> | null>(null);
 
   const { records, error, reload } = useRecords({
-    from: search ? undefined : month,
-    to: search ? undefined : addMonths(month, 1),
+    from: everyMonth ? undefined : month,
+    to: everyMonth ? undefined : addMonths(month, 1),
     account_id: account,
     category_id: category,
     q: search || undefined,
+    tag: tag || undefined,
   });
+
+  // The tags to filter by; they change as records are tagged.
+  useEffect(() => {
+    api.tags().then(setTags, () => {});
+  }, [records]);
 
   // A different month or filter starts the choice afresh.
   const filterKey = p.toString();
@@ -69,15 +80,15 @@ export function RecordsPage({ route }: { route: Route }) {
           </button>
         )}
       </header>
-      {search ? (
+      {everyMonth ? (
         <div className="card search-scope">
-          <strong>{t('Results from every month')}</strong>
+          <strong>{search ? t('Results from every month') : t('#{tag} in every month', { tag })}</strong>
           <button
             type="button"
             className="link"
             onClick={() => {
               setQ('');
-              set({ q: undefined });
+              set({ q: undefined, tag: undefined });
             }}
           >
             {t('Back to {month}', { month: formatMonth(month) })}
@@ -120,9 +131,23 @@ export function RecordsPage({ route }: { route: Route }) {
             set({ q });
           }}
         >
-          <input type="search" aria-label={t('Search records')} placeholder={t('Search payee or note')} value={q} onChange={(e) => setQ(e.target.value)} />
+          <input type="search" aria-label={t('Search records')} placeholder={t('Search payee, note or tag')} value={q} onChange={(e) => setQ(e.target.value)} />
         </form>
       </div>
+      {(tags.length > 0 || tag) && (
+        <ul className="tag-filter" aria-label={t('Filter by tag')}>
+          {tags.map((x) => {
+            const on = x.name.toLowerCase() === tag.toLowerCase();
+            return (
+              <li key={x.name}>
+                <button type="button" className={on ? 'chip on' : 'chip'} aria-pressed={on} onClick={() => set({ tag: on ? undefined : x.name })}>
+                  #{x.name} <span className="muted">{x.count}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
       <div className="card tiles summary">
         <div className="tile">
           <span className="muted small">{t('Spent')}</span>
@@ -156,6 +181,7 @@ export function RecordsPage({ route }: { route: Route }) {
           {selected && (
             <BulkBar
               records={records}
+              tags={tags}
               selected={selected}
               onSelect={setSelected}
               onChanged={reload}
@@ -181,11 +207,13 @@ export function RecordsPage({ route }: { route: Route }) {
 /** What to do with the chosen records: change their category or account, or delete them. */
 function BulkBar({
   records,
+  tags,
   selected,
   onSelect,
   onChanged,
 }: {
   records: Transaction[];
+  tags: Tag[];
   selected: Set<number>;
   onSelect: (s: Set<number>) => void;
   onChanged: () => Promise<void>;
@@ -206,7 +234,11 @@ function BulkBar({
           ? tn(res.changed, 'Deleted {n} record.', 'Deleted {n} records.')
           : change.action === 'move'
             ? tn(res.changed, 'Moved {n} record.', 'Moved {n} records.')
-            : tn(res.changed, 'Recategorised {n} record.', 'Recategorised {n} records.');
+            : change.action === 'tag'
+              ? tn(res.changed, 'Tagged {n} record #{tag}.', 'Tagged {n} records #{tag}.', { tag: change.tag })
+              : change.action === 'untag'
+                ? tn(res.changed, 'Took #{tag} off {n} record.', 'Took #{tag} off {n} records.', { tag: change.tag })
+                : tn(res.changed, 'Recategorised {n} record.', 'Recategorised {n} records.');
       toast(
         res.skipped > 0 ? `${done} ${t('{n} didn’t fit and stayed as they were.', { n: res.skipped })}` : done,
         change.action === 'delete' && res.changed > 0 ? { label: t('Undo'), run: () => restore(change.ids) } : undefined,
@@ -232,6 +264,18 @@ function BulkBar({
   }
 
   const ids = [...selected];
+  // Tags on the chosen records, to take off.
+  const chosenTags = [
+    ...new Map(records.filter((r) => selected.has(r.id)).flatMap((r) => r.tags ?? []).map((x) => [x.toLowerCase(), x])).values(),
+  ];
+
+  function changeTag(v: string) {
+    if (v === 'new') {
+      const typed = cleanTag(prompt(t('Tag the chosen records with:')) ?? '');
+      if (typed) apply({ ids, action: 'tag', tag: typed });
+    } else if (v.startsWith('add:')) apply({ ids, action: 'tag', tag: v.slice(4) });
+    else if (v.startsWith('remove:')) apply({ ids, action: 'untag', tag: v.slice(7) });
+  }
   const expenseCats = w.categories.filter((c) => c.kind === 'expense');
   const incomeCats = w.categories.filter((c) => c.kind === 'income');
 
@@ -285,6 +329,26 @@ function BulkBar({
                   {a.name}
                 </option>
               ))}
+          </select>
+          <select aria-label={t('Tag records')} value="" disabled={busy} onChange={(e) => changeTag(e.target.value)}>
+            <option value="">{t('Tag…')}</option>
+            <optgroup label={t('Add tag')}>
+              <option value="new">{t('New tag…')}</option>
+              {tags.map((x) => (
+                <option key={x.name} value={`add:${x.name}`}>
+                  #{x.name}
+                </option>
+              ))}
+            </optgroup>
+            {chosenTags.length > 0 && (
+              <optgroup label={t('Remove tag')}>
+                {chosenTags.map((x) => (
+                  <option key={x} value={`remove:${x}`}>
+                    #{x}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
           <button
             type="button"
