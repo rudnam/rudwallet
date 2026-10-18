@@ -7,11 +7,12 @@ android {
         applicationId "com.rudnam.wallet"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        // Raise both for every release (Play Store or published APK): the app offers
-        // a build with a higher versionCode as an update. 1 and 2 were the Bubblewrap
+        // Every release needs a higher versionCode: the app offers a build with a
+        // higher one as an update. build.sh sets it from version.sh (one above the
+        // published APK); the number here is the floor. 1 and 2 were the Bubblewrap
         // (TWA) app; 4 is the first that checks for updates.
-        versionCode 4
-        versionName "2.1"
+        versionCode((System.getenv('WALLET_VERSION_CODE') ?: '4') as int)
+        versionName System.getenv('WALLET_VERSION_NAME') ?: "2.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

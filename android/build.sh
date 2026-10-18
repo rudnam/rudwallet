@@ -7,7 +7,10 @@
 #
 # Needs a JDK and the Android SDK (JAVA_HOME and ANDROID_HOME, or the paths in
 # ~/.bubblewrap/config.json), Node, and android.keystore with its passwords in
-# signing-key.txt, next to this script.
+# signing-key.txt, next to this script. The version comes from version.sh,
+# or WALLET_VERSION_CODE and WALLET_VERSION_NAME if they're set. CI's
+# Android release workflow (.github/workflows/android-release.yml) runs this
+# too.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -23,6 +26,11 @@ WALLET_KEYSTORE_PASSWORD=$(sed -n 's/^Keystore password: //p' signing-key.txt)
 WALLET_KEY_PASSWORD=$(sed -n 's/^Key password: //p' signing-key.txt)
 export WALLET_KEYSTORE_PASSWORD WALLET_KEY_PASSWORD
 
+# The version: one above what the site offers (version.sh), unless given.
+: "${WALLET_VERSION_CODE:=$(./version.sh)}"
+: "${WALLET_VERSION_NAME:=$(sed -n "s/.*WALLET_VERSION_NAME') ?: \"\(.*\)\".*/\1/p" app/build.gradle).$WALLET_VERSION_CODE}"
+export WALLET_VERSION_CODE WALLET_VERSION_NAME
+
 # The web app, built for the app (web/.env.android) and copied in.
 (cd ../web && { [[ -d node_modules ]] || npm ci --no-audit --no-fund; } && npm run android)
 
@@ -37,7 +45,7 @@ if [[ ! -w ../downloads ]]; then
   exit 1
 fi
 cp wallet.apk ../downloads/wallet.apk
-echo "Built android/wallet.aab (Play Store) and android/wallet.apk ($(sed -n 's/.*versionName "\(.*\)"/\1/p' app/build.gradle))"
+echo "Built android/wallet.aab (Play Store) and android/wallet.apk: version $WALLET_VERSION_NAME (versionCode $WALLET_VERSION_CODE)"
 
 if [[ ${1:-} == install ]]; then
   "$ANDROID_HOME/platform-tools/adb" install -r wallet.apk

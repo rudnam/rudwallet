@@ -1,0 +1,169 @@
+# Releases the Android app. It builds and signs the app with
+# android/build.sh, publishes the APK on wallet.rudnam.com with
+# android/publish.sh (phones on a build that checks are offered it, see
+# web/src/updates.ts), and keeps both files as a GitHub release,
+# android-<versionCode>, whose .aab goes to the Play Console by hand. The
+# versionCode is one above the published APK (android/version.sh).
+#
+# It runs:
+#   - by itself, once CI has passed on main, when the commit came from a pull
+#     request labelled android-release (CLAUDE.md says when to add it);
+#   - by hand: Actions → Android release → Run workflow, on main.
+#
+# The signing key is in the android-release environment, which only the
+# release job uses and which only allows main: secrets ANDROID_KEYSTORE_BASE64
+# (base64 of android.keystore), ANDROID_KEYSTORE_PASSWORD and
+# ANDROID_KEY_PASSWORD. AWS access is CI's deploy role (see ci.yml), which
+# may upload to the bucket's downloads/wallet-app/ and run rudnam-downloads.
+name: Android release
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: Version name people see (e.g. 2.2). Empty for <build.gradle's>.<versionCode>, e.g. 2.1.5
+        required: false
+
+concurrency:
+  group: android-release
+  cancel-in-progress: false
+
+jobs:
+  # Whether to release, and which commit. No secrets here.
+  decide:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: read
+    outputs:
+      release: ${{ steps.decide.outputs.release }}
+      sha: ${{ steps.decide.outputs.sha }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+    steps:
+      - id: decide
+        run: |
+          [[ $SHA =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Not a commit SHA: $SHA"; exit 1; }
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          if [[ $GITHUB_EVENT_NAME == workflow_dispatch ]]; then
+            ok=$(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$SHA" --status success --json databaseId --jq length)
+            [[ $ok -gt 0 ]] || { echo "::error::CI hasn't passed on ${SHA::7} (yet). Release once it has."; exit 1; }
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # The pull request this commit was merged from, if it has the label.
+          prs=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/pulls" \
+            --jq '[.[] | select(.merged_at != null and any(.labels[]; .name == "android-release")) | .number] | join(" ")')
+          if [[ -n $prs ]]; then
+            echo "Releasing: merged from #$prs, labelled android-release" >> "$GITHUB_STEP_SUMMARY"
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No release: ${SHA::7} didn't come from a pull request labelled android-release" >> "$GITHUB_STEP_SUMMARY"
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  release:
+    needs: decide
+    if: needs.decide.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    environment: android-release
+    permissions:
+      contents: write # the GitHub release
+    env:
+      AWS_REGION: ap-southeast-2
+      # The upload key's certificate (android/README.md); the build must be signed with it.
+      UPLOAD_CERT_SHA256: 82077ffc52bc0c277faea26fd033d4030c5f8d9d563d7094e848641854e3cb61
+      GH_TOKEN: ${{ github.token }}
+      SHA: ${{ needs.decide.outputs.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.decide.outputs.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          # A release never reuses a cache another branch could have written.
+          cache-read-only: true
+
+      # Before the key is on disk, and without install scripts, so no
+      # package's install step runs with the key within reach.
+      - name: Install web dependencies
+        working-directory: web
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Choose the version
+        env:
+          NAME: ${{ inputs.version_name }}
+        run: |
+          code=$(android/version.sh)
+          base=$(sed -n "s/.*WALLET_VERSION_NAME') ?: \"\(.*\)\".*/\1/p" android/app/build.gradle)
+          name=${NAME:-$base.$code}
+          [[ $name =~ ^[0-9A-Za-z.+-]{1,32}$ ]] || { echo "::error::Not a version name: $name"; exit 1; }
+          echo "WALLET_VERSION_CODE=$code" >> "$GITHUB_ENV"
+          echo "WALLET_VERSION_NAME=$name" >> "$GITHUB_ENV"
+          echo "Releasing $name (versionCode $code)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Put the signing key in place
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          [[ -n $KEYSTORE && -n $STORE_PASSWORD && -n $KEY_PASSWORD ]] || { echo "::error::The android-release environment is missing its secrets"; exit 1; }
+          umask 077
+          base64 -d <<<"$KEYSTORE" > android/android.keystore
+          printf 'Keystore password: %s\nKey password: %s\n' "$STORE_PASSWORD" "$KEY_PASSWORD" > android/signing-key.txt
+
+      - name: Build
+        run: ./android/build.sh
+
+      - name: Check the signature
+        run: |
+          apksigner=$(printf "%s\n" "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$apksigner" verify --print-certs android/wallet.apk | tee /dev/stderr |
+            grep -qi "certificate SHA-256 digest: $UPLOAD_CERT_SHA256" ||
+            { echo "::error::wallet.apk isn't signed with the upload key"; exit 1; }
+
+      - name: Remove the signing key
+        if: always()
+        run: rm -f android/android.keystore android/signing-key.txt
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-duration-seconds: 3600
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Publish on wallet.rudnam.com
+        run: ./android/publish.sh
+
+      - name: Keep the files as a GitHub release
+        run: |
+          tag=android-$WALLET_VERSION_CODE
+          cp android/wallet.apk "rudwallet-$WALLET_VERSION_NAME.apk"
+          cp android/wallet.aab "rudwallet-$WALLET_VERSION_NAME.aab"
+          gh release create "$tag" --target "$SHA" \
+            --title "Android $WALLET_VERSION_NAME" \
+            --notes "versionCode $WALLET_VERSION_CODE, published on wallet.rudnam.com. Upload the .aab in the Play Console for a Play Store release." \
+            "rudwallet-$WALLET_VERSION_NAME.apk" "rudwallet-$WALLET_VERSION_NAME.aab"
+          echo "GitHub release: $tag" >> "$GITHUB_STEP_SUMMARY"

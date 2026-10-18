@@ -1,5 +1,6 @@
 # verify: on pull requests and pushes to main, ./verify.sh, with the browser
 #   tests' screenshots kept as the e2e-results artifact.
+# (Android releases: android-release.yml, run by hand.)
 # deploy: on pushes to main, build the image, push it to ECR and run it on
 #   the AWS instance (rudnam/rudnam-infra). Also on demand from main: Actions
 #   → CI → Run workflow with a commit SHA redeploys that commit (a rollback);
@@ -49,7 +50,7 @@ jobs:
 
   # Builds the Android app (android/README.md) as a debug build, which needs
   # no signing key, so its native code is checked on every change. Releases
-  # are still built and signed by hand with android/build.sh. Not required by
+  # are android-release.yml, run by hand. Not required by
   # deploy: the server doesn't ship with the app.
   android:
     if: github.event_name != 'workflow_dispatch'
