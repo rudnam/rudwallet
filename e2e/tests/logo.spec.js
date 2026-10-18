@@ -33,3 +33,19 @@ for (const [name, viewport] of [
     await shot('app');
   });
 }
+
+test('in dark mode the logo is the dark drawing', async ({ page }) => {
+  // favicon.svg holds a light and a dark drawing; the system theme picks one, as it does for the app.
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  const shot = (label) => page.screenshot({ path: test.info().outputPath(`dark-logo-${label}.png`) });
+
+  await page.goto('/');
+  await expectLogos(page, '.landing-brand .logo');
+  await shot('landing');
+
+  await page.goto('/app/');
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+  await expectLogos(page, 'img.logo');
+  await shot('sign-in');
+});
