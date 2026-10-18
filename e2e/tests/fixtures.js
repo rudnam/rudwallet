@@ -72,6 +72,41 @@ function resetLink(request, to) {
   return emailedLink(request, to, /https?:\/\/\S+\/app\/#\/reset\?token=[\w-]+/);
 }
 
+/**
+ * Makes the page act as the Android app (web/src/native.ts): Capacitor sees
+ * a native platform, and the native plugins the test needs answer from
+ * here. build is the installed versionCode; installer, the app that
+ * installed it. Native calls are kept in window.calls ("Plugin.method"),
+ * and links opened in the phone's browser in window.opened. Call before
+ * the first page.goto.
+ */
+async function asAndroidApp(page, { build = 3, installer = 'com.google.android.packageinstaller' } = {}) {
+  await page.addInitScript(
+    ({ build, installer }) => {
+      const answers = {
+        'App.getInfo': () => ({ name: 'RudWallet', id: 'com.rudnam.wallet', build: String(build), version: '2.0' }),
+        'Updates.installer': () => ({ installer }),
+        'Browser.open': ({ url }) => void window.opened.push(url),
+      };
+      window.calls = [];
+      window.opened = [];
+      window.CapacitorCustomPlatform = { name: 'android', plugins: {} };
+      window.Capacitor = {
+        PluginHeaders: [
+          { name: 'App', methods: [{ name: 'getInfo', rtype: 'promise' }] },
+          { name: 'Updates', methods: [{ name: 'installer', rtype: 'promise' }] },
+          { name: 'Browser', methods: [{ name: 'open', rtype: 'promise' }] },
+        ],
+        nativePromise: async (plugin, method, options) => {
+          window.calls.push(`${plugin}.${method}`);
+          return answers[`${plugin}.${method}`](options);
+        },
+      };
+    },
+    { build, installer },
+  );
+}
+
 const PAYPAY = 'jp.ne.paypay.android.app';
 
 /**
@@ -91,4 +126,4 @@ async function sendNotifications(request, ...notifications) {
   return (await res.json()).notifications;
 }
 
-module.exports = { test, expect: base.expect, signUp, uniqueEmail, PASSWORD, confirmationLink, resetLink, PAYPAY, payPayCard, sendNotifications };
+module.exports = { test, expect: base.expect, signUp, asAndroidApp, uniqueEmail, PASSWORD, confirmationLink, resetLink, PAYPAY, payPayCard, sendNotifications };

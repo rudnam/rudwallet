@@ -32,6 +32,12 @@ The introduction page offers the APK as **Download for Android** while the serve
 
 A copy installed from the Play Store is signed by Google, so installing `wallet.apk` over it fails; uninstall it first.
 
+### Updates
+
+The app tells people when a newer APK is out. When it starts, and when it comes back into view (at most hourly), it asks `GET /api/downloads`, where the server reports the `versionCode` it reads from the APK's manifest, and compares it with its own (`web/src/updates.ts`). If the server's is higher, a banner offers **Update**, which downloads the APK in the phone's browser, or **Later**, which hides it until a still newer build. So **raise `versionCode` for every build you publish**, or nobody is told. Copies from the Play Store (`UpdatesPlugin` reports the installer) are left to the Play Store.
+
+Builds from before this (`versionCode` 3 and older) don't check, so those phones need one update by hand.
+
 While working on the app, `cd web && npm run android`, then open `android/` in Android Studio, or `cd android && ./gradlew installDebug`. A debug build needs no signing key.
 
 ## How the app signs in
