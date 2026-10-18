@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- The clay of web/public/icon.svg. -->
-    <color name="ic_launcher_background">#C96442</color>
+    <!-- The middle of web/public/icon.svg's paper gradient, behind the splash-screen wallet.
+         The launcher icon uses the full gradient (drawable/ic_launcher_gradient). -->
+    <color name="ic_launcher_background">#F4F1E8</color>
 </resources>

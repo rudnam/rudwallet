@@ -123,14 +123,7 @@ export function Plus() {
   );
 }
 
-/** The app's mark: a clay tile with a folded wallet. Same drawing as public/icon.svg. */
+/** The app's mark: public/favicon.svg itself, so the logo and the app icon can't drift apart. Sized by CSS (.logo). */
 export function Logo() {
-  return (
-    <svg className="logo" viewBox="0 0 512 512" aria-hidden="true">
-      <rect width="512" height="512" rx="112" fill="#c96442" />
-      <rect x="112" y="160" width="288" height="200" rx="36" fill="#f5f3ec" />
-      <path d="M112 212h288" stroke="#c96442" strokeWidth="22" />
-      <circle cx="338" cy="292" r="20" fill="#c96442" />
-    </svg>
-  );
+  return <img className="logo" src="/favicon.svg" alt="" />;
 }
