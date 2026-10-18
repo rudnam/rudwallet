@@ -50,6 +50,7 @@ func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) ht
 	route("POST /api/transactions/restore", h.restoreTransactions)
 	route("PUT /api/transactions/{id}", h.updateTransaction)
 	route("DELETE /api/transactions/{id}", h.deleteTransaction)
+	route("GET /api/tags", h.listTags)
 
 	route("GET /api/rules", h.rules)
 	route("PUT /api/rules/payees", h.setPayeeRule)
@@ -361,6 +362,7 @@ func (h *Handler) listTransactions(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 	f.Query = q.Get("q")
+	f.Tag = q.Get("tag")
 	switch f.Status = q.Get("status"); f.Status {
 	case "", "confirmed", "review":
 	default:
@@ -387,6 +389,8 @@ type transactionInput struct {
 	// Remember, when false, confirms a record from a
 	// notification without changing the category learned for its shop.
 	Remember *bool `json:"remember"`
+	// Tags left out keep the record's tags (older apps don't send them).
+	Tags []string `json:"tags"`
 }
 
 func (in transactionInput) transaction() (Transaction, error) {
@@ -410,7 +414,9 @@ func (in transactionInput) transaction() (Transaction, error) {
 	} else if t.Status != "confirmed" && t.Status != "review" {
 		return t, httpx.Errorf(http.StatusBadRequest, "status must be confirmed or review")
 	}
-	return t, nil
+	var err error
+	t.Tags, err = cleanTags(in.Tags)
+	return t, err
 }
 
 func (h *Handler) createTransaction(w http.ResponseWriter, r *http.Request) error {

@@ -6,6 +6,7 @@ import { amountInput, currencySymbol, formatDay, formatTime, parseAmount, toLoca
 import { useToast } from '../toast';
 import { useWallet } from '../wallet';
 import { Dialog } from './Dialog';
+import { addTag, TagField } from './TagField';
 import { CategoryIcon, Icon, icons } from './Icon';
 
 interface Props {
@@ -26,6 +27,9 @@ type Habit = { category_id: number | null; account_id: number; kind: Transaction
 
 /** One field an edit changes, as the user reads it. */
 type Change = { field: string; from: string; to: string };
+
+/** How many categories show before More. */
+const fewCategories = 7;
 
 const kindNames: Record<TransactionKind, Key> = { expense: 'Expense', income: 'Income', transfer: 'Transfer' };
 
@@ -49,7 +53,13 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
   const [when, setWhen] = useState(toLocalInput(new Date(record?.occurred_at ?? draft?.occurred_at ?? Date.now())));
   const [payee, setPayee] = useState(record?.payee ?? draft?.payee ?? '');
   const [note, setNote] = useState(record?.note ?? draft?.note ?? '');
+  const [tags, setTags] = useState<string[]>(record?.tags ?? []);
+  const [tagText, setTagText] = useState('');
+  const [knownTags, setKnownTags] = useState<string[]>(() => api.seen.tags()?.map((x) => x.name) ?? []);
   const [habits, setHabits] = useState<Map<string, Habit>>(new Map());
+  // How many recent records each category has, to show the most used first.
+  const [use, setUse] = useState<Map<number, number>>(new Map());
+  const [allCategories, setAllCategories] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   // An edit waiting for the user to check what it changes.
@@ -60,14 +70,31 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
     api.transactions({ from: new Date(Date.now() - 120 * 86_400_000), status: 'confirmed' }).then(
       (list) => {
         const m = new Map<string, Habit>();
-        for (const t of list) if (t.payee && !m.has(t.payee)) m.set(t.payee, t);
+        const counts = new Map<number, number>();
+        for (const t of list) {
+          if (t.payee && !m.has(t.payee)) m.set(t.payee, t);
+          if (t.category_id !== null) counts.set(t.category_id, (counts.get(t.category_id) ?? 0) + 1);
+        }
         setHabits(m);
+        setUse(counts);
       },
       () => {},
     );
+    api.tags().then((list) => setKnownTags(list.map((x) => x.name)), () => {});
   }, []);
 
-  const categories = w.categories.filter((c) => c.kind === kind);
+  // The most used categories first (sort keeps the rest in their order); a
+  // few show until the user asks for all, and the chosen one always shows.
+  const categories = w.categories
+    .filter((c) => c.kind === kind)
+    .sort((a, b) => (use.get(b.id) ?? 0) - (use.get(a.id) ?? 0));
+  const folding = categories.length > fewCategories + 1;
+  const chosenHidden = categories.findIndex((c) => c.id === categoryId) >= fewCategories;
+  const shownCategories =
+    !folding || allCategories
+      ? categories
+      : // A chosen category from further down takes the last place, so More stays on the second row.
+        categories.filter((c, i) => i < fewCategories - (chosenHidden ? 1 : 0) || c.id === categoryId);
   const duplicate = record?.duplicate_of_id ? record.duplicate_of_id : null;
 
   function changeKind(k: TransactionKind) {
@@ -103,6 +130,8 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
       payee: kind === 'transfer' ? '' : payee,
       note,
       status: 'confirmed' as const,
+      // A tag still being typed counts too.
+      tags: addTag(tags, tagText),
     };
     // Editing a saved record: show what changes before saving it.
     if (record && !reviewing) {
@@ -151,6 +180,7 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
         payee: before.payee,
         note: before.note,
         status: before.status,
+        tags: before.tags,
         // Restoring an old category doesn't teach it to the shop again.
         remember: false,
       });
@@ -183,6 +213,7 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
       return `${formatDay(d)}, ${formatTime(d)}`;
     };
     const text = (s: string) => s || t('None');
+    const tagList = (tags: string[]) => text(tags.map((x) => `#${x}`).join(' '));
     const transfer = after.kind === 'transfer' || before.kind === 'transfer';
     const fields: [Key, string, string][] = [
       ['Type', t(kindNames[before.kind]), t(kindNames[after.kind])],
@@ -193,6 +224,7 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
       ['To', name(before.to_account_id), name(after.to_account_id)],
       ['Date', when(before.occurred_at), when(after.occurred_at)],
       ['Note', text(before.note), text(after.note)],
+      ['Tags', tagList(before.tags), tagList(after.tags ?? before.tags)],
     ];
     return fields.filter(([, from, to]) => from !== to).map(([field, from, to]) => ({ field: t(field), from, to }));
   }
@@ -213,8 +245,8 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
   }
 
   const accountSelect = (label: string, value: number, set: (id: number) => void) => (
-    <label className="field">
-      {label}
+    <label className="detail">
+      <span>{label}</span>
       <select value={value} onChange={(e) => set(Number(e.target.value))}>
         {accounts.map((a) => (
           <option key={a.id} value={a.id}>
@@ -294,67 +326,77 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
             onChange={(e) => setAmount(e.target.value)}
           />
         </label>
-        {kind === 'transfer' ? (
-          <div className="grid2">
-            {accountSelect(t('From'), accountId, setAccountId)}
-            {accountSelect(t('To'), toAccountId, setToAccountId)}
-          </div>
-        ) : (
-          <fieldset className="chip-pick">
-            <legend>{t('Category')}</legend>
-            <div className="chips">
-              {categories.map((c) => (
-                <label key={c.id} className={categoryId === c.id ? 'chip on' : 'chip'}>
-                  <input
-                    type="radio"
-                    name="category"
-                    checked={categoryId === c.id}
-                    onChange={() => setCategoryId(c.id)}
-                    // Tapping the chosen category again clears it.
-                    onClick={() => categoryId === c.id && setCategoryId(null)}
-                  />
-                  <CategoryIcon icon={c.icon} name={c.name} color={c.color} size="small" />
-                  {c.name}
-                </label>
-              ))}
-            </div>
+        {kind !== 'transfer' && (
+          <fieldset className="category-pick">
+            <legend className="sr-only">{t('Category')}</legend>
+            {shownCategories.map((c) => (
+              <label key={c.id} className={categoryId === c.id ? 'on' : ''}>
+                <input
+                  type="radio"
+                  name="category"
+                  checked={categoryId === c.id}
+                  onChange={() => setCategoryId(c.id)}
+                  // Tapping the chosen category again clears it.
+                  onClick={() => categoryId === c.id && setCategoryId(null)}
+                />
+                <CategoryIcon icon={c.icon} name={c.name} color={c.color} />
+                <span className="category-name">{c.name}</span>
+              </label>
+            ))}
+            {folding && (
+              <button type="button" className="category-more" aria-expanded={allCategories} onClick={() => setAllCategories(!allCategories)}>
+                <span className="cat-icon" aria-hidden="true">
+                  <Icon d={allCategories ? icons.close : icons.more} className="glyph" />
+                </span>
+                <span className="category-name">{allCategories ? t('Fewer') : t('More')}</span>
+              </button>
+            )}
           </fieldset>
         )}
-        {kind !== 'transfer' && (
-          <label className="field">
-            {kind === 'income' ? t('From whom') : t('Payee')}
-            <input
-              value={payee}
-              maxLength={500}
-              list="payees"
-              autoComplete="off"
-              placeholder={kind === 'income' ? t('Employer, friend…') : t('Shop or person')}
-              onChange={(e) => changePayee(e.target.value)}
-            />
-            <datalist id="payees">
-              {[...habits.keys()].map((p) => (
-                <option key={p} value={p} />
-              ))}
-            </datalist>
-          </label>
-        )}
-        <div className="grid2">
+        <div className="details">
+          {kind === 'transfer' ? (
+            <>
+              {accountSelect(t('From'), accountId, setAccountId)}
+              {accountSelect(t('To'), toAccountId, setToAccountId)}
+            </>
+          ) : (
+            <label className="detail">
+              <span>{kind === 'income' ? t('From whom') : t('Payee')}</span>
+              <input
+                value={payee}
+                maxLength={500}
+                list="payees"
+                autoComplete="off"
+                placeholder={kind === 'income' ? t('Employer, friend…') : t('Shop or person')}
+                onChange={(e) => changePayee(e.target.value)}
+              />
+              <datalist id="payees">
+                {[...habits.keys()].map((p) => (
+                  <option key={p} value={p} />
+                ))}
+              </datalist>
+            </label>
+          )}
           {kind !== 'transfer' && accountSelect(t('Account'), accountId, setAccountId)}
-          <label className="field">
-            {t('Date')}
+          <label className="detail">
+            <span>{t('Date')}</span>
             <input type="datetime-local" required value={when} onChange={(e) => setWhen(e.target.value)} />
           </label>
+          <label className="detail">
+            <span>{t('Note')}</span>
+            <input value={note} maxLength={500} placeholder={t('Optional')} onChange={(e) => setNote(e.target.value)} />
+          </label>
+          <div className="detail">
+            <label htmlFor="record-tags">{t('Tags')}</label>
+            <TagField id="record-tags" tags={tags} onTags={setTags} text={tagText} onText={setTagText} suggestions={knownTags} />
+          </div>
         </div>
-        <label className="field">
-          {t('Note')}
-          <input value={note} maxLength={500} placeholder={t('Optional')} onChange={(e) => setNote(e.target.value)} />
-        </label>
         {error && (
           <p role="alert" className="error">
             {error}
           </p>
         )}
-        <div className="row end">
+        <div className="row end dialog-actions">
           {record && (
             <button type="button" className="link danger" disabled={busy} onClick={remove}>
               {t('Delete')}

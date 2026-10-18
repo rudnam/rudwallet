@@ -110,6 +110,15 @@ function Row({
             )}
           </span>
           <span className="muted small">{sub}</span>
+          {t.tags?.length ? (
+            <span className="record-tags" aria-label={tr('Tags')}>
+              {t.tags.map((tag) => (
+                <span key={tag} className="tag-label">
+                  #{tag}
+                </span>
+              ))}
+            </span>
+          ) : null}
         </span>
         <span className={`amount ${t.kind}`}>{t.amount === 0 && t.status === 'review' ? tr('Amount?') : amount}</span>
     </>

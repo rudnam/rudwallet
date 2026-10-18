@@ -115,10 +115,12 @@ func affected(res sql.Result, err error) (int, error) {
 type bulkInput struct {
 	IDs []int64 `json:"ids"`
 	// Action is "delete", "categorize" (to CategoryID, or none if null),
-	// "move" (to AccountID) or "confirm" (records to review that are ready).
+	// "move" (to AccountID), "confirm" (records to review that are ready),
+	// "tag" or "untag" (add or take off Tag).
 	Action     string `json:"action"`
 	CategoryID *int64 `json:"category_id"`
 	AccountID  int64  `json:"account_id"`
+	Tag        string `json:"tag"`
 }
 
 func (h *Handler) bulkTransactions(w http.ResponseWriter, r *http.Request) error {
@@ -143,8 +145,21 @@ func (h *Handler) bulkTransactions(w http.ResponseWriter, r *http.Request) error
 		n, err = h.store.BulkMove(ctx, uid, in.IDs, in.AccountID)
 	case "confirm":
 		n, err = h.store.BulkConfirm(ctx, uid, in.IDs)
+	case "tag", "untag":
+		tags, terr := cleanTags([]string{in.Tag})
+		if terr != nil {
+			return terr
+		}
+		if len(tags) == 0 {
+			return httpx.Errorf(http.StatusBadRequest, "enter a tag")
+		}
+		if in.Action == "tag" {
+			n, err = h.store.BulkTag(ctx, uid, in.IDs, tags[0])
+		} else {
+			n, err = h.store.BulkUntag(ctx, uid, in.IDs, tags[0])
+		}
 	default:
-		return httpx.Errorf(http.StatusBadRequest, "action must be delete, categorize, move or confirm")
+		return httpx.Errorf(http.StatusBadRequest, "action must be delete, categorize, move, confirm, tag or untag")
 	}
 	if err := storeErr(err, "record"); err != nil {
 		return err

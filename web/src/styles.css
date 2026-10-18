@@ -334,7 +334,19 @@ button.bar-row:active:not(:disabled) { transform: none; }
   padding: 10px 14px; box-shadow: var(--shadow-lift);
 }
 .bulk-bar .bulk-count { font-weight: 600; font-variant-numeric: tabular-nums; }
-.bulk-actions { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; width: 100%; }
+.bulk-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+.bulk-actions .danger { justify-self: end; align-self: center; }
+@media (min-width: 800px) { .bulk-actions { grid-template-columns: 1fr 1fr 1fr auto; } }
+/* Tags: one row of filters that scrolls sideways, and labels on records. */
+.tag-filter { display: flex; gap: 6px; overflow-x: auto; padding: 2px; margin: 0; list-style: none; scrollbar-width: thin; }
+.tag-filter li { flex: none; }
+.tag-filter .chip { padding: 4px 12px; white-space: nowrap; }
+.tag-filter .chip .muted { font-weight: 400; font-variant-numeric: tabular-nums; }
+.record-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.tag-label {
+  padding: 0 7px; border-radius: 999px; font-size: 0.72rem; font-weight: 500; line-height: 1.6;
+  background: var(--sunken); color: var(--muted); overflow-wrap: anywhere;
+}
 .bulk-actions select { min-width: 0; }
 .day-head { display: flex; justify-content: space-between; padding: 0 4px 6px; color: var(--muted); font-size: 0.8rem; font-weight: 600; letter-spacing: 0.02em; }
 .day-head span:last-child { font-variant-numeric: tabular-nums; }
@@ -472,6 +484,60 @@ li.record:hover:not(:disabled) { background: none; } /* a row to read, not to ta
 .amount-field input:focus { box-shadow: none; }
 @media (max-width: 560px) { .amount-field input { font-size: 2.6rem; } .amount-field .currency { font-size: 1.75rem; } }
 .amount-field input::placeholder { color: color-mix(in srgb, var(--muted) 45%, transparent); }
+.amount-field { border-bottom: 0; padding-bottom: 4px; }
+
+/* Categories as tiles, the most used first; More shows the rest. */
+.category-pick { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.category-pick label, .category-more {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 2px 7px;
+  border: 1px solid transparent; border-radius: 12px; background: none; color: var(--text); font-weight: 500; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.category-pick label:hover, .category-more:hover:not(:disabled) { background: var(--sunken); }
+.category-pick label.on { background: var(--accent-soft); border-color: var(--accent); }
+.category-pick label.on .category-name { font-weight: 600; }
+.category-pick input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.category-pick label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 1px; }
+.category-more .cat-icon { background: var(--sunken); color: var(--muted); }
+.category-more .glyph { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; }
+.category-name {
+  font-size: 0.75rem; line-height: 1.25; text-align: center; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* The rest of a record: one box, a row per detail, label beside the value. */
+.details { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.detail {
+  display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); align-items: center; gap: 8px;
+  min-height: 48px; padding: 3px 6px 3px 14px;
+}
+.detail + .detail { border-top: 1px solid var(--border); }
+.detail > span, .detail > label { color: var(--muted); font-size: 0.85rem; font-weight: 500; }
+.detail input, .detail select { border: 0; background: transparent; padding: 10px 8px; min-width: 0; width: 100%; }
+.detail input:focus, .detail select:focus { box-shadow: none; }
+.detail:focus-within { background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
+.detail:first-child { border-radius: var(--radius) var(--radius) 0 0; }
+.detail:last-child { border-radius: 0 0 var(--radius) var(--radius); }
+.detail .tag-field { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 4px 0; }
+.detail .tag-field .chips { display: contents; }
+.detail .tag-field input { flex: 1; width: auto; min-width: 7rem; padding: 6px 8px; }
+.detail .tag-field input::-webkit-calendar-picker-indicator { display: none !important; }
+.detail:has(.tag-field) { align-items: start; }
+.detail:has(.tag-field) > label { padding-top: 14px; }
+.detail select { padding-left: 4px; }
+
+/* Save stays in reach at the bottom of a long form. */
+.dialog-actions {
+  position: sticky; bottom: -20px; z-index: 1; margin: 0 -20px -20px; padding: 12px 20px 20px;
+  background: var(--surface); border-top: 1px solid var(--border);
+}
+@media (max-width: 560px) {
+  .dialog-actions {
+    bottom: calc(-18px - env(safe-area-inset-bottom)); margin: 0 -18px calc(-18px - env(safe-area-inset-bottom));
+    padding: 12px 18px calc(18px + env(safe-area-inset-bottom));
+  }
+  .dialog-actions button[type='submit'] { flex: 1; }
+}
 
 /* A tap-to-pick grid of categories. */
 .chip-pick { border: 0; margin: 0; padding: 0; min-width: 0; }
@@ -489,6 +555,14 @@ li.record:hover:not(:disabled) { background: none; } /* a row to read, not to ta
   transition: background 0.15s, border-color 0.15s;
 }
 button.chip:hover:not(:disabled) { background: var(--sunken); }
+.tag-field .chips { list-style: none; margin: 0; padding: 0; }
+.chip.tag { padding: 3px 4px 3px 10px; gap: 2px; font-weight: 500; }
+.tag-remove {
+  display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 999px;
+  background: none; color: var(--muted);
+}
+.tag-remove:hover:not(:disabled) { background: var(--sunken); color: var(--text); }
+.tag-remove svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .address { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: var(--radius-sm); background: var(--sunken); }
 .address .row { flex-wrap: wrap; }
 .address code { font-size: 1rem; overflow-wrap: anywhere; user-select: all; }

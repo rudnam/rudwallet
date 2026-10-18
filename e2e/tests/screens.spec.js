@@ -17,9 +17,9 @@ async function seed(page) {
     { kind: 'income', amount: 280000, account_id: bank.id, category_id: cat('Salary'), occurred_at: day(1, 9), payee: 'Employer' },
     { kind: 'expense', amount: 68000, account_id: bank.id, category_id: cat('Housing'), occurred_at: day(1, 10), payee: 'Rent' },
     { kind: 'expense', amount: 4373, account_id: card.id, category_id: cat('Groceries'), occurred_at: day(3, 17), payee: 'アピタ知立店' },
-    { kind: 'expense', amount: 1820, account_id: card.id, category_id: cat('Food & Drinks'), occurred_at: day(6, 19), payee: '大戸屋 知立店', note: 'Tap to pay' },
+    { kind: 'expense', amount: 1820, account_id: card.id, category_id: cat('Food & Drinks'), occurred_at: day(6, 19), payee: '大戸屋 知立店', note: 'Tap to pay', tags: ['Date night'] },
     { kind: 'expense', amount: 429, account_id: card.id, category_id: cat('Food & Drinks'), occurred_at: day(7, 7), payee: 'セブン－イレブン' },
-    { kind: 'expense', amount: 1430, account_id: cash, category_id: cat('Food & Drinks'), occurred_at: day(8, 20), payee: 'コメダ珈琲店' },
+    { kind: 'expense', amount: 1430, account_id: cash, category_id: cat('Food & Drinks'), occurred_at: day(8, 20), payee: 'コメダ珈琲店', tags: ['Work', 'Date night'] },
     { kind: 'expense', amount: 6800, account_id: card.id, category_id: cat('Bills & Utilities'), occurred_at: day(9, 9), payee: 'Chubu Electric' },
     { kind: 'expense', amount: 1025, account_id: card.id, category_id: cat('Health'), occurred_at: day(10, 20), payee: 'スギ薬局 大曽根店' },
     { kind: 'transfer', amount: 20000, account_id: bank.id, to_account_id: cash, occurred_at: day(2, 11) },
@@ -71,7 +71,8 @@ for (const [name, viewport] of [
       // Nothing may overflow sideways.
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       expect(overflow, `${label} overflows sideways`).toBeLessThanOrEqual(0);
-      await page.screenshot({ path: test.info().outputPath(`${name}-${label}.png`), fullPage: true });
+      // Animations off, so a dialog isn't caught halfway through opening.
+      await page.screenshot({ path: test.info().outputPath(`${name}-${label}.png`), fullPage: true, animations: 'disabled' });
     };
 
     await page.goto('/');
@@ -144,9 +145,25 @@ for (const [name, viewport] of [
     await page.getByRole('button', { name: 'Undo' }).click();
     await expect(page.getByRole('button', { name: /コメダ珈琲店, -¥1,430/ })).toBeVisible();
 
+    await page.getByRole('list', { name: 'Filter by tag' }).getByRole('button', { name: /Date night/ }).click();
+    await expect(page.getByText('#Date night in every month')).toBeVisible();
+    await shot('4-records-tag');
+
     await page.getByRole('button', { name: 'Add record' }).click();
-    await expect(page.getByRole('dialog', { name: 'New record' })).toBeVisible();
+    const add = page.getByRole('dialog', { name: 'New record' });
+    await expect(add).toBeVisible();
     await shot('5-new-record');
+    await add.getByRole('button', { name: 'More' }).click();
+    await add.getByRole('radio', { name: 'Travel' }).check();
+    await shot('5-new-record-all-categories');
+    await add.getByRole('button', { name: 'Fewer' }).click();
+    // The chosen category stays in view when the rest fold away.
+    await expect(add.getByRole('radio', { name: 'Travel' })).toBeChecked();
+    await add.getByRole('combobox', { name: 'Tags' }).fill('Date night,');
+    await add.getByRole('combobox', { name: 'Tags' }).fill('Birthday');
+    await add.getByRole('combobox', { name: 'Tags' }).press('Enter');
+    await add.getByLabel('Note').scrollIntoViewIfNeeded();
+    await shot('5-new-record-tags');
     await page.keyboard.press('Escape');
 
     await page.goto('/app/#/budgets');
