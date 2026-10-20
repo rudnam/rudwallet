@@ -116,6 +116,51 @@ func TestNotificationPayment(t *testing.T) {
 	}
 }
 
+// Google Wallet names some cards rather than giving their last digits
+// ("¥600 with PayPay Card_Gold"). Each named card learns its own account.
+func TestNotificationCardByName(t *testing.T) {
+	ts := newTestServer(t)
+	c := newClient(t, ts)
+	c.signup("alice@example.com")
+	o := overview(t, c)
+	food := categoryID(t, o, "Food & Drinks")
+	var gold, debit wallet.Account
+	c.do("POST", "/api/accounts", map[string]any{"name": "PayPay Card", "kind": "credit_card"}, &gold)
+	c.do("POST", "/api/accounts", map[string]any{"name": "MUFG", "kind": "bank"}, &debit)
+
+	when := time.Date(2026, 10, 15, 8, 0, 0, 0, time.UTC)
+	pay := func(at time.Time, shop, text string) wallet.Transaction {
+		t.Helper()
+		got := post(t, c, notify.Incoming{Package: googleWallet, When: at.UnixMilli(), Title: shop, Text: text})
+		for _, x := range records(t, c) {
+			if got[0].TransactionID != nil && x.ID == *got[0].TransactionID {
+				return x
+			}
+		}
+		t.Fatalf("no record for %+v", got[0])
+		return wallet.Transaction{}
+	}
+	confirm := func(r wallet.Transaction, account int64) {
+		t.Helper()
+		if code := c.do("PUT", fmt.Sprintf("/api/transactions/%d", r.ID), map[string]any{
+			"kind": "expense", "amount": r.Amount, "account_id": account, "category_id": food,
+			"occurred_at": r.OccurredAt, "payee": r.Payee, "status": "confirmed",
+		}, nil); code != 200 {
+			t.Fatalf("confirm: %d", code)
+		}
+	}
+
+	confirm(pay(when, "FAMILYMART", "¥864 with PayPay Card_Gold"), gold.ID)
+	confirm(pay(when.Add(time.Hour), "APITA CHIRYU", "¥388 with MUFG Debit"), debit.ID)
+
+	if r := pay(when.Add(24*time.Hour), "SEVEN-ELEVEN", "¥600 with PayPay Card_Gold"); r.AccountID != gold.ID || r.SourceLabel != "Google Wallet · PayPay Card_Gold" {
+		t.Errorf("gold card payment %+v", r)
+	}
+	if r := pay(when.Add(25*time.Hour), "SUGI PHARMACY", "¥945 with MUFG Debit"); r.AccountID != debit.ID {
+		t.Errorf("debit card payment %+v", r)
+	}
+}
+
 // PayPay's notifications: a card payment and a balance payment learn their
 // accounts apart, and an offer is not a payment.
 func TestPayPayNotifications(t *testing.T) {

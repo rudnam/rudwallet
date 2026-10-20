@@ -30,12 +30,15 @@ var (
 	// An amount with its currency before or after it: ¥1,280, $4.50, 1,280円, 12.00 EUR.
 	amountRe = regexp.MustCompile(`([¥￥$€£₩])\s?(\d[\d,]*(?:\.\d+)?)|(\d[\d,]*(?:\.\d+)?)\s?(円|(?:JPY|USD|EUR|GBP|KRW)\b)`)
 	// The card, as Google Wallet abbreviates it: "Visa •••• 1234", "Mastercard ··5678".
-	cardRe = regexp.MustCompile(`(?i)\b(visa|mastercard|master card|jcb|american express|amex|diners(?: club)?|discover)?\s*[•·*●]{2,}\s*(\d{4})`)
+	cardRe = regexp.MustCompile(`(?i)(?:\b(visa|mastercard|master card|jcb|american express|amex|diners(?: club)?|discover)\s*)?[•·*●]{2,}\s*(\d{4})`)
 	// Notifications with an amount that aren't a payment made: a declined
 	// card, a transit card's balance or top-up.
 	notPaymentRe = regexp.MustCompile(`(?i)declin|fail|couldn.t|could not|wasn.t|not complete|balance|top.?up|reload|拒否|失敗|できません|できませんでした|残高|チャージ|入金`)
 	refundRe     = regexp.MustCompile(`(?i)refund|返金|返品`)
 	atRe         = regexp.MustCompile(`(?i)\b(?:at|@)\s+(.+)$`)
+	// The card by name, as Google Wallet gives it after the amount:
+	// "¥600 with PayPay Card_Gold", "$4.50 with Visa ••••1234".
+	withRe = regexp.MustCompile(`(?im)\bwith\s+(.+?)[\s.。]*$`)
 )
 
 var symbols = map[string]string{"¥": "JPY", "￥": "JPY", "円": "JPY", "$": "USD", "€": "EUR", "£": "GBP", "₩": "KRW"}
@@ -74,11 +77,7 @@ func Parse(pkg, title, text string) Read {
 	}
 
 	p := wallet.Payment{Amount: amount, Currency: currency, Refund: refundRe.MatchString(all), Source: app}
-	if c := cardRe.FindStringSubmatch(all); c != nil {
-		card := "••" + c[2]
-		if c[1] != "" {
-			card = c[1] + " " + card
-		}
+	if card := card(all, text); card != "" {
 		p.Source = app + " · " + card
 	}
 	// The shop is the title, unless the title is the amount ("¥550 at Lawson").
@@ -94,6 +93,22 @@ func Parse(pkg, title, text string) Read {
 		}
 	}
 	return Read{Status: "payment", Payment: p}
+}
+
+// card names what paid, so each card can go to its own account: "Visa ••1234",
+// or the card's own name when the notification gives one ("PayPay
+// Card_Gold"), with its last digits if they're there too.
+func card(all, text string) string {
+	name, last4 := "", ""
+	if c := cardRe.FindStringSubmatch(all); c != nil {
+		name, last4 = c[1], "••"+c[2]
+	}
+	if w := withRe.FindStringSubmatch(text); w != nil {
+		if n := strings.TrimSpace(cardRe.ReplaceAllString(w[1], "")); n != "" {
+			name = clip(n, 60)
+		}
+	}
+	return strings.TrimSpace(name + " " + last4)
 }
 
 var (
