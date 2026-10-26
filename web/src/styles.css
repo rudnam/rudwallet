@@ -123,6 +123,9 @@ input, select, textarea {
   padding: 11px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
+/* A select with a transparent background (as in .detail) gets a white list on
+   Windows, while its options inherit the light dark-mode text: colour them. */
+option { background: var(--surface); color: var(--text); }
 /* 16px keeps iOS from zooming in on focus, whatever the root size. */
 @media (max-width: 560px) { input, select { font-size: 16px; } }
 input:hover, select:hover, textarea:hover { border-color: color-mix(in srgb, var(--muted) 50%, var(--border)); }
