@@ -127,7 +127,8 @@ func New(now time.Time, months int, lang string) Wallet {
 		add("expense", between(4800, 9200), AccountCard, "Bills & Utilities", day(14, 8, 0), n["electric"])
 		add("expense", between(2600, 3800), AccountCard, "Bills & Utilities", day(18, 8, 0), n["gas"])
 		add("expense", 2970, AccountCard, "Bills & Utilities", day(20, 8, 0), "ahamo")
-		add("expense", 11680, AccountCard, "Transport", day(1, 7, 40), n["commute"])
+		// At midnight on the 1st, so this month has spending from its first minute.
+		add("expense", 11680, AccountCard, "Transport", day(1, 0, 0), n["commute"])
 		add("transfer", between(86000, 104000), AccountBank, "", day(10, 9, 0), n["card payment"], AccountCard)
 		add("transfer", 12000, AccountBank, "", day(26, 12, 0), n["charge"], AccountPayPay)
 		add("transfer", 10000, AccountBank, "", day(5, 18, 30), n["atm"], AccountCash)
