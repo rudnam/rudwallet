@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"encoding/hex"
@@ -26,9 +27,15 @@ import (
 //	byte  1      process (01: fare, 02: top-up, 46: shop, …; 80 set: with cash)
 //	bytes 4-5    date: 7 bits year (since 2000), 4 bits month, 5 bits day
 //	bytes 6-7    a shop's time: 5 bits hour, 6 bits minute, 5 bits second/2
-//	bytes 6-9    for trains, the line and station codes in and out
+//	bytes 6-9    for trains, the line and station codes in (6-7) and out (8-9)
+//	bytes 6-7    for buses, the bus company's code (big-endian)
 //	bytes 10-11  the balance after it, little-endian yen
 //	bytes 13-14  the card's sequence number for the entry
+//	byte  15     for trains, the region of the station in (bits 7-6) and out (5-4)
+//
+// Stations and bus companies are named from the lists in icstations/
+// (icstations.go): a fare is recorded as "新宿 → 渋谷", or by the bus
+// company's name, and its note keeps the lines and the codes.
 //
 // The card doesn't keep amounts: an entry's amount is the change from the
 // balance before it. So the oldest entry read is only where the history
@@ -85,6 +92,10 @@ type icRow struct {
 	change int64
 	start  bool
 	key    string
+	// entry and exit are a train fare's stations (nil without one), and
+	// busCompany a bus fare's company code.
+	entry, exit *icStationCode
+	busCompany  uint16
 }
 
 // readICCard decodes a read into the card's entries, oldest first. Empty
@@ -120,10 +131,18 @@ func readICCard(read ICCardRead) (string, []icRow, error) {
 			process:  b[1],
 			terminal: b[0],
 		}
-		if icKindOf(r) == icShop {
+		switch icKindOf(r) {
+		case icShop:
 			h, m, s := int(b[6]>>3), int(b[6]&7)<<3|int(b[7]>>5), int(b[7]&0x1f)*2
 			if h < 24 && m < 60 && s < 60 {
 				r.when = time.Date(year, month, day, h, m, s, 0, jst)
+			}
+		case icBus:
+			r.busCompany = uint16(b[6])<<8 | uint16(b[7])
+		default:
+			if !icTopUp(r) {
+				r.entry = icStationOf(b[15]>>6&3, b[6], b[7])
+				r.exit = icStationOf(b[15]>>4&3, b[8], b[9])
 			}
 		}
 		r.key = fmt.Sprintf("%s%s:%s:%d:%d", icKeyPrefix, idm, r.when.Format(time.DateOnly), r.seq, r.balance)
@@ -138,6 +157,14 @@ func readICCard(read ICCardRead) (string, []icRow, error) {
 		rows[i].change = rows[i].balance - rows[i-1].balance
 	}
 	return idm, rows, nil
+}
+
+// icStationOf is the station with the codes, or nil for none (all zero).
+func icStationOf(region, line, station byte) *icStationCode {
+	if line == 0 && station == 0 {
+		return nil
+	}
+	return &icStationCode{region, line, station}
 }
 
 // icTopUp: the process puts money on the card (at a machine, by
@@ -199,9 +226,15 @@ type ICRow struct {
 	// Amount is the balance's change: negative for a payment.
 	Amount int64  `json:"amount"`
 	Kind   string `json:"kind"`
-	// Group is the record's payee, and the group its category is chosen
-	// for (ImportCategory.Name).
+	// Group is the kind of entry its category is chosen for
+	// (ImportCategory.Name), and Payee the record's: the stations of a train
+	// fare ("新宿 → 渋谷"), a bus company, or the group.
 	Group string `json:"group,omitempty"`
+	Payee string `json:"payee,omitempty"`
+	// Entry and Exit are a train fare's stations; Company, a bus company.
+	Entry   *ICStation `json:"entry,omitempty"`
+	Exit    *ICStation `json:"exit,omitempty"`
+	Company string     `json:"company,omitempty"`
 	// Status: new (to record), imported (by an earlier read), matched
 	// (already recorded another way, e.g. by hand), start (the oldest entry
 	// read, whose amount isn't known), or none (no money moved).
@@ -338,11 +371,67 @@ func describeIC(r icRow, rec icRecord, lang string) ICRow {
 	out := ICRow{Date: r.when.Format(time.DateOnly), Seq: r.seq, Balance: r.balance, Amount: r.change, Kind: rec.kind}
 	if rec.group != "" {
 		out.Group = icName(rec.group, lang)
+		out.Payee = out.Group
+	}
+	if r.entry != nil {
+		e := icStationAt(*r.entry)
+		out.Entry = &e
+	}
+	if r.exit != nil {
+		e := icStationAt(*r.exit)
+		out.Exit = &e
+	}
+	if route := icRoute(out.Entry, out.Exit); route != "" && rec.kind != "transfer" {
+		out.Payee = clip(route, maxName)
+	}
+	if r.busCompany != 0 {
+		out.Company = icBusCompanies()[r.busCompany]
+		if out.Company != "" && rec.kind != "transfer" {
+			out.Payee = clip(out.Company, maxName)
+		}
 	}
 	if r.when.Hour() != 12 || r.when.Minute() != 0 || r.when.Second() != 0 {
 		out.Time = r.when.Format("15:04")
 	}
 	return out
+}
+
+// icRoute names a fare's stations, "新宿 → 渋谷", with ? for one not in
+// the list; empty when neither is known.
+func icRoute(entry, exit *ICStation) string {
+	name := func(s *ICStation) string {
+		if s == nil || s.Name == "" {
+			return "?"
+		}
+		return s.Name
+	}
+	if name(entry) == "?" && name(exit) == "?" {
+		return ""
+	}
+	if exit == nil {
+		return name(entry)
+	}
+	return name(entry) + " → " + name(exit)
+}
+
+// icNote is a record's note: the card, and for a train fare its lines and
+// station codes, which keep what the list doesn't know.
+func icNote(card string, out ICRow) string {
+	note := "IC ••" + card
+	if out.Entry == nil && out.Exit == nil {
+		return note
+	}
+	var lines, codes []string
+	for _, s := range []*ICStation{out.Entry, out.Exit} {
+		if s != nil {
+			lines = append(lines, cmp.Or(s.Line, "?"))
+			codes = append(codes, s.Code)
+		}
+	}
+	if slices.ContainsFunc(lines, func(l string) bool { return l != "?" && l != "-" }) {
+		note += " · " + strings.Join(lines, " → ")
+	}
+	return clip(note+" · "+strings.Join(codes, " → "), maxText)
 }
 
 // suggestIC suggests a category for a kind of entry: the one chosen for it
@@ -690,7 +779,6 @@ func (s *Store) ImportICCard(ctx context.Context, userID int64, read ICCardRead,
 	}
 
 	m := icMatcher{ctx: ctx, tx: tx, userID: userID, matched: []int64{}}
-	note := "IC ••" + idm[len(idm)-4:]
 	for _, r := range rows {
 		rec := classifyIC(r)
 		out := describeIC(r, rec, lang)
@@ -708,7 +796,7 @@ func (s *Store) ImportICCard(ctx context.Context, userID int64, read ICCardRead,
 		case "start", "none":
 			continue
 		}
-		t := Transaction{Kind: rec.kind, Amount: rec.amount, AccountID: account[ICCard], OccurredAt: r.when, Payee: out.Group, Note: note}
+		t := Transaction{Kind: rec.kind, Amount: rec.amount, AccountID: account[ICCard], OccurredAt: r.when, Payee: out.Payee, Note: icNote(idm[len(idm)-4:], out)}
 		if rec.kind == "transfer" {
 			card := account[ICCard]
 			t.AccountID, t.ToAccountID = account[ICTopUp], &card

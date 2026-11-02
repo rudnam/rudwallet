@@ -5,7 +5,7 @@
 // internal/account/app.go). On the web, none of this applies.
 import { App as CapApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
-import { Capacitor, registerPlugin } from '@capacitor/core';
+import { Capacitor, registerPlugin, type PluginListenerHandle } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
 import type { ICCardRead } from './api';
 
@@ -39,7 +39,36 @@ const icCard = registerPlugin<{
   openSettings(): Promise<void>;
   read(): Promise<ICCardRead>;
   cancel(): Promise<void>;
+  addListener(event: 'tapped', handler: (tap: ICCardTap) => void): Promise<PluginListenerHandle>;
 }>('ICCard');
+
+/** A card tapped to the phone, which opened RudWallet: what it read, or why it couldn't (a read error code). */
+export type ICCardTap = ICCardRead | { error: string };
+
+// The last card tapped, until the import takes it, and the import while
+// it is open.
+let tappedCard: ICCardTap | null = null;
+let tapHandler: ((tap: ICCardTap) => void) | null = null;
+
+/** Takes the card tapped to the phone, if one is waiting for the import. */
+export function takeTappedICCard(): ICCardTap | null {
+  const tap = tappedCard;
+  tappedCard = null;
+  return tap;
+}
+
+/** Hands a card read to the import, which takes it as if it had been tapped (the card screen's Review first). */
+export function keepICCard(read: ICCardRead): void {
+  tappedCard = read;
+}
+
+/** Hands cards tapped while the card screen or the import is open straight to it. */
+export function onICCardTapped(handler: (tap: ICCardTap) => void): () => void {
+  tapHandler = handler;
+  return () => {
+    if (tapHandler === handler) tapHandler = null;
+  };
+}
 
 /**
  * Whether this phone can read IC cards: ready, off (NFC is turned off), or
@@ -160,6 +189,8 @@ let launchHandled = false;
 export function onAppLinks(handlers: {
   onAuth: (result: { code: string; verifier: string } | { error: string }) => void;
   onOpen: (page: string) => void;
+  /** A card was tapped to the phone: open the card screen, which takes it (takeTappedICCard). */
+  onICCard: () => void;
 }): () => void {
   if (!isApp) return () => {};
   const handle = async (raw: string) => {
@@ -186,6 +217,17 @@ export function onAppLinks(handlers: {
       if (l?.url) void handle(l.url);
     });
   }
+  // A card tapped to the phone. The plugin keeps it until this listens.
+  const tapped = icCard
+    .addListener('tapped', (tap) => {
+      if (tapHandler) {
+        tapHandler(tap);
+        return;
+      }
+      tappedCard = tap;
+      handlers.onICCard();
+    })
+    .catch(() => null); // an app build from before the reader
   // Leaving the app is a good moment to bring the widgets up to date, and
   // to send notifications that waited for the network.
   const pause = CapApp.addListener('pause', () => {
@@ -195,5 +237,6 @@ export function onAppLinks(handlers: {
   return () => {
     listener.then((l) => l.remove());
     pause.then((l) => l.remove());
+    tapped.then((l) => l?.remove());
   };
 }

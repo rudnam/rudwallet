@@ -30,6 +30,15 @@
                 <data android:scheme="${applicationId}" />
             </intent-filter>
 
+            <!-- A transit IC card tapped to the phone offers RudWallet, which
+                 opens on the IC card import with the card read (ICCardPlugin). -->
+            <intent-filter>
+                <action android:name="android.nfc.action.TECH_DISCOVERED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.nfc.action.TECH_DISCOVERED"
+                android:resource="@xml/nfc_tech_filter" />
+
         </activity>
 
         <!-- Home screen widgets (java/com/rudnam/wallet/widget). -->

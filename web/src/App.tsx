@@ -10,6 +10,7 @@ import { ConnectPage, rememberConnect, resumeConnect } from './features/settings
 import { HomePage } from './features/home/HomePage';
 import { RecordsPage } from './features/records/RecordsPage';
 import { ReviewPage } from './features/review/ReviewPage';
+import { CardPage } from './features/card/CardPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 import { prefetchStats, StatsPage } from './features/stats/StatsPage';
 import { addMonths, monthStart } from './money';
@@ -70,6 +71,7 @@ export function App() {
           );
         },
         onOpen: (page) => navigate(page),
+        onICCard: () => navigate('card'),
       }),
     [],
   );
@@ -258,7 +260,7 @@ function prefetchPages() {
 }
 
 /** Pages outside the main navigation, and the entry they belong under. */
-const subpages: Record<string, string> = {};
+const subpages: Record<string, string> = { card: 'home' };
 
 function Shell({
   me,
@@ -343,6 +345,9 @@ function Shell({
       break;
     case 'budgets':
       page = <BudgetsPage />;
+      break;
+    case 'card':
+      page = <CardPage />;
       break;
     case 'settings':
       page = <SettingsPage route={route} me={me} onSignOut={onSignOut} onDeleted={onDeleted} />;
