@@ -321,7 +321,7 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
             // Grows with the number, so the currency sign stays beside it.
             size={Math.max(amount.length, 1)}
             required
-            autoFocus={!record}
+            data-autofocus={!record || undefined}
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
           />

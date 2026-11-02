@@ -1,4 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<style>.dk{display:none}@media (prefers-color-scheme:dark){.lt{display:none}.dk{display:inline}}</style>
+<g class="lt">
 <defs>
 <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fdfcf8"/><stop offset="1" stop-color="#ebe6d8"/></linearGradient>
 <linearGradient id="white" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf9"/><stop offset="1" stop-color="#f1ece3"/></linearGradient>
@@ -18,6 +20,30 @@
 <g transform="rotate(4 280 210)"><path d="M194 146H362Q378 146 378 162V256Q378 272 362 272H194Q178 272 178 256V162Q178 146 194 146Z" fill="url(#blueCard)" filter="url(#sh2)"/><path d="M194 146H362Q378 146 378 162V256Q378 272 362 272H194Q178 272 178 256V162Q178 146 194 146Z" fill="url(#hl)"/><path d="M206 176H232Q238 176 238 182V198Q238 204 232 204H206Q200 204 200 198V182Q200 176 206 176Z" fill="#fff" opacity=".55"/></g>
 <path d="M140 216H372Q410 216 410 254V368Q410 406 372 406H140Q102 406 102 368V254Q102 216 140 216Z" fill="url(#walletLea)" filter="url(#sh2)"/><path d="M140 216H372Q410 216 410 254V368Q410 406 372 406H140Q102 406 102 368V254Q102 216 140 216Z" fill="url(#hl)"/>
 <path d="M146 236H366Q390 236 390 260V362Q390 386 366 386H146Q122 386 122 362V260Q122 236 146 236Z" fill="none" stroke="#fff" stroke-opacity=".16" stroke-width="2.5"/>
+</g>
+</g>
+</g>
+<g class="dk">
+<defs>
+<linearGradient id="dk-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2e2c29"/><stop offset="1" stop-color="#1c1b19"/></linearGradient>
+<linearGradient id="dk-white" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf9"/><stop offset="1" stop-color="#f1ece3"/></linearGradient>
+<linearGradient id="dk-cognac" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d27d45"/><stop offset="1" stop-color="#a5571f"/></linearGradient>
+<linearGradient id="dk-hl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".08" stop-color="#fff" stop-opacity="0"/></linearGradient>
+<filter id="dk-sh" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000000" flood-opacity=".38"/></filter>
+<filter id="dk-sh2" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity=".25"/></filter>
+<clipPath id="dk-tile"><rect width="512" height="512" rx="112"/></clipPath>
+<linearGradient id="dk-blueCard" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6488c4"/><stop offset="1" stop-color="#3b5c93"/></linearGradient><linearGradient id="dk-walletLea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d97757"/><stop offset="1" stop-color="#a9502f"/></linearGradient><linearGradient id="dk-paper" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e6e1d5"/><stop offset="1" stop-color="#c9c2b2"/></linearGradient>
+</defs>
+<g clip-path="url(#dk-tile)">
+<rect width="512" height="512" fill="url(#dk-bg)"/>
+
+<g filter="url(#dk-sh)">
+<path d="M152 176H360Q396 176 396 212V346Q396 382 360 382H152Q116 382 116 346V212Q116 176 152 176Z" fill="#4f1f0d"/>
+<g transform="rotate(-5 250 200)"><path d="M164 134H332Q348 134 348 150V244Q348 260 332 260H164Q148 260 148 244V150Q148 134 164 134Z" fill="url(#dk-paper)" filter="url(#dk-sh2)"/><path d="M164 134H332Q348 134 348 150V244Q348 260 332 260H164Q148 260 148 244V150Q148 134 164 134Z" fill="url(#dk-hl)"/></g>
+<g transform="rotate(4 280 210)"><path d="M194 146H362Q378 146 378 162V256Q378 272 362 272H194Q178 272 178 256V162Q178 146 194 146Z" fill="url(#dk-blueCard)" filter="url(#dk-sh2)"/><path d="M194 146H362Q378 146 378 162V256Q378 272 362 272H194Q178 272 178 256V162Q178 146 194 146Z" fill="url(#dk-hl)"/><path d="M206 176H232Q238 176 238 182V198Q238 204 232 204H206Q200 204 200 198V182Q200 176 206 176Z" fill="#fff" opacity=".55"/></g>
+<path d="M140 216H372Q410 216 410 254V368Q410 406 372 406H140Q102 406 102 368V254Q102 216 140 216Z" fill="url(#dk-walletLea)" filter="url(#dk-sh2)"/><path d="M140 216H372Q410 216 410 254V368Q410 406 372 406H140Q102 406 102 368V254Q102 216 140 216Z" fill="url(#dk-hl)"/>
+<path d="M146 236H366Q390 236 390 260V362Q390 386 366 386H146Q122 386 122 362V260Q122 236 146 236Z" fill="none" stroke="#fff" stroke-opacity=".16" stroke-width="2.5"/>
+</g>
 </g>
 </g>
 </svg>

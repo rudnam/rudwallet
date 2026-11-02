@@ -123,6 +123,9 @@ input, select, textarea {
   padding: 11px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
+/* A select with a transparent background (as in .detail) gets a white list on
+   Windows, while its options inherit the light dark-mode text: colour them. */
+option { background: var(--surface); color: var(--text); }
 /* 16px keeps iOS from zooming in on focus, whatever the root size. */
 @media (max-width: 560px) { input, select { font-size: 16px; } }
 input:hover, select:hover, textarea:hover { border-color: color-mix(in srgb, var(--muted) 50%, var(--border)); }
@@ -438,6 +441,9 @@ li.record:hover:not(:disabled) { background: none; } /* a row to read, not to ta
 .update-actions { display: flex; align-items: center; gap: 12px; margin-left: auto; }
 .demo-offer { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--border); }
 .confirm-email .inline-icon { flex: none; }
+.notice.duplicate { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.notice.duplicate .grow { min-width: 12rem; }
+.notice.duplicate button { margin-left: auto; }
 .notice.warn { background: color-mix(in srgb, var(--status-warning) 16%, var(--surface)); }
 
 /* ---------- Dialogs: a sheet from the bottom on phones ---------- */
