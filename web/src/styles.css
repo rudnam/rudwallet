@@ -438,6 +438,9 @@ li.record:hover:not(:disabled) { background: none; } /* a row to read, not to ta
 .update-actions { display: flex; align-items: center; gap: 12px; margin-left: auto; }
 .demo-offer { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--border); }
 .confirm-email .inline-icon { flex: none; }
+.notice.duplicate { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.notice.duplicate .grow { min-width: 12rem; }
+.notice.duplicate button { margin-left: auto; }
 .notice.warn { background: color-mix(in srgb, var(--status-warning) 16%, var(--surface)); }
 
 /* ---------- Dialogs: a sheet from the bottom on phones ---------- */
