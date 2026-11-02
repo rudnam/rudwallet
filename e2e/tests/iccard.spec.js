@@ -1,7 +1,7 @@
 // Importing a transit IC card's history (Settings › Import › IC card). The
 // Android app reads the card over NFC; here the page acts as the app
 // (asAndroidApp), and the card is what the phone would read.
-const { test, expect, signUp, asAndroidApp, icCardRead, tapICCard } = require('./fixtures');
+const { test, expect, signUp, asAndroidApp, icCardRead, icEntry, tapICCard } = require('./fixtures');
 
 test('read an IC card, and import its entries once', async ({ page }) => {
   test.slow(); // two reads, and screenshots at two widths
@@ -57,18 +57,57 @@ test('read an IC card, and import its entries once', async ({ page }) => {
   await expect(page.getByLabel('Note')).toHaveValue('IC ••CD56 · 山手線 → 東横線 · 0-25-0A → 0-CE-26');
 });
 
-test('a card tapped to the phone opens the import with it', async ({ page }) => {
+test('a tapped card opens its balance, and imports what is new', async ({ page }) => {
+  test.slow(); // three taps, and screenshots at two widths
   await asAndroidApp(page, { icCard: icCardRead });
   await signUp(page);
   await expect.poll(() => page.evaluate(() => window.calls)).toContain('ICCard.addListener');
 
+  // The first tap: the balance, read from the card, and its entries.
   await tapICCard(page, icCardRead);
+  await expect(page).toHaveURL(/#\/card$/);
+  const hero = page.locator('.hero');
+  await expect(hero).toContainText('¥2,480');
+  await expect(hero).toContainText('Last used Oct 4, 2026');
+  await expect(page.getByText("5 entries aren't imported yet.")).toBeVisible();
+  const entries = page.getByRole('list', { name: 'Card entries' });
+  await expect(entries.getByRole('listitem').filter({ hasText: '新宿 → 渋谷' })).toContainText('-¥210');
+  // Never imported: the full preview opens, to choose the accounts first.
+  await expect(page.getByRole('button', { name: 'Review first' })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Import 5 entries' }).click();
   await expect(page).toHaveURL(/#\/settings\?section=import/);
   await expect(page.getByText(/^Card ••CD56: 5 entries/)).toBeVisible();
+  await page.getByRole('button', { name: 'Import 5 entries' }).click();
+  await expect(page.getByText(/^Imported 5 records/)).toBeVisible();
 
-  // Tapped again while the import is open: the new read replaces it.
-  await tapICCard(page, { idm: icCardRead.idm, history: icCardRead.history.slice(2) });
-  await expect(page.getByText(/^Card ••CD56: 3 entries/)).toBeVisible();
+  // Tapped again from Home: nothing new.
+  await page.goto('/app/#/home');
+  await tapICCard(page, icCardRead);
+  await expect(page.getByText("All of this card's entries are imported.")).toBeVisible();
+
+  // Two trips later: imported in one tap, with the choices from last time.
+  const later = {
+    idm: icCardRead.idm,
+    history: [icEntry(0x16, 0x01, 6, 2110, 107, null, [0x25, 0x07, 0x25, 0x0a]), icEntry(0x16, 0x01, 5, 2310, 106, null, [0x25, 0x0a, 0x25, 0x07]), ...icCardRead.history],
+  };
+  await tapICCard(page, later);
+  await expect(page.locator('.hero')).toContainText('¥2,110');
+  await expect(page.getByText('2 new entries since you last imported this card.')).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Card entries' }).getByRole('listitem').first()).toContainText(/渋谷 → 新宿.*New/s);
+  for (const [label, viewport] of [
+    ['phone', { width: 390, height: 844 }],
+    ['desktop', { width: 1280, height: 800 }],
+  ]) {
+    await page.setViewportSize(viewport);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), `${label} overflows sideways`).toBeLessThanOrEqual(0);
+    await page.screenshot({ path: test.info().outputPath(`${label}-card.png`), fullPage: true, animations: 'disabled' });
+  }
+  await page.getByRole('button', { name: 'Import 2 entries' }).click();
+  await expect(page.getByText(/^Imported 2 records/)).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Card entries' }).getByRole('listitem').first()).toContainText('Imported');
+  const account = (await (await page.request.get('/api/wallet')).json()).accounts.find((a) => a.name === 'IC card CD56');
+  expect(account.balance).toBe(2110);
+
   // A card that isn't a transit IC card says so.
   await tapICCard(page, { error: 'not-transit' });
   await expect(page.getByRole('alert')).toHaveText(/^That isn't a transit IC card/);

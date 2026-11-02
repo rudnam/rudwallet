@@ -2,8 +2,8 @@
 // held to the back of the phone is read over NFC (native.ts), and its last
 // entries are shown with how each would be recorded, as for a bank
 // statement, before anything is recorded. Only the Android app can read
-// cards; elsewhere this says so. A card tapped to the phone while this
-// isn't reading one opens it too, with the card read (native.ts).
+// cards; elsewhere this says so. The card screen (features/card) hands
+// it a tapped card to review, and one tapped while this is open comes here.
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api, errorMessage, type ICBalance, type ICCardRead, type ICPreview, type ICResult, type ICRole, type ICRow } from '../../api';
 import { cancelICCardRead, icCardReader, onICCardTapped, openNFCSettings, readICCard, takeTappedICCard, type ICCardTap } from '../../native';

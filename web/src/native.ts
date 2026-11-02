@@ -57,7 +57,12 @@ export function takeTappedICCard(): ICCardTap | null {
   return tap;
 }
 
-/** Hands cards tapped while the import is open straight to it. */
+/** Hands a card read to the import, which takes it as if it had been tapped (the card screen's Review first). */
+export function keepICCard(read: ICCardRead): void {
+  tappedCard = read;
+}
+
+/** Hands cards tapped while the card screen or the import is open straight to it. */
 export function onICCardTapped(handler: (tap: ICCardTap) => void): () => void {
   tapHandler = handler;
   return () => {
@@ -184,7 +189,7 @@ let launchHandled = false;
 export function onAppLinks(handlers: {
   onAuth: (result: { code: string; verifier: string } | { error: string }) => void;
   onOpen: (page: string) => void;
-  /** A card was tapped to the phone: open the import, which takes it (takeTappedICCard). */
+  /** A card was tapped to the phone: open the card screen, which takes it (takeTappedICCard). */
   onICCard: () => void;
 }): () => void {
   if (!isApp) return () => {};

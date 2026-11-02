@@ -196,4 +196,4 @@ async function sendNotifications(request, ...notifications) {
   return (await res.json()).notifications;
 }
 
-module.exports = { test, expect: base.expect, signUp, asAndroidApp, uniqueEmail, PASSWORD, confirmationLink, resetLink, PAYPAY, payPayCard, sendNotifications, icCardRead, tapICCard };
+module.exports = { test, expect: base.expect, signUp, asAndroidApp, uniqueEmail, PASSWORD, confirmationLink, resetLink, PAYPAY, payPayCard, sendNotifications, icCardRead, icEntry, tapICCard };
