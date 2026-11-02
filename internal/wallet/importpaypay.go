@@ -84,6 +84,10 @@ const payPayBalance = "PayPay残高"
 // source_rules, apart from the card names that notifications use.
 const payPayRulePrefix = "paypay-csv:"
 
+// SkipAccount, as the account for a way of paying, leaves its records out
+// of the import (e.g. PayPay points, for someone who doesn't track them).
+const SkipAccount = -1
+
 // PayPayMethod is one way of paying found in a PayPay export, with the
 // account its records go to: an existing one, or a new one to create.
 type PayPayMethod struct {
@@ -92,6 +96,8 @@ type PayPayMethod struct {
 	AccountID *int64 `json:"account_id"`
 	NewName   string `json:"new_name"`
 	NewKind   string `json:"new_kind"`
+	// Skip: the user chose last time not to import this way of paying.
+	Skip bool `json:"skip"`
 }
 
 // PayPayPreview describes a PayPay export before it is imported.
@@ -231,7 +237,11 @@ func (rs payeeRuleSet) match(payee string) *int64 {
 
 // ImportPayPay imports a PayPay export. accounts maps a 取引方法 to the
 // account for it; a method left out, or mapped to 0, gets the suggested
-// account (created if new). The choice is remembered for the next import.
+// account (created if new), and one mapped to SkipAccount isn't imported
+// (as is one left out that was skipped last time).
+// The choice is remembered for the next import. A charge into the balance
+// from a method that isn't imported is income to the balance; one into a
+// balance that isn't imported is an expense from the method that paid it.
 //
 // categories (groups from PreviewPayPay) give records a category; a shop's
 // expense category is remembered for its next payments, as when the user
@@ -264,9 +274,23 @@ func (s *Store) ImportPayPay(ctx context.Context, userID int64, data []byte, acc
 		return res, err
 	}
 	account := map[string]int64{}
+	skip := map[string]bool{}
 	created := map[string]int64{} // new accounts by name, which methods can share
 	for _, m := range methods {
-		id := accounts[m.Method]
+		id, chosen := accounts[m.Method]
+		if id == SkipAccount || !chosen && m.Skip {
+			skip[m.Method] = true
+			if _, err := tx.ExecContext(ctx,
+				`DELETE FROM source_rules WHERE user_id = $1 AND source = $2`, userID, payPayRulePrefix+m.Method); err != nil {
+				return res, err
+			}
+			if _, err := tx.ExecContext(ctx,
+				`INSERT INTO import_skips (user_id, source) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+				userID, payPayRulePrefix+m.Method); err != nil {
+				return res, err
+			}
+			continue
+		}
 		if _, ok := owned[strconv.FormatInt(id, 10)]; id != 0 && !ok {
 			return res, db.ErrNotFound
 		}
@@ -288,6 +312,10 @@ func (s *Store) ImportPayPay(ctx context.Context, userID int64, data []byte, acc
 			res.AccountsCreated++
 		}
 		account[m.Method] = id
+		if _, err := tx.ExecContext(ctx,
+			`DELETE FROM import_skips WHERE user_id = $1 AND source = $2`, userID, payPayRulePrefix+m.Method); err != nil {
+			return res, err
+		}
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO source_rules (user_id, source, account_id) VALUES ($1, $2, $3)
 			 ON CONFLICT (user_id, source) DO UPDATE SET account_id = EXCLUDED.account_id`,
@@ -341,7 +369,15 @@ func (s *Store) ImportPayPay(ctx context.Context, userID int64, data []byte, acc
 	matched := []int64{} // existing records, each matched to one row
 	for _, r := range rows {
 		t := Transaction{Kind: r.kind, Amount: r.amount, AccountID: account[r.method], OccurredAt: r.when, Payee: r.payee, Note: r.note}
-		if r.kind == "transfer" {
+		switch {
+		case r.kind == "transfer" && skip[r.method] && skip[payPayBalance], r.kind != "transfer" && skip[r.method]:
+			res.Skipped++
+			continue
+		case r.kind == "transfer" && skip[r.method]: // money in from somewhere not tracked
+			t.Kind, t.AccountID = "income", account[payPayBalance]
+		case r.kind == "transfer" && skip[payPayBalance]: // money out to somewhere not tracked
+			t.Kind = "expense"
+		case r.kind == "transfer":
 			to := account[payPayBalance]
 			t.ToAccountID = &to
 			if to == t.AccountID { // both sides mapped to one account
@@ -440,6 +476,10 @@ func (s *Store) payPayMethods(ctx context.Context, userID int64, rows []payPayRo
 	if err := loadRules(ctx, s, userID, learned); err != nil {
 		return nil, err
 	}
+	skipped := map[string]bool{}
+	if err := loadSkips(ctx, s, userID, skipped); err != nil {
+		return nil, err
+	}
 	// find returns the first account of the kind ("" for any) whose name
 	// is one of names, or with contains, includes one of them.
 	find := func(kind string, contains bool, names ...string) *int64 {
@@ -471,7 +511,7 @@ func (s *Store) payPayMethods(ctx context.Context, userID int64, rows []payPayRo
 
 	methods := []PayPayMethod{}
 	for _, m := range order {
-		pm := PayPayMethod{Method: m, Count: counts[m]}
+		pm := PayPayMethod{Method: m, Count: counts[m], Skip: skipped[payPayRulePrefix+m]}
 		digits := cardDigits.FindString(m)
 		lower := strings.ToLower(m)
 		switch {
@@ -530,6 +570,23 @@ func loadRules(ctx context.Context, s *Store, userID int64, into map[string]int6
 			return err
 		}
 		into[src] = id
+	}
+	return rows.Err()
+}
+
+func loadSkips(ctx context.Context, s *Store, userID int64, into map[string]bool) error {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT source FROM import_skips WHERE user_id = $1 AND source LIKE 'paypay-csv:%'`, userID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var src string
+		if err := rows.Scan(&src); err != nil {
+			return err
+		}
+		into[src] = true
 	}
 	return rows.Err()
 }

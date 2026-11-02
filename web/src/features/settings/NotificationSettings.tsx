@@ -22,7 +22,7 @@ export function NotificationSettings() {
   const [access, setAccess] = useState<boolean | null>(null);
   // Shown at once; the server's answer follows.
   const [autoConfirm, setAutoConfirm] = useState(w.settings.auto_confirm);
-  const [recent, setRecent] = useState<PaymentNotification[] | null>(null);
+  const [recent, setRecent] = useState<PaymentNotification[] | null>(() => api.seen.notifications()?.notifications ?? null);
   const [error, setError] = useState('');
 
   useEffect(() => {

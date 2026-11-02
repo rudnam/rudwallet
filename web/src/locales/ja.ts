@@ -479,6 +479,7 @@ export const ja = {
   'skipped {n} already imported': '取り込み済みの{n}件はスキップ',
   'skipped {n} already recorded from notifications or by hand':
     '通知や手入力で記録済みの{n}件はスキップ',
+  'left out {n} paid in ways not imported': '取り込まない支払い方法の{n}件は除外',
   'created {n} account': '{n}口座を作成',
   'created {n} accounts': '{n}口座を作成',
   'created {n} category': '{n}カテゴリを作成',
@@ -499,6 +500,8 @@ export const ja = {
   '{n} payment, {from} to {to}. Choose where each way of paying is recorded:': '{from}〜{to}の支払い{n}件。支払い方法ごとに記録する口座を選んでください:',
   '{n} payments, {from} to {to}. Choose where each way of paying is recorded:': '{from}〜{to}の支払い{n}件。支払い方法ごとに記録する口座を選んでください:',
   'New account: {name}': '新しい口座: {name}',
+  "Don't import": '取り込まない',
+  'Import the rest': '残りを取り込む',
   "These rows can't be read and will be left out:": '次の行は読み取れないため、取り込みません:',
   'Importing…': '取り込み中…',
   'Import {n} payment': '{n}件を取り込む',

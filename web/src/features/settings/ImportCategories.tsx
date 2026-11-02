@@ -286,6 +286,7 @@ export function ImportSummary({ result }: { result: ImportResult }) {
         tn(result.imported, 'Imported {n} record', 'Imported {n} records'),
         result.duplicates > 0 && t('skipped {n} already imported', { n: result.duplicates }),
         result.matched > 0 && t('skipped {n} already recorded from notifications or by hand', { n: result.matched }),
+        result.skipped > 0 && t('left out {n} paid in ways not imported', { n: result.skipped }),
         result.accounts_created > 0 && tn(result.accounts_created, 'created {n} account', 'created {n} accounts'),
         result.categories_created > 0 && tn(result.categories_created, 'created {n} category', 'created {n} categories'),
       ]

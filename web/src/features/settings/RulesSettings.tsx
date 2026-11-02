@@ -11,7 +11,7 @@ import { t, tn, tx } from '../../i18n';
 export function RulesSettings() {
   const w = useWallet();
   const toast = useToast();
-  const [rules, setRules] = useState<Rules | null>(null);
+  const [rules, setRules] = useState<Rules | null>(() => api.seen.rules() ?? null);
   const [error, setError] = useState('');
   const [shop, setShop] = useState('');
   const [shopCategory, setShopCategory] = useState('');

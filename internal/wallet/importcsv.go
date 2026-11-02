@@ -24,7 +24,9 @@ type ImportResult struct {
 	Imported   int `json:"imported"`
 	Duplicates int `json:"duplicates"`
 	// Matched counts rows already recorded another way (PayPay import only).
-	Matched           int      `json:"matched"`
+	Matched int `json:"matched"`
+	// Skipped counts rows paid in a way the user chose not to import (PayPay only).
+	Skipped           int      `json:"skipped"`
 	AccountsCreated   int      `json:"accounts_created"`
 	CategoriesCreated int      `json:"categories_created"`
 	Problems          []string `json:"problems"`

@@ -2,13 +2,14 @@
 // a way back. Payment notifications, what they learned, Claude, accounts,
 // categories, currency, and import.
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { api, errorMessage, type Me, type Account, type AccountKind, type Category, type ImportResult, type PayPayPreview, type BudgetBakersPreview, type MUFGPreview, type MUFGResult, type MUFGRole, type MUFGBalance } from '../../api';
+import { api, errorMessage, type Me, type Account, type AccountKind, type Category, type ImportResult, type PayPayPreview, type BudgetBakersPreview, type MUFGPreview, type MUFGResult, type MUFGRole, type MUFGBalance, skipAccount } from '../../api';
 import { CategoryIcon, glyphKey, glyphs, Icon, icons, Plus } from '../../components/Icon';
 import { Dialog } from '../../components/Dialog';
 import { amountInput, parseAmount } from '../../money';
 import { href, type Route } from '../../router';
 import { useToast } from '../../toast';
 import { useWallet } from '../../wallet';
+import { isApp } from '../../native';
 import { WidgetSettings } from './WidgetSettings';
 import { NotificationSettings } from './NotificationSettings';
 import { ClaudeSettings } from './ClaudeSettings';
@@ -31,7 +32,8 @@ export const accountKinds: Record<AccountKind, { label: Key; glyph: string; colo
 
 const swatches = ['#c8463d', '#d97757', '#b08a3e', '#4f8a4c', '#2a8a8a', '#3b6ea8', '#5b4a8a', '#a8508a', '#6f6c63'];
 
-const sections: { id: string; label: Key; title: Key; glyph: string }[] = [
+/** The menu. An `app` section is listed only in the Android app, though its page still opens on the web. */
+const sections: { id: string; label: Key; title: Key; glyph: string; app?: boolean }[] = [
   { id: 'notifications', label: 'Payment notifications', title: 'Payment notifications', glyph: 'card' },
   { id: 'rules', label: 'Shops and cards', title: 'Shops and cards', glyph: 'shopping' },
   { id: 'claude', label: 'Claude', title: 'Claude', glyph: 'spark' },
@@ -39,7 +41,7 @@ const sections: { id: string; label: Key; title: Key; glyph: string }[] = [
   { id: 'categories', label: 'Categories', title: 'Categories', glyph: 'other' },
   { id: 'general', label: 'Currency', title: 'Currency', glyph: 'money' },
   { id: 'import', label: 'Import', title: 'Import records', glyph: 'school' },
-  { id: 'widgets', label: 'Home screen widgets', title: 'Home screen widgets', glyph: 'phone' },
+  { id: 'widgets', label: 'Home screen widgets', title: 'Home screen widgets', glyph: 'phone', app: true },
   { id: 'language', label: 'Language', title: 'Language', glyph: 'globe' },
 ];
 
@@ -97,7 +99,7 @@ export function SettingsPage({
       <h1>{t('Settings')}</h1>
       <nav className="card flush" aria-label={t('Settings sections')}>
         <ul className="list flush">
-          {sections.map((s) => (
+          {sections.filter((s) => isApp || !s.app).map((s) => (
             <li key={s.id}>
               <a className="menu-row" href={href('settings', { section: s.id })}>
                 <span className="cat-icon" aria-hidden="true">
@@ -710,7 +712,7 @@ function PayPayImport() {
       const p = await api.previewPayPay(text);
       setCsv(text);
       setPreview(p);
-      setChoice(Object.fromEntries(p.methods.map((m) => [m.method, m.account_id ?? 0])));
+      setChoice(Object.fromEntries(p.methods.map((m) => [m.method, m.skip ? skipAccount : (m.account_id ?? 0)])));
       setCats(suggestedChoices(p.categories));
     } catch (err) {
       setError(errorMessage(err));
@@ -790,6 +792,7 @@ function PayPayImport() {
                 {!accounts.some((a) => a.name.toLowerCase() === m.new_name.toLowerCase()) && (
                   <option value={0}>{t('New account: {name}', { name: m.new_name })}</option>
                 )}
+                <option value={skipAccount}>{t("Don't import")}</option>
               </select>
             </label>
           ))}
@@ -814,7 +817,11 @@ function PayPayImport() {
               {t('Cancel')}
             </button>
             <button type="submit" disabled={busy}>
-              {busy ? t('Importing…') : tn(preview.records, 'Import {n} payment', 'Import {n} payments')}
+              {busy
+                ? t('Importing…')
+                : Object.values(choice).includes(skipAccount)
+                  ? t('Import the rest')
+                  : tn(preview.records, 'Import {n} payment', 'Import {n} payments')}
             </button>
           </div>
         </form>

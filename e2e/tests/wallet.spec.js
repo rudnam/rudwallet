@@ -327,6 +327,36 @@ test('import PayPay transaction history', async ({ page }) => {
   await expect(page.getByRole('button', { name: /SEVEN-ELEVEN/ })).toHaveCount(1);
 });
 
+test('leave PayPay points out of an import, and remember it', async ({ page }) => {
+  await signUp(page);
+  await page.request.post('/api/accounts', { data: { name: 'PayPay Card', kind: 'credit_card' } });
+  const now = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  const day = `${now.getFullYear()}/${p(now.getMonth() + 1)}/${p(now.getDate())}`;
+  const csv = [
+    '取引日,出金金額（円）,入金金額（円）,海外出金金額,通貨,変換レート（円）,利用国,取引内容,取引先,取引方法,支払い区分,利用者,取引番号',
+    `${day} 12:00,"5,480",-,-,-,-,-,支払い,Yahoo!ショッピング,"PayPayポイント（686円）、PayPayカード（4,794円）",-,本人,pt-001`,
+    `${day} 12:01,-,50,-,-,-,-,ポイント、残高の獲得,Yahoo!ショッピング,PayPayポイント,-,本人,pt-002`,
+  ].join('\n');
+  const upload = () => page.getByLabel('PayPay CSV file').setInputFiles({ name: 'paypay.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+
+  await page.goto('/app/#/settings?section=import');
+  await upload();
+  await page.getByLabel(/^PayPayポイント ·/).selectOption({ label: "Don't import" });
+  await page.screenshot({ path: test.info().outputPath('skip-points.png'), fullPage: true });
+  await page.getByRole('button', { name: 'Import the rest' }).click();
+  await expect(page.getByRole('status')).toContainText('Imported 1 record, left out 2 paid in ways not imported');
+
+  // The next import suggests leaving points out again.
+  await upload();
+  await expect(page.getByLabel(/^PayPayポイント ·/).locator('option:checked')).toHaveText("Don't import");
+  await page.getByRole('button', { name: 'Cancel' }).click();
+
+  await page.goto('/app/#/records');
+  await expect(page.getByRole('button', { name: /Yahoo!ショッピング, -¥4,794/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /¥686/ })).toHaveCount(0);
+});
+
 /** A PayPay 取引履歴 export: a balance payment, a card payment, and a charge from the bank. */
 function payPayCsv(day) {
   return [
