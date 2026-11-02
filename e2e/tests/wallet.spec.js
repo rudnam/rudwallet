@@ -164,8 +164,8 @@ test('Stats says where the month is heading, and what budgets leave per day', as
 
   // The overview stays as it was.
   await page.goto('/app/#/');
-  await expect(page.locator('.wallet-face')).toContainText('Total balance');
-  await expect(page.locator('.wallet-face')).not.toContainText('pace');
+  await expect(page.locator('.balance')).toContainText('Total balance');
+  await expect(page.locator('.balance')).not.toContainText('pace');
 });
 
 test('the currency can change until there are records', async ({ page }) => {
@@ -705,27 +705,38 @@ test('on a wide screen, the sidebar stays put while the page scrolls', async ({ 
 test.describe('on a touch screen', () => {
   test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 844 } });
 
-  test('the amount is tapped in on the number pad, which makes way once a category is picked', async ({ page }) => {
+  test('a record is tapped in with one thumb: amount on the number pad, category, Save', async ({ page }) => {
     await signUp(page);
     await page.getByRole('button', { name: 'Add record' }).click();
     const dialog = page.getByRole('dialog', { name: 'New record' });
     const pad = dialog.getByRole('group', { name: 'Number pad' });
-    for (const key of ['1', '2', '00']) await pad.getByRole('button', { name: key, exact: true }).tap();
-    await expect(dialog.getByLabel('Amount (JPY)')).toHaveValue('1,200');
+    const amount = dialog.getByLabel('Amount (JPY)');
+    // Leading zeros are ignored; 000 makes thousands.
+    for (const key of ['0', '1', '000']) await pad.getByRole('button', { name: key, exact: true }).tap();
+    await expect(amount).toHaveValue('1,000');
     await pad.getByRole('button', { name: 'Delete last digit' }).tap();
-    await pad.getByRole('button', { name: '0', exact: true }).tap();
-    await expect(dialog.getByLabel('Amount (JPY)')).toHaveValue('1,200');
+    await expect(amount).toHaveValue('100');
+    await pad.getByRole('button', { name: '2', exact: true }).tap();
+    await expect(amount).toHaveValue('1,002');
+    // The pad sits at the bottom of the screen, where the thumb is.
+    const box = await pad.boundingBox();
+    expect(box.y + box.height).toBeGreaterThan(844 - 4);
+
+    // Picking a category leaves the pad where it is.
+    await dialog.getByRole('radio', { name: 'Food & Drinks' }).check({ force: true });
+    await expect(pad).toBeVisible();
+    expect((await pad.boundingBox()).y).toBe(box.y);
     await page.screenshot({ path: test.info().outputPath('phone-add-pad.png'), animations: 'disabled' });
 
-    await dialog.getByRole('radio', { name: 'Food & Drinks' }).check({ force: true });
+    // The payee brings up the phone's keyboard, so the pad steps aside until it's done.
+    await dialog.getByLabel('Payee').tap();
     await expect(pad).toBeHidden();
-    // Tapping the amount brings it back.
-    await dialog.getByLabel('Amount (JPY)').tap();
+    await dialog.getByLabel('Payee').fill('Ramen Taro');
+    await amount.tap();
     await expect(pad).toBeVisible();
-    await page.screenshot({ path: test.info().outputPath('phone-add-details.png'), animations: 'disabled' });
 
-    await dialog.getByRole('button', { name: 'Save' }).tap();
-    await expect(page.getByText('Added ¥1,200')).toBeVisible();
-    await expect(page.locator('.hero-figure')).toHaveText('−¥1,200');
+    await pad.getByRole('button', { name: 'Save' }).tap();
+    await expect(page.getByText('Added ¥1,002')).toBeVisible();
+    await expect(page.locator('.hero-figure')).toHaveText('−¥1,002');
   });
 });

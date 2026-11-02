@@ -1,5 +1,5 @@
 // The overview: balances, this month's spending, budgets, latest records.
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useState } from 'react';
 import { api, type Budget, type Transaction } from '../../api';
 import { CategoryBars, DailyColumns, Meter, type BarItem } from '../../components/charts';
 import { TransactionForm } from '../../components/TransactionForm';
@@ -64,46 +64,39 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
         <SetUp hasRecords={(records ?? []).length > 0} hasBudget={budgets.length > 0} />
       )}
 
-      <section className="wallet" aria-label={t('Total balance')}>
-        <div className="wallet-face">
-          <span className="wallet-label">{t('Total balance')}</span>
-          <span className="hero-figure">
-            <Figure amount={total} animate />
+      <section className="balance" aria-label={t('Total balance')}>
+        <span className="balance-label">{t('Total balance')}</span>
+        <span className="hero-figure">
+          <Figure amount={total} animate />
+        </span>
+        <span className="balance-month">
+          <span>
+            {t('Spent this month')} <strong>{w.money(spent)}</strong>
           </span>
-          <span className="wallet-month">
-            <span>
-              {t('Spent this month')} <strong>{w.money(spent)}</strong>
-            </span>
-            {/* Income and net say nothing new in a month with no income yet. */}
-            {income > 0 && (
-              <>
-                <span>
-                  {t('Income')} <strong>{w.money(income)}</strong>
-                </span>
-                <span>
-                  {t('Net')} <strong>{w.money(income - spent, true)}</strong>
-                </span>
-              </>
-            )}
-          </span>
-        </div>
+          {/* Income and net say nothing new in a month with no income yet. */}
+          {income > 0 && (
+            <>
+              <span>
+                {t('Income')} <strong>{w.money(income)}</strong>
+              </span>
+              <span>
+                {t('Net')} <strong>{w.money(income - spent, true)}</strong>
+              </span>
+            </>
+          )}
+        </span>
 
-        <div className="accounts" aria-label={t('Accounts')} role="list">
+        <ul className="list card flush accounts" aria-label={t('Accounts')}>
           {accounts.map((a) => (
-            <a
-              key={a.id}
-              role="listitem"
-              className={`account-card ${inkOn(a.color)}`}
-              style={{ '--account': a.color } as CSSProperties}
-              href={href('records', { account: a.id })}
-            >
-              <span className="account-name ellipsis">{a.name}</span>
-              <strong>
-                <Figure amount={a.balance} />
-              </strong>
-            </a>
+            <li key={a.id}>
+              <a className="account-row" href={href('records', { account: a.id })}>
+                <span className="swatch" style={{ background: a.color }} aria-hidden="true" />
+                <span className="grow ellipsis">{a.name}</span>
+                <span className="account-balance">{w.money(a.balance)}</span>
+              </a>
+            </li>
           ))}
-        </div>
+        </ul>
       </section>
 
       <div className="panel stack">
@@ -207,19 +200,6 @@ function headline(
     });
   }
   return greeting();
-}
-
-/** Ink for text on an account's colour: dark on light colours, light on dark ones. */
-function inkOn(color: string): 'ink-dark' | 'ink-light' {
-  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(color);
-  if (!m) return 'ink-light';
-  const [r, g, b] = m.slice(1).map((h) => {
-    const c = parseInt(h, 16) / 255;
-    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  });
-  const l = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  // Whichever of near-white and near-black contrasts more.
-  return (1.05 / (l + 0.05) >= (l + 0.05) / 0.05) ? 'ink-light' : 'ink-dark';
 }
 
 const setupDoneKey = 'wallet:setup-dismissed';

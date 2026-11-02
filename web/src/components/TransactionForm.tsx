@@ -74,8 +74,12 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
   const [busy, setBusy] = useState(false);
   // An edit waiting for the user to check what it changes.
   const [pending, setPending] = useState<{ input: TransactionInput; changes: Change[] } | null>(null);
-  // The number pad shows while the amount is being entered (touch only).
-  const [pad, setPad] = useState(touch && !record);
+  // A new record on a touch screen is entered on the number pad, which stays
+  // at the bottom of the sheet, in the thumb's reach, with Save on it. It
+  // steps aside only while a text field has the phone's keyboard.
+  const quick = touch && !record;
+  const [typing, setTyping] = useState(false);
+  const pad = quick && !typing;
   // The date shows as a chip until the user asks to change it.
   const [editingWhen, setEditingWhen] = useState(false);
 
@@ -118,12 +122,10 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
 
   function chooseCategory(id: number) {
     setCategoryId(id);
-    // The amount is done once a category is picked: the pad makes way for the rest.
-    setPad(false);
     hapticTick();
   }
 
-  /** A key on the number pad: a digit, '00', the decimal point, or 'back'. */
+  /** A key on the number pad: a digit, '000', the decimal point, or 'back'. */
   function press(key: string) {
     hapticTick();
     setAmount((a) => {
@@ -133,7 +135,8 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
       const [, frac] = plain.split('.');
       if (frac !== undefined && frac.length + key.length > exp) return a;
       if (plain.replace('.', '').length + key.length > 12) return a;
-      if (plain === '0' || plain === '') return key === '00' ? plain : key;
+      // No leading zeros: 0 and 000 on nothing leave it as it is.
+      if (plain === '0' || plain === '') return /^0+$/.test(key) ? plain : key;
       return grouped(plain + key);
     });
   }
@@ -360,11 +363,9 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
       <form
         className="stack"
         onSubmit={save}
-        // Typing anywhere else puts the number pad away.
-        onFocus={(e) => {
-          const el = e.target as HTMLElement;
-          if (el.matches('input:not([type=radio]):not([type=checkbox]), select, textarea') && !el.matches('.amount-field input')) setPad(false);
-        }}
+        // The phone's keyboard and the number pad never show together.
+        onFocus={(e) => setTyping(isTextField(e.target))}
+        onBlur={(e) => setTyping(isTextField(e.relatedTarget))}
       >
         {reviewing && (
           <p className="notice small">
@@ -399,8 +400,7 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
             {currencySymbol(w.settings)}
           </span>
           <input
-            inputMode={touch ? 'none' : exp === 0 ? 'numeric' : 'decimal'}
-            onFocus={() => touch && setPad(true)}
+            inputMode={quick ? 'none' : exp === 0 ? 'numeric' : 'decimal'}
             autoComplete="off"
             placeholder="0"
             // Grows with the number, so the currency sign stays beside it.
@@ -411,7 +411,6 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
             onChange={(e) => setAmount(e.target.value)}
           />
         </label>
-        {pad && <NumberPad decimal={exp > 0} onPress={press} />}
         {kind !== 'transfer' && (
           <fieldset className="category-pick">
             <legend className="sr-only">{t('Category')}</legend>
@@ -521,6 +520,9 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
             {error}
           </p>
         )}
+        {pad ? (
+          <NumberPad decimal={exp > 0} onPress={press} busy={busy} />
+        ) : (
         <div className="row end dialog-actions">
           {record && (
             <button type="button" className="link danger" disabled={busy} onClick={remove}>
@@ -532,29 +534,52 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
             {reviewing ? t('Confirm') : t('Save')}
           </button>
         </div>
+        )}
       </form>
     </Dialog>
   );
 }
 
-/** The number pad for the amount, in place of the phone's keyboard. */
-function NumberPad({ decimal, onPress }: { decimal: boolean; onPress: (key: string) => void }) {
-  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', decimal ? '.' : '00', '0', 'back'];
+/** Fields that bring up the phone's keyboard: everything but the amount and the choices. */
+function isTextField(el: EventTarget | null): boolean {
+  return (
+    el instanceof HTMLElement &&
+    el.matches('input:not([type=radio]):not([type=checkbox]), textarea') &&
+    !el.matches('.amount-field input')
+  );
+}
+
+/**
+ * The number pad, docked at the bottom of the sheet like the phone's own
+ * keyboard, with Save beside the digits, so a record is a few taps of one
+ * thumb: amount, category, Save.
+ */
+function NumberPad({ decimal, onPress, busy }: { decimal: boolean; onPress: (key: string) => void; busy: boolean }) {
+  const key = (k: string, className = 'key') => (
+    <button
+      key={k}
+      type="button"
+      className={className}
+      // Keep the amount focused, so its caret stays where the digits go.
+      onPointerDown={(e) => e.preventDefault()}
+      onClick={() => onPress(k)}
+      aria-label={k === 'back' ? t('Delete last digit') : undefined}
+    >
+      {k === 'back' ? <Icon d={icons.backspace} className="glyph" /> : k}
+    </button>
+  );
   return (
     <div className="number-pad" role="group" aria-label={t('Number pad')}>
-      {keys.map((k) => (
-        <button
-          key={k}
-          type="button"
-          className="key"
-          // Keep the amount focused, so its caret stays where the digits go.
-          onPointerDown={(e) => e.preventDefault()}
-          onClick={() => onPress(k)}
-          aria-label={k === 'back' ? t('Delete last digit') : undefined}
-        >
-          {k === 'back' ? <Icon d={icons.backspace} className="glyph" /> : k}
-        </button>
-      ))}
+      {['1', '2', '3'].map((k) => key(k))}
+      {key('back', 'key fn')}
+      {['4', '5', '6'].map((k) => key(k))}
+      <button type="submit" className="key save" disabled={busy}>
+        {t('Save')}
+      </button>
+      {['7', '8', '9'].map((k) => key(k))}
+      {key('0', 'key zero')}
+      {/* Yen amounts are mostly round thousands; other currencies need cents. */}
+      {key(decimal ? '.' : '000')}
     </div>
   );
 }

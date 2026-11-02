@@ -304,62 +304,21 @@ a.button.secondary:hover { background: var(--sunken); }
 .headline { font-size: 1.6rem; line-height: 1.2; text-wrap: balance; }
 @media (max-width: 560px) { .headline { font-size: 1.45rem; } }
 
-/* ---------- The wallet: the balance in the app icon's cognac leather ---------- */
-.wallet { display: flex; flex-direction: column; gap: 12px; }
-.wallet-face {
-  /* Fixed colours: leather is leather in light and dark mode. Text contrast
-     is checked against the lightest corner (#9c4f28). */
-  --leather-ink: #fffaf3;
-  --leather-muted: #f7e6d6;
-  position: relative; isolation: isolate; display: flex; flex-direction: column; gap: 2px;
-  padding: 24px 26px 22px; border-radius: 22px; color: var(--leather-ink); overflow: hidden;
-  background:
-    radial-gradient(130% 120% at 0% 0%, #9c4f28 0%, #84391a 48%, #5a220c 100%);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.16), inset 0 -2px 0 rgb(0 0 0 / 0.22),
-    0 1px 2px rgb(60 25 8 / 0.25), 0 18px 36px -14px rgb(90 34 12 / 0.6);
+/* ---------- The balance: set on the page, like the top of a statement ---------- */
+.balance { display: flex; flex-direction: column; gap: 2px; }
+.balance-label { color: var(--muted); font-size: 0.9rem; }
+.balance .hero-figure { font-size: clamp(2.75rem, 13vw, 4rem); line-height: 1.05; letter-spacing: -0.025em; }
+.balance-month { display: flex; flex-wrap: wrap; gap: 2px 18px; margin-top: 6px; color: var(--muted); font-size: 0.9rem; }
+.balance-month strong { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; margin-left: 4px; }
+/* Accounts: one quiet list, a row each, the balance in the same serif. */
+.accounts { margin-top: 18px; }
+.account-row {
+  display: flex; align-items: center; gap: 12px; padding: 14px 16px; color: var(--text); text-decoration: none;
+  transition: background 0.15s;
 }
-/* The grain: fine noise, blended in so it reads as texture, not dirt. */
-.wallet-face::before {
-  content: ''; position: absolute; inset: 0; z-index: -1; opacity: 0.22; mix-blend-mode: overlay; pointer-events: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-/* The stitching, just inside the edge. */
-.wallet-face::after {
-  content: ''; position: absolute; inset: 7px; border-radius: 16px; pointer-events: none;
-  border: 1.5px dashed rgb(255 228 200 / 0.38);
-}
-.wallet-label { color: var(--leather-muted); font-size: 0.9rem; letter-spacing: 0.01em; }
-.wallet-face .hero-figure { text-shadow: 0 1px 0 rgb(0 0 0 / 0.25); }
-.wallet-face .figure-cur { opacity: 0.75; }
-.wallet-month {
-  display: flex; flex-wrap: wrap; gap: 4px 18px; margin-top: 12px; padding-top: 12px;
-  border-top: 1px solid rgb(255 228 200 / 0.22); color: var(--leather-muted); font-size: 0.9rem;
-}
-.wallet-month strong { color: var(--leather-ink); font-weight: 600; font-variant-numeric: tabular-nums; margin-left: 4px; }
-@media (max-width: 560px) { .wallet-face { padding: 20px 20px 18px; border-radius: 20px; } }
-
-/* Accounts: small cards in each account's own colour, like the cards in the wallet. */
-.accounts { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-.account-card {
-  --account: var(--muted);
-  position: relative; display: flex; flex-direction: column; justify-content: space-between; gap: 14px; min-height: 84px;
-  padding: 12px 14px; border-radius: 14px; text-decoration: none; overflow: hidden;
-  background: linear-gradient(150deg, color-mix(in srgb, var(--account) 88%, #fff) 0%, var(--account) 45%, color-mix(in srgb, var(--account) 78%, #000) 100%);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 1px 2px rgb(0 0 0 / 0.12), 0 8px 18px -10px color-mix(in srgb, var(--account) 70%, #000);
-  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s;
-}
-/* A sheen across the top, as on a plastic card. */
-.account-card::before {
-  content: ''; position: absolute; inset: 0 0 55% 0; pointer-events: none;
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.14), transparent);
-}
-.account-card.ink-light { color: #fff; }
-.account-card.ink-dark { color: #1f1e1d; }
-.account-card:hover { transform: translateY(-2px); }
-.account-card:active { transform: scale(0.98); }
-.account-name { font-size: 0.85rem; font-weight: 500; opacity: 0.88; }
-.account-card strong { font-family: var(--serif); font-size: 1.3rem; font-weight: 400; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.account-row:hover { background: var(--sunken); }
+.account-row .swatch { width: 8px; height: 8px; }
+.account-balance { font-family: var(--serif); font-size: 1.15rem; font-variant-numeric: lining-nums tabular-nums; white-space: nowrap; }
 .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; }
 
 /* A section set on the page, not in a box: a hairline above says where it starts.
@@ -647,18 +606,40 @@ li.record:hover:not(:disabled) { background: none; } /* a row to read, not to ta
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* ---------- The add sheet ---------- */
-/* The number pad: big keys in the thumb's reach, in place of the keyboard. */
-.number-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-.number-pad .key {
-  height: 50px; border-radius: 14px; background: var(--sunken); color: var(--text); border: 0;
-  font-family: var(--serif); font-size: 1.45rem; font-weight: 400; font-variant-numeric: tabular-nums;
-  transition: background 0.1s, transform 0.08s;
+/* The number pad: docked at the bottom of the sheet like the phone's own
+   keyboard (white keys on a tray, so each target is plain to see), with Save
+   beside the digits. Sticky, as .dialog-actions is, so it never moves. */
+.number-pad {
+  position: sticky; bottom: -20px; z-index: 1; margin: 4px -20px -20px; padding: 8px 8px 10px;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.15fr); gap: 6px;
+  background: var(--sunken); border-top: 1px solid var(--border);
 }
-/* Not the accent of other buttons; on a touch screen, no hover left behind by a tap. */
-.number-pad .key:hover:not(:disabled) { background: var(--sunken); }
-@media (hover: hover) { .number-pad .key:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 8%, var(--sunken)); } }
-.number-pad .key:active:not(:disabled) { transform: scale(0.95); background: color-mix(in srgb, var(--text) 12%, var(--sunken)); }
-.number-pad .glyph { width: 24px; height: 24px; }
+@media (max-width: 560px) {
+  .number-pad {
+    bottom: calc(-18px - env(safe-area-inset-bottom)); margin: 4px -18px calc(-18px - env(safe-area-inset-bottom));
+    padding: 8px 8px calc(10px + env(safe-area-inset-bottom));
+  }
+}
+.number-pad .key {
+  height: 52px; padding: 0; border: 0; border-radius: 10px; background: var(--surface); color: var(--text);
+  font-family: var(--sans); font-size: 1.5rem; font-weight: 450; font-variant-numeric: tabular-nums;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--text) 18%, transparent);
+  transition: background 0.08s;
+}
+/* Pressed: the key darkens under the thumb, as on the phone's keyboard. */
+.number-pad .key:hover:not(:disabled) { background: var(--surface); }
+.number-pad .key:active:not(:disabled) { transform: none; background: color-mix(in srgb, var(--text) 10%, var(--surface)); }
+.number-pad .key.fn { background: transparent; box-shadow: none; color: var(--muted); }
+.number-pad .key.fn:hover:not(:disabled) { background: transparent; }
+.number-pad .key.fn:active:not(:disabled) { background: color-mix(in srgb, var(--text) 8%, transparent); }
+.number-pad .key.zero { grid-column: span 2; }
+.number-pad .key.save {
+  grid-row: span 3; height: auto; background: var(--accent); color: var(--accent-text);
+  font-size: 1.05rem; font-weight: 600; box-shadow: none;
+}
+.number-pad .key.save:hover:not(:disabled) { background: var(--accent); }
+.number-pad .key.save:active:not(:disabled) { background: color-mix(in srgb, var(--accent) 85%, var(--text)); }
+.number-pad .glyph { width: 26px; height: 26px; }
 /* Accounts as chips that scroll sideways, each with its colour. */
 .account-pick { display: flex; gap: 6px; overflow-x: auto; padding: 6px 2px; scrollbar-width: none; }
 .account-pick::-webkit-scrollbar { display: none; }
