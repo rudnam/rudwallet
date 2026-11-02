@@ -70,6 +70,7 @@ func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) ht
 	route("POST /api/import/budgetbakers", h.importBudgetBakers)
 	route("POST /api/import/paypay", h.importPayPay)
 	route("POST /api/import/mufg", h.importMUFG)
+	route("POST /api/import/ic-card", h.importICCard)
 }
 
 func userID(r *http.Request) int64 { return account.UserFrom(r).ID }
@@ -675,6 +676,43 @@ func (h *Handler) importMUFG(w http.ResponseWriter, r *http.Request) error {
 		match = match || choices.MatchBalance
 	}
 	res, err := h.store.ImportMUFG(r.Context(), userID(r), data, accounts, categories, match)
+	if err := storeErr(err, "account"); err != nil {
+		return err
+	}
+	httpx.WriteJSON(w, http.StatusOK, res)
+	return nil
+}
+
+// importICCard takes what the phone read from a transit IC card, as JSON:
+// {"idm", "history": [hex blocks, newest first], "accounts": [AccountChoice]
+// by role, "categories": [CategoryChoice], "match_balance"}. With
+// ?preview=1 it is a dry run: how every entry would be recorded, and the
+// card's account against the card's balance. Otherwise it imports, and
+// reports the same (Store.ImportICCard).
+func (h *Handler) importICCard(w http.ResponseWriter, r *http.Request) error {
+	var in struct {
+		ICCardRead
+		ImportChoices
+	}
+	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
+		return err
+	}
+	if r.URL.Query().Get("preview") == "1" {
+		p, err := h.store.PreviewICCard(r.Context(), userID(r), in.ICCardRead)
+		if err := storeErr(err, "record"); err != nil {
+			return err
+		}
+		httpx.WriteJSON(w, http.StatusOK, p)
+		return nil
+	}
+	accounts := map[string]int64{}
+	for _, a := range in.Accounts {
+		if a.AccountID < 0 {
+			return httpx.Errorf(http.StatusBadRequest, "no such account")
+		}
+		accounts[a.Name] = a.AccountID
+	}
+	res, err := h.store.ImportICCard(r.Context(), userID(r), in.ICCardRead, accounts, in.Categories, in.MatchBalance)
 	if err := storeErr(err, "account"); err != nil {
 		return err
 	}

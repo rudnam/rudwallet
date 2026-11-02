@@ -2,10 +2,12 @@
 // row per category in the file (BudgetBakers) or shop (PayPay), with the
 // app's suggestion picked. Ticking rows sets several at once.
 import { useState } from "react";
-import type { Category, CategoryChoice, ImportCategory } from "../../api";
+import type { Category, CategoryChoice, ImportCategory, ImportResult } from "../../api";
 import { CategoryIcon } from "../../components/Icon";
 import { useWallet } from "../../wallet";
-import { t, tn } from "../../i18n";
+import { serverText, t, tn, tx } from "../../i18n";
+import { locale } from "../../language";
+import { href } from "../../router";
 
 /** Each group's choice as a select value: "c:<id>", "n:<new name>", or "" for none. */
 export type Choices = Record<string, string>;
@@ -268,6 +270,40 @@ export function ImportCategories({
         >
           {shops ? t("Show all {n} shops", { n: groups.length }) : t("Show all {n} categories", { n: groups.length })}
         </button>
+      )}
+    </div>
+  );
+}
+
+/** A day (YYYY-MM-DD) as imports show it. */
+export const shortDate = (iso: string) => new Date(iso).toLocaleDateString(locale(), { year: 'numeric', month: 'short', day: 'numeric' });
+
+/** What an import did, in one sentence. */
+export function ImportSummary({ result }: { result: ImportResult }) {
+  return (
+    <div className="notice" role="status">
+      {[
+        tn(result.imported, 'Imported {n} record', 'Imported {n} records'),
+        result.duplicates > 0 && t('skipped {n} already imported', { n: result.duplicates }),
+        result.matched > 0 && t('skipped {n} already recorded from notifications or by hand', { n: result.matched }),
+        result.accounts_created > 0 && tn(result.accounts_created, 'created {n} account', 'created {n} accounts'),
+        result.categories_created > 0 && tn(result.categories_created, 'created {n} category', 'created {n} categories'),
+      ]
+        .filter(Boolean)
+        .join(t(', '))}
+      {t('.')}
+      {result.imported > 0 && (
+        <>
+          {' '}
+          {tx('Records without a category can be {sorted}.', { sorted: <a href={href('settings', { section: 'claude' })}>{t('sorted by Claude')}</a> })}
+        </>
+      )}
+      {result.problems.length > 0 && (
+        <ul className="small">
+          {result.problems.map((p) => (
+            <li key={p}>{serverText(p)}</li>
+          ))}
+        </ul>
       )}
     </div>
   );

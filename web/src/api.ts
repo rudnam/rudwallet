@@ -299,6 +299,74 @@ export interface MUFGResult extends ImportResult {
   balance: MUFGBalance;
 }
 
+/** What the phone read from a transit IC card: its IDm, and its history blocks in hex, newest first. */
+export interface ICCardRead {
+  idm: string;
+  history: string[];
+}
+
+/** A role in a card's history: the card itself, or where money put on it comes from. */
+export type ICRole = 'card' | 'top-up';
+
+/** One role in a card's history, and the account suggested for it (null: a new one). */
+export interface ICAccount {
+  role: ICRole;
+  count: number;
+  account_id: number | null;
+  new_name: string;
+  new_kind: AccountKind;
+}
+
+/** How one entry on the card would be (or was) recorded. */
+export interface ICRow {
+  date: string;
+  /** A shop payment's time, HH:MM. */
+  time?: string;
+  seq: number;
+  balance: number;
+  /** The balance's change: negative for a payment. */
+  amount: number;
+  kind: 'expense' | 'income' | 'transfer';
+  group?: string;
+  /** start: the oldest entry read, whose amount isn't known; none: no money moved. */
+  status: 'new' | 'imported' | 'matched' | 'start' | 'none';
+  matched_id?: number;
+}
+
+/** The card's account in the app, after the import, against the card's balance. */
+export interface ICBalance {
+  account_id: number | null;
+  card: number;
+  app: number;
+  /** card - app. */
+  difference: number;
+  initial_balance: number;
+  suggested_initial_balance: number;
+  /** How much the import changed the starting balance by (match_balance). */
+  adjusted: number;
+}
+
+export interface ICPreview {
+  /** The last four hex digits of the card's IDm. */
+  card: string;
+  from: string;
+  to: string;
+  records: number;
+  new: number;
+  accounts: ICAccount[];
+  categories: ImportCategory[];
+  new_categories: Category[];
+  rows: ICRow[];
+  balance: ICBalance;
+  /** The card was read before, but none of its entries now were: those in between are lost. */
+  gap: boolean;
+}
+
+export interface ICResult extends ImportResult {
+  rows: ICRow[];
+  balance: ICBalance;
+}
+
 /**
  * Records in an import file that share a category (BudgetBakers) or a shop
  * (PayPay), and where they're suggested to go: category_id, else a new
@@ -668,6 +736,15 @@ export const api = {
   importMUFG: (csv: string, accounts: Record<string, number>, categories: CategoryChoice[], match_balance: boolean) =>
     request<MUFGResult>('POST', '/api/import/mufg', {
       csv,
+      accounts: Object.entries(accounts).map(([name, account_id]) => ({ name, account_id })),
+      categories,
+      match_balance,
+    }),
+  previewICCard: (read: ICCardRead) => request<ICPreview>('POST', '/api/import/ic-card?preview=1', read),
+  /** accounts maps each role to an account ID, or 0 for a new account. */
+  importICCard: (read: ICCardRead, accounts: Record<string, number>, categories: CategoryChoice[], match_balance: boolean) =>
+    request<ICResult>('POST', '/api/import/ic-card', {
+      ...read,
       accounts: Object.entries(accounts).map(([name, account_id]) => ({ name, account_id })),
       categories,
       match_balance,
