@@ -1,8 +1,9 @@
 // Typed client for the Go API. Shapes mirror the Go handlers' JSON.
 // Amounts are whole minor units of the user's currency (see Settings).
-import { serverText } from './i18n';
+import { serverText, t as tr } from './i18n';
 import { language } from './language';
 import { appHeaders, saveSession, server } from './native';
+import { asRecord, newClientID, outbox } from './outbox';
 
 export interface Me {
   email: string;
@@ -78,6 +79,8 @@ export interface Transaction {
   created_at: string;
   /** The user's own labels, in the order they were added. */
   tags: string[];
+  /** Only on this phone so far, waiting to be sent (outbox.ts); error says why the server refused it. Never from the server. */
+  unsent?: { error?: string };
 }
 
 export type TransactionInput = Pick<
@@ -298,15 +301,86 @@ export class ApiError extends Error {
   }
 }
 
+const seenKey = 'wallet:seen';
+const meKey = 'wallet:me';
+
 /**
  * The last answer to each GET, so a page seen before shows at once while it
  * reloads (see api.seen). Any change (POST, PUT, DELETE, signing in or out
  * included) empties it, so it never shows what the change made out of date,
  * or another person's data.
  */
-const lastSeen = new Map<string, unknown>();
+const lastSeen = new Map<string, unknown>(Object.entries(keptAnswers()));
 
-async function request<T>(method: string, path: string, body?: unknown, contentType?: string): Promise<T> {
+/**
+ * The answers Home opens on are also kept on this device, until signing out
+ * (see savedMe): the app starts on them while it asks the server again, and
+ * shows them when the server can't be reached.
+ */
+function kept(path: string): boolean {
+  return path === '/api/wallet' || path === '/api/budgets' || path.startsWith('/api/transactions?from=');
+}
+
+/** Months of records kept at most, the latest seen. */
+const keptMonths = 12;
+
+function keptAnswers(): Record<string, unknown> {
+  try {
+    if (!localStorage.getItem(meKey)) return {};
+    return JSON.parse(localStorage.getItem(seenKey) ?? '{}');
+  } catch {
+    return {}; // storage blocked, or not ours to read
+  }
+}
+
+function keep(path: string, data: unknown) {
+  try {
+    const answers = keptAnswers();
+    delete answers[path]; // to the end, as the latest seen
+    answers[path] = data;
+    const months = Object.keys(answers).filter((p) => p.startsWith('/api/transactions'));
+    for (const old of months.slice(0, -keptMonths)) delete answers[old];
+    localStorage.setItem(seenKey, JSON.stringify(answers));
+  } catch {
+    // storage full or blocked: the app just waits for the network
+  }
+}
+
+/**
+ * Who was signed in when the app last ran here, so it can open on their
+ * wallet at once and check with the server meanwhile. set(null) on signing
+ * out forgets their kept answers too.
+ */
+export const savedMe = {
+  get(): Me | null {
+    try {
+      return JSON.parse(localStorage.getItem(meKey) ?? 'null');
+    } catch {
+      return null;
+    }
+  },
+  set(me: Me | null) {
+    try {
+      if (me) {
+        const { token: _, ...rest } = me; // the session token lives in native.ts, never here
+        localStorage.setItem(meKey, JSON.stringify(rest));
+      } else {
+        lastSeen.clear();
+        localStorage.removeItem(meKey);
+        localStorage.removeItem(seenKey);
+      }
+    } catch {
+      // storage blocked: every launch waits for the server, as before
+    }
+  },
+};
+
+/** The request never reached the server, or its answer never came back. */
+export function unreachable(err: unknown): boolean {
+  return err instanceof TypeError || (err instanceof DOMException && (err.name === 'TimeoutError' || err.name === 'AbortError'));
+}
+
+async function request<T>(method: string, path: string, body?: unknown, contentType?: string, signal?: AbortSignal): Promise<T> {
   const changes = method !== 'GET';
   if (changes) lastSeen.clear();
   try {
@@ -320,16 +394,61 @@ async function request<T>(method: string, path: string, body?: unknown, contentT
         ...appHeaders(),
       },
       body: body === undefined ? undefined : raw ? (body as BodyInit) : JSON.stringify(body),
+      signal,
     });
     if (res.status === 204) return undefined as T;
     const data = await res.json().catch(() => null);
     if (!res.ok) throw new ApiError(data?.error ?? res.statusText, res.status);
-    if (!changes) lastSeen.set(path, data);
+    if (!changes) {
+      lastSeen.set(path, data);
+      if (kept(path)) keep(path, data);
+    }
     return data as T;
+  } catch (err) {
+    // Offline: what the app saw last time, if it kept it.
+    const answer = !changes && unreachable(err) && kept(path) ? keptAnswers()[path] : undefined;
+    if (answer !== undefined) return answer as T;
+    throw err;
   } finally {
     // A GET that was under way during the change may have stored an old answer.
     if (changes) lastSeen.clear();
   }
+}
+
+/** Who is signed in, for the outbox. */
+const owner = () => savedMe.get()?.email ?? '';
+
+let sending: Promise<number> | null = null;
+
+/** Sends the records added while offline, in order; resolves to how many went. */
+function sendUnsent(): Promise<number> {
+  sending ??= sendEach().finally(() => (sending = null));
+  return sending;
+}
+
+async function sendEach(): Promise<number> {
+  const sent: string[] = [];
+  try {
+    for (const u of outbox.all().filter((u) => u.email === owner() && !u.error)) {
+      let saved: Transaction;
+      try {
+        saved = await request<Transaction>('POST', '/api/transactions', { ...u.input, client_id: u.client_id }, undefined, AbortSignal.timeout(15_000));
+      } catch (err) {
+        // Refused (e.g. its account is gone): it waits for the user. Anything else: try later.
+        if (err instanceof ApiError && err.status >= 400 && err.status < 500 && err.status !== 401) outbox.refused(u.client_id, errorMessage(err));
+        if (unreachable(err) || (err instanceof ApiError && (err.status === 401 || err.status >= 500))) break;
+        continue;
+      }
+      // Edited or deleted on the phone while it was on its way.
+      const now = outbox.all().find((x) => x.client_id === u.client_id);
+      if (!now) await request('DELETE', `/api/transactions/${saved.id}`).catch(() => {});
+      else if (now.input !== u.input) await request('PUT', `/api/transactions/${saved.id}`, now.input).catch(() => {});
+      sent.push(u.client_id);
+    }
+  } finally {
+    if (sent.length) await outbox.sent(sent);
+  }
+  return sent.length;
 }
 
 function query(f: TransactionFilter): string {
@@ -359,7 +478,10 @@ export const api = {
   /** Finishes Google sign-in in the Android app (see native.ts). */
   appToken: (code: string, verifier: string) => signedIn(request<Me>('POST', '/api/auth/app-token', { code, verifier })),
   signOut: async () => {
+    const email = owner();
+    await sendUnsent().catch(() => 0);
     await request<void>('POST', '/api/logout');
+    outbox.forget(email);
     await saveSession('');
   },
   authOptions: () => request<AuthOptions>('GET', '/api/auth/options'),
@@ -372,7 +494,9 @@ export const api = {
   resetPassword: (token: string, password: string) => signedIn(request<Me>('POST', '/api/password/reset', { token, password })),
   /** Deletes the account and everything in it. Confirm with the password, or for a Google-only account, the email. */
   deleteMe: async (confirm: { password: string } | { email: string }) => {
+    const email = owner();
     await request<void>('DELETE', '/api/me', confirm);
+    outbox.forget(email);
     await saveSession('');
   },
 
@@ -391,9 +515,33 @@ export const api = {
   deleteCategory: (id: number) => request<void>('DELETE', `/api/categories/${id}`),
 
   transactions: (f: TransactionFilter = {}) => request<Transaction[]>('GET', `/api/transactions${query(f)}`),
-  createTransaction: (t: TransactionInput) => request<Transaction>('POST', '/api/transactions', t),
-  updateTransaction: (id: number, t: TransactionInput) => request<Transaction>('PUT', `/api/transactions/${id}`, t),
-  deleteTransaction: (id: number) => request<void>('DELETE', `/api/transactions/${id}`),
+  /** Without a connection, the record is kept on this phone and sent later: the answer has unsent set. */
+  createTransaction: async (t: TransactionInput): Promise<Transaction> => {
+    const clientID = newClientID();
+    try {
+      if (!navigator.onLine) throw new TypeError('offline');
+      const saved = await request<Transaction>('POST', '/api/transactions', { ...t, client_id: clientID }, undefined, AbortSignal.timeout(10_000));
+      void sendUnsent(); // the server answers again: anything waiting goes too
+      return saved;
+    } catch (err) {
+      if (!unreachable(err)) throw err;
+      return asRecord(outbox.add(owner(), clientID, t));
+    }
+  },
+  /** A record not sent yet (unsent, id below zero) changes on the phone, and is sent as changed. */
+  updateTransaction: async (id: number, t: TransactionInput): Promise<Transaction> => {
+    if (id >= 0) return request<Transaction>('PUT', `/api/transactions/${id}`, t);
+    const u = outbox.update(id, t);
+    if (!u) throw new ApiError(tr('This record was just sent. Open it again to change it.'), 404);
+    void sendUnsent();
+    return asRecord(u);
+  },
+  deleteTransaction: async (id: number): Promise<void> => {
+    if (id >= 0) return request<void>('DELETE', `/api/transactions/${id}`);
+    const u = outbox.get(id);
+    if (u) outbox.remove([u.client_id]);
+  },
+  sendUnsent,
   bulkTransactions: (change: BulkChange) => request<BulkResult>('POST', '/api/transactions/bulk', change),
   /** The tags on the user's records, the most used first. */
   tags: () => request<Tag[]>('GET', '/api/tags'),
@@ -421,6 +569,7 @@ export const api = {
 
   /** What the same call last returned, if nothing has changed since; show it while the call reloads. */
   seen: {
+    overview: () => lastSeen.get('/api/wallet') as Overview | undefined,
     transactions: (f: TransactionFilter = {}) => lastSeen.get(`/api/transactions${query(f)}`) as Transaction[] | undefined,
     budgets: () => lastSeen.get('/api/budgets') as Budget[] | undefined,
     tags: () => lastSeen.get('/api/tags') as Tag[] | undefined,
@@ -456,5 +605,6 @@ export const api = {
 
 /** A message to show for any thrown value, in the language in use when it's one the app knows. */
 export function errorMessage(err: unknown): string {
+  if (unreachable(err)) return tr('No connection. Try again when you’re online.');
   return serverText(err instanceof Error ? err.message : String(err));
 }

@@ -13,7 +13,8 @@ const test = base.test.extend({
       // a 401 from /api/me means nobody is signed in, and a 400, 401, 403 or
       // 409 (e.g. a bad sign-in, a wrong password, or a refused change) is
       // shown in the form. Tests assert on what the user sees.
-      if (m.type() === 'error' && !/status of 40[0139] /.test(m.text())) errors.push('console: ' + m.text());
+      // A test that takes the browser offline (context.setOffline) sees its requests fail.
+      if (m.type() === 'error' && !/status of 40[0139] |ERR_INTERNET_DISCONNECTED/.test(m.text())) errors.push('console: ' + m.text());
     });
     await use(page);
     base.expect(errors, 'errors in the browser').toEqual([]);

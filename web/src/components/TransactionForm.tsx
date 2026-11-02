@@ -150,11 +150,13 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
     setBusy(true);
     setError('');
     try {
-      if (record) await api.updateTransaction(record.id, input);
-      else await api.createTransaction(input);
+      const saved = record ? await api.updateTransaction(record.id, input) : await api.createTransaction(input);
       if (!record) localStorage.setItem(lastAccountKey, String(accountId));
-      await w.refresh();
+      // Kept on the phone for now: don't hold the form open waiting for the network.
+      if (saved.unsent) void w.refresh();
+      else await w.refresh();
       if (record && !reviewing) toast(t('Saved'), { label: t('Undo'), run: () => undo(record) });
+      else if (saved.unsent) toast(t('Saved on this phone. It’s sent when you’re online.'));
       else toast(reviewing ? t('Confirmed') : t('Added {amount}', { amount: w.money(input.amount) }));
       onSaved();
       onClose();
@@ -234,8 +236,12 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
     setBusy(true);
     try {
       await api.deleteTransaction(record.id);
-      await w.refresh();
-      toast(t('Deleted'), { label: t('Undo'), run: () => restore(record.id) });
+      // One not sent yet is gone from the phone, with nothing to restore.
+      if (record.unsent) toast(t('Deleted'));
+      else {
+        await w.refresh();
+        toast(t('Deleted'), { label: t('Undo'), run: () => restore(record.id) });
+      }
       onSaved();
       onClose();
     } catch (err) {
@@ -299,6 +305,13 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
         {duplicate && (
           <p className="notice warn small" role="status">
             <Icon d={icons.warning} className="inline-icon" /> {t("You already have a record of the same amount around this time. If it's the same payment, delete this one.")}
+          </p>
+        )}
+        {record?.unsent && (
+          <p className={record.unsent.error ? 'notice warn small' : 'notice small'}>
+            {record.unsent.error
+              ? t('The server didn’t take this record: {error}. Change it and save, or delete it.', { error: record.unsent.error })
+              : t('Saved on this phone. It’s sent when you’re online.')}
           </p>
         )}
         <div className="segmented" role="radiogroup" aria-label={t('Type')}>

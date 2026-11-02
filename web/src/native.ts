@@ -17,6 +17,14 @@ export const server: string = isApp ? (import.meta.env.VITE_SERVER ?? '') : '';
 /** Redraws the home screen widgets (android/…/widget/WidgetsPlugin.java). */
 const widgets = registerPlugin<{ refresh(): Promise<void> }>('Widgets');
 
+/** The splash screen (android/…/SplashPlugin.java), kept until the app has drawn. */
+const splash = registerPlugin<{ hide(): Promise<void> }>('Splash');
+
+/** Takes the phone's splash screen away: call once there's something to see. */
+export function appDrawn(): void {
+  if (isApp) splash.hide().catch(() => {});
+}
+
 /** Payment notifications (android/…/notify): the listener sends them to the server itself. */
 const paymentNotifications = registerPlugin<{
   status(): Promise<{ enabled: boolean }>;

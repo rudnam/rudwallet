@@ -178,13 +178,20 @@ func (s *Store) Create(ctx context.Context, userID int64, t Transaction) (Transa
 	if err != nil {
 		return t, err
 	}
-	return scanTx(s.db.QueryRowContext(ctx,
+	// A record sent again with the same ClientID is the one saved the first time.
+	created, err := scanTx(s.db.QueryRowContext(ctx,
 		`INSERT INTO transactions (user_id, kind, amount, account_id, to_account_id, category_id, occurred_at,
-			payee, note, status, source, source_label, duplicate_of_id, tags)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+			payee, note, status, source, source_label, duplicate_of_id, tags, client_id)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NULLIF($15, ''))
+		 ON CONFLICT (user_id, client_id) WHERE client_id IS NOT NULL DO NOTHING
 		 RETURNING `+txColumns,
 		userID, t.Kind, t.Amount, t.AccountID, t.ToAccountID, t.CategoryID, t.OccurredAt,
-		t.Payee, t.Note, t.Status, t.Source, t.SourceLabel, t.DuplicateOfID, pq.Array(tags)))
+		t.Payee, t.Note, t.Status, t.Source, t.SourceLabel, t.DuplicateOfID, pq.Array(tags), t.ClientID))
+	if errors.Is(err, sql.ErrNoRows) {
+		return scanTx(s.db.QueryRowContext(ctx,
+			`SELECT `+txColumns+` FROM transactions WHERE user_id = $1 AND client_id = $2`, userID, t.ClientID))
+	}
+	return created, err
 }
 
 // Update saves the user's edits. When they confirm or correct a record that
