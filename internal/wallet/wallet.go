@@ -63,6 +63,8 @@ type Transaction struct {
 	CreatedAt     time.Time `json:"created_at"`
 	// Tags are the user's own labels, in the order they added them; never nil.
 	Tags []string `json:"tags"`
+	// ClientID is the app's own name for a new record (see Create); never sent back.
+	ClientID string `json:"-"`
 }
 
 type Budget struct {

@@ -430,6 +430,113 @@ test('a page seen before shows at once while it reloads, unless something change
   await expect(page.getByRole('button', { name: /Ramen Taro, -¥980/ })).toBeVisible();
 });
 
+/** Holds back requests to url until the returned function is called. */
+async function holdBack(page, url) {
+  let answer = () => {};
+  const held = new Promise((r) => (answer = r));
+  await page.route(url, async (route) => {
+    await held;
+    await route.continue();
+  });
+  return answer;
+}
+
+/** Where the middle of the splash's logo is. */
+async function logoCentre(page) {
+  const box = await page.locator('.loading .logo').boundingBox();
+  return { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) };
+}
+
+test('the splash stays in the middle of the screen while the app starts', async ({ page }) => {
+  await signUp(page);
+  await page.evaluate(() => localStorage.clear()); // a first launch: nothing kept yet
+  const me = await holdBack(page, '**/api/me');
+  const wallet = await holdBack(page, '**/api/wallet');
+  const asked = page.waitForRequest('**/api/wallet');
+  await page.goto('/app/');
+
+  // Waiting for the session: the logo in the middle, and words after a moment.
+  await expect(page.getByRole('status')).toContainText('Loading…');
+  const viewport = page.viewportSize();
+  const first = await logoCentre(page);
+  expect(Math.abs(first.x - viewport.width / 2)).toBeLessThanOrEqual(2);
+  expect(Math.abs(first.y - viewport.height / 2)).toBeLessThan(80);
+
+  // Waiting for the wallet: the same splash, in the same place.
+  me();
+  await asked;
+  await expect(page.getByRole('status')).toContainText('Loading…');
+  expect(await logoCentre(page)).toEqual(first);
+
+  wallet();
+  await expect(page.getByText('Total balance')).toBeVisible();
+  await expect(page.getByRole('status')).toHaveCount(0);
+});
+
+test('the app opens on the wallet it showed last time, before the server answers', async ({ page }) => {
+  await signUp(page);
+  const { accounts } = await (await page.request.get('/api/wallet')).json();
+  const data = { kind: 'expense', amount: 1200, account_id: accounts[0].id, occurred_at: new Date().toISOString(), payee: 'Ramen Taro' };
+  expect((await page.request.post('/api/transactions', { data })).status()).toBe(201);
+  await page.reload();
+  const latest = page.getByRole('list', { name: 'Latest records' });
+  await expect(latest).toContainText('Ramen Taro');
+
+  // The server is slow (or the phone offline): Home shows what it saw last time.
+  const answer = await holdBack(page, '**/api/**');
+  await page.reload();
+  await expect(page.locator('.hero-figure')).toHaveText(/-¥1,200/);
+  await expect(latest).toContainText('Ramen Taro');
+  await expect(page.getByRole('status')).toHaveCount(0);
+  answer();
+
+  // Signing out forgets it: the next launch waits for the server, then asks to sign in.
+  await page.goto('/app/#/settings');
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+  expect(await page.evaluate(() => Object.keys(localStorage).filter((k) => k === 'wallet:me' || k === 'wallet:seen'))).toEqual([]);
+});
+
+test('a record added offline is kept on the phone and sent once back online', async ({ page, context }) => {
+  await signUp(page);
+  const latest = page.getByRole('list', { name: 'Latest records' });
+  await context.setOffline(true);
+
+  // Added without a connection: it shows, and counts, straight away.
+  await page.getByRole('button', { name: 'Add record' }).click();
+  const dialog = page.getByRole('dialog', { name: 'New record' });
+  await dialog.getByLabel('Amount (JPY)').fill('1200');
+  await dialog.getByLabel('Payee').fill('Ramen Taro');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText('Saved on this phone. It’s sent when you’re online.')).toBeVisible();
+  await expect(latest).toContainText('Ramen Taro');
+  await expect(latest).toContainText('Not sent yet');
+  await expect(page.locator('.hero-figure')).toHaveText(/-¥1,200/);
+
+  // It can still be changed before it goes.
+  await latest.getByRole('button', { name: /Ramen Taro/ }).click();
+  const edit = page.getByRole('dialog', { name: 'Edit record' });
+  await expect(edit).toContainText('Saved on this phone.');
+  await edit.getByLabel('Amount (JPY)').fill('980');
+  await edit.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.locator('.hero-figure')).toHaveText(/-¥980/);
+  await page.screenshot({ path: test.info().outputPath('offline-home.png'), animations: 'disabled' });
+
+  // Elsewhere in the app too, where the server would list it.
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Records' }).click();
+  await expect(page.getByRole('button', { name: /Ramen Taro, -¥980/ })).toBeVisible();
+
+  // Back online: it's sent, as edited, once.
+  await context.setOffline(false);
+  await expect(page.getByText('Not sent yet')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Ramen Taro, -¥980/ })).toBeVisible();
+  const saved = await (await page.request.get('/api/transactions')).json();
+  expect(saved.map((t) => [t.payee, t.amount])).toEqual([['Ramen Taro', 980]]);
+  expect(await page.evaluate(() => localStorage.getItem('wallet:outbox'))).toBeNull();
+});
+
 test('searching records looks through every month', async ({ page }) => {
   await signUp(page);
   const { accounts } = await (await page.request.get('/api/wallet')).json();

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { api, ApiError, errorMessage, type Me } from './api';
+import { api, ApiError, errorMessage, savedMe, type Me } from './api';
 import { AuthForm } from './components/AuthForm';
 import { ResetPasswordForm } from './components/ResetPasswordForm';
+import { Splash } from './components/Splash';
 import { Icon, icons, Logo, Plus } from './components/Icon';
 import { TransactionForm } from './components/TransactionForm';
 import { BudgetsPage } from './features/budgets/BudgetsPage';
@@ -11,7 +12,7 @@ import { RecordsPage } from './features/records/RecordsPage';
 import { ReviewPage } from './features/review/ReviewPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 import { StatsPage } from './features/stats/StatsPage';
-import { onAppLinks } from './native';
+import { appDrawn, onAppLinks } from './native';
 import { initialNotice, signinErrors, type Notice } from './notice';
 import { href, navigate, replaceRoute, useRoute } from './router';
 import { t, tx, type Key } from './i18n';
@@ -44,7 +45,12 @@ type Session =
   | { status: 'error'; message: string };
 
 export function App() {
-  const [session, setSession] = useState<Session>({ status: 'loading' });
+  // Whoever was signed in last time opens straight on their wallet (kept on
+  // this device, see api.ts) while the server confirms the session.
+  const [session, setSession] = useState<Session>(() => {
+    const me = savedMe.get();
+    return me ? { status: 'signed-in', me } : { status: 'loading' };
+  });
   const route = useRoute();
 
   // In the Android app: Google sign-in coming back from the browser, and
@@ -70,10 +76,16 @@ export function App() {
   useEffect(() => {
     api
       .me()
-      .then((me) => setSession({ status: 'signed-in', me }))
+      .then((me) => {
+        // Someone else's session (signed in elsewhere): not a glimpse of the last person's wallet.
+        if (savedMe.get()?.email !== me.email) savedMe.set(null);
+        setSession((s) => (s.status === 'signed-in' ? { ...s, me } : { status: 'signed-in', me }));
+        void api.sendUnsent(); // records added while offline last time
+      })
       .catch((err) => {
         if (!(err instanceof ApiError && err.status === 401)) {
-          setSession({ status: 'error', message: errorMessage(err) });
+          // Offline, say: a wallet opened from what was kept stays open.
+          setSession((s) => (s.status === 'signed-in' ? s : { status: 'error', message: errorMessage(err) }));
           return;
         }
         // An app asking to connect waits for the user to sign in.
@@ -87,6 +99,22 @@ export function App() {
         setSession({ status: 'signed-out', notice: initialNotice ?? (connecting ? connectNotice() : null) });
       });
   }, []);
+
+  // Remember who is signed in for the next launch; forget them, and what
+  // they saw, on signing out or when the session has ended.
+  const signedInMe = session.status === 'signed-in' ? session.me : null;
+  useEffect(() => {
+    if (signedInMe) savedMe.set(signedInMe);
+  }, [signedInMe]);
+  useEffect(() => {
+    if (session.status === 'signed-out') savedMe.set(null);
+  }, [session.status]);
+
+  // In the Android app, the splash screen stays until there's a page to see
+  // (signed in, WalletProvider says when the wallet is drawn).
+  useEffect(() => {
+    if (session.status === 'signed-out' || session.status === 'error') appDrawn();
+  }, [session.status]);
 
   // Signing in with Google comes back to /app/, without the Connect request.
   useEffect(() => {
@@ -160,7 +188,8 @@ export function App() {
   if (session.status === 'signed-in') {
     return (
       <ToastProvider>
-        <WalletProvider me={session.me}>
+        {/* Another account (from a session started elsewhere) starts afresh. */}
+        <WalletProvider key={session.me.email} me={session.me}>
           <Shell
             me={session.me}
             notice={session.notice}
@@ -172,9 +201,9 @@ export function App() {
       </ToastProvider>
     );
   }
+  if (session.status === 'loading') return <Splash label={session.demo ? t('Setting up your demo…') : undefined} />;
   return (
     <main className="splash">
-      {session.status === 'loading' && <p className="muted">{session.demo ? t('Setting up your demo…') : t('Loading…')}</p>}
       {session.status === 'error' && (
         <p role="alert" className="error">
           {t('Could not reach the server: {error}', { error: session.message })}
@@ -263,9 +292,22 @@ function Shell({
     refresh();
   }, [route.page, refresh]);
   useEffect(() => {
-    const onVisible = () => document.visibilityState === 'visible' && refresh();
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      refresh();
+      void api.sendUnsent();
+    };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [refresh]);
+  // Back online: send the records added meanwhile, and catch up.
+  useEffect(() => {
+    const onOnline = () => {
+      void api.sendUnsent();
+      refresh();
+    };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
   }, [refresh]);
 
   let page;
