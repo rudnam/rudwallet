@@ -206,6 +206,23 @@ func TestPayPayCompletedAfterAccepted(t *testing.T) {
 	}
 }
 
+// A PayPay Card payment abroad gives the amount in yen and what was charged.
+// It is recorded in yen, with the foreign amount in the note.
+func TestPayPayCardAbroad(t *testing.T) {
+	ts := newTestServer(t)
+	c := newClient(t, ts)
+	c.signup("a@example.com")
+	n := post(t, c, notify.Incoming{Package: payPay, When: time.Date(2026, 11, 2, 23, 9, 0, 0, time.UTC).UnixMilli(),
+		Title: "支払いを受け付けました", Text: "お店：Visa海外加盟店\n金額：3,477円（22 USD）\n日時：2026年11月3日 08:09"})[0]
+	if n.Status != "payment" || n.TransactionID == nil {
+		t.Fatalf("notification %+v", n)
+	}
+	r := records(t, c)[0]
+	if r.ID != *n.TransactionID || r.Amount != 3477 || r.Payee != "Visa海外加盟店" || r.Note != "Charged 22 USD." {
+		t.Errorf("record %+v", r)
+	}
+}
+
 func TestNotificationMatchesManualRecord(t *testing.T) {
 	ts := newTestServer(t)
 	c := newClient(t, ts)

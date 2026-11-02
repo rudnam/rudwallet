@@ -45,6 +45,8 @@ func TestParse(t *testing.T) {
 		// PayPay, as the app words them (full-width colons and all).
 		{name: "paypay card", pkg: pp, title: "支払いを受け付けました", text: "お店：ベルマート豊橋店\n金額：1,291円\n日時：2026年10月16日 20:19",
 			status: "payment", amount: 1291, currency: "JPY", merchant: "ベルマート豊橋店", source: "PayPay Card"},
+		{name: "paypay card abroad", pkg: pp, title: "支払いを受け付けました", text: "お店：Visa海外加盟店\n金額：3,477円（22 USD）\n日時：2026年11月3日 08:09",
+			status: "payment", amount: 3477, currency: "JPY", merchant: "Visa海外加盟店", source: "PayPay Card"},
 		{name: "paypay card, billed", pkg: pp, title: "支払いが完了しました", text: "お店：ソフトバンクM\n金額：7,065円\n日時：2026年10月15日",
 			status: "payment", amount: 7065, currency: "JPY", merchant: "ソフトバンクM", source: "PayPay Card"},
 		{name: "paypay balance", pkg: pp, title: "PayPay", text: "取引が完了しました。\n金額：1,550円\n取引番号：05093837355250737154\n店舗名：GOアプリ",
@@ -82,6 +84,14 @@ func TestParsePayPayTime(t *testing.T) {
 	r := Parse(pp, "支払いを受け付けました", "お店：Visa国内加盟店\n金額：864円\n日時：2026年10月16日 18:20")
 	if want := time.Date(2026, 10, 16, 9, 20, 0, 0, time.UTC); !r.Payment.OccurredAt.Equal(want) {
 		t.Errorf("occurred at %v, want %v", r.Payment.OccurredAt, want)
+	}
+}
+
+// A card payment abroad is recorded in yen, noting what was charged.
+func TestParsePayPayAbroad(t *testing.T) {
+	r := Parse(pp, "支払いを受け付けました", "お店：Visa海外加盟店\n金額：3,477円（22 USD）\n日時：2026年11月3日 08:09")
+	if r.Payment.Amount != 3477 || r.Payment.Currency != "JPY" || r.Payment.Note != "Charged 22 USD." {
+		t.Errorf("payment %+v", r.Payment)
 	}
 }
 
