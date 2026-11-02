@@ -70,6 +70,7 @@ export function App() {
           );
         },
         onOpen: (page) => navigate(page),
+        onICCard: () => navigate('settings', { section: 'import' }),
       }),
     [],
   );

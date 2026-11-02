@@ -324,6 +324,15 @@ export interface ICAccount {
   new_kind: AccountKind;
 }
 
+/** A station a fare started or ended at; name is missing when the station isn't in the server's list. */
+export interface ICStation {
+  /** Region, line and station codes, e.g. 0-25-0A. */
+  code: string;
+  company?: string;
+  line?: string;
+  name?: string;
+}
+
 /** How one entry on the card would be (or was) recorded. */
 export interface ICRow {
   date: string;
@@ -334,7 +343,14 @@ export interface ICRow {
   /** The balance's change: negative for a payment. */
   amount: number;
   kind: 'expense' | 'income' | 'transfer';
+  /** The kind of entry its category is chosen for. */
   group?: string;
+  /** The record's payee: a train fare's stations ("新宿 → 渋谷"), a bus company, or the group. */
+  payee?: string;
+  entry?: ICStation;
+  exit?: ICStation;
+  /** A bus fare's company. */
+  company?: string;
   /** start: the oldest entry read, whose amount isn't known; none: no money moved. */
   status: 'new' | 'imported' | 'matched' | 'start' | 'none';
   matched_id?: number;

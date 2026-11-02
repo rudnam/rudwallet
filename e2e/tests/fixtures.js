@@ -78,9 +78,10 @@ function resetLink(request, to) {
  * a native platform, and the native plugins the test needs answer from
  * here. build is the installed versionCode; installer, the app that
  * installed it. icCard is what a transit IC card held to the phone reads
- * as ({idm, history}; icEntry), for a phone with NFC turned on. Native
- * calls are kept in window.calls ("Plugin.method"), and links opened in
- * the phone's browser in window.opened. Call before the first page.goto.
+ * as ({idm, history}; icEntry), for a phone with NFC turned on; tapICCard
+ * taps one. Native calls are kept in window.calls ("Plugin.method"), and
+ * links opened in the phone's browser in window.opened. Call before the
+ * first page.goto.
  */
 async function asAndroidApp(page, { build = 3, installer = 'com.google.android.packageinstaller', icCard = null } = {}) {
   await page.addInitScript(
@@ -92,7 +93,9 @@ async function asAndroidApp(page, { build = 3, installer = 'com.google.android.p
         'ICCard.status': () => ({ nfc: !!icCard, enabled: !!icCard }),
         'ICCard.read': () => icCard,
         'ICCard.cancel': () => undefined,
+        'ICCard.removeListener': ({ callbackId }) => void delete window.listeners[callbackId],
       };
+      window.listeners = {}; // callbackId: {event: "Plugin.event", callback}
       window.calls = [];
       window.opened = [];
       window.CapacitorCustomPlatform = { name: 'android', plugins: {} };
@@ -101,8 +104,20 @@ async function asAndroidApp(page, { build = 3, installer = 'com.google.android.p
           { name: 'App', methods: [{ name: 'getInfo', rtype: 'promise' }] },
           { name: 'Updates', methods: [{ name: 'installer', rtype: 'promise' }] },
           { name: 'Browser', methods: [{ name: 'open', rtype: 'promise' }] },
-          { name: 'ICCard', methods: ['status', 'read', 'cancel'].map((name) => ({ name, rtype: 'promise' })) },
+          {
+            name: 'ICCard',
+            methods: [
+              ...['status', 'read', 'cancel', 'removeListener'].map((name) => ({ name, rtype: 'promise' })),
+              { name: 'addListener', rtype: 'callback' },
+            ],
+          },
         ],
+        nativeCallback: (plugin, method, options, callback) => {
+          window.calls.push(`${plugin}.${method}`);
+          const id = String(Object.keys(window.listeners).length + 1);
+          window.listeners[id] = { event: `${plugin}.${options.eventName}`, callback };
+          return id;
+        },
         nativePromise: async (plugin, method, options) => {
           window.calls.push(`${plugin}.${method}`);
           return answers[`${plugin}.${method}`](options);
@@ -113,13 +128,21 @@ async function asAndroidApp(page, { build = 3, installer = 'com.google.android.p
   );
 }
 
+/** Taps a transit IC card to the phone, as the Android app reports it (a page set up with asAndroidApp). */
+async function tapICCard(page, read) {
+  await page.evaluate((read) => {
+    for (const l of Object.values(window.listeners)) if (l.event === 'ICCard.tapped') l.callback(read);
+  }, read);
+}
+
 /**
  * One entry of a transit IC card's history, as the card stores it (see
  * internal/wallet/importic.go): terminal and process codes, the day in
  * October 2026, the balance after it, its sequence number and, for a
- * shop, the time [h, m, s].
+ * shop, the time [h, m, s]. codes sets bytes 6-9: a train's stations, or
+ * a bus company.
  */
-function icEntry(terminal, process, day, balance, seq, time) {
+function icEntry(terminal, process, day, balance, seq, time, codes) {
   const b = Buffer.alloc(16);
   b[0] = terminal;
   b[1] = process;
@@ -130,6 +153,7 @@ function icEntry(terminal, process, day, balance, seq, time) {
     b[6] = (h << 3) | (m >> 3);
     b[7] = ((m & 7) << 5) | (s >> 1);
   }
+  if (codes) b.set(codes, 6);
   b.writeUInt16LE(balance, 10);
   b.writeUInt16BE(seq, 13);
   return b.toString('hex');
@@ -137,16 +161,17 @@ function icEntry(terminal, process, day, balance, seq, time) {
 
 /**
  * A card's history, newest first as the card gives it: a fare where the
- * history starts (¥1,000 left), a ¥2,000 top-up, train and bus fares of
- * ¥210, ¥150 at a shop, and a ¥50 refund, leaving ¥2,480.
+ * history starts (¥1,000 left), a ¥2,000 top-up, ¥210 from 新宿 to 渋谷,
+ * a ¥210 bus fare on 京王バス, ¥150 at a shop, and a ¥50 refund, leaving
+ * ¥2,480.
  */
 const icCardRead = {
   idm: '01120312AB34CD56',
   history: [
     icEntry(0x16, 0x04, 4, 2480, 105),
     icEntry(0xc7, 0x46, 3, 2430, 104, [13, 45, 30]),
-    icEntry(0x05, 0x0d, 3, 2580, 103),
-    icEntry(0x16, 0x01, 2, 2790, 102),
+    icEntry(0x05, 0x0d, 3, 2580, 103, null, [0x0c, 0x4c]),
+    icEntry(0x16, 0x01, 2, 2790, 102, null, [0x25, 0x0a, 0xce, 0x26]),
     icEntry(0x08, 0x02, 2, 3000, 101),
     icEntry(0x16, 0x01, 1, 1000, 100),
   ],
@@ -171,4 +196,4 @@ async function sendNotifications(request, ...notifications) {
   return (await res.json()).notifications;
 }
 
-module.exports = { test, expect: base.expect, signUp, asAndroidApp, uniqueEmail, PASSWORD, confirmationLink, resetLink, PAYPAY, payPayCard, sendNotifications, icCardRead };
+module.exports = { test, expect: base.expect, signUp, asAndroidApp, uniqueEmail, PASSWORD, confirmationLink, resetLink, PAYPAY, payPayCard, sendNotifications, icCardRead, tapICCard };

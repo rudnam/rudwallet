@@ -1,7 +1,7 @@
 // Importing a transit IC card's history (Settings › Import › IC card). The
 // Android app reads the card over NFC; here the page acts as the app
 // (asAndroidApp), and the card is what the phone would read.
-const { test, expect, signUp, asAndroidApp, icCardRead } = require('./fixtures');
+const { test, expect, signUp, asAndroidApp, icCardRead, tapICCard } = require('./fixtures');
 
 test('read an IC card, and import its entries once', async ({ page }) => {
   test.slow(); // two reads, and screenshots at two widths
@@ -20,6 +20,9 @@ test('read an IC card, and import its entries once', async ({ page }) => {
   await expect(rows.getByRole('row').filter({ hasText: 'Shop payment' })).toContainText(/13:45.*-¥150/);
   await expect(rows.getByRole('row').filter({ hasText: 'Top-up' })).toContainText(`Transfer: ${cash.name} → The card`);
   await expect(rows.getByRole('row').filter({ hasText: 'Start: amount unknown' })).toContainText('¥1,000');
+  // Stations and bus companies are named from the server's list.
+  await expect(rows.getByRole('row').filter({ hasText: '新宿 → 渋谷' })).toContainText('山手線 → 東横線');
+  await expect(rows.getByRole('row').filter({ hasText: '京王バス' })).toContainText('-¥210');
   await expect(page.getByLabel('Category for Train')).toHaveValue(/^c:/);
   // The card held ¥1,000 before its oldest entry: that's the starting balance.
   await expect(page.getByText('On the card: ¥2,480. IC card CD56 in the app: ¥1,480.')).toBeVisible();
@@ -49,7 +52,26 @@ test('read an IC card, and import its entries once', async ({ page }) => {
 
   await page.goto('/app/#/records?month=2026-10');
   await expect(page.getByRole('button', { name: /^Shop payment/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /^Bus/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^京王バス/ })).toBeVisible();
+  await page.getByRole('button', { name: /^新宿 → 渋谷/ }).click();
+  await expect(page.getByLabel('Note')).toHaveValue('IC ••CD56 · 山手線 → 東横線 · 0-25-0A → 0-CE-26');
+});
+
+test('a card tapped to the phone opens the import with it', async ({ page }) => {
+  await asAndroidApp(page, { icCard: icCardRead });
+  await signUp(page);
+  await expect.poll(() => page.evaluate(() => window.calls)).toContain('ICCard.addListener');
+
+  await tapICCard(page, icCardRead);
+  await expect(page).toHaveURL(/#\/settings\?section=import/);
+  await expect(page.getByText(/^Card ••CD56: 5 entries/)).toBeVisible();
+
+  // Tapped again while the import is open: the new read replaces it.
+  await tapICCard(page, { idm: icCardRead.idm, history: icCardRead.history.slice(2) });
+  await expect(page.getByText(/^Card ••CD56: 3 entries/)).toBeVisible();
+  // A card that isn't a transit IC card says so.
+  await tapICCard(page, { error: 'not-transit' });
+  await expect(page.getByRole('alert')).toHaveText(/^That isn't a transit IC card/);
 });
 
 test('on the web, cards are read only in the app', async ({ page }) => {
