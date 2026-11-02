@@ -9,6 +9,7 @@ import { amountInput, parseAmount } from '../../money';
 import { href, type Route } from '../../router';
 import { useToast } from '../../toast';
 import { useWallet } from '../../wallet';
+import { isApp } from '../../native';
 import { WidgetSettings } from './WidgetSettings';
 import { NotificationSettings } from './NotificationSettings';
 import { ClaudeSettings } from './ClaudeSettings';
@@ -30,7 +31,8 @@ export const accountKinds: Record<AccountKind, { label: Key; glyph: string; colo
 
 const swatches = ['#c8463d', '#d97757', '#b08a3e', '#4f8a4c', '#2a8a8a', '#3b6ea8', '#5b4a8a', '#a8508a', '#6f6c63'];
 
-const sections: { id: string; label: Key; title: Key; glyph: string }[] = [
+/** The menu. An `app` section is listed only in the Android app, though its page still opens on the web. */
+const sections: { id: string; label: Key; title: Key; glyph: string; app?: boolean }[] = [
   { id: 'notifications', label: 'Payment notifications', title: 'Payment notifications', glyph: 'card' },
   { id: 'rules', label: 'Shops and cards', title: 'Shops and cards', glyph: 'shopping' },
   { id: 'claude', label: 'Claude', title: 'Claude', glyph: 'spark' },
@@ -38,7 +40,7 @@ const sections: { id: string; label: Key; title: Key; glyph: string }[] = [
   { id: 'categories', label: 'Categories', title: 'Categories', glyph: 'other' },
   { id: 'general', label: 'Currency', title: 'Currency', glyph: 'money' },
   { id: 'import', label: 'Import', title: 'Import records', glyph: 'school' },
-  { id: 'widgets', label: 'Home screen widgets', title: 'Home screen widgets', glyph: 'phone' },
+  { id: 'widgets', label: 'Home screen widgets', title: 'Home screen widgets', glyph: 'phone', app: true },
   { id: 'language', label: 'Language', title: 'Language', glyph: 'globe' },
 ];
 
@@ -96,7 +98,7 @@ export function SettingsPage({
       <h1>{t('Settings')}</h1>
       <nav className="card flush" aria-label={t('Settings sections')}>
         <ul className="list flush">
-          {sections.map((s) => (
+          {sections.filter((s) => isApp || !s.app).map((s) => (
             <li key={s.id}>
               <a className="menu-row" href={href('settings', { section: s.id })}>
                 <span className="cat-icon" aria-hidden="true">
