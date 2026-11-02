@@ -22,6 +22,12 @@ import java.io.IOException;
  * FeliCa: its history is service 090F of system 0003, one 16-byte block per
  * entry, newest first, readable without a key. The blocks go to the server
  * as they are; internal/wallet/importic.go makes sense of them.
+ *
+ * Cards are read two ways: read(), after the user asks to, or by tapping a
+ * card to the phone when RudWallet isn't waiting for one. Android then
+ * offers RudWallet for it (the TECH_DISCOVERED filter in the manifest), and
+ * the card is read from that intent and sent as a "tapped" event, kept
+ * until the web app listens, which opens the import with it.
  */
 @CapacitorPlugin(name = "ICCard")
 public class ICCardPlugin extends Plugin {
@@ -108,19 +114,65 @@ public class ICCardPlugin extends Plugin {
     private void onTag(Tag tag) {
         PluginCall call = waiting;
         if (call == null) return;
-        NfcF card = NfcF.get(tag);
-        if (card == null) {
-            call.reject("Not a transit IC card", "not-transit");
+        try {
+            call.resolve(readCard(tag));
+        } catch (ReadError e) {
+            call.reject(e.getMessage(), e.code);
+        } finally {
             finish(call);
-            return;
         }
+    }
+
+    // A card tapped while the app was closed starts it with the tap's intent;
+    // one tapped while it is open (and not reading) brings a new intent.
+    @Override
+    public void load() {
+        Activity activity = getActivity();
+        if (activity != null) tapped(activity.getIntent());
+    }
+
+    @Override
+    protected void handleOnNewIntent(Intent intent) {
+        tapped(intent);
+    }
+
+    @SuppressWarnings("deprecation") // getParcelableExtra(name, class) needs API 33
+    private void tapped(Intent intent) {
+        if (intent == null || !NfcAdapter.ACTION_TECH_DISCOVERED.equals(intent.getAction())) return;
+        Tag tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+        intent.setAction(Intent.ACTION_MAIN); // handled: not again if the activity is recreated
+        if (tag == null) return;
+        // Read at once, off the main thread, while the card is still there.
+        new Thread(() -> {
+            JSObject event;
+            try {
+                event = readCard(tag);
+            } catch (ReadError e) {
+                event = new JSObject();
+                event.put("error", e.code);
+            }
+            notifyListeners("tapped", event, true);
+        }).start();
+    }
+
+    /** Why a card couldn't be read: code is not-transit or lost. */
+    private static class ReadError extends Exception {
+        final String code;
+
+        ReadError(String message, String code) {
+            super(message);
+            this.code = code;
+        }
+    }
+
+    /** Reads a card's IDm and history: {idm, history: [hex, …]}. */
+    private static JSObject readCard(Tag tag) throws ReadError {
+        NfcF card = NfcF.get(tag);
+        if (card == null) throw new ReadError("Not a transit IC card", "not-transit");
         try {
             card.connect();
             byte[] idm = poll(card);
-            if (idm == null) {
-                call.reject("Not a transit IC card", "not-transit");
-                return;
-            }
+            if (idm == null) throw new ReadError("Not a transit IC card", "not-transit");
             JSArray history = new JSArray();
             for (int i = 0; i < MAX_BLOCKS; i++) {
                 byte[] block = readBlock(card, idm, i);
@@ -130,16 +182,15 @@ public class ICCardPlugin extends Plugin {
             JSObject result = new JSObject();
             result.put("idm", hex(idm, 0, 8));
             result.put("history", history);
-            call.resolve(result);
+            return result;
         } catch (IOException e) {
             // Usually the card was moved away too soon.
-            call.reject("The card was moved away before it was read", "lost");
+            throw new ReadError("The card was moved away before it was read", "lost");
         } finally {
             try {
                 card.close();
             } catch (IOException ignored) {
             }
-            finish(call);
         }
     }
 

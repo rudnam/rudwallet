@@ -2,10 +2,11 @@
 // held to the back of the phone is read over NFC (native.ts), and its last
 // entries are shown with how each would be recorded, as for a bank
 // statement, before anything is recorded. Only the Android app can read
-// cards; elsewhere this says so.
-import { useEffect, useState, type FormEvent } from 'react';
+// cards; elsewhere this says so. The card screen (features/card) hands
+// it a tapped card to review, and one tapped while this is open comes here.
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { api, errorMessage, type ICBalance, type ICCardRead, type ICPreview, type ICResult, type ICRole, type ICRow } from '../../api';
-import { cancelICCardRead, icCardReader, openNFCSettings, readICCard } from '../../native';
+import { cancelICCardRead, icCardReader, onICCardTapped, openNFCSettings, readICCard, takeTappedICCard, type ICCardTap } from '../../native';
 import { useWallet } from '../../wallet';
 import { t, tn, type Key } from '../../i18n';
 import { ImportCategories, ImportSummary, categoryChoices, shortDate, suggestedChoices, type Choices } from './ImportCategories';
@@ -34,6 +35,7 @@ export function ICCardImport() {
   const [result, setResult] = useState<ICResult | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const section = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Check again on coming back from Android's NFC settings.
@@ -42,8 +44,21 @@ export function ICCardImport() {
     };
     check();
     document.addEventListener('visibilitychange', check);
+    // The card whose tap opened this, then any tapped while it's open.
+    const tapped = (tap: ICCardTap) => {
+      section.current?.scrollIntoView({ block: 'start' });
+      if ('error' in tap) {
+        setError(tap.error in readErrors ? t(readErrors[tap.error]) : tap.error);
+        return;
+      }
+      void show(tap);
+    };
+    const first = takeTappedICCard();
+    if (first) tapped(first);
+    const stopTaps = onICCardTapped(tapped);
     return () => {
       document.removeEventListener('visibilitychange', check);
+      stopTaps();
       cancelICCardRead();
     };
   }, []);
@@ -63,6 +78,13 @@ export function ICCardImport() {
     } finally {
       setWaiting(false);
     }
+    await show(card);
+  }
+
+  /** Previews what the card read: how its entries would be recorded. */
+  async function show(card: ICCardRead) {
+    setError('');
+    setResult(null);
     setBusy(true);
     try {
       const p = await api.previewICCard(card);
@@ -107,7 +129,7 @@ export function ICCardImport() {
   const name = (id: number | undefined) => w.accounts.find((a) => a.id === id)?.name ?? '';
   const accounts = w.accounts.filter((a) => !a.archived || Object.values(choice).includes(a.id));
   return (
-    <div className="card stack">
+    <div className="card stack" ref={section}>
       <h2>{t('IC card')}</h2>
       <p className="small muted">
         {t(
@@ -193,7 +215,12 @@ export function ICCardImport() {
                       {shortDate(r.date)}
                       {r.time && ` ${r.time}`}
                     </td>
-                    <td>{r.status === 'start' ? '' : r.kind === 'transfer' ? t('Top-up') : r.group}</td>
+                    <td>
+                      {r.status === 'start' ? '' : r.kind === 'transfer' ? t('Top-up') : (r.payee ?? r.group)}
+                      {r.status !== 'start' && (r.entry?.line || r.exit?.line) && (
+                        <span className="muted"> · {[r.entry, r.exit].filter((s) => s).map((s) => (s?.line && s.line !== '-' ? s.line : '?')).join(' → ')}</span>
+                      )}
+                    </td>
                     <td className="amount">{r.status === 'start' ? '' : w.money(r.amount, true)}</td>
                     <td className="amount">{w.money(r.balance)}</td>
                     <td>{status(r, name(choice['top-up']) || (preview.accounts.find((a) => a.role === 'top-up')?.new_name ?? ''))}</td>

@@ -101,3 +101,47 @@ func TestReadICCardRejects(t *testing.T) {
 		}
 	}
 }
+
+// icSet sets bytes of an entry made by icBlock.
+func icSet(block string, set map[int]byte) string {
+	b, _ := hex.DecodeString(block)
+	for i, v := range set {
+		b[i] = v
+	}
+	return hex.EncodeToString(b)
+}
+
+func TestICStations(t *testing.T) {
+	history := []string{
+		// A bus: 京王バス (company C4C).
+		icSet(icBlock(0x05, 0x0d, "2026-10-04", "", 1420, 4), map[int]byte{6: 0x0c, 7: 0x4c}),
+		// 梅田 (region 2, line 81, station 1C) to a station not in the list.
+		icSet(icBlock(0x16, 0x01, "2026-10-03", "", 1630, 3), map[int]byte{6: 0x81, 7: 0x1c, 8: 0x81, 9: 0xfe, 15: 2<<6 | 2<<4}),
+		// 新宿 (JR 山手線 0-25-0A) to 渋谷 (東急東横線 0-CE-26).
+		icSet(icBlock(0x16, 0x01, "2026-10-02", "", 1900, 2), map[int]byte{6: 0x25, 7: 0x0a, 8: 0xce, 9: 0x26}),
+		icBlock(0x16, 0x01, "2026-10-01", "", 2100, 1),
+	}
+	idm, rows, err := readICCard(ICCardRead{IDm: "01120312ab34cd56", History: history})
+	if err != nil {
+		t.Fatal(err)
+	}
+	type want struct{ payee, note string }
+	for i, w := range []want{
+		{"Train", "IC ••CD56"},
+		{"新宿 → 渋谷", "IC ••CD56 · 山手線 → 東横線 · 0-25-0A → 0-CE-26"},
+		{"梅田 → ?", "IC ••CD56 · 1号線(御堂筋線) → ? · 2-81-1C → 2-81-FE"},
+		{"京王バス", "IC ••CD56"},
+	} {
+		out := describeIC(rows[i], classifyIC(rows[i]), "en")
+		if note := icNote(idm[len(idm)-4:], out); out.Payee != w.payee || note != w.note {
+			t.Errorf("entry %d: %q, %q; want %q, %q", i, out.Payee, note, w.payee, w.note)
+		}
+	}
+	// The same line and station in another region is another station.
+	if s := icStationAt(icStationCode{1, 0x81, 0x2a}); s.Name != "八田" || s.Company != "名古屋市交通局" {
+		t.Errorf("region 1, 81-2A: %+v", s)
+	}
+	if n := len(icStations()); n < 6900 {
+		t.Errorf("%d stations in the list", n)
+	}
+}
