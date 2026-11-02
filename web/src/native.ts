@@ -7,6 +7,7 @@ import { App as CapApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
+import type { ICCardRead } from './api';
 
 /** True inside the Android app. */
 export const isApp = Capacitor.isNativePlatform();
@@ -31,6 +32,48 @@ const paymentNotifications = registerPlugin<{
   openSettings(): Promise<void>;
   flush(): Promise<void>;
 }>('PaymentNotifications');
+
+/** Transit IC cards held to the phone (android/…/ICCardPlugin.java). */
+const icCard = registerPlugin<{
+  status(): Promise<{ nfc: boolean; enabled: boolean }>;
+  openSettings(): Promise<void>;
+  read(): Promise<ICCardRead>;
+  cancel(): Promise<void>;
+}>('ICCard');
+
+/**
+ * Whether this phone can read IC cards: ready, off (NFC is turned off), or
+ * null where it can't: on the web, on a phone without NFC, or in an app
+ * build from before the reader.
+ */
+export async function icCardReader(): Promise<'ready' | 'off' | null> {
+  if (!isApp) return null;
+  try {
+    const s = await icCard.status();
+    return !s.nfc ? null : s.enabled ? 'ready' : 'off';
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Waits for a card to be held to the phone, and reads it. Fails with an
+ * error whose code is nfc-off, not-transit, lost (moved away too soon) or
+ * cancelled.
+ */
+export function readICCard(): Promise<ICCardRead> {
+  return icCard.read();
+}
+
+/** Stops waiting for a card. */
+export function cancelICCardRead(): void {
+  if (isApp) icCard.cancel().catch(() => {});
+}
+
+/** Opens Android's NFC settings. */
+export function openNFCSettings(): void {
+  icCard.openSettings().catch(() => {});
+}
 
 // Kept in Capacitor's preferences, which the widgets and the notification listener read too.
 const sessionKey = 'session';

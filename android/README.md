@@ -1,6 +1,6 @@
 # Android app
 
-The Android app is the web app (`web/`) packaged with [Capacitor](https://capacitorjs.com): the React build ships inside the app, runs in a web view at `https://localhost`, and talks to the server's API. Native code adds what the web can't do: home screen widgets, and Sign in with Google through the phone's browser.
+The Android app is the web app (`web/`) packaged with [Capacitor](https://capacitorjs.com): the React build ships inside the app, runs in a web view at `https://localhost`, and talks to the server's API. Native code adds what the web can't do: home screen widgets, Sign in with Google through the phone's browser, and reading transit IC cards over NFC.
 
 - Package `com.rudnam.wallet` (permanent once published), talking to https://wallet.rudnam.com (`web/.env.android`).
 - Web app changes reach phones only with a new app build. Server changes reach them at once, so keep the API compatible with the last release (add fields; don't rename or remove them).
@@ -82,6 +82,15 @@ They read `GET /api/widget` with the app's session, so they work once the app is
 - `Outbox` keeps them in SharedPreferences and sends them to `POST /api/notifications` with the app's session: at once, with the next notification, or when the app is next left (up to 7 days, 200 notifications). Sending one twice is harmless.
 - The server reads the text (so a change in an app's wording needs only a server deploy) and records each payment once: a notification sent again is recognised by its app and time, a payment already recorded from an import or by hand is matched, not added, and so is PayPay's 支払いが完了しました when its 支払いを受け付けました came first.
 - An APK installed outside the Play Store gets *restricted settings* on Android 13+: the notification access switch is greyed out until App info › ⋮ › Allow restricted settings.
+
+## Transit IC cards
+
+Settings › Import › IC card reads a Suica, PASMO, ICOCA or other transit IC card held to the back of the phone (`ICCardPlugin.java`, called from `web/src/native.ts`). The card is FeliCa (NFC-F): the plugin polls for system code `0003`, reads the history service `090F` one block at a time without a key, and hands the blocks to the web app in hex. The server decodes them (`internal/wallet/importic.go`), so fixing the decoding needs no new app build.
+
+- The card keeps only its last ~20 entries, and no amounts: each is the change from the balance before it, so the oldest entry read only starts the history.
+- The phone can't read its own Mobile Suica. A physical card only.
+- NFC is optional in the manifest (`android.hardware.nfc`, `required="false"`), so phones without it still install the app; the section then says it needs NFC.
+- Browser tests stand in for the card with `asAndroidApp(page, { icCard })` (`e2e/tests/iccard.spec.js`).
 
 ## Icons
 

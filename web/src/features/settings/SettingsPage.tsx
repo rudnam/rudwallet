@@ -16,8 +16,9 @@ import { ClaudeSettings } from './ClaudeSettings';
 import { LanguageSettings } from './LanguageSettings';
 import { RulesSettings } from './RulesSettings';
 import { serverText, t, tn, tx, type Key } from '../../i18n';
-import { language, languages, locale } from '../../language';
-import { ImportCategories, categoryChoices, suggestedChoices, type Choices } from './ImportCategories';
+import { language, languages } from '../../language';
+import { ImportCategories, ImportSummary, categoryChoices, shortDate, suggestedChoices, type Choices } from './ImportCategories';
+import { ICCardImport } from './ICCardImport';
 
 /** Each kind of account: what to call it, its icon and colour, and names people often use (pass both through t). */
 export const accountKinds: Record<AccountKind, { label: Key; glyph: string; color: string; names: Key[] }> = {
@@ -666,40 +667,9 @@ function Import() {
     <>
       <PayPayImport />
       <MUFGImport />
+      <ICCardImport />
       <BudgetBakersImport />
     </>
-  );
-}
-
-/** What an import did, in one sentence. */
-function ImportSummary({ result }: { result: ImportResult }) {
-  return (
-    <div className="notice" role="status">
-      {[
-        tn(result.imported, 'Imported {n} record', 'Imported {n} records'),
-        result.duplicates > 0 && t('skipped {n} already imported', { n: result.duplicates }),
-        result.matched > 0 && t('skipped {n} already recorded from notifications or by hand', { n: result.matched }),
-        result.skipped > 0 && t('left out {n} paid in ways not imported', { n: result.skipped }),
-        result.accounts_created > 0 && tn(result.accounts_created, 'created {n} account', 'created {n} accounts'),
-        result.categories_created > 0 && tn(result.categories_created, 'created {n} category', 'created {n} categories'),
-      ]
-        .filter(Boolean)
-        .join(t(', '))}
-      {t('.')}
-      {result.imported > 0 && (
-        <>
-          {' '}
-          {tx('Records without a category can be {sorted}.', { sorted: <a href={href('settings', { section: 'claude' })}>{t('sorted by Claude')}</a> })}
-        </>
-      )}
-      {result.problems.length > 0 && (
-        <ul className="small">
-          {result.problems.map((p) => (
-            <li key={p}>{serverText(p)}</li>
-          ))}
-        </ul>
-      )}
-    </div>
   );
 }
 
@@ -710,8 +680,6 @@ const payPayMethodNames: Record<string, string> = {
   PayPayクレジット: 'PayPay Credit',
   PayPayポイント: 'PayPay Points',
 };
-
-const shortDate = (iso: string) => new Date(iso).toLocaleDateString(locale(), { year: 'numeric', month: 'short', day: 'numeric' });
 
 /**
  * PayPay's transaction history: the file is read first, then each way of

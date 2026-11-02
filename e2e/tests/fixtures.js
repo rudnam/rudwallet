@@ -77,17 +77,21 @@ function resetLink(request, to) {
  * Makes the page act as the Android app (web/src/native.ts): Capacitor sees
  * a native platform, and the native plugins the test needs answer from
  * here. build is the installed versionCode; installer, the app that
- * installed it. Native calls are kept in window.calls ("Plugin.method"),
- * and links opened in the phone's browser in window.opened. Call before
- * the first page.goto.
+ * installed it. icCard is what a transit IC card held to the phone reads
+ * as ({idm, history}; icEntry), for a phone with NFC turned on. Native
+ * calls are kept in window.calls ("Plugin.method"), and links opened in
+ * the phone's browser in window.opened. Call before the first page.goto.
  */
-async function asAndroidApp(page, { build = 3, installer = 'com.google.android.packageinstaller' } = {}) {
+async function asAndroidApp(page, { build = 3, installer = 'com.google.android.packageinstaller', icCard = null } = {}) {
   await page.addInitScript(
-    ({ build, installer }) => {
+    ({ build, installer, icCard }) => {
       const answers = {
         'App.getInfo': () => ({ name: 'RudWallet', id: 'com.rudnam.wallet', build: String(build), version: '2.0' }),
         'Updates.installer': () => ({ installer }),
         'Browser.open': ({ url }) => void window.opened.push(url),
+        'ICCard.status': () => ({ nfc: !!icCard, enabled: !!icCard }),
+        'ICCard.read': () => icCard,
+        'ICCard.cancel': () => undefined,
       };
       window.calls = [];
       window.opened = [];
@@ -97,6 +101,7 @@ async function asAndroidApp(page, { build = 3, installer = 'com.google.android.p
           { name: 'App', methods: [{ name: 'getInfo', rtype: 'promise' }] },
           { name: 'Updates', methods: [{ name: 'installer', rtype: 'promise' }] },
           { name: 'Browser', methods: [{ name: 'open', rtype: 'promise' }] },
+          { name: 'ICCard', methods: ['status', 'read', 'cancel'].map((name) => ({ name, rtype: 'promise' })) },
         ],
         nativePromise: async (plugin, method, options) => {
           window.calls.push(`${plugin}.${method}`);
@@ -104,9 +109,48 @@ async function asAndroidApp(page, { build = 3, installer = 'com.google.android.p
         },
       };
     },
-    { build, installer },
+    { build, installer, icCard },
   );
 }
+
+/**
+ * One entry of a transit IC card's history, as the card stores it (see
+ * internal/wallet/importic.go): terminal and process codes, the day in
+ * October 2026, the balance after it, its sequence number and, for a
+ * shop, the time [h, m, s].
+ */
+function icEntry(terminal, process, day, balance, seq, time) {
+  const b = Buffer.alloc(16);
+  b[0] = terminal;
+  b[1] = process;
+  b[4] = (26 << 1) | (10 >> 3);
+  b[5] = ((10 & 7) << 5) | day;
+  if (time) {
+    const [h, m, s] = time;
+    b[6] = (h << 3) | (m >> 3);
+    b[7] = ((m & 7) << 5) | (s >> 1);
+  }
+  b.writeUInt16LE(balance, 10);
+  b.writeUInt16BE(seq, 13);
+  return b.toString('hex');
+}
+
+/**
+ * A card's history, newest first as the card gives it: a fare where the
+ * history starts (¥1,000 left), a ¥2,000 top-up, train and bus fares of
+ * ¥210, ¥150 at a shop, and a ¥50 refund, leaving ¥2,480.
+ */
+const icCardRead = {
+  idm: '01120312AB34CD56',
+  history: [
+    icEntry(0x16, 0x04, 4, 2480, 105),
+    icEntry(0xc7, 0x46, 3, 2430, 104, [13, 45, 30]),
+    icEntry(0x05, 0x0d, 3, 2580, 103),
+    icEntry(0x16, 0x01, 2, 2790, 102),
+    icEntry(0x08, 0x02, 2, 3000, 101),
+    icEntry(0x16, 0x01, 1, 1000, 100),
+  ],
+};
 
 const PAYPAY = 'jp.ne.paypay.android.app';
 
@@ -127,4 +171,4 @@ async function sendNotifications(request, ...notifications) {
   return (await res.json()).notifications;
 }
 
-module.exports = { test, expect: base.expect, signUp, asAndroidApp, uniqueEmail, PASSWORD, confirmationLink, resetLink, PAYPAY, payPayCard, sendNotifications };
+module.exports = { test, expect: base.expect, signUp, asAndroidApp, uniqueEmail, PASSWORD, confirmationLink, resetLink, PAYPAY, payPayCard, sendNotifications, icCardRead };
