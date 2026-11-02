@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/rudnam/wallet-app/internal/db"
 )
@@ -160,4 +162,43 @@ func (s *Store) UpdateCategory(ctx context.Context, userID int64, c Category) (C
 // DeleteCategory removes a category; its records become uncategorised.
 func (s *Store) DeleteCategory(ctx context.Context, userID, id int64) error {
 	return rowsChanged(s.db.ExecContext(ctx, `DELETE FROM categories WHERE user_id = $1 AND id = $2`, userID, id))
+}
+
+// Reconcile makes an account's balance what the user counted: the
+// difference becomes one record at the time given, an expense when the
+// account holds less than the app thought (e.g. cash spent and never
+// recorded) and income when more. With no category given it gets the
+// user's Other (or Other income) category, if they have one. No difference
+// records nothing, and returns nil.
+func (s *Store) Reconcile(ctx context.Context, userID, accountID, counted int64, categoryID *int64, at time.Time) (*Transaction, error) {
+	a, err := s.account(ctx, userID, accountID)
+	if err != nil {
+		return nil, err
+	}
+	if counted < -maxAmount || counted > maxAmount {
+		return nil, invalid("the balance is too large")
+	}
+	diff := a.Balance - counted
+	if diff == 0 {
+		return nil, nil
+	}
+	st, err := s.Settings(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	t := Transaction{Kind: "expense", Amount: diff, AccountID: accountID, OccurredAt: at, CategoryID: categoryID,
+		Note: fmt.Sprintf("Untracked: counted %s, the app had %s", FormatMinor(counted, st.Currency), FormatMinor(a.Balance, st.Currency))}
+	if diff < 0 {
+		t.Kind, t.Amount = "income", -diff
+	}
+	if t.CategoryID == nil {
+		cats, err := s.Categories(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		name := map[string]string{"expense": "Other", "income": "Other income"}[t.Kind]
+		t.CategoryID = findCategory(cats, t.Kind, name)
+	}
+	t, err = s.Create(ctx, userID, t)
+	return &t, err
 }

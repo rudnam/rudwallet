@@ -211,6 +211,19 @@ for (const [name, viewport] of [
     await shot('10-import-paypay');
     await page.getByRole('button', { name: 'Cancel' }).click();
 
+    const mufg = [
+      '日付,摘要,摘要内容,支払い金額,預かり金額,差引残高,メモ,未資金化区分,入払区分',
+      `"${now.getFullYear()}/${now.getMonth() + 1}/1","カ－ド","","10,000","","52,007","","",""`,
+      `"${now.getFullYear()}/${now.getMonth() + 1}/1","手数料","ＡＴＭ","110","","51,897","","",""`,
+      `"${now.getFullYear()}/${now.getMonth() + 1}/2","口座振替４","ＰＡＹＰＡＹカード","30,000","","21,897","","",""`,
+      `"${now.getFullYear()}/${now.getMonth() + 1}/3","振込２","ヤマダ　タロウ","2,500","","19,397","","",""`,
+    ].join('\n');
+    await page.getByLabel('MUFG CSV file').setInputFiles({ name: 'meisai.csv', mimeType: 'text/csv', buffer: Buffer.from(mufg) });
+    await expect(page.getByRole('button', { name: 'Import 4 rows' })).toBeVisible();
+    await page.getByRole('table', { name: 'Statement rows' }).scrollIntoViewIfNeeded();
+    await shot('10-import-mufg');
+    await page.getByRole('button', { name: 'Cancel' }).click();
+
     const bbDay = `${now.getFullYear()}-${p(now.getMonth() + 1)}-02 08:00:00`;
     const bb = [
       'account;category;currency;amount;ref_currency_amount;type;payment_type;note;date;transfer;payee;labels',

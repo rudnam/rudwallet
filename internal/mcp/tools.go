@@ -180,6 +180,20 @@ var toolList = []*tool{
 		run:         setCategory,
 	},
 	{
+		Name:  "reconcile_account",
+		Title: "Reconcile an account's balance",
+		Description: "Set an account's balance to what the user really has (e.g. the cash counted in their wallet), " +
+			"by recording the difference as one expense (less than the app thought) or income (more), " +
+			"in the given category or else the user's Other / Other income category. Nothing is recorded if the balance already matches.",
+		InputSchema: object(map[string]any{
+			"account_id":  map[string]any{"type": "integer"},
+			"balance":     map[string]any{"type": "string", "description": "What the account holds, as a decimal amount in the user's currency, e.g. \"4200\"."},
+			"category_id": map[string]any{"type": "integer", "description": "Optional category for the difference."},
+		}, "account_id", "balance"),
+		Annotations: map[string]any{"readOnlyHint": false, "destructiveHint": false, "idempotentHint": false, "openWorldHint": false},
+		run:         reconcileAccount,
+	},
+	{
 		Name:  "set_record_account",
 		Title: "Set a record's account",
 		Description: "Move one record to another of the user's accounts (IDs from get_overview). " +
@@ -283,18 +297,20 @@ func overview(c *call, _ json.RawMessage) (any, error) {
 }
 
 type outRecord struct {
-	ID         int64    `json:"id"`
-	OccurredAt string   `json:"occurred_at"`
-	Kind       string   `json:"kind"`
-	Amount     string   `json:"amount"`
-	Account    string   `json:"account"`
-	ToAccount  string   `json:"to_account,omitempty"`
-	CategoryID *int64   `json:"category_id"`
-	Category   string   `json:"category,omitempty"`
-	Payee      string   `json:"payee"`
-	Note       string   `json:"note"`
-	Status     string   `json:"status"`
-	Tags       []string `json:"tags,omitempty"`
+	ID         int64  `json:"id"`
+	OccurredAt string `json:"occurred_at"`
+	Kind       string `json:"kind"`
+	Amount     string `json:"amount"`
+	Account    string `json:"account"`
+	ToAccount  string `json:"to_account,omitempty"`
+	CategoryID *int64 `json:"category_id"`
+	Category   string `json:"category,omitempty"`
+	Payee      string `json:"payee"`
+	Note       string `json:"note"`
+	Status     string `json:"status"`
+	// Source is how the record was made: manual, import or notification.
+	Source string   `json:"source"`
+	Tags   []string `json:"tags,omitempty"`
 }
 
 func listRecords(c *call, args json.RawMessage) (any, error) {
@@ -347,7 +363,7 @@ func listRecords(c *call, args json.RawMessage) (any, error) {
 	for _, t := range list {
 		amount, _ := c.money(t.Amount)
 		rec := outRecord{ID: t.ID, OccurredAt: t.OccurredAt.Format(time.RFC3339), Kind: t.Kind, Amount: amount,
-			Account: accounts[t.AccountID], CategoryID: t.CategoryID, Payee: t.Payee, Note: t.Note, Status: t.Status, Tags: t.Tags}
+			Account: accounts[t.AccountID], CategoryID: t.CategoryID, Payee: t.Payee, Note: t.Note, Status: t.Status, Source: t.Source, Tags: t.Tags}
 		if t.ToAccountID != nil {
 			rec.ToAccount = accounts[*t.ToAccountID]
 		}
@@ -437,6 +453,33 @@ func setAccount(c *call, args json.RawMessage) (any, error) {
 		return nil, walletErr(err, "record")
 	}
 	return map[string]any{"id": t.ID, "account_id": t.AccountID, "to_account_id": t.ToAccountID}, nil
+}
+
+func reconcileAccount(c *call, args json.RawMessage) (any, error) {
+	var in struct {
+		AccountID  int64  `json:"account_id"`
+		Balance    string `json:"balance"`
+		CategoryID *int64 `json:"category_id"`
+	}
+	if err := decode(args, &in); err != nil {
+		return nil, err
+	}
+	if _, err := c.money(0); err != nil { // loads the currency
+		return nil, err
+	}
+	balance, ok := wallet.ParseMinor(in.Balance, c.currency)
+	if !ok {
+		return nil, toolErrorf("balance must be a decimal amount in %s, e.g. 4200", c.currency)
+	}
+	t, err := c.h.wallet.Reconcile(c.r.Context(), c.userID, in.AccountID, balance, in.CategoryID, time.Now())
+	if err != nil {
+		return nil, walletErr(err, "account")
+	}
+	if t == nil {
+		return map[string]any{"recorded": false, "message": "The balance already matches; nothing was recorded."}, nil
+	}
+	amount, _ := c.money(t.Amount)
+	return map[string]any{"recorded": true, "id": t.ID, "kind": t.Kind, "amount": amount, "category_id": t.CategoryID}, nil
 }
 
 func createCategory(c *call, args json.RawMessage) (any, error) {

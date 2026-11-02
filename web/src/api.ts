@@ -230,6 +230,75 @@ export interface PayPayPreview {
   problems: string[];
 }
 
+/** A role in an MUFG statement: the bank itself, or what money moves to and from. */
+export type MUFGRole = 'bank' | 'cash' | 'paypay-card' | 'smbc-card' | 'paypay';
+
+/** One role in an MUFG statement, and the account suggested for it (null: a new one). */
+export interface MUFGAccount {
+  role: MUFGRole;
+  count: number;
+  account_id: number | null;
+  new_name: string;
+  new_kind: AccountKind;
+  /** Other accounts that also look like this one, e.g. two bank accounts named after MUFG. */
+  candidates: number[];
+}
+
+/** How one statement row would be (or was) recorded. */
+export interface MUFGRow {
+  line: number;
+  date: string;
+  summary: string;
+  detail: string;
+  out: number;
+  in: number;
+  balance: number;
+  kind: 'expense' | 'income' | 'transfer';
+  from_role: MUFGRole;
+  to_role?: MUFGRole;
+  group?: string;
+  /** False when no rule knew the row: it's recorded without a category unless one is chosen. */
+  rule: boolean;
+  /** new: to record; imported: by an earlier import; matched: already recorded another way. */
+  status: 'new' | 'imported' | 'matched';
+  matched_id?: number;
+  matched_account_id?: number;
+}
+
+/** The bank account's balance in the app, after the import, against the statement's. */
+export interface MUFGBalance {
+  account_id: number | null;
+  from: string;
+  to: string;
+  opening: number;
+  closing: number;
+  app: number;
+  /** closing - app. */
+  difference: number;
+  /** What rows already recorded in another account add up to; moving them here changes difference by -misplaced. */
+  misplaced: number;
+  initial_balance: number;
+  /** The starting balance that leaves only misplaced apart. */
+  suggested_initial_balance: number;
+  /** How much the import changed the starting balance by (match_balance). */
+  adjusted: number;
+}
+
+export interface MUFGPreview {
+  records: number;
+  new: number;
+  accounts: MUFGAccount[];
+  categories: ImportCategory[];
+  new_categories: Category[];
+  rows: MUFGRow[];
+  balance: MUFGBalance;
+}
+
+export interface MUFGResult extends ImportResult {
+  rows: MUFGRow[];
+  balance: MUFGBalance;
+}
+
 /**
  * Records in an import file that share a category (BudgetBakers) or a shop
  * (PayPay), and where they're suggested to go: category_id, else a new
@@ -593,6 +662,19 @@ export const api = {
       accounts: Object.entries(accounts).map(([name, account_id]) => ({ name, account_id })),
       categories,
     }),
+  previewMUFG: (csv: string) => request<MUFGPreview>('POST', '/api/import/mufg?preview=1', csv, 'text/csv'),
+  /** accounts maps each role to an account ID, or 0 for a new account. */
+  /** match_balance: also set the bank account's starting balance so it matches the statement. */
+  importMUFG: (csv: string, accounts: Record<string, number>, categories: CategoryChoice[], match_balance: boolean) =>
+    request<MUFGResult>('POST', '/api/import/mufg', {
+      csv,
+      accounts: Object.entries(accounts).map(([name, account_id]) => ({ name, account_id })),
+      categories,
+      match_balance,
+    }),
+  /** Records the difference between the account's balance and balance (minor units); null if none. */
+  reconcileAccount: (id: number, balance: number) =>
+    request<{ transaction: Transaction | null }>('POST', `/api/accounts/${id}/reconcile`, { balance }),
   previewPayPay: (csv: string) => request<PayPayPreview>('POST', '/api/import/paypay?preview=1', csv, 'text/csv'),
   /** accounts maps each payment method to an account ID, or 0 for a new account. */
   importPayPay: (csv: string, accounts: Record<string, number>, categories: CategoryChoice[]) =>

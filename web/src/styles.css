@@ -720,3 +720,11 @@ button.chip.on { background: var(--accent-soft); border-color: var(--accent); fo
   .suggestion.pick { grid-template-columns: auto auto 1fr; }
   .mapper-bar select { flex: 1 1 100%; }
 }
+
+/* A wide table (an import's rows) scrolls inside its card, not the page. */
+.table-scroll { overflow-x: auto; margin: 0 -4px; }
+.table-scroll table { width: 100%; border-collapse: collapse; }
+.table-scroll th { text-align: left; font-weight: 600; color: var(--muted); }
+.table-scroll th, .table-scroll td { padding: 6px 4px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.table-scroll td:first-child { white-space: nowrap; }
+.table-scroll .amount { text-align: right; white-space: nowrap; }

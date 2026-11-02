@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -492,6 +493,28 @@ func (s *Store) ruleCategory(ctx context.Context, userID int64, merchant string)
 		return nil, err
 	}
 	return &id, nil
+}
+
+// ParseMinor reads a decimal amount, e.g. "12.50" or "-1,200", as whole
+// minor units of the currency. ok is false for more decimals than the
+// currency has, or anything but a number.
+func ParseMinor(s, currency string) (int64, bool) {
+	s = strings.ReplaceAll(strings.TrimSpace(s), ",", "")
+	neg := strings.HasPrefix(s, "-")
+	s = strings.TrimPrefix(s, "-")
+	exp := CurrencyExponent(currency)
+	whole, frac, _ := strings.Cut(s, ".")
+	if whole == "" || len(frac) > exp || strings.Trim(whole+frac, "0123456789") != "" {
+		return 0, false
+	}
+	n, err := strconv.ParseInt(whole+frac+strings.Repeat("0", exp-len(frac)), 10, 64)
+	if err != nil || n > maxAmount {
+		return 0, false
+	}
+	if neg {
+		n = -n
+	}
+	return n, true
 }
 
 // FormatMinor writes whole minor units as a plain decimal, e.g. 1250 USD as "12.50".

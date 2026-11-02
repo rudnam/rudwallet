@@ -2,7 +2,7 @@
 // a way back. Payment notifications, what they learned, Claude, accounts,
 // categories, currency, and import.
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { api, errorMessage, type Me, type Account, type AccountKind, type Category, type ImportResult, type PayPayPreview, type BudgetBakersPreview } from '../../api';
+import { api, errorMessage, type Me, type Account, type AccountKind, type Category, type ImportResult, type PayPayPreview, type BudgetBakersPreview, type MUFGPreview, type MUFGResult, type MUFGRole, type MUFGBalance } from '../../api';
 import { CategoryIcon, glyphKey, glyphs, Icon, icons, Plus } from '../../components/Icon';
 import { Dialog } from '../../components/Dialog';
 import { amountInput, parseAmount } from '../../money';
@@ -87,7 +87,7 @@ export function SettingsPage({
     accounts: tn(active, '{n} account', '{n} accounts'),
     categories: tn(w.categories.length, '{n} category', '{n} categories'),
     general: w.settings.currency,
-    import: 'PayPay, BudgetBakers',
+    import: 'PayPay, MUFG, BudgetBakers',
     widgets: 'Android',
     language: languages.find((l) => l.code === language())!.name,
   };
@@ -254,6 +254,56 @@ function Accounts() {
 }
 
 /**
+ * Count what an account really holds (the cash in a wallet) and record the
+ * difference from the app's balance as one record.
+ */
+function ReconcileForm({ account, onDone }: { account: Account; onDone: () => void }) {
+  const w = useWallet();
+  const toast = useToast();
+  const exp = w.settings.currency_exponent;
+  const [counted, setCounted] = useState('');
+  const [error, setError] = useState('');
+
+  async function reconcile(e: FormEvent) {
+    e.preventDefault();
+    const text = counted.trim();
+    const minor = parseAmount(text.replace(/^-/, ''), exp);
+    if (!text || minor === null) {
+      setError(t('Enter the balance as a number, like 12000.'));
+      return;
+    }
+    try {
+      const res = await api.reconcileAccount(account.id, text.startsWith('-') ? -minor : minor);
+      await w.refresh();
+      toast(res.transaction ? t('Recorded {amount} as untracked', { amount: w.money(res.transaction.amount) }) : t('The balance already matches'));
+      onDone();
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
+  return (
+    <form className="stack" onSubmit={reconcile}>
+      <label className="field">
+        {t('What it really holds ({currency})', { currency: w.settings.currency })}
+        <input inputMode="decimal" placeholder={amountInput(Math.max(account.balance, 0), exp)} value={counted} onChange={(e) => setCounted(e.target.value)} />
+        <span className="muted small">{t('The app has {balance}. The difference is recorded as one untracked expense (or income).', { balance: w.money(account.balance) })}</span>
+      </label>
+      {error && (
+        <p role="alert" className="error">
+          {error}
+        </p>
+      )}
+      <div className="row end">
+        <button type="submit" className="secondary">
+          {t('Reconcile')}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/**
  * Add or edit an account: pick its kind, name it (with suggestions), and say
  * what's in it, or for a card, what's owed on it, which is stored as negative.
  */
@@ -406,6 +456,7 @@ export function AccountForm({ account, onClose }: { account?: Account; onClose: 
           </button>
         </div>
       </form>
+      {account && !account.archived && <ReconcileForm account={account} onDone={onClose} />}
     </Dialog>
   );
 }
@@ -612,6 +663,7 @@ function Import() {
   return (
     <>
       <PayPayImport />
+      <MUFGImport />
       <BudgetBakersImport />
     </>
   );
@@ -805,6 +857,235 @@ function PayPayImport() {
         </p>
       )}
       {result && <ImportSummary result={result} />}
+    </div>
+  );
+}
+
+/** What each role in an MUFG statement is, for its account picker. */
+const mufgRoles: Record<MUFGRole, Key> = {
+  bank: 'The MUFG account this statement is for',
+  cash: 'Cash (ATM withdrawals)',
+  'paypay-card': 'PayPay Card (monthly payment)',
+  'smbc-card': 'SMBC card (monthly payment)',
+  paypay: 'PayPay balance (charges)',
+};
+
+/** Reads a bank's CSV file, which is Shift_JIS unless it was saved again as UTF-8. */
+async function readJapaneseText(file: File): Promise<string> {
+  const bytes = await file.arrayBuffer();
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    return new TextDecoder('shift_jis').decode(bytes);
+  }
+}
+
+/**
+ * The bank account's balance against the statement's, and how they come to
+ * agree: by the import changing the starting balance (match), or by hand;
+ * rows recorded in another account have to be moved either way.
+ */
+function MUFGBalanceNote({ balance, match, done }: { balance: MUFGBalance; match: boolean; done: boolean }) {
+  const w = useWallet();
+  if (balance.account_id === null) return null;
+  const bank = w.accounts.find((a) => a.id === balance.account_id)?.name ?? '';
+  const adjust = balance.difference - balance.misplaced;
+  return (
+    <div className={balance.difference === 0 ? 'notice' : 'notice warn'} role="status">
+      <p>
+        {t('Statement balance on {day}: {closing}. The account in the app: {app}.', {
+          day: shortDate(balance.to),
+          closing: w.money(balance.closing),
+          app: w.money(balance.app),
+        })}{' '}
+        {balance.difference === 0 && t('They match.')}
+      </p>
+      {done && balance.adjusted !== 0 && (
+        <p>{t("{bank}'s starting balance was changed by {amount}, to {initial}, so it matches the statement.", { bank, amount: w.money(balance.adjusted, true), initial: w.money(balance.initial_balance) })}</p>
+      )}
+      {!done && adjust !== 0 &&
+        (match ? (
+          <p>{t("Importing changes {bank}'s starting balance by {amount}, to {suggested}, for the records before {from} that the app doesn't have.", { bank, amount: w.money(adjust, true), suggested: w.money(balance.suggested_initial_balance), from: shortDate(balance.from) })}</p>
+        ) : (
+          <p>{t("They're {difference} apart. If the account's records before {from} are incomplete, set its starting balance to {suggested} (Settings › Accounts). Otherwise, look for a record in the wrong account.", { difference: w.money(Math.abs(adjust)), from: shortDate(balance.from), suggested: w.money(balance.suggested_initial_balance) })}</p>
+        ))}
+      {balance.misplaced !== 0 && <p>{t('Rows worth {amount} are already recorded in another account (marked below). Move those records to {bank} to match.', { amount: w.money(balance.misplaced, true), bank })}</p>}
+    </div>
+  );
+}
+
+/**
+ * MUFG's statement (入出金明細): the file is read first, and every row is
+ * shown with how it would be recorded, with an account for each role (the
+ * bank, cash, the cards it pays) and a category for each payee to choose,
+ * before anything is recorded.
+ */
+function MUFGImport() {
+  const w = useWallet();
+  const [csv, setCsv] = useState('');
+  const [preview, setPreview] = useState<MUFGPreview | null>(null);
+  const [choice, setChoice] = useState<Record<string, number>>({});
+  const [cats, setCats] = useState<Choices>({});
+  const [result, setResult] = useState<MUFGResult | null>(null);
+  const [match, setMatch] = useState(true);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [fileKey, setFileKey] = useState(0);
+
+  function reset() {
+    setCsv('');
+    setPreview(null);
+    setFileKey((k) => k + 1);
+  }
+
+  async function read(file: File) {
+    setBusy(true);
+    setError('');
+    setResult(null);
+    try {
+      const text = await readJapaneseText(file);
+      const p = await api.previewMUFG(text);
+      setCsv(text);
+      setPreview(p);
+      setChoice(Object.fromEntries(p.accounts.map((a) => [a.role, a.account_id ?? 0])));
+      setCats(suggestedChoices(p.categories));
+    } catch (err) {
+      setError(errorMessage(err));
+      setFileKey((k) => k + 1);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      setResult(await api.importMUFG(csv, choice, categoryChoices(preview?.categories ?? [], cats), match));
+      reset();
+      await w.refresh();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const name = (id: number | undefined) => w.accounts.find((a) => a.id === id)?.name ?? '';
+  const roleName = (role: MUFGRole | undefined) => {
+    const a = preview?.accounts.find((x) => x.role === role);
+    return a ? name(choice[a.role]) || a.new_name : '';
+  };
+  const accounts = w.accounts.filter((a) => !a.archived || Object.values(choice).includes(a.id));
+  return (
+    <div className="card stack">
+      <h2>MUFG</h2>
+      <p className="small muted">
+        {t(
+          'In 三菱UFJダイレクト, open 入出金明細, pick the period, and download the CSV file. Rows already imported, or already recorded from notifications, are skipped.',
+        )}
+      </p>
+      {!preview && (
+        <label className="field">
+          {t('MUFG CSV file')}
+          <input key={fileKey} type="file" accept=".csv,text/csv" disabled={busy} onChange={(e) => e.target.files?.[0] && read(e.target.files[0])} />
+        </label>
+      )}
+      {preview && (
+        <form className="stack" onSubmit={submit}>
+          <p>
+            {tn(preview.records, '{n} row, {from} to {to}. Choose the accounts:', '{n} rows, {from} to {to}. Choose the accounts:', {
+              from: shortDate(preview.balance.from),
+              to: shortDate(preview.balance.to),
+            })}
+          </p>
+          {preview.accounts.map((a) => (
+            <label key={a.role} className="field">
+              <span>
+                {t(mufgRoles[a.role])}
+                <span className="muted small"> · {tn(a.count, '{n} record', '{n} records')}</span>
+              </span>
+              <select value={choice[a.role]} onChange={(e) => setChoice({ ...choice, [a.role]: Number(e.target.value) })}>
+                {accounts.map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.name}
+                  </option>
+                ))}
+                {!accounts.some((x) => x.name.toLowerCase() === a.new_name.toLowerCase()) && <option value={0}>{t('New account: {name}', { name: a.new_name })}</option>}
+              </select>
+              {a.candidates.length > 0 && (
+                <span className="muted small">{t('Also looks like this account: {names}', { names: a.candidates.map(name).join(t(', ')) })}</span>
+              )}
+            </label>
+          ))}
+          {preview.categories.length > 0 && (
+            <>
+              <p>{t('Choose a category for each payee, such as your employer for salary. It is remembered for the next statement; payees left without one are imported without a category, to sort later.')}</p>
+              <ImportCategories groups={preview.categories} newCategories={preview.new_categories} choices={cats} onChange={setCats} by="shop" />
+            </>
+          )}
+          <div className="table-scroll">
+            <table className="small" aria-label={t('Statement rows')}>
+              <thead>
+                <tr>
+                  <th>{t('Date')}</th>
+                  <th>{t('Statement')}</th>
+                  <th className="amount">{t('Amount')}</th>
+                  <th>{t('Recorded as')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {preview.rows.map((r) => (
+                  <tr key={r.line} className={r.status === 'new' ? '' : 'muted'}>
+                    <td>{shortDate(r.date)}</td>
+                    <td>
+                      {r.summary} {r.detail}
+                    </td>
+                    <td className="amount">{w.money(r.in - r.out, true)}</td>
+                    <td>
+                      {r.status === 'imported'
+                        ? t('Already imported')
+                        : r.status === 'matched'
+                          ? t('Already recorded in {account}', { account: name(r.matched_account_id) })
+                          : r.kind === 'transfer'
+                            ? t('Transfer: {from} → {to}', { from: roleName(r.from_role), to: roleName(r.to_role) })
+                            : r.rule
+                              ? t(r.kind === 'expense' ? 'Expense' : 'Income')
+                              : t('No rule: needs a category')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <MUFGBalanceNote balance={preview.balance} match={match} done={false} />
+          <label className="check">
+            <input type="checkbox" checked={match} onChange={(e) => setMatch(e.target.checked)} />
+            {t("Update the bank account's balance to match the statement")}
+          </label>
+          <div className="row end">
+            <button type="button" className="secondary" onClick={reset} disabled={busy}>
+              {t('Cancel')}
+            </button>
+            <button type="submit" disabled={busy || preview.new === 0}>
+              {busy ? t('Importing…') : tn(preview.new, 'Import {n} row', 'Import {n} rows')}
+            </button>
+          </div>
+        </form>
+      )}
+      {busy && !preview && <p className="muted">{t('Reading the file…')}</p>}
+      {error && (
+        <p role="alert" className="error">
+          {error}
+        </p>
+      )}
+      {result && (
+        <>
+          <ImportSummary result={result} />
+          <MUFGBalanceNote balance={result.balance} match={match} done />
+        </>
+      )}
     </div>
   );
 }

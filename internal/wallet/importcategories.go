@@ -54,6 +54,8 @@ type AccountChoice struct {
 type ImportChoices struct {
 	Accounts   []AccountChoice  `json:"accounts"`
 	Categories []CategoryChoice `json:"categories"`
+	// MatchBalance: set the bank's starting balance to match (MUFG only).
+	MatchBalance bool `json:"match_balance"`
 }
 
 // MissingDefaults lists the default categories the user doesn't have (by
