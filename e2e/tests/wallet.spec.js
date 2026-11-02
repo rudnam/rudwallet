@@ -7,7 +7,13 @@ test('add, edit and delete a record', async ({ page }) => {
 
   await page.getByRole('button', { name: 'Add record' }).click();
   const dialog = page.getByRole('dialog', { name: 'New record' });
-  await dialog.getByLabel('Amount (JPY)').fill('1,200');
+  // The amount has focus, so typing goes straight into it.
+  await expect(dialog.getByLabel('Amount (JPY)')).toBeFocused();
+  await page.keyboard.type('1,200');
+  await expect(dialog.getByLabel('Amount (JPY)')).toHaveValue('1,200');
+  // Options get the dialog's colours, not a white list with pale text.
+  expect(await dialog.getByLabel('Account').locator('option').first().evaluate((o) => getComputedStyle(o).backgroundColor))
+    .not.toBe('rgba(0, 0, 0, 0)');
   await dialog.getByRole('radio', { name: 'Food & Drinks' }).check();
   await dialog.getByLabel('Payee').fill('Ramen Taro');
   await dialog.getByRole('button', { name: 'Save' }).click();

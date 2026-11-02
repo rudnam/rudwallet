@@ -15,7 +15,12 @@ export function Dialog({ title, onClose, children }: { title: string; onClose: (
 
   useEffect(() => {
     const d = ref.current;
-    if (d && !d.open) d.showModal();
+    if (d && !d.open) {
+      d.showModal();
+      // React's autoFocus fires while the dialog is still closed, and showModal
+      // then focuses the first control, so a field asks for focus this way.
+      d.querySelector<HTMLElement>('[data-autofocus]')?.focus();
+    }
     return () => d?.close();
   }, []);
 
