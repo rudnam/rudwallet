@@ -1,7 +1,8 @@
 // Payments read from the phone's notifications, waiting for the user:
 // confirm them one by one or all at once (which teaches the app the shop's
-// category and the card's account), or fix them.
-import { useState } from 'react';
+// category and the card's account), or fix them. A possible duplicate shows
+// the record it matches, and can be deleted in one tap.
+import { useEffect, useState } from 'react';
 import { api, errorMessage, type Transaction } from '../../api';
 import { TransactionForm } from '../../components/TransactionForm';
 import { formatDay, formatTime } from '../../money';
@@ -21,6 +22,21 @@ export function ReviewPage() {
   const [picked, setPicked] = useState<Record<number, number | null>>({});
   const [confirmingAll, setConfirmingAll] = useState(false);
   const toast = useToast();
+  // Records that possible duplicates match, by ID.
+  const [matches, setMatches] = useState<Map<number, Transaction>>(new Map());
+
+  // A duplicate is flagged when it's within a day of the record it matches:
+  // fetch the days around the flagged ones, with a day to spare in case the
+  // match was moved since.
+  useEffect(() => {
+    const times = (records ?? []).filter((t) => t.duplicate_of_id).map((t) => new Date(t.occurred_at).getTime());
+    if (times.length === 0) return;
+    const day = 86_400_000;
+    api.transactions({ from: new Date(Math.min(...times) - 2 * day), to: new Date(Math.max(...times) + 2 * day) }).then(
+      (list) => setMatches(new Map(list.map((t) => [t.id, t]))),
+      () => {},
+    );
+  }, [records]);
 
   const categoryOf = (t: Transaction) => (t.id in picked ? picked[t.id] : t.category_id);
   // What "Confirm all" confirms: what the server's bulk confirm accepts.
@@ -96,6 +112,7 @@ export function ReviewPage() {
               key={t.id}
               t={t}
               categoryId={categoryOf(t)}
+              match={t.duplicate_of_id ? matches.get(t.duplicate_of_id) : undefined}
               onPick={(id) => setPicked((p) => ({ ...p, [t.id]: id }))}
               onEdit={() => setOpen(t)}
               onDone={reload}
@@ -110,19 +127,23 @@ export function ReviewPage() {
 }
 
 /**
- * One payment: pick a category and confirm in place, or open it to edit.
+ * One payment: pick a category and confirm in place, or open it to edit. A
+ * possible duplicate shows the record it matches and can be deleted here.
  * Changing a category the shop's rule filled in asks whether to keep the new
  * one for the shop, so a one-off doesn't change every later payment there.
  */
 function ReviewItem({
   t,
   categoryId,
+  match,
   onPick,
   onEdit,
   onDone,
 }: {
   t: Transaction;
   categoryId: number | null;
+  /** The record this may duplicate, once it's loaded. */
+  match?: Transaction;
   onPick: (id: number | null) => void;
   onEdit: () => void;
   onDone: () => void;
@@ -164,6 +185,32 @@ function ReviewItem({
     }
   }
 
+  // No question first: the toast's Undo brings it back.
+  async function remove() {
+    setBusy(true);
+    try {
+      await api.deleteTransaction(t.id);
+      await w.refresh();
+      toast(tr('Deleted {payee}', { payee: title }), { label: tr('Undo'), run: restore });
+      onDone();
+    } catch (err) {
+      setError(errorMessage(err));
+      setBusy(false);
+    }
+  }
+
+  async function restore() {
+    try {
+      await api.restoreTransactions([t.id]);
+      await w.refresh();
+      toast(tr('Record restored'));
+      onDone();
+    } catch (err) {
+      toast(tr("Couldn't restore: {error}", { error: errorMessage(err) }));
+    }
+  }
+
+  const matchedAt = match && new Date(match.occurred_at);
   return (
     <li className="card stack tight review-item" aria-label={title}>
       <div className="row">
@@ -181,9 +228,25 @@ function ReviewItem({
       </div>
       {t.note && <span className="small muted">{t.note}</span>}
       {t.duplicate_of_id && (
-        <span className="notice warn small" role="status">
-          <Icon d={icons.warning} className="inline-icon" /> {tr('Possible duplicate: you already have a record of this amount around this time.')}
-        </span>
+        <div className="notice warn small duplicate" role="status">
+          <span className="grow">
+            <Icon d={icons.warning} className="inline-icon" />{' '}
+            {match && matchedAt ? (
+              <>
+                {tr('Possible duplicate of a record you already have:')}
+                <span className="block">
+                  <strong>{match.payee || tr('Payment')}</strong> · {w.money(match.kind === 'income' ? match.amount : -match.amount, true)} ·{' '}
+                  {formatDay(matchedAt)} {formatTime(matchedAt)} · {w.account(match.account_id)?.name}
+                </span>
+              </>
+            ) : (
+              tr('Possible duplicate: you already have a record of this amount around this time.')
+            )}
+          </span>
+          <button type="button" className="secondary" disabled={busy} onClick={remove}>
+            {tr('Delete duplicate')}
+          </button>
+        </div>
       )}
       <div className="row wrap">
         <select

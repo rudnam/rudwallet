@@ -23,6 +23,8 @@ async function seed(page) {
     { kind: 'expense', amount: 6800, account_id: card.id, category_id: cat('Bills & Utilities'), occurred_at: day(9, 9), payee: 'Chubu Electric' },
     { kind: 'expense', amount: 1025, account_id: card.id, category_id: cat('Health'), occurred_at: day(10, 20), payee: 'スギ薬局 大曽根店' },
     { kind: 'transfer', amount: 20000, account_id: bank.id, to_account_id: cash, occurred_at: day(2, 11) },
+    // Typed in by hand an hour before its notification: a possible duplicate.
+    { kind: 'expense', amount: 4994, account_id: cash, category_id: cat('Shopping'), occurred_at: new Date(Date.now() - 3600_000).toISOString(), payee: 'IKEA' },
   ];
   for (const r of records) expect((await api.post('/api/transactions', { data: r })).status()).toBe(201);
   // Earlier months, for the trends on Stats.
@@ -40,8 +42,8 @@ async function seed(page) {
   await api.post('/api/budgets', { data: { name: 'Eating out', category_id: cat('Food & Drinks'), amount: 5000 } });
   await api.post('/api/budgets', { data: { name: 'Everything', category_id: null, amount: 120000 } });
   // Payments from PayPay's notifications: one confirmed earlier, which taught
-  // its shop and card; two at shops with a rule, and one at a new shop,
-  // waiting for review.
+  // its shop and card; two at shops with a rule, and one at a new shop that
+  // may duplicate a record typed in by hand, waiting for review.
   const paid = async (merchant, yen, ago = 0) =>
     (await sendNotifications(api, payPayCard({ merchant, yen, when: new Date(Date.now() - ago) })))[0];
   const amazon = await paid('Amazon.co.jp', 2980, 86400_000);
@@ -115,7 +117,7 @@ for (const [name, viewport] of [
     await shot('2-stats-year');
 
     await page.goto('/app/#/review');
-    await expect(page.getByRole('listitem', { name: 'IKEAオンライン' })).toBeVisible();
+    await expect(page.getByRole('listitem', { name: 'IKEAオンライン' }).getByRole('button', { name: 'Delete duplicate' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Confirm 2 with a category' })).toBeVisible();
     // A category other than the shop's rule asks whether to keep it. (The
     // notification's full-width dash is read as a plain one.)
