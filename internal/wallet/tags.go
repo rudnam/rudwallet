@@ -29,6 +29,18 @@ func cleanTag(s string) string {
 	return strings.Join(strings.Fields(strings.TrimLeft(strings.TrimSpace(s), "#＃")), " ")
 }
 
+// CleanTag tidies one tag as records store it, and checks it.
+func CleanTag(s string) (string, error) {
+	s = cleanTag(s)
+	if s == "" {
+		return "", invalid("enter a tag")
+	}
+	if utf8.RuneCountInString(s) > maxTag {
+		return "", invalid("a tag must be at most %d characters", maxTag)
+	}
+	return s, nil
+}
+
 // cleanTags tidies a record's tags and checks them; the same tag twice,
 // ignoring case, is kept once. Nil stays nil (keep the record's tags).
 func cleanTags(in []string) ([]string, error) {

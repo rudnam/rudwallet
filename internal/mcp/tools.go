@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -97,8 +98,23 @@ var (
 	dateArg  = func(desc string) map[string]any {
 		return map[string]any{"type": "string", "description": desc + " A date (2026-10-01, midnight UTC) or an RFC 3339 time with an offset (2026-10-01T00:00:00+09:00)."}
 	}
-	kindArg = map[string]any{"type": "string", "enum": []string{"expense", "income"}}
+	kindArg      = map[string]any{"type": "string", "enum": []string{"expense", "income"}}
+	recordIDsArg = map[string]any{"type": "array", "items": map[string]any{"type": "integer"},
+		"minItems": 1, "maxItems": maxRecordIDs, "description": fmt.Sprintf("1 to %d record IDs.", maxRecordIDs)}
 )
+
+// maxRecordIDs is the most records one call changes: a page of list_records.
+const maxRecordIDs = 500
+
+// recordIDs checks a tool's record IDs, dropping repeats.
+func recordIDs(ids []int64) ([]int64, error) {
+	slices.Sort(ids)
+	ids = slices.Compact(ids)
+	if len(ids) == 0 || len(ids) > maxRecordIDs {
+		return nil, toolErrorf("give 1 to %d record_ids", maxRecordIDs)
+	}
+	return ids, nil
+}
 
 func parseTime(s, name string) (time.Time, error) {
 	if s == "" {
@@ -228,6 +244,57 @@ var toolList = []*tool{
 		}, "category_id"),
 		Annotations: map[string]any{"readOnlyHint": false, "destructiveHint": true, "idempotentHint": true, "openWorldHint": false},
 		run:         deleteCategory,
+	},
+	{
+		Name:  "edit_records",
+		Title: "Edit many records",
+		Description: "Make one change to many records at once (IDs from list_records): " +
+			"categorize (to category_id, or none if null; only records of the category's kind change, never transfers), " +
+			"move (to account_id; for a transfer, the account it comes from), " +
+			"confirm (records awaiting review that have a category and are not flagged as duplicates), " +
+			"tag or untag (add or take off tag). Says how many changed and how many were skipped.",
+		InputSchema: object(map[string]any{
+			"record_ids":  recordIDsArg,
+			"action":      map[string]any{"type": "string", "enum": []string{"categorize", "move", "confirm", "tag", "untag"}},
+			"category_id": map[string]any{"type": []string{"integer", "null"}, "description": "For categorize."},
+			"account_id":  map[string]any{"type": "integer", "description": "For move."},
+			"tag":         map[string]any{"type": "string", "description": "For tag and untag."},
+		}, "record_ids", "action"),
+		Annotations: changes,
+		run:         editRecords,
+	},
+	{
+		Name:  "delete_records",
+		Title: "Delete records",
+		Description: "Delete one or more records (IDs from list_records); they no longer count in balances or spending. " +
+			"restore_records can undo it for a day. Ask the user first.",
+		InputSchema: object(map[string]any{"record_ids": recordIDsArg}, "record_ids"),
+		Annotations: map[string]any{"readOnlyHint": false, "destructiveHint": true, "idempotentHint": true, "openWorldHint": false},
+		run:         deleteRecords,
+	},
+	{
+		Name:        "restore_records",
+		Title:       "Restore deleted records",
+		Description: "Put back records deleted in the last day, with the same IDs.",
+		InputSchema: object(map[string]any{"record_ids": recordIDsArg}, "record_ids"),
+		Annotations: changes,
+		run:         restoreRecords,
+	},
+	{
+		Name:  "update_account",
+		Title: "Update an account",
+		Description: "Rename an account, archive it (hidden from the app's lists, its records and balance are kept) or unarchive it, " +
+			"or set its balance. Setting balance changes the account's starting balance without recording anything, " +
+			"so its past balances move too; to record the difference as an expense or income instead, use reconcile_account. " +
+			"Give only what changes.",
+		InputSchema: object(map[string]any{
+			"account_id": map[string]any{"type": "integer"},
+			"name":       map[string]any{"type": "string", "description": "1 to 60 characters."},
+			"archived":   map[string]any{"type": "boolean"},
+			"balance":    map[string]any{"type": "string", "description": "What the account should hold now, as a decimal amount in the user's currency, e.g. \"4200\"."},
+		}, "account_id"),
+		Annotations: changes,
+		run:         updateAccount,
 	},
 	{
 		Name:        "spending_by_category",
@@ -512,6 +579,144 @@ func deleteCategory(c *call, args json.RawMessage) (any, error) {
 		return nil, walletErr(err, "category")
 	}
 	return map[string]any{"deleted_category_id": in.CategoryID}, nil
+}
+
+func editRecords(c *call, args json.RawMessage) (any, error) {
+	var in struct {
+		RecordIDs  []int64 `json:"record_ids"`
+		Action     string  `json:"action"`
+		CategoryID *int64  `json:"category_id"`
+		AccountID  int64   `json:"account_id"`
+		Tag        string  `json:"tag"`
+	}
+	if err := decode(args, &in); err != nil {
+		return nil, err
+	}
+	ids, err := recordIDs(in.RecordIDs)
+	if err != nil {
+		return nil, err
+	}
+	ctx, w := c.r.Context(), c.h.wallet
+	var n int
+	switch in.Action {
+	case "categorize":
+		n, err = w.BulkCategorize(ctx, c.userID, ids, in.CategoryID)
+	case "move":
+		n, err = w.BulkMove(ctx, c.userID, ids, in.AccountID)
+	case "confirm":
+		n, err = w.BulkConfirm(ctx, c.userID, ids)
+	case "tag", "untag":
+		tag, terr := wallet.CleanTag(in.Tag)
+		if terr != nil {
+			return nil, walletErr(terr, "tag")
+		}
+		if in.Action == "tag" {
+			n, err = w.BulkTag(ctx, c.userID, ids, tag)
+		} else {
+			n, err = w.BulkUntag(ctx, c.userID, ids, tag)
+		}
+	default:
+		return nil, toolErrorf("action must be categorize, move, confirm, tag or untag")
+	}
+	if err != nil {
+		return nil, walletErr(err, "record")
+	}
+	return map[string]int{"changed": n, "skipped": len(ids) - n}, nil
+}
+
+func deleteRecords(c *call, args json.RawMessage) (any, error) {
+	var in struct {
+		RecordIDs []int64 `json:"record_ids"`
+	}
+	if err := decode(args, &in); err != nil {
+		return nil, err
+	}
+	ids, err := recordIDs(in.RecordIDs)
+	if err != nil {
+		return nil, err
+	}
+	n, err := c.h.wallet.BulkDelete(c.r.Context(), c.userID, ids)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]int{"deleted": n, "not_found": len(ids) - n}, nil
+}
+
+func restoreRecords(c *call, args json.RawMessage) (any, error) {
+	var in struct {
+		RecordIDs []int64 `json:"record_ids"`
+	}
+	if err := decode(args, &in); err != nil {
+		return nil, err
+	}
+	ids, err := recordIDs(in.RecordIDs)
+	if err != nil {
+		return nil, err
+	}
+	n, err := c.h.wallet.Restore(c.r.Context(), c.userID, ids)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]int{"restored": n, "not_restored": len(ids) - n}, nil
+}
+
+func updateAccount(c *call, args json.RawMessage) (any, error) {
+	var in struct {
+		AccountID int64   `json:"account_id"`
+		Name      *string `json:"name"`
+		Archived  *bool   `json:"archived"`
+		Balance   *string `json:"balance"`
+	}
+	if err := decode(args, &in); err != nil {
+		return nil, err
+	}
+	if in.Name == nil && in.Archived == nil && in.Balance == nil {
+		return nil, toolErrorf("give a name, archived or balance to change")
+	}
+	var balance int64
+	if in.Balance != nil {
+		if _, err := c.money(0); err != nil { // loads the currency
+			return nil, err
+		}
+		var ok bool
+		if balance, ok = wallet.ParseMinor(*in.Balance, c.currency); !ok {
+			return nil, toolErrorf("balance must be a decimal amount in %s, e.g. 4200", c.currency)
+		}
+	}
+	ctx := c.r.Context()
+	accounts, err := c.h.wallet.Accounts(ctx, c.userID)
+	if err != nil {
+		return nil, err
+	}
+	i := slices.IndexFunc(accounts, func(a wallet.Account) bool { return a.ID == in.AccountID })
+	if i < 0 {
+		return nil, toolErrorf("no such account")
+	}
+	a := accounts[i]
+	if in.Name != nil || in.Archived != nil {
+		if in.Name != nil {
+			a.Name = strings.TrimSpace(*in.Name)
+			if a.Name == "" || utf8.RuneCountInString(a.Name) > 60 {
+				return nil, toolErrorf("an account name must be 1 to 60 characters")
+			}
+		}
+		if in.Archived != nil {
+			a.Archived = *in.Archived
+		}
+		if a, err = c.h.wallet.UpdateAccount(ctx, c.userID, a); err != nil {
+			return nil, walletErr(err, "account")
+		}
+	}
+	if in.Balance != nil {
+		if a, err = c.h.wallet.SetBalance(ctx, c.userID, a.ID, balance); err != nil {
+			return nil, walletErr(err, "account")
+		}
+	}
+	bal, err := c.money(a.Balance)
+	if err != nil {
+		return nil, err
+	}
+	return outAccount{a.ID, a.Name, a.Kind, bal, a.Archived}, nil
 }
 
 func spending(c *call, args json.RawMessage) (any, error) {
