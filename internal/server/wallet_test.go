@@ -425,6 +425,21 @@ func TestImportNewAccountName(t *testing.T) {
 			t.Errorf("record of %d in account %d, want %d", r.Amount, r.AccountID, want[r.Amount])
 		}
 	}
+
+	// The next export's accounts are suggested where they went this time.
+	var p wallet.BudgetBakersPreview
+	c.send("/api/import/budgetbakers?preview=1", "text/csv", []byte(csv), nil, &p)
+	for _, a := range p.Accounts {
+		if a.AccountID == nil || *a.AccountID != map[string]int64{"Wallet": cash.ID, "Bank": byName["MUFG Savings"], "PayPay Card": byName["PayPay Card"]}[a.Name] {
+			t.Errorf("%s: suggested %v", a.Name, a.AccountID)
+		}
+	}
+	// What the import remembers isn't a card rule for the user to manage.
+	var rules wallet.Rules
+	c.do("GET", "/api/rules", nil, &rules)
+	if len(rules.Cards) != 0 {
+		t.Errorf("card rules: %+v", rules.Cards)
+	}
 }
 
 // A way of paying with a suggested account can still go to a new one, and

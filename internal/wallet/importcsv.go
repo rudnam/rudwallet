@@ -71,6 +71,11 @@ type BudgetBakersPreview struct {
 	Problems      []string   `json:"problems"`
 }
 
+// bbRulePrefix marks the account remembered for a BudgetBakers account (by
+// its name, lowercased) in source_rules, so the next export's records go
+// where the user sent them before.
+const bbRulePrefix = "budgetbakers:"
+
 func bbKey(kind, name string) string { return kind + ":" + strings.ToLower(strings.TrimSpace(name)) }
 
 // PreviewBudgetBakers reads a BudgetBakers export and suggests an account
@@ -97,6 +102,26 @@ func (s *Store) PreviewBudgetBakers(ctx context.Context, userID int64, data []by
 		return p, err
 	}
 
+	learned := map[string]int64{}
+	rules, err := s.db.QueryContext(ctx,
+		`SELECT source, account_id FROM source_rules WHERE user_id = $1 AND source LIKE $2 || '%'`, userID, bbRulePrefix)
+	if err != nil {
+		return p, err
+	}
+	for rules.Next() {
+		var src string
+		var id int64
+		if err := rules.Scan(&src, &id); err != nil {
+			rules.Close()
+			return p, err
+		}
+		learned[src] = id
+	}
+	rules.Close()
+	if err := rules.Err(); err != nil {
+		return p, err
+	}
+
 	acctIndex, catIndex := map[string]int{}, map[string]int{}
 	for i, r := range rows {
 		if r.matchedTo < 0 || r.matchedTo > i {
@@ -116,6 +141,9 @@ func (s *Store) PreviewBudgetBakers(ctx context.Context, userID int64, data []by
 					a.AccountID = &have.ID
 					break
 				}
+			}
+			if id, ok := learned[bbRulePrefix+k]; ok {
+				a.AccountID = &id
 			}
 			acctIndex[k] = len(p.Accounts)
 			p.Accounts = append(p.Accounts, a)
@@ -185,6 +213,7 @@ func guessAccountKind(name string) string {
 // choices (from PreviewBudgetBakers) send the file's accounts and
 // categories where the user wants them. An account or category without a
 // choice, or with choices nil, is matched by name and created when missing.
+// Each account's choice is remembered, and the next preview suggests it.
 //
 // Dates without a UTC offset are read in zone, the user's local time.
 func (s *Store) ImportBudgetBakers(ctx context.Context, userID int64, data []byte, zone *time.Location, choices *ImportChoices) (ImportResult, error) {
@@ -233,12 +262,18 @@ func (s *Store) ImportBudgetBakers(ctx context.Context, userID int64, data []byt
 				res.AccountsCreated++
 			}
 			accounts[strings.ToLower(ch.Name)] = id
-			continue
+		} else {
+			if _, ok := owned[strconv.FormatInt(ch.AccountID, 10)]; !ok {
+				return res, db.ErrNotFound
+			}
+			accounts[strings.ToLower(ch.Name)] = ch.AccountID
 		}
-		if _, ok := owned[strconv.FormatInt(ch.AccountID, 10)]; !ok {
-			return res, db.ErrNotFound
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO source_rules (user_id, source, account_id) VALUES ($1, $2, $3)
+			 ON CONFLICT (user_id, source) DO UPDATE SET account_id = EXCLUDED.account_id`,
+			userID, bbRulePrefix+strings.ToLower(ch.Name), accounts[strings.ToLower(ch.Name)]); err != nil {
+			return res, err
 		}
-		accounts[strings.ToLower(ch.Name)] = ch.AccountID
 	}
 	account := func(name string) (int64, error) {
 		if id, ok := accounts[strings.ToLower(name)]; ok {

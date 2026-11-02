@@ -16,7 +16,8 @@ import (
 // What the app has learned from confirmed payments, shown so the user can
 // check and correct it: each shop's category (payee_rules) and each card's
 // account (source_rules). The PayPay and MUFG imports' own choices
-// (payPayRulePrefix, mufgRulePrefix) belong to the imports and are left out.
+// (payPayRulePrefix, mufgRulePrefix, bbRulePrefix) belong to the imports and
+// are left out.
 
 // PayeeRule gives records from a shop a category.
 type PayeeRule struct {
@@ -109,8 +110,9 @@ func (s *Store) Rules(ctx context.Context, userID int64) (Rules, error) {
 		`SELECT r.source, r.account_id,
 			(SELECT count(*) FROM transactions t WHERE t.user_id = r.user_id AND t.source_label = r.source)
 		 FROM source_rules r WHERE r.user_id = $1 AND r.source NOT LIKE $2 || '%' AND r.source NOT LIKE $3 || '%'
+		   AND r.source NOT LIKE $4 || '%'
 		 ORDER BY r.source`,
-		userID, payPayRulePrefix, mufgRulePrefix)
+		userID, payPayRulePrefix, mufgRulePrefix, bbRulePrefix)
 	if err != nil {
 		return out, err
 	}
@@ -192,7 +194,8 @@ func (s *Store) DeleteCardRule(ctx context.Context, userID int64, source string)
 
 // importRule is a source_rules entry an import keeps for itself.
 func importRule(source string) bool {
-	return strings.HasPrefix(source, payPayRulePrefix) || strings.HasPrefix(source, mufgRulePrefix)
+	return strings.HasPrefix(source, payPayRulePrefix) || strings.HasPrefix(source, mufgRulePrefix) ||
+		strings.HasPrefix(source, bbRulePrefix)
 }
 
 // learnIfNew remembers a confirmed record's shop and card, but only where
