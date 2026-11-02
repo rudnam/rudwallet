@@ -104,6 +104,9 @@ var (
 	payPayTo = regexp.MustCompile(`^(.+?)への支払いが完了しました`)
 	// "2026年10月16日 20:19", or the date alone: "2026年10月15日".
 	payPayTime = regexp.MustCompile(`^(\d{4})年(\d{1,2})月(\d{1,2})日(?:\s*(\d{1,2}):(\d{2}))?$`)
+	// 金額's value: yen, then what was charged abroad, if anything:
+	// "1,291円", or "3,477円(22 USD)" (after halfWidth).
+	payPayAmount = regexp.MustCompile(`^(\d[\d,]*)\s*円\s*(?:\((.+?)\))?$`)
 	// A payment that was cancelled is money back.
 	payPayCancel = regexp.MustCompile(`取り?消`)
 )
@@ -119,6 +122,8 @@ var jst = time.FixedZone("JST", 9*60*60)
 // 取引が完了しました。 with 金額, 取引番号 and 店舗名 lines, or
 // "Uber Eatsへの支払いが完了しました。" with 金額 and 取引番号. The two are
 // told apart (Source), so each can go to its own account.
+// A card payment abroad gives the amount in yen and what was charged:
+// 金額:3,477円(22 USD). It is recorded in yen, noting the foreign amount.
 func payPay(title, text string) Read {
 	all := title + "\n" + text
 	fields := map[string]string{}
@@ -153,8 +158,15 @@ func payPay(title, text string) Read {
 	if !ok {
 		return Read{Status: "unparsed", Detail: "No amount in the notification."}
 	}
-	if p.Amount, ok = minorUnits(strings.TrimSpace(strings.TrimSuffix(amount, "円")), 0); !ok || p.Amount <= 0 {
+	m := payPayAmount.FindStringSubmatch(amount)
+	if m == nil {
 		return Read{Status: "unparsed", Detail: "Couldn't read the amount " + amount + "."}
+	}
+	if p.Amount, ok = minorUnits(m[1], 0); !ok || p.Amount <= 0 {
+		return Read{Status: "unparsed", Detail: "Couldn't read the amount " + amount + "."}
+	}
+	if m[2] != "" {
+		p.Note = "Charged " + strings.TrimSpace(m[2]) + "."
 	}
 	return Read{Status: "payment", Payment: p}
 }
