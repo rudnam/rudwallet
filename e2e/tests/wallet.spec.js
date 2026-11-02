@@ -367,6 +367,62 @@ function payPayCsv(day) {
   ].join('\n');
 }
 
+/**
+ * An MUFG 入出金明細 export, in Shift_JIS as the bank sends it: from ¥7 to
+ * ¥134,409, with a PayPay charge, three ATM withdrawals, a fee, salary, the
+ * cards' payments, cashback and two transfers between people.
+ */
+const mufgStatement = Buffer.from(
+  'k/qVdCyTRZd2LJNFl3aT4JdlLI54laWCoovginosl2GCqYLoi+CKeiyNt4j4jmONgiyDgYOCLJaijpGL4Im7i+aVqiyT/JWli+aVqg0KIjIwMjYvMTAvMTMiLCKQVY2eglAiLCKDeYNDg3mDQyIsIiIsIjIwLDAwMCIsIjIwLDAwNyIsIiIsIiIsIiINCiIyMDI2LzEwLzE0IiwijPuNwJBVkdaCUiIsIoJxgnOCaoFAg3mDQ4N5g0MiLCIzLDAwMCIsIiIsIjE3LDAwNyIsIiIsIiIsIiINCiIyMDI2LzEwLzE0Iiwig0qBfINoIiwiIiwiNSwwMDAiLCIiLCIxMiwwMDciLCIiLCIiLCIiDQoiMjAyNi8xMC8xNCIsIoNKgVuDaCIsIiIsIjUsMDAwIiwiIiwiNywwMDciLCIiLCIiLCIiDQoiMjAyNi8xMC8xNSIsIoNKgVuDaIJiglAiLCIiLCIxLDAwMCIsIiIsIjYsMDA3IiwiIiwiIiwiIg0KIjIwMjYvMTAvMTUiLCKO6JCUl78iLCKCYIJzgmwiLCIxMTAiLCIiLCI1LDg5NyIsIiIsIiIsIiINCiIyMDI2LzEwLzI1IiwikFWNnoJQIiwig1aBW4NygVuDR4NYg2WDToNtgWmDSoFAIiwiIiwiMjUwLDAwMCIsIjI1NSw4OTciLCIiLCIiLCIiDQoiMjAyNi8xMC8yNyIsIoz7jcCQVZHWglMiLCKCb4JggniCb4JggniDSoFbg2giLCIxMDAsMDAwIiwiIiwiMTU1LDg5NyIsIiIsIiIsIiINCiIyMDI2LzEwLzI3IiwijPuNwJBVkdaCUSIsIoN+g2ODQ4NYg36DZ4OCg0qBfINoIiwiMjAsMDAwIiwiIiwiMTM1LDg5NyIsIiIsIiIsIiINCiIyMDI2LzEwLzI4IiwigmOMu4vgitKMsyIsIiIsIiIsIjEyIiwiMTM1LDkwOSIsIiIsIiIsIiINCiIyMDI2LzEwLzMwIiwikFWNnoJRIiwig4SDfYNfgUCDXoONg0UiLCIyLDUwMCIsIiIsIjEzMyw0MDkiLCIiLCIiLCIiDQoiMjAyNi8xMS8xIiwikFWNnoJQIiwig1iDWYNMgUCDboNpg1IiLCIiLCIxLDAwMCIsIjEzNCw0MDkiLCIiLCIiLCIiDQo=',
+  'base64',
+);
+
+test('import an MUFG statement, then reconcile cash', async ({ page }) => {
+  await signUp(page);
+  const api = page.request;
+  const account = async (name, kind) => (await (await api.post('/api/accounts', { data: { name, kind } })).json()).id;
+  const mufg = await account('MUFG', 'bank');
+  const mufg44 = await account('三菱ＵＦＪ銀行 *****44', 'bank');
+  const payPay = await account('PayPay Balance', 'e_money');
+  await account('PayPay Card', 'credit_card');
+  // The ¥3,000 charge, recorded from PayPay in the other bank account.
+  const charge = { kind: 'transfer', amount: 3000, account_id: mufg44, to_account_id: payPay, occurred_at: '2026-10-14T20:10:52+09:00' };
+  expect((await api.post('/api/transactions', { data: charge })).status()).toBe(201);
+
+  await page.goto('/app/#/settings?section=import');
+  await page.getByLabel('MUFG CSV file').setInputFiles({ name: 'meisai.csv', mimeType: 'text/csv', buffer: mufgStatement });
+  await expect(page.getByText(/^12 rows/)).toBeVisible();
+  await expect(page.getByLabel(/^The MUFG account this statement is for/)).toHaveValue(String(mufg));
+  await expect(page.getByText('Also looks like this account: 三菱ＵＦＪ銀行 *****44')).toBeVisible();
+  // Read from Shift_JIS: the rows' text, and the charge already recorded.
+  const rows = page.getByRole('table', { name: 'Statement rows' });
+  await expect(rows.getByRole('row').filter({ hasText: 'ＲＴＫ　ペイペイ' })).toContainText('Already recorded in 三菱ＵＦＪ銀行 *****44');
+  await expect(rows.getByRole('row').filter({ hasText: 'ヤマダ　タロウ' })).toContainText('No rule: needs a category');
+  await expect(page.getByText(/^Statement balance on .*: ¥134,409/)).toBeVisible();
+
+  // The ¥7 MUFG started with goes into its starting balance; the ¥3,000
+  // charge recorded in the other account has to be moved instead.
+  await expect(page.getByText(/^Importing changes MUFG's starting balance by \+¥7, to ¥7/)).toBeVisible();
+  await expect(page.getByText(/^Rows worth -¥3,000 are already recorded in another account/)).toBeVisible();
+  await expect(page.getByLabel("Update the bank account's balance to match the statement")).toBeChecked();
+
+  await page.getByLabel('Category for シービーエステクノ(カ').selectOption({ label: 'Salary' });
+  await page.getByRole('button', { name: 'Import 11 rows' }).click();
+  await expect(page.getByText(/^Imported 11 records, skipped 1 already recorded/)).toBeVisible();
+  await expect(page.getByText(/^MUFG's starting balance was changed by \+¥7, to ¥7/)).toBeVisible();
+
+  await page.goto('/app/#/records?month=2026-10');
+  await expect(page.getByRole('button', { name: /シービーエステクノ\(カ, \+¥250,000/ })).toBeVisible();
+
+  // ¥11,000 withdrawn and nothing recorded as spent: ¥4,000 left in the wallet.
+  await page.goto('/app/#/settings?section=accounts');
+  await page.getByRole('button', { name: 'Edit account Cash' }).click();
+  await page.getByLabel('What it really holds (JPY)').fill('4000');
+  await page.getByRole('button', { name: 'Reconcile' }).click();
+  await expect(page.getByText('Recorded ¥7,000 as untracked')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Edit account Cash' })).toContainText('¥4,000');
+});
+
 test('choose records to recategorise, move and delete them together', async ({ page }) => {
   await signUp(page);
   const api = page.request;
@@ -458,6 +514,113 @@ test('a page seen before shows at once while it reloads, unless something change
   await expect(page.getByText('-¥1,200')).toHaveCount(0);
   release();
   await expect(page.getByRole('button', { name: /Ramen Taro, -¥980/ })).toBeVisible();
+});
+
+/** Holds back requests to url until the returned function is called. */
+async function holdBack(page, url) {
+  let answer = () => {};
+  const held = new Promise((r) => (answer = r));
+  await page.route(url, async (route) => {
+    await held;
+    await route.continue();
+  });
+  return answer;
+}
+
+/** Where the middle of the splash's logo is. */
+async function logoCentre(page) {
+  const box = await page.locator('.loading .logo').boundingBox();
+  return { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) };
+}
+
+test('the splash stays in the middle of the screen while the app starts', async ({ page }) => {
+  await signUp(page);
+  await page.evaluate(() => localStorage.clear()); // a first launch: nothing kept yet
+  const me = await holdBack(page, '**/api/me');
+  const wallet = await holdBack(page, '**/api/wallet');
+  const asked = page.waitForRequest('**/api/wallet');
+  await page.goto('/app/');
+
+  // Waiting for the session: the logo in the middle, and words after a moment.
+  await expect(page.getByRole('status')).toContainText('Loading…');
+  const viewport = page.viewportSize();
+  const first = await logoCentre(page);
+  expect(Math.abs(first.x - viewport.width / 2)).toBeLessThanOrEqual(2);
+  expect(Math.abs(first.y - viewport.height / 2)).toBeLessThan(80);
+
+  // Waiting for the wallet: the same splash, in the same place.
+  me();
+  await asked;
+  await expect(page.getByRole('status')).toContainText('Loading…');
+  expect(await logoCentre(page)).toEqual(first);
+
+  wallet();
+  await expect(page.getByText('Total balance')).toBeVisible();
+  await expect(page.getByRole('status')).toHaveCount(0);
+});
+
+test('the app opens on the wallet it showed last time, before the server answers', async ({ page }) => {
+  await signUp(page);
+  const { accounts } = await (await page.request.get('/api/wallet')).json();
+  const data = { kind: 'expense', amount: 1200, account_id: accounts[0].id, occurred_at: new Date().toISOString(), payee: 'Ramen Taro' };
+  expect((await page.request.post('/api/transactions', { data })).status()).toBe(201);
+  await page.reload();
+  const latest = page.getByRole('list', { name: 'Latest records' });
+  await expect(latest).toContainText('Ramen Taro');
+
+  // The server is slow (or the phone offline): Home shows what it saw last time.
+  const answer = await holdBack(page, '**/api/**');
+  await page.reload();
+  await expect(page.locator('.hero-figure')).toHaveText(/-¥1,200/);
+  await expect(latest).toContainText('Ramen Taro');
+  await expect(page.getByRole('status')).toHaveCount(0);
+  answer();
+
+  // Signing out forgets it: the next launch waits for the server, then asks to sign in.
+  await page.goto('/app/#/settings');
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+  expect(await page.evaluate(() => Object.keys(localStorage).filter((k) => k === 'wallet:me' || k === 'wallet:seen'))).toEqual([]);
+});
+
+test('a record added offline is kept on the phone and sent once back online', async ({ page, context }) => {
+  await signUp(page);
+  const latest = page.getByRole('list', { name: 'Latest records' });
+  await context.setOffline(true);
+
+  // Added without a connection: it shows, and counts, straight away.
+  await page.getByRole('button', { name: 'Add record' }).click();
+  const dialog = page.getByRole('dialog', { name: 'New record' });
+  await dialog.getByLabel('Amount (JPY)').fill('1200');
+  await dialog.getByLabel('Payee').fill('Ramen Taro');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText('Saved on this phone. It’s sent when you’re online.')).toBeVisible();
+  await expect(latest).toContainText('Ramen Taro');
+  await expect(latest).toContainText('Not sent yet');
+  await expect(page.locator('.hero-figure')).toHaveText(/-¥1,200/);
+
+  // It can still be changed before it goes.
+  await latest.getByRole('button', { name: /Ramen Taro/ }).click();
+  const edit = page.getByRole('dialog', { name: 'Edit record' });
+  await expect(edit).toContainText('Saved on this phone.');
+  await edit.getByLabel('Amount (JPY)').fill('980');
+  await edit.getByRole('button', { name: 'Save' }).click();
+  await page.getByRole('button', { name: 'Save changes' }).click();
+  await expect(page.locator('.hero-figure')).toHaveText(/-¥980/);
+  await page.screenshot({ path: test.info().outputPath('offline-home.png'), animations: 'disabled' });
+
+  // Elsewhere in the app too, where the server would list it.
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Records' }).click();
+  await expect(page.getByRole('button', { name: /Ramen Taro, -¥980/ })).toBeVisible();
+
+  // Back online: it's sent, as edited, once.
+  await context.setOffline(false);
+  await expect(page.getByText('Not sent yet')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Ramen Taro, -¥980/ })).toBeVisible();
+  const saved = await (await page.request.get('/api/transactions')).json();
+  expect(saved.map((t) => [t.payee, t.amount])).toEqual([['Ramen Taro', 980]]);
+  expect(await page.evaluate(() => localStorage.getItem('wallet:outbox'))).toBeNull();
 });
 
 test('searching records looks through every month', async ({ page }) => {

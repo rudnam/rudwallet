@@ -15,8 +15,10 @@
 # with six months of sample records (e2e/seed) and a few emails to review.
 #
 # The preview stops by itself, data and all, after PREVIEW_MINUTES (default
-# 120; 0 keeps it until `down`), and when the Claude Code session in this
-# folder ends (.claude/hooks/session-end.sh). Starting it again restarts the clock.
+# 120; 0 keeps it until `down`), when the branch's pull request is merged or
+# closed (checked every minute with gh, if it is signed in), and when the
+# Claude Code session in this folder ends (.claude/hooks/session-end.sh).
+# Starting it again restarts the clock.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -34,11 +36,29 @@ PREVIEW_PROJECT=$project   # for the reaper in preview.yml
 export PW_VERSION GO_IMAGE PREVIEW_PORT PREVIEW_MINUTES PREVIEW_PROJECT DOCKER_BUILDKIT
 dc() { docker compose -p "$project" -f e2e/compose.yml -f e2e/preview.yml "$@"; }
 
+# Runs in the background: stops the preview once the pull request for the
+# branch is merged or closed. The session that made the change usually stays
+# open after a merge, so the session-end hook alone would leave it running.
+# Exits when the server it was started for is gone (stopped, or restarted by
+# another ./preview.sh). Down by project name: the folder may be gone by then.
+watch_pr() {
+  local repo=$1 branch=$2 server=$3 state
+  while sleep 60; do
+    [[ $(docker inspect -f '{{.State.Running}}' "$server" 2>/dev/null) == true ]] || exit 0
+    state=$(gh pr view "$branch" -R "$repo" --json state -q .state 2>/dev/null) || continue
+    if [[ $state == MERGED || $state == CLOSED ]]; then
+      docker compose -p "$project" down --volumes --remove-orphans --timeout 1
+      exit 0
+    fi
+  done
+}
+
 ref='' restore=''
 while (( $# )); do
   case $1 in
     down) dc down --volumes --remove-orphans; exit ;;
     logs) dc logs -f server; exit ;;
+    _watch-pr) watch_pr "$2" "$3" "$4"; exit ;;
     --ref) ref=${2:?--ref needs a branch, tag or commit}; shift 2 ;;
     --restore) restore=${2:?--restore needs a backup file}; shift 2 ;;
     -h|--help) awk 'NR>1 && /^#/ { sub(/^# ?/, ""); print; next } NR>1 { exit }' "$0"; exit 0 ;;
@@ -77,6 +97,21 @@ if ! dc up -d --build --wait server; then
 fi
 # Stops the preview after PREVIEW_MINUTES, even if nobody is around to.
 dc up -d reaper >/dev/null 2>&1 || echo "(could not start the timer; stop the preview with ./preview.sh down)"
+# And once the branch's pull request is merged or closed. Not when it already
+# is: then you are looking at an old branch on purpose.
+watching=''
+branch=${ref:-$(git symbolic-ref -q --short HEAD || true)}
+branch=${branch#origin/}
+if [[ -n $branch ]] && command -v gh >/dev/null 2>&1 &&
+   repo=$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null); then
+  state=$(gh pr view "$branch" -R "$repo" --json state -q .state 2>/dev/null || true)
+  if [[ $state != MERGED && $state != CLOSED ]]; then
+    # Its own session, so it outlives this script and the shell that ran it.
+    run=(nohup); command -v setsid >/dev/null && run=(setsid nohup)
+    "${run[@]}" "$PWD/preview.sh" _watch-pr "$repo" "$branch" "$(dc ps -q server)" </dev/null >/dev/null 2>&1 &
+    watching=1
+  fi
+fi
 
 url=http://localhost:$PREVIEW_PORT
 curl -fsS -o /dev/null -H 'Content-Type: application/json' -H "Origin: $url" \
@@ -100,3 +135,5 @@ echo "Logs: ./preview.sh logs    Stop: ./preview.sh down"
 if (( PREVIEW_MINUTES > 0 )); then
   echo "It stops by itself at $(date -d "+$PREVIEW_MINUTES minutes" +%H:%M), or when this folder's Claude Code session ends."
 fi
+[[ -n $watching ]] && echo "It also stops when the pull request for $branch is merged or closed."
+true

@@ -20,6 +20,8 @@ import (
 const (
 	maxName = 60
 	maxText = 500
+	// A UUID is 36.
+	maxClientID = 64
 	// maxAmount keeps sums far from overflowing (a trillion yen).
 	maxAmount = 1_000_000_000_000
 	// maxImport is the largest CSV accepted; years of records are a few MB.
@@ -38,6 +40,7 @@ func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) ht
 	route("POST /api/accounts", h.createAccount)
 	route("PUT /api/accounts/{id}", h.updateAccount)
 	route("DELETE /api/accounts/{id}", h.deleteAccount)
+	route("POST /api/accounts/{id}/reconcile", h.reconcileAccount)
 
 	route("GET /api/categories/missing", h.missingCategories)
 	route("POST /api/categories", h.createCategory)
@@ -66,6 +69,7 @@ func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) ht
 
 	route("POST /api/import/budgetbakers", h.importBudgetBakers)
 	route("POST /api/import/paypay", h.importPayPay)
+	route("POST /api/import/mufg", h.importMUFG)
 }
 
 func userID(r *http.Request) int64 { return account.UserFrom(r).ID }
@@ -391,6 +395,9 @@ type transactionInput struct {
 	Remember *bool `json:"remember"`
 	// Tags left out keep the record's tags (older apps don't send them).
 	Tags []string `json:"tags"`
+	// ClientID names a new record, so sending it again (from a phone that
+	// was offline) doesn't add it twice. Ignored by updates.
+	ClientID string `json:"client_id"`
 }
 
 func (in transactionInput) transaction() (Transaction, error) {
@@ -408,7 +415,10 @@ func (in transactionInput) transaction() (Transaction, error) {
 		return t, httpx.Errorf(http.StatusBadRequest, "enter a date")
 	case utf8.RuneCountInString(t.Payee) > maxText || utf8.RuneCountInString(t.Note) > maxText:
 		return t, httpx.Errorf(http.StatusBadRequest, "payee and note must be at most %d characters", maxText)
+	case len(in.ClientID) > maxClientID:
+		return t, httpx.Errorf(http.StatusBadRequest, "client_id must be at most %d characters", maxClientID)
 	}
+	t.ClientID = in.ClientID
 	if t.Status == "" {
 		t.Status = "confirmed"
 	} else if t.Status != "confirmed" && t.Status != "review" {
@@ -627,6 +637,80 @@ func (h *Handler) importPayPay(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	httpx.WriteJSON(w, http.StatusOK, res)
+	return nil
+}
+
+// importMUFG takes an MUFG statement CSV (入出金明細, as the bank sends it
+// in Shift_JIS) as the request body, or JSON: {"csv", "accounts":
+// [AccountChoice] by role, "categories": [CategoryChoice], "match_balance"}
+// (or ?match_balance=1 with the CSV alone); JSON carries
+// the file as text, so it must be UTF-8 there. With ?preview=1 it is a dry
+// run: how every row would be recorded, and the bank account's balance
+// against the statement's. Otherwise it imports, and reports the same; with
+// match_balance it also sets the bank account's starting balance to match
+// the statement (Store.ImportMUFG).
+func (h *Handler) importMUFG(w http.ResponseWriter, r *http.Request) error {
+	data, choices, err := readImport(w, r)
+	if err != nil {
+		return err
+	}
+	if r.URL.Query().Get("preview") == "1" {
+		p, err := h.store.PreviewMUFG(r.Context(), userID(r), data)
+		if err := storeErr(err, "record"); err != nil {
+			return err
+		}
+		httpx.WriteJSON(w, http.StatusOK, p)
+		return nil
+	}
+	accounts := map[string]int64{}
+	var categories []CategoryChoice
+	match := r.URL.Query().Get("match_balance") == "1"
+	if choices != nil {
+		for _, a := range choices.Accounts {
+			if a.AccountID < 0 {
+				return httpx.Errorf(http.StatusBadRequest, "no such account")
+			}
+			accounts[a.Name] = a.AccountID
+		}
+		categories = choices.Categories
+		match = match || choices.MatchBalance
+	}
+	res, err := h.store.ImportMUFG(r.Context(), userID(r), data, accounts, categories, match)
+	if err := storeErr(err, "account"); err != nil {
+		return err
+	}
+	httpx.WriteJSON(w, http.StatusOK, res)
+	return nil
+}
+
+// reconcileAccount takes {"balance", "category_id"?}: what the account
+// really holds, in minor units. The difference from the app's balance is
+// recorded (Store.Reconcile); the answer is {"transaction"}, null when
+// there was none.
+func (h *Handler) reconcileAccount(w http.ResponseWriter, r *http.Request) error {
+	id, err := pathID(r, "account")
+	if err != nil {
+		return err
+	}
+	var in struct {
+		Balance    *int64 `json:"balance"`
+		CategoryID *int64 `json:"category_id"`
+	}
+	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
+		return err
+	}
+	if in.Balance == nil {
+		return httpx.Errorf(http.StatusBadRequest, "enter the balance")
+	}
+	t, err := h.store.Reconcile(r.Context(), userID(r), id, *in.Balance, in.CategoryID, time.Now())
+	if err := storeErr(err, "account"); err != nil {
+		return err
+	}
+	status := http.StatusOK
+	if t != nil {
+		status = http.StatusCreated
+	}
+	httpx.WriteJSON(w, status, map[string]*Transaction{"transaction": t})
 	return nil
 }
 

@@ -98,6 +98,14 @@ function Row({
           <span className="record-title">
             {title}
             {t.status === 'review' && <span className="badge">{tr('To review')}</span>}
+            {t.unsent &&
+              (t.unsent.error ? (
+                <span className="badge refused">{tr('Couldn’t send')}</span>
+              ) : (
+                <span className="badge quiet" title={tr('Saved on this phone; it’s sent when you’re online.')}>
+                  {tr('Not sent yet')}
+                </span>
+              ))}
             {t.source === 'email' && t.status === 'confirmed' && (
               <span className="badge quiet" title={tr('Recorded from an email')}>
                 <Icon d={icons.mail} className="inline-icon" /> {tr('Email')}

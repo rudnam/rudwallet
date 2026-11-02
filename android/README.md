@@ -52,6 +52,12 @@ Builds from before this (`versionCode` 3 and older) don't check, and were signed
 
 While working on the app, `cd web && npm run android`, then open `android/` in Android Studio, or `cd android && ./gradlew installDebug`. A debug build needs no signing key.
 
+## Starting up, and working offline
+
+The splash screen (`styles.xml`, Android 12's, back-ported) stays up until the web app has drawn Home or the sign-in page: `SplashPlugin` hears it from `appDrawn()` in `web/src/native.ts`, and `MainActivity` gives it 3 seconds at most. The web app keeps who is signed in and the answers Home needs in the web view's storage (`web/src/api.ts`), so it usually opens on them at once and asks the server again meanwhile.
+
+A record added without a connection is kept on the phone (`web/src/outbox.ts`), counted in the balances and lists with a **Not sent yet** badge, and sent when the server answers again: on the next start, when the app comes back into view, or when the phone is back online. It carries a `client_id`, so a resend after a lost answer doesn't add it twice. Until it's sent it can be edited or deleted on the phone; other edits and deletes need a connection. One the server refuses (say, its account was deleted meanwhile) stays with **Couldn't send** until it's changed or deleted.
+
 ## How the app signs in
 
 The app's requests come from `https://localhost`, another origin, so the browser's cookie doesn't apply. The server allows that origin (CORS), and the app signs in with a bearer token instead: it sends `X-Wallet-Client` when signing in, keeps the token it gets back in Capacitor's preferences, and sends it with every request. App sessions last a year. `web/src/native.ts` and `internal/account/app.go` explain the details.

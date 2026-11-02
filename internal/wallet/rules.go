@@ -15,8 +15,8 @@ import (
 
 // What the app has learned from confirmed payments, shown so the user can
 // check and correct it: each shop's category (payee_rules) and each card's
-// account (source_rules). The PayPay import's own account choices
-// (payPayRulePrefix) belong to the import and are left out.
+// account (source_rules). The PayPay and MUFG imports' own choices
+// (payPayRulePrefix, mufgRulePrefix) belong to the imports and are left out.
 
 // PayeeRule gives records from a shop a category.
 type PayeeRule struct {
@@ -46,7 +46,8 @@ type Rules struct {
 func (s *Store) Rules(ctx context.Context, userID int64) (Rules, error) {
 	out := Rules{Payees: []PayeeRule{}, Cards: []CardRule{}}
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT payee_key, category_id FROM payee_rules WHERE user_id = $1`, userID)
+		`SELECT payee_key, category_id FROM payee_rules WHERE user_id = $1 AND payee_key NOT LIKE $2 || '%'`,
+		userID, mufgRulePrefix)
 	if err != nil {
 		return out, err
 	}
@@ -107,8 +108,9 @@ func (s *Store) Rules(ctx context.Context, userID int64) (Rules, error) {
 	rows, err = s.db.QueryContext(ctx,
 		`SELECT r.source, r.account_id,
 			(SELECT count(*) FROM transactions t WHERE t.user_id = r.user_id AND t.source_label = r.source)
-		 FROM source_rules r WHERE r.user_id = $1 AND r.source NOT LIKE $2 || '%' ORDER BY r.source`,
-		userID, payPayRulePrefix)
+		 FROM source_rules r WHERE r.user_id = $1 AND r.source NOT LIKE $2 || '%' AND r.source NOT LIKE $3 || '%'
+		 ORDER BY r.source`,
+		userID, payPayRulePrefix, mufgRulePrefix)
 	if err != nil {
 		return out, err
 	}
@@ -166,7 +168,7 @@ func (s *Store) DeletePayeeRule(ctx context.Context, userID int64, payee string)
 // SetCardRule changes the account a card's payments go to. Cards are only
 // learned from payments, so the rule must exist.
 func (s *Store) SetCardRule(ctx context.Context, userID int64, source string, accountID int64) error {
-	if strings.HasPrefix(source, payPayRulePrefix) {
+	if importRule(source) {
 		return db.ErrNotFound
 	}
 	if _, err := s.account(ctx, userID, accountID); errors.Is(err, db.ErrNotFound) {
@@ -181,11 +183,16 @@ func (s *Store) SetCardRule(ctx context.Context, userID int64, source string, ac
 // DeleteCardRule forgets a card's account: its payments go to the default
 // account until the user confirms one in another.
 func (s *Store) DeleteCardRule(ctx context.Context, userID int64, source string) error {
-	if strings.HasPrefix(source, payPayRulePrefix) {
+	if importRule(source) {
 		return db.ErrNotFound
 	}
 	return rowsChanged(s.db.ExecContext(ctx,
 		`DELETE FROM source_rules WHERE user_id = $1 AND source = $2`, userID, source))
+}
+
+// importRule is a source_rules entry an import keeps for itself.
+func importRule(source string) bool {
+	return strings.HasPrefix(source, payPayRulePrefix) || strings.HasPrefix(source, mufgRulePrefix)
 }
 
 // learnIfNew remembers a confirmed record's shop and card, but only where
