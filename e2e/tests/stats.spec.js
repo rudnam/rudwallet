@@ -31,10 +31,17 @@ test('stats over other periods, and how spending compares with usual', async ({ 
   await expect(trends.getByRole('list', { name: 'Higher than usual' })).toContainText('Food & Drinks');
 
   // The month before: about usual, compared with the months before it.
+  // It was loaded ahead, so it shows at once even when the server is slow.
+  await page.waitForLoadState('networkidle');
+  await page.route('**/api/stats?*', async (route) => {
+    await new Promise((r) => setTimeout(r, 5000));
+    await route.continue().catch(() => {});
+  });
   await page.getByRole('button', { name: 'Previous month' }).click();
   const last = new Date(now.getFullYear(), now.getMonth() - 1, 1).toLocaleDateString(undefined, { year: 'numeric', month: 'long' });
   await expect(page.getByRole('heading', { level: 1, name: last })).toBeVisible();
-  await expect(page.locator('.hero-figure')).toHaveText('¥2,000');
+  await expect(page.locator('.hero-figure')).toHaveText('¥2,000', { timeout: 1000 });
+  await page.unroute('**/api/stats?*');
   await expect(trends).toContainText('About your usual spending');
 
   // A year, by month.

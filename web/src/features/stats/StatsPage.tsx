@@ -37,10 +37,10 @@ export function StatsPage({ route }: { route: Route }) {
   const ongoing = days > 0 && days < lengthInDays(period);
   // The three periods before, each only up to the same point as this one,
   // so half a month is compared with the first halves of earlier months.
-  const past = [1, 2, 3].map((n) => samePoint(shift(period, -n), days));
+  const past = comparedWith(period);
   // The month in progress, across all accounts, also shows where it's heading.
   const ahead = period.span === 'month' && ongoing && !account;
-  const [stats, setStats] = useState<{ now: Stats; past: Stats[] } | null>(null);
+  const [stats, setStats] = useState<{ now: Stats; past: Stats[] } | null>(() => seenStats(period, account));
   const [budgets, setBudgets] = useState<Budget[]>(() => api.seen.budgets() ?? []);
   const [error, setError] = useState('');
 
@@ -51,10 +51,18 @@ export function StatsPage({ route }: { route: Route }) {
   const key = `${period.from.getTime()}-${period.to.getTime()}-${days}-${account}`;
   useEffect(() => {
     let current = true;
-    setStats(null);
+    // A period seen before shows at once, while it reloads.
+    setStats(seenStats(period, account));
     const ask = (q: Period) => api.stats(q.from, q.to, account);
     Promise.all([ask(period), ...past.map(ask)]).then(
-      ([now, ...before]) => current && (setStats({ now, past: before }), setError('')),
+      ([now, ...before]) => {
+        if (!current) return;
+        setStats({ now, past: before });
+        setError('');
+        // Load the periods either side, so stepping to them is instant.
+        const neighbours = [shift(period, -1), shift(period, 1)].filter((q) => q.from <= new Date());
+        for (const q of neighbours) prefetchStats(q, account);
+      },
       (err) => current && setError(errorMessage(err)),
     );
     return () => {
@@ -320,6 +328,23 @@ function periodTitle(p: Period): string {
   if (p.span === 'month') return formatMonth(p.from);
   if (p.span === 'year') return yearName(p.from);
   return new Intl.DateTimeFormat(locale(), dayFormat).formatRange(p.from, addDays(p.to, -1));
+}
+
+/** The three periods before, each only up to the same point as this one. */
+function comparedWith(p: Period): Period[] {
+  const days = elapsedDays(p);
+  return [1, 2, 3].map((n) => samePoint(shift(p, -n), days));
+}
+
+/** A period's stats and those it's compared with, if all were seen since the last change. */
+function seenStats(p: Period, account?: number): { now: Stats; past: Stats[] } | null {
+  const [now, ...past] = [p, ...comparedWith(p)].map((q) => api.seen.stats(q.from, q.to, account));
+  return now && past.every((s) => s !== undefined) ? { now, past: past as Stats[] } : null;
+}
+
+/** Asks ahead for what a period's stats need; with no period, what Stats opens on (this month). */
+export function prefetchStats(p: Period = periodAt('month', new Date()), account?: number) {
+  for (const q of [p, ...comparedWith(p)]) api.prefetch.stats(q.from, q.to, account);
 }
 
 /** The period cut off after its first n days. */
