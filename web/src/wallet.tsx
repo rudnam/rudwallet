@@ -3,8 +3,11 @@
 // (or balances, or the review count).
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api, errorMessage, type Account, type Category, type Me, type Overview } from './api';
+import { Splash } from './components/Splash';
 import { t } from './i18n';
 import { formatMoney } from './money';
+import { appDrawn } from './native';
+import { balanceChange, outbox, useUnsent } from './outbox';
 
 interface WalletState extends Overview {
   /** Who is signed in; me.demo for a demo account. */
@@ -18,7 +21,8 @@ interface WalletState extends Overview {
 const Ctx = createContext<WalletState | null>(null);
 
 export function WalletProvider({ me, children }: { me: Me; children: ReactNode }) {
-  const [overview, setOverview] = useState<Overview | null>(null);
+  // What the app saw last time, while the fresh answer is on its way.
+  const [overview, setOverview] = useState<Overview | null>(() => api.seen.overview() ?? null);
   const [error, setError] = useState('');
 
   const refresh = useCallback(async () => {
@@ -33,22 +37,37 @@ export function WalletProvider({ me, children }: { me: Me; children: ReactNode }
   useEffect(() => {
     refresh();
   }, [refresh]);
+  // Sent records leave the outbox once the balances that count them are here.
+  useEffect(() => outbox.onSent(refresh), [refresh]);
+  const unsent = useUnsent(me.email);
+  const drawn = overview !== null || error !== '';
+  useEffect(() => {
+    if (drawn) appDrawn();
+  }, [drawn]);
 
   if (error && !overview) {
     return (
-      <p role="alert" className="error">
-        {t('Could not load your wallet: {error}', { error })}
-      </p>
+      <main className="splash">
+        <p role="alert" className="error">
+          {t('Could not load your wallet: {error}', { error })}
+        </p>
+      </main>
     );
   }
-  if (!overview) return <p className="muted">{t('Loading…')}</p>;
+  // The same splash as App's, so the wait for the wallet doesn't move it.
+  if (!overview) return <Splash />;
 
+  // Records not sent yet count already.
+  const accounts = unsent.length
+    ? overview.accounts.map((a) => ({ ...a, balance: unsent.reduce((sum, u) => sum + balanceChange(u, a.id), a.balance) }))
+    : overview.accounts;
   const value: WalletState = {
     ...overview,
+    accounts,
     me,
     refresh,
     money: (amount, signed) => formatMoney(amount, overview.settings, signed),
-    account: (id) => overview.accounts.find((a) => a.id === id),
+    account: (id) => accounts.find((a) => a.id === id),
     category: (id) => overview.categories.find((c) => c.id === id),
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

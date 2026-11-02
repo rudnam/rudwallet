@@ -89,7 +89,18 @@ for (const [name, viewport] of [
     await page.evaluate(() => window.scrollTo(0, 0));
     await shot('0-landing');
 
+    // Starting up, while the server takes its time.
+    let answer = () => {};
+    const held = new Promise((r) => (answer = r));
+    await page.route('**/api/me', async (route) => {
+      await held;
+      await route.continue();
+    });
     await page.goto('/app/');
+    await expect(page.getByRole('status')).toContainText('Loading…');
+    await shot('1-loading');
+    answer();
+
     await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Continue with Google' })).toBeVisible();
     await shot('1-sign-in');

@@ -20,6 +20,8 @@ import (
 const (
 	maxName = 60
 	maxText = 500
+	// A UUID is 36.
+	maxClientID = 64
 	// maxAmount keeps sums far from overflowing (a trillion yen).
 	maxAmount = 1_000_000_000_000
 	// maxImport is the largest CSV accepted; years of records are a few MB.
@@ -391,6 +393,9 @@ type transactionInput struct {
 	Remember *bool `json:"remember"`
 	// Tags left out keep the record's tags (older apps don't send them).
 	Tags []string `json:"tags"`
+	// ClientID names a new record, so sending it again (from a phone that
+	// was offline) doesn't add it twice. Ignored by updates.
+	ClientID string `json:"client_id"`
 }
 
 func (in transactionInput) transaction() (Transaction, error) {
@@ -408,7 +413,10 @@ func (in transactionInput) transaction() (Transaction, error) {
 		return t, httpx.Errorf(http.StatusBadRequest, "enter a date")
 	case utf8.RuneCountInString(t.Payee) > maxText || utf8.RuneCountInString(t.Note) > maxText:
 		return t, httpx.Errorf(http.StatusBadRequest, "payee and note must be at most %d characters", maxText)
+	case len(in.ClientID) > maxClientID:
+		return t, httpx.Errorf(http.StatusBadRequest, "client_id must be at most %d characters", maxClientID)
 	}
+	t.ClientID = in.ClientID
 	if t.Status == "" {
 		t.Status = "confirmed"
 	} else if t.Status != "confirmed" && t.Status != "review" {
