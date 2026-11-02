@@ -92,7 +92,7 @@ function Row({
             <Icon d={icons.transfer} className="glyph" />
           </span>
         ) : (
-          <CategoryIcon icon={cat?.icon} name={cat?.name} color={cat?.color} />
+          <CategoryIcon icon={cat?.icon} name={cat?.name} color={cat?.color} payee={t.payee} />
         )}
         <span className="grow">
           <span className="record-title">

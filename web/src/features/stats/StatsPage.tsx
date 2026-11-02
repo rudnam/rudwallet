@@ -5,6 +5,7 @@ import { api, errorMessage, type Budget, type Stats } from '../../api';
 import { CategoryBars, DailyColumns, type BarItem } from '../../components/charts';
 import { CategoryIcon, Icon, icons } from '../../components/Icon';
 import { addMonths, dayKey, formatCompact, formatMonth } from '../../money';
+import { Figure } from '../../components/Figure';
 import { navigate, type Route } from '../../router';
 import { useWallet } from '../../wallet';
 import { t, tn, tx, type Key } from '../../i18n';
@@ -131,7 +132,7 @@ export function StatsPage({ route }: { route: Route }) {
             </label>
           </div>
         ) : (
-          <div className="card month-picker">
+          <div className="month-picker">
             <button type="button" className="link" aria-label={t(previousLabel[period.span])} onClick={() => go(shift(period, -1))}>
               ‹
             </button>
@@ -150,6 +151,7 @@ export function StatsPage({ route }: { route: Route }) {
         <div className="filters">
           <select
             aria-label={t('Account')}
+            className={account ? 'set' : undefined}
             value={account ?? ''}
             onChange={(e) => go(period, Number(e.target.value) || undefined)}
           >
@@ -169,15 +171,20 @@ export function StatsPage({ route }: { route: Route }) {
         </p>
       )}
 
-      <div className="card hero">
+      <div className="hero plain">
         <span className="muted">{t('Spent')}</span>
-        <span className="hero-figure">{s ? w.money(s.spent) : '…'}</span>
+        <span className="hero-figure">{s ? <Figure amount={s.spent} /> : '…'}</span>
         {stats && <span className="muted small">{stats.past[0].days.length === 0
               ? t('No records in {period} to compare with.', { period: periodName(past[0]) })
               : comparison(stats.now.spent, stats.past[0].spent, past[0], ongoing, w.money)}</span>}
         <div className="tiles">
-          <Tile label={t('Income')} value={s ? w.money(s.income) : '…'} className="income" />
-          <Tile label={t('Net')} value={s ? w.money(s.income - s.spent, true) : '…'} />
+          {/* Income and net say nothing new in a period with no income. */}
+          {(!s || s.income > 0) && (
+            <>
+              <Tile label={t('Income')} value={s ? w.money(s.income) : '…'} className="income" />
+              <Tile label={t('Net')} value={s ? w.money(s.income - s.spent, true) : '…'} />
+            </>
+          )}
           <Tile label={t('Per day')} value={s && days > 0 ? w.money(Math.round(s.spent / days)) : '–'} />
         </div>
       </div>
@@ -188,7 +195,7 @@ export function StatsPage({ route }: { route: Route }) {
         <MonthAhead now={stats.now} budgets={budgets} days={days} period={period} />
       )}
 
-      <div className="card stack">
+      <div className="panel stack">
         <h2>{t('Spending over time')}</h2>
         {series === null ? (
           <p className="muted">{t('Loading…')}</p>
@@ -205,7 +212,7 @@ export function StatsPage({ route }: { route: Route }) {
         )}
       </div>
 
-      <div className="card stack">
+      <div className="panel stack">
         <h2>{t('Where it went')}</h2>
         {s === undefined ? (
           <p className="muted">{t('Loading…')}</p>
@@ -231,7 +238,7 @@ export function StatsPage({ route }: { route: Route }) {
       </div>
 
       {incomes.length > 0 && (
-        <div className="card stack">
+        <div className="panel stack">
           <h2>{t('Where it came from')}</h2>
           <CategoryBars items={incomes} format={(n) => w.money(n)} label={t('Income by category')} />
         </div>
@@ -415,7 +422,7 @@ function Trends({ now, past, period, days, ongoing }: { now: Stats; past: Stats[
 
   if (active.length === 0) {
     return (
-      <div className="card stack">
+      <div className="panel stack">
         <h2>{t('Trends')}</h2>
         <p className="muted">{t(notEnough[period.span], { n: len })}</p>
       </div>
@@ -449,7 +456,7 @@ function Trends({ now, past, period, days, ongoing }: { now: Stats; past: Stats[
   const share = now.income > 0 ? Math.round((now.spent / now.income) * 100) : null;
 
   return (
-    <div className="card stack trends" aria-label={t('Trends')}>
+    <div className="panel stack trends" aria-label={t('Trends')}>
       <h2>{t('Trends')}</h2>
       <div className={`trend-verdict ${verdict}`}>
         <span className="trend-mark" aria-hidden="true">
@@ -503,7 +510,7 @@ function MonthAhead({ now, budgets, days, period }: { now: Stats; budgets: Budge
   const title = t('Rest of {month}', { month: period.from.toLocaleDateString(locale(), { month: 'long' }) });
 
   return (
-    <div className="card stack month-ahead" aria-label={title}>
+    <div className="panel stack month-ahead" aria-label={title}>
       <h2>{title}</h2>
       <div>
         <strong className="block">{t('Heading for about {amount}', { amount: w.money(heading((s) => s.spent)) })}</strong>

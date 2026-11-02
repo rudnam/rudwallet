@@ -22,7 +22,7 @@ test('read an IC card, and import its entries once', async ({ page }) => {
   await expect(rows.getByRole('row').filter({ hasText: 'Start: amount unknown' })).toContainText('¥1,000');
   // Stations and bus companies are named from the server's list.
   await expect(rows.getByRole('row').filter({ hasText: '新宿 → 渋谷' })).toContainText('山手線 → 東横線');
-  await expect(rows.getByRole('row').filter({ hasText: '京王バス' })).toContainText('-¥210');
+  await expect(rows.getByRole('row').filter({ hasText: '京王バス' })).toContainText('−¥210');
   await expect(page.getByLabel('Category for Train')).toHaveValue(/^c:/);
   // The card held ¥1,000 before its oldest entry: that's the starting balance.
   await expect(page.getByText('On the card: ¥2,480. IC card CD56 in the app: ¥1,480.')).toBeVisible();
@@ -71,7 +71,7 @@ test('a tapped card opens its balance, and imports what is new', async ({ page }
   await expect(hero).toContainText('Last used Oct 4, 2026');
   await expect(page.getByText("5 entries aren't imported yet.")).toBeVisible();
   const entries = page.getByRole('list', { name: 'Card entries' });
-  await expect(entries.getByRole('listitem').filter({ hasText: '新宿 → 渋谷' })).toContainText('-¥210');
+  await expect(entries.getByRole('listitem').filter({ hasText: '新宿 → 渋谷' })).toContainText('−¥210');
   // Never imported: the full preview opens, to choose the accounts first.
   await expect(page.getByRole('button', { name: 'Review first' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Import 5 entries' }).click();

@@ -170,7 +170,7 @@ test('the currency can change until there are records', async ({ page }) => {
   await page.getByRole('button', { name: 'Add record' }).click();
   await page.getByRole('dialog', { name: 'New record' }).getByLabel('Amount (USD)').fill('12.50');
   await page.getByRole('dialog', { name: 'New record' }).getByRole('button', { name: 'Save' }).click();
-  await expect(page.locator('.hero-figure')).toHaveText('-$12.50');
+  await expect(page.locator('.hero-figure')).toHaveText('−$12.50');
   await page.goto('/app/#/settings?section=general');
   await page.getByLabel('Main currency').selectOption('EUR');
   await expect(page.getByRole('alert')).toHaveText("the currency can't change once you have records");
@@ -259,7 +259,7 @@ test('a new user is walked through setting up, and daily adding remembers things
   await acct.getByRole('button', { name: 'Add account' }).click();
   await expect(page.getByText('Added PayPay Card')).toBeVisible();
   await expect(setup).toContainText('1 of 3');
-  await expect(page.getByRole('list', { name: 'Accounts' })).toContainText('-¥12,000');
+  await expect(page.getByRole('list', { name: 'Accounts' })).toContainText('−¥12,000');
 
   // The first record, on the card.
   await page.getByRole('button', { name: 'Add record' }).click();
@@ -477,7 +477,7 @@ test('a page seen before shows at once while it reloads, unless something change
   await dialog.getByLabel('Payee').fill('Ramen Taro');
   await dialog.getByRole('button', { name: 'Save' }).click();
   const latest = page.getByRole('list', { name: 'Latest records' });
-  await expect(latest).toContainText('-¥1,200');
+  await expect(latest).toContainText('−¥1,200');
 
   // Hold back the records until told, to see what shows meanwhile.
   let gate = Promise.resolve();
@@ -494,7 +494,7 @@ test('a page seen before shows at once while it reloads, unless something change
   await expect(page.getByRole('button', { name: /Ramen Taro/ })).toBeVisible();
   hold();
   await nav.getByRole('link', { name: 'Home' }).click();
-  await expect(latest).toContainText('-¥1,200');
+  await expect(latest).toContainText('−¥1,200');
   release();
 
   // A search seen before, then an edit made elsewhere: the search waits for
@@ -507,11 +507,11 @@ test('a page seen before shows at once while it reloads, unless something change
   await edit.getByLabel('Amount (JPY)').fill('980');
   await edit.getByRole('button', { name: 'Save' }).click();
   await page.getByRole('button', { name: 'Save changes' }).click();
-  await expect(latest).toContainText('-¥980');
+  await expect(latest).toContainText('−¥980');
   hold();
   await page.goto('/app/#/records?q=ramen');
   await expect(page.getByText('Loading…')).toBeVisible();
-  await expect(page.getByText('-¥1,200')).toHaveCount(0);
+  await expect(page.getByText('−¥1,200')).toHaveCount(0);
   release();
   await expect(page.getByRole('button', { name: /Ramen Taro, -¥980/ })).toBeVisible();
 });

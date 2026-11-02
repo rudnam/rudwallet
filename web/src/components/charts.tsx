@@ -93,10 +93,15 @@ export function DailyColumns({
     return () => ro.disconnect();
   }, []);
   const H = 160;
-  const top = 12;
   const left = 44;
   const bottom = 20;
-  const max = niceMax(Math.max(...values, 0));
+  // One day far above the rest (rent, a commuter pass) would flatten every
+  // other column. Then the scale fits the rest, and that column runs off
+  // the top with a break and its amount written above it.
+  const [first = 0, second = 0] = [...values].sort((a, b) => b - a);
+  const capped = second > 0 && first > 3 * second;
+  const top = capped ? 26 : 12;
+  const max = niceMax(capped ? second * 1.1 : Math.max(...values, 0));
   const slot = (W - left) / values.length;
   const barW = Math.min(slot - 2, 24); // 2px surface gap, never over 24px
   const y = (v: number) => top + (H - top - bottom) * (1 - v / max);
@@ -115,10 +120,20 @@ export function DailyColumns({
         ))}
         {values.map((v, i) => {
           const x = left + i * slot + (slot - barW) / 2;
-          const h = y(0) - y(v);
+          const over = v > max;
+          const vy = over ? top - 6 : y(v);
+          const h = y(0) - vy;
           return (
             <g key={i}>
-              {v > 0 && <path className={hover === i ? 'col on' : 'col'} d={roundedTop(x, y(v), barW, h, Math.min(4, barW / 2))} />}
+              {v > 0 && <path className={hover === i ? 'col on' : 'col'} d={roundedTop(x, vy, barW, h, Math.min(4, barW / 2))} />}
+              {over && (
+                <>
+                  <path className="col-break" d={`M${x - 2},${top + 8} L${x + barW + 2},${top + 3} M${x - 2},${top + 13} L${x + barW + 2},${top + 8}`} />
+                  <text className="tick col-over" x={Math.max(x + barW / 2, left + 18)} y={top - 10} textAnchor="middle">
+                    {compact(v)}
+                  </text>
+                </>
+              )}
               {(() => {
                 const t = tick ? tick(i, slot) : i === 0 || (i + 1) % (slot < 14 ? 10 : 5) === 0 ? String(i + 1) : null;
                 return (

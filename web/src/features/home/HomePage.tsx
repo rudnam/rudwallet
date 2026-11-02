@@ -1,5 +1,5 @@
 // The overview: balances, this month's spending, budgets, latest records.
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { api, type Budget, type Transaction } from '../../api';
 import { CategoryBars, DailyColumns, Meter, type BarItem } from '../../components/charts';
 import { TransactionForm } from '../../components/TransactionForm';
@@ -7,6 +7,7 @@ import { TransactionList } from '../../components/TransactionList';
 import { addMonths, daysInMonth, formatCompact, monthStart } from '../../money';
 import { href, navigate } from '../../router';
 import { CategoryIcon, Icon, icons } from '../../components/Icon';
+import { Figure } from '../../components/Figure';
 import { AccountForm } from '../settings/SettingsPage';
 import { useRecords } from '../../useRecords';
 import { useWallet } from '../../wallet';
@@ -40,7 +41,7 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
           <span className="eyebrow">
             {new Date().toLocaleDateString(locale(), { weekday: 'long', month: 'long', day: 'numeric' })}
           </span>
-          <h1>{greeting()}</h1>
+          <h1 className="headline">{headline(records === null ? null : spent, budgets, confirmed, month, w.money)}</h1>
         </div>
       </header>
 
@@ -63,29 +64,49 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
         <SetUp hasRecords={(records ?? []).length > 0} hasBudget={budgets.length > 0} />
       )}
 
-      <div className="card hero">
-        <span className="muted">{t('Total balance')}</span>
-        <span className="hero-figure">{w.money(total)}</span>
-        <div className="tiles">
-          <Tile label={t('Spent this month')} value={w.money(spent)} />
-          <Tile label={t('Income')} value={w.money(income)} className="income" />
-          <Tile label={t('Net')} value={w.money(income - spent, true)} />
-        </div>
-      </div>
-
-      <div className="accounts" aria-label={t('Accounts')} role="list">
-        {accounts.map((a) => (
-          <a key={a.id} role="listitem" className="card account-card" href={href('records', { account: a.id })}>
-            <span className="row">
-              <span className="swatch" style={{ background: a.color }} aria-hidden="true" />
-              <span className="muted small ellipsis">{a.name}</span>
+      <section className="wallet" aria-label={t('Total balance')}>
+        <div className="wallet-face">
+          <span className="wallet-label">{t('Total balance')}</span>
+          <span className="hero-figure">
+            <Figure amount={total} />
+          </span>
+          <span className="wallet-month">
+            <span>
+              {t('Spent this month')} <strong>{w.money(spent)}</strong>
             </span>
-            <strong>{w.money(a.balance)}</strong>
-          </a>
-        ))}
-      </div>
+            {/* Income and net say nothing new in a month with no income yet. */}
+            {income > 0 && (
+              <>
+                <span>
+                  {t('Income')} <strong>{w.money(income)}</strong>
+                </span>
+                <span>
+                  {t('Net')} <strong>{w.money(income - spent, true)}</strong>
+                </span>
+              </>
+            )}
+          </span>
+        </div>
 
-      <div className="card stack">
+        <div className="accounts" aria-label={t('Accounts')} role="list">
+          {accounts.map((a) => (
+            <a
+              key={a.id}
+              role="listitem"
+              className={`account-card ${inkOn(a.color)}`}
+              style={{ '--account': a.color } as CSSProperties}
+              href={href('records', { account: a.id })}
+            >
+              <span className="account-name ellipsis">{a.name}</span>
+              <strong>
+                <Figure amount={a.balance} />
+              </strong>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      <div className="panel stack">
         <div className="section-head">
           <h2>{t('Where it went in {month}', { month: month.toLocaleDateString(locale(), { month: 'long' }) })}</h2>
           <a href={href('stats')}>{t('More stats')}</a>
@@ -115,7 +136,7 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
       </div>
 
       {budgets && budgets.length > 0 && (
-        <div className="card stack">
+        <div className="panel stack">
           <div className="section-head">
             <h2>{t('Budgets')}</h2>
             <a href={href('budgets')}>{t('All budgets')}</a>
@@ -156,6 +177,49 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
 function greeting(): string {
   const h = new Date().getHours();
   return h < 5 ? t('Good evening') : h < 12 ? t('Good morning') : h < 18 ? t('Good afternoon') : t('Good evening');
+}
+
+/**
+ * The line at the top of Home: what the month means for the user today, from
+ * their overall budget if they have one (a budget with no category), else
+ * what they've spent so far. A greeting only before there's anything to say.
+ */
+function headline(
+  spent: number | null,
+  budgets: Budget[] | null,
+  confirmed: Transaction[],
+  month: Date,
+  money: (n: number) => string,
+): string {
+  if (spent === null || budgets === null) return greeting();
+  const overall = budgets.find((b) => b.category_id === null);
+  if (overall) {
+    const used = budgetSpent(overall, confirmed);
+    if (used > overall.amount) return t('{amount} over budget this month', { amount: money(used - overall.amount) });
+    // Days left, today included, as Stats counts them.
+    const left = daysInMonth(month) - new Date().getDate() + 1;
+    return t('{amount} a day keeps you within budget', { amount: money(Math.floor((overall.amount - used) / left)) });
+  }
+  if (spent > 0) {
+    return t('{amount} spent so far in {month}', {
+      amount: money(spent),
+      month: month.toLocaleDateString(locale(), { month: 'long' }),
+    });
+  }
+  return greeting();
+}
+
+/** Ink for text on an account's colour: dark on light colours, light on dark ones. */
+function inkOn(color: string): 'ink-dark' | 'ink-light' {
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(color);
+  if (!m) return 'ink-light';
+  const [r, g, b] = m.slice(1).map((h) => {
+    const c = parseInt(h, 16) / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  const l = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  // Whichever of near-white and near-black contrasts more.
+  return (1.05 / (l + 0.05) >= (l + 0.05) / 0.05) ? 'ink-light' : 'ink-dark';
 }
 
 const setupDoneKey = 'wallet:setup-dismissed';
@@ -243,15 +307,6 @@ function SetUp({ hasRecords, hasBudget }: { hasRecords: boolean; hasBudget: bool
         </p>
       )}
       {addingAccount && <AccountForm onClose={() => setAddingAccount(false)} />}
-    </div>
-  );
-}
-
-function Tile({ label, value, className }: { label: string; value: string; className?: string }) {
-  return (
-    <div className="tile">
-      <span className="muted small">{label}</span>
-      <strong className={className}>{value}</strong>
     </div>
   );
 }

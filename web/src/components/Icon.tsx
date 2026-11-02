@@ -90,25 +90,40 @@ export function glyphKey(icon: string | undefined): string | undefined {
   return fromEmoji[icon.replace(/[️‍]/g, '')];
 }
 
-/** A category's mark: its line icon, or its initial if it has none, on a wash of its colour. */
+/**
+ * A category's mark: its line icon, or its initial if it has none, on a wash
+ * of its colour. With no category, the payee's initial on a dashed outline,
+ * so a record still has a face while it waits for one.
+ */
 export function CategoryIcon({
   icon,
   name,
   color,
   size,
+  payee,
 }: {
   icon?: string;
   name?: string;
   color?: string;
   size?: 'small';
+  payee?: string;
 }) {
   const key = glyphKey(icon);
   const hex = color && /^#[0-9a-f]{6}$/i.test(color) ? color : undefined;
   const style: CSSProperties | undefined = hex
     ? { background: `${hex}1f`, color: `color-mix(in srgb, ${hex} 75%, var(--text))` }
     : undefined;
+  const cls = size === 'small' ? 'cat-icon small' : 'cat-icon';
+  const initial = payee?.trim()[0];
+  if (!key && !name && initial) {
+    return (
+      <span className={`${cls} uncategorized`} aria-hidden="true">
+        <span className="initial">{initial}</span>
+      </span>
+    );
+  }
   return (
-    <span className={size === 'small' ? 'cat-icon small' : 'cat-icon'} aria-hidden="true" style={style}>
+    <span className={cls} aria-hidden="true" style={style}>
       {key ? <Icon d={glyphs[key].d} className="glyph" /> : name ? <span className="initial">{name[0]}</span> : <Icon d={icons.dot} className="glyph" />}
     </span>
   );
