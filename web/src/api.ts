@@ -204,6 +204,8 @@ export interface ImportResult {
   duplicates: number;
   /** Rows already recorded another way, e.g. from their notification (PayPay only). */
   matched: number;
+  /** Rows paid in a way the user chose not to import (PayPay only). */
+  skipped: number;
   accounts_created: number;
   categories_created: number;
   problems: string[];
@@ -216,7 +218,12 @@ export interface PayPayMethod {
   account_id: number | null;
   new_name: string;
   new_kind: AccountKind;
+  /** The user chose last time not to import this way of paying. */
+  skip: boolean;
 }
+
+/** As the account for a way of paying in an import: leave its records out. */
+export const skipAccount = -1;
 
 export interface PayPayPreview {
   records: number;
@@ -676,7 +683,7 @@ export const api = {
   reconcileAccount: (id: number, balance: number) =>
     request<{ transaction: Transaction | null }>('POST', `/api/accounts/${id}/reconcile`, { balance }),
   previewPayPay: (csv: string) => request<PayPayPreview>('POST', '/api/import/paypay?preview=1', csv, 'text/csv'),
-  /** accounts maps each payment method to an account ID, or 0 for a new account. */
+  /** accounts maps each payment method to an account ID, 0 for a new account, or skipAccount. */
   importPayPay: (csv: string, accounts: Record<string, number>, categories: CategoryChoice[]) =>
     request<ImportResult>('POST', '/api/import/paypay', {
       csv,

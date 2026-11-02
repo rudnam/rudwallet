@@ -2,7 +2,7 @@
 // a way back. Payment notifications, what they learned, Claude, accounts,
 // categories, currency, and import.
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { api, errorMessage, type Me, type Account, type AccountKind, type Category, type ImportResult, type PayPayPreview, type BudgetBakersPreview, type MUFGPreview, type MUFGResult, type MUFGRole, type MUFGBalance } from '../../api';
+import { api, errorMessage, type Me, type Account, type AccountKind, type Category, type ImportResult, type PayPayPreview, type BudgetBakersPreview, type MUFGPreview, type MUFGResult, type MUFGRole, type MUFGBalance, skipAccount } from '../../api';
 import { CategoryIcon, glyphKey, glyphs, Icon, icons, Plus } from '../../components/Icon';
 import { Dialog } from '../../components/Dialog';
 import { amountInput, parseAmount } from '../../money';
@@ -677,6 +677,7 @@ function ImportSummary({ result }: { result: ImportResult }) {
         tn(result.imported, 'Imported {n} record', 'Imported {n} records'),
         result.duplicates > 0 && t('skipped {n} already imported', { n: result.duplicates }),
         result.matched > 0 && t('skipped {n} already recorded from notifications or by hand', { n: result.matched }),
+        result.skipped > 0 && t('left out {n} paid in ways not imported', { n: result.skipped }),
         result.accounts_created > 0 && tn(result.accounts_created, 'created {n} account', 'created {n} accounts'),
         result.categories_created > 0 && tn(result.categories_created, 'created {n} category', 'created {n} categories'),
       ]
@@ -741,7 +742,7 @@ function PayPayImport() {
       const p = await api.previewPayPay(text);
       setCsv(text);
       setPreview(p);
-      setChoice(Object.fromEntries(p.methods.map((m) => [m.method, m.account_id ?? 0])));
+      setChoice(Object.fromEntries(p.methods.map((m) => [m.method, m.skip ? skipAccount : (m.account_id ?? 0)])));
       setCats(suggestedChoices(p.categories));
     } catch (err) {
       setError(errorMessage(err));
@@ -821,6 +822,7 @@ function PayPayImport() {
                 {!accounts.some((a) => a.name.toLowerCase() === m.new_name.toLowerCase()) && (
                   <option value={0}>{t('New account: {name}', { name: m.new_name })}</option>
                 )}
+                <option value={skipAccount}>{t("Don't import")}</option>
               </select>
             </label>
           ))}
@@ -845,7 +847,11 @@ function PayPayImport() {
               {t('Cancel')}
             </button>
             <button type="submit" disabled={busy}>
-              {busy ? t('Importing…') : tn(preview.records, 'Import {n} payment', 'Import {n} payments')}
+              {busy
+                ? t('Importing…')
+                : Object.values(choice).includes(skipAccount)
+                  ? t('Import the rest')
+                  : tn(preview.records, 'Import {n} payment', 'Import {n} payments')}
             </button>
           </div>
         </form>
