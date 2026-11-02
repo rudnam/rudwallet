@@ -86,6 +86,23 @@ func (s *Store) UpdateAccount(ctx context.Context, userID int64, a Account) (Acc
 	return s.account(ctx, userID, a.ID)
 }
 
+// SetBalance changes an account's starting balance so that its balance (from
+// its confirmed records) is balance now. No record is added, so every
+// earlier balance of the account moves by the same amount; Reconcile records
+// the difference instead.
+func (s *Store) SetBalance(ctx context.Context, userID, id, balance int64) (Account, error) {
+	if balance > maxAmount || balance < -maxAmount {
+		return Account{}, invalid("that balance is too large")
+	}
+	if err := rowsChanged(s.db.ExecContext(ctx,
+		`UPDATE wallet_accounts a SET initial_balance = $3 - (`+balanceSQL+` - a.initial_balance)
+		 WHERE a.user_id = $1 AND a.id = $2`,
+		userID, id, balance)); err != nil {
+		return Account{}, err
+	}
+	return s.account(ctx, userID, id)
+}
+
 // DeleteAccount removes an account and every record in it.
 func (s *Store) DeleteAccount(ctx context.Context, userID, id int64) error {
 	return rowsChanged(s.db.ExecContext(ctx, `DELETE FROM wallet_accounts WHERE user_id = $1 AND id = $2`, userID, id))

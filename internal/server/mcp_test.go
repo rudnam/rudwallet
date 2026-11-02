@@ -209,9 +209,85 @@ func TestMCP(t *testing.T) {
 		t.Errorf("delete again: %q", msg)
 	}
 
+	// Many records change at once; those the change doesn't fit are skipped.
+	if r, _ := tool(t, ts.URL, tok.Token, "edit_records", map[string]any{"record_ids": []any{gymID, notified.ID, gymID}, "action": "tag", "tag": " #Trip "}); r["changed"] != float64(2) || r["skipped"] != float64(0) {
+		t.Errorf("tag %v", r)
+	}
+	if recs, _ := tool(t, ts.URL, tok.Token, "list_records", map[string]any{"query": "Gym"}); recs["records"].([]any)[0].(map[string]any)["tags"].([]any)[0] != "Trip" {
+		t.Errorf("tagged gym %v", recs)
+	}
+	if r, _ := tool(t, ts.URL, tok.Token, "edit_records", map[string]any{"record_ids": []any{gymID, notified.ID}, "action": "untag", "tag": "trip"}); r["changed"] != float64(2) {
+		t.Errorf("untag %v", r)
+	}
+	if r, _ := tool(t, ts.URL, tok.Token, "edit_records", map[string]any{"record_ids": []any{gymID, transfer.ID}, "action": "categorize", "category_id": health}); r["changed"] != float64(1) || r["skipped"] != float64(1) {
+		t.Errorf("categorize a transfer %v", r)
+	}
+	if r, _ := tool(t, ts.URL, tok.Token, "edit_records", map[string]any{"record_ids": []any{gymID}, "action": "move", "account_id": cash}); r["changed"] != float64(1) {
+		t.Errorf("move %v", r)
+	}
+	if _, msg := tool(t, ts.URL, tok.Token, "edit_records", map[string]any{"record_ids": []any{gymID}, "action": "move", "account_id": 999999}); !strings.Contains(msg, "no such account") {
+		t.Errorf("move to no account: %q", msg)
+	}
+	if _, msg := tool(t, ts.URL, tok.Token, "edit_records", map[string]any{"record_ids": []any{gymID}, "action": "rename"}); !strings.Contains(msg, "action must be") {
+		t.Errorf("bad action: %q", msg)
+	}
+	if _, msg := tool(t, ts.URL, tok.Token, "edit_records", map[string]any{"record_ids": []any{}, "action": "confirm"}); !strings.Contains(msg, "record_ids") {
+		t.Errorf("no records: %q", msg)
+	}
+
+	// Deleted records can be put back for a day.
+	if r, _ := tool(t, ts.URL, tok.Token, "delete_records", map[string]any{"record_ids": []any{gymID, 999999}}); r["deleted"] != float64(1) || r["not_found"] != float64(1) {
+		t.Errorf("delete records %v", r)
+	}
+	if recs, _ := tool(t, ts.URL, tok.Token, "list_records", map[string]any{"query": "Gym"}); len(recs["records"].([]any)) != 0 {
+		t.Errorf("gym still listed: %v", recs)
+	}
+	if r, _ := tool(t, ts.URL, tok.Token, "restore_records", map[string]any{"record_ids": []any{gymID}}); r["restored"] != float64(1) {
+		t.Errorf("restore %v", r)
+	}
+	if recs, _ := tool(t, ts.URL, tok.Token, "list_records", map[string]any{"query": "Gym"}); len(recs["records"].([]any)) != 1 || recs["records"].([]any)[0].(map[string]any)["id"] != gymID {
+		t.Errorf("gym not back: %v", recs)
+	}
+
+	// Accounts are renamed, archived, and given a balance.
+	acct, _ := tool(t, ts.URL, tok.Token, "update_account", map[string]any{"account_id": card.ID, "name": " Visa ", "archived": true})
+	if acct["name"] != "Visa" || acct["archived"] != true {
+		t.Errorf("archive %v", acct)
+	}
+	if acct, _ = tool(t, ts.URL, tok.Token, "update_account", map[string]any{"account_id": card.ID, "archived": false}); acct["name"] != "Visa" || acct["archived"] != false {
+		t.Errorf("unarchive %v", acct)
+	}
+	before := len(overview(t, alice).Accounts)
+	if acct, _ = tool(t, ts.URL, tok.Token, "update_account", map[string]any{"account_id": cash, "balance": "10000"}); acct["balance"] != "10000" {
+		t.Errorf("set balance %v", acct)
+	}
+	for _, a := range overview(t, alice).Accounts {
+		if a.ID == cash && a.Balance != 10000 {
+			t.Errorf("cash balance %d", a.Balance)
+		}
+	}
+	if recs, _ := tool(t, ts.URL, tok.Token, "list_records", map[string]any{"query": "Gym"}); len(recs["records"].([]any)) != 1 || len(overview(t, alice).Accounts) != before {
+		t.Errorf("setting a balance changed records or accounts: %v", recs)
+	}
+	if _, msg := tool(t, ts.URL, tok.Token, "update_account", map[string]any{"account_id": cash, "balance": "lots"}); !strings.Contains(msg, "decimal") {
+		t.Errorf("bad balance: %q", msg)
+	}
+	if _, msg := tool(t, ts.URL, tok.Token, "update_account", map[string]any{"account_id": cash}); !strings.Contains(msg, "give a name") {
+		t.Errorf("nothing to change: %q", msg)
+	}
+
 	// Bob's token sees only Bob's wallet, and can't change Alice's records.
 	var bobTok mcpToken
 	bob.do("POST", "/api/mcp/tokens", map[string]string{}, &bobTok)
+	if r, _ := tool(t, ts.URL, bobTok.Token, "delete_records", map[string]any{"record_ids": []any{gymID}}); r["deleted"] != float64(0) {
+		t.Errorf("bob deleted alice's record %v", r)
+	}
+	if r, _ := tool(t, ts.URL, bobTok.Token, "edit_records", map[string]any{"record_ids": []any{gymID}, "action": "tag", "tag": "x"}); r["changed"] != float64(0) {
+		t.Errorf("bob tagged alice's record %v", r)
+	}
+	if _, msg := tool(t, ts.URL, bobTok.Token, "update_account", map[string]any{"account_id": cash, "archived": true}); !strings.Contains(msg, "no such account") {
+		t.Errorf("bob archived alice's account: %q", msg)
+	}
 	if r, _ := tool(t, ts.URL, bobTok.Token, "list_records", nil); len(r["records"].([]any)) != 0 {
 		t.Errorf("bob sees %v", r)
 	}
