@@ -363,6 +363,9 @@ export const ja = {
   'Confirmed {payee}': '{payee}を確定しました',
   'Possible duplicate: you already have a record of this amount around this time.':
     '重複の可能性: 同じ時間帯に同じ金額の記録がすでにあります。',
+  'Possible duplicate of a record you already have:': '重複の可能性: 次の記録がすでにあります。',
+  'Delete duplicate': '重複を削除',
+  'Deleted {payee}': '{payee}を削除しました',
   'Category for {name}': '{name}のカテゴリ',
 
   // Sort records (Claude)
