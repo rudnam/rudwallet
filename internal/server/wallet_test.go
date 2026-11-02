@@ -669,6 +669,82 @@ func TestImportPayPayEnglish(t *testing.T) {
 	}
 }
 
+// A way of paying can be left out of a PayPay import, e.g. points for
+// someone who doesn't track them, and that choice is remembered.
+func TestImportPayPaySkipsAWayOfPaying(t *testing.T) {
+	ts := newTestServer(t)
+	c := newClient(t, ts)
+	c.signup("a@example.com")
+	var card, bank wallet.Account
+	c.do("POST", "/api/accounts", map[string]any{"name": "Card 8602", "kind": "credit_card"}, &card)
+	c.do("POST", "/api/accounts", map[string]any{"name": "Bank", "kind": "bank"}, &bank)
+
+	header := "Date & Time,Amount Outgoing (Yen),Amount Incoming (Yen),Amount Outgoing Overseas,Currency,Exchange Rate (Yen),Country Paid In,Transaction Type,Business Name,Method,Payment Option,User,Transaction ID"
+	csv := strings.Join([]string{
+		header,
+		"2026/10/11 09:55:15,\"5,480\",-,-,-,-,-,Payment,Yahoo!ショッピング,\"PayPay Point (686yen), Credit VISA 8602 (4,794yen)\",-,-,s-01",
+		"2026/10/10 09:55:16,-,50,-,-,-,-,\"Points, Balance Earned\",Yahoo!ショッピング,PayPay Point,-,-,s-02",
+		"2026/10/09 10:00:00,\"300\",-,-,-,-,-,Payment,ローソン,PayPay Point,-,-,s-03",
+	}, "\n")
+	choose := func(csv string, accounts map[string]int64) wallet.ImportResult {
+		t.Helper()
+		var list []map[string]any
+		for name, id := range accounts {
+			list = append(list, map[string]any{"name": name, "account_id": id})
+		}
+		var res wallet.ImportResult
+		if code := c.do("POST", "/api/import/paypay", map[string]any{"csv": csv, "accounts": list}, &res); code != 200 {
+			t.Fatalf("import: %d", code)
+		}
+		return res
+	}
+	res := choose(csv, map[string]int64{"PayPayポイント": wallet.SkipAccount, "Credit VISA 8602": card.ID})
+	if res.Imported != 1 || res.Skipped != 3 || res.AccountsCreated != 0 {
+		t.Errorf("import %+v (want only the card's share, and points left out)", res)
+	}
+	var list []wallet.Transaction
+	c.do("GET", "/api/transactions", nil, &list)
+	if len(list) != 1 || list[0].Amount != 4794 || list[0].AccountID != card.ID {
+		t.Errorf("records %+v (want the card's 4,794)", list)
+	}
+
+	// Next time, points are suggested left out, and are, unless chosen.
+	more := csv + "\n2026/10/12 10:00:00,\"200\",-,-,-,-,-,Payment,ローソン,PayPay Point,-,-,s-04"
+	var p wallet.PayPayPreview
+	c.send("/api/import/paypay?preview=1", "text/csv", []byte(more), nil, &p)
+	for _, m := range p.Methods {
+		if want := m.Method == "PayPayポイント"; m.Skip != want {
+			t.Errorf("%s: skip %v, want %v", m.Method, m.Skip, want)
+		}
+	}
+	if res := choose(more, nil); res.Imported != 0 || res.Skipped != 4 || res.Duplicates != 1 {
+		t.Errorf("import again %+v (want points left out as remembered)", res)
+	}
+	if res := choose(more, map[string]int64{"PayPayポイント": 0}); res.Imported != 4 || res.AccountsCreated != 1 {
+		t.Errorf("import with points %+v (want the 4 points records, in a new account)", res)
+	}
+	c.send("/api/import/paypay?preview=1", "text/csv", []byte(more), nil, &p)
+	for _, m := range p.Methods {
+		if m.Skip {
+			t.Errorf("%s is still suggested left out", m.Method)
+		}
+	}
+
+	// A charge into a balance that isn't imported is money out of the bank.
+	charge := header + "\n2026/09/28 14:44:38,-,\"4,000\",-,-,-,-,Top-Up,PayPay,Bank,-,-,s-05"
+	if res := choose(charge, map[string]int64{"PayPay残高": wallet.SkipAccount, "Bank": bank.ID}); res.Imported != 1 {
+		t.Errorf("charge %+v", res)
+	}
+	c.do("GET", "/api/transactions?account_id="+strconv.FormatInt(bank.ID, 10), nil, &list)
+	if len(list) != 1 || list[0].Kind != "expense" || list[0].Amount != 4000 {
+		t.Errorf("a charge into a balance left out: %+v", list)
+	}
+
+	if code := c.do("POST", "/api/import/paypay", map[string]any{"csv": csv, "accounts": []map[string]any{{"name": "PayPayポイント", "account_id": -2}}}, nil); code != 400 {
+		t.Errorf("account_id -2: %d, want 400", code)
+	}
+}
+
 func TestWalletNeedsSignIn(t *testing.T) {
 	ts := newTestServer(t)
 	c := newClient(t, ts)

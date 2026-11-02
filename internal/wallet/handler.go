@@ -588,7 +588,8 @@ func (h *Handler) importBudgetBakers(w http.ResponseWriter, r *http.Request) err
 // With ?preview=1 it only reads the file and suggests an account for each
 // way of paying in it and a category for each shop. Otherwise it imports,
 // sending each way of paying to the account chosen for it, given either in
-// the JSON or as ?account=<id>:<取引方法> (0, or none: the suggestion).
+// the JSON or as ?account=<id>:<取引方法> (0, or none: the suggestion;
+// -1: don't import it).
 func (h *Handler) importPayPay(w http.ResponseWriter, r *http.Request) error {
 	data, choices, err := readImport(w, r)
 	if err != nil {
@@ -606,7 +607,7 @@ func (h *Handler) importPayPay(w http.ResponseWriter, r *http.Request) error {
 	for _, v := range r.URL.Query()["account"] {
 		idText, method, ok := strings.Cut(v, ":")
 		id, err := strconv.ParseInt(idText, 10, 64)
-		if !ok || err != nil || id < 0 {
+		if !ok || err != nil || id < SkipAccount {
 			return httpx.Errorf(http.StatusBadRequest, "account must be <id>:<payment method>")
 		}
 		accounts[method] = id
@@ -614,7 +615,7 @@ func (h *Handler) importPayPay(w http.ResponseWriter, r *http.Request) error {
 	var categories []CategoryChoice
 	if choices != nil {
 		for _, a := range choices.Accounts {
-			if a.AccountID < 0 {
+			if a.AccountID < SkipAccount {
 				return httpx.Errorf(http.StatusBadRequest, "no such account")
 			}
 			accounts[a.Name] = a.AccountID
