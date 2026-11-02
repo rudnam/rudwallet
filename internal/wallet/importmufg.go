@@ -734,7 +734,8 @@ func (s *Store) readMUFGFor(ctx context.Context, userID int64, data []byte) ([]m
 // ---------- Import ----------
 
 // ImportMUFG records a statement. accounts maps a role to the account for
-// it; a role left out, or mapped to 0, gets the suggested account (created
+// it; one with a NewName goes to the account by that name (created if
+// new), and a role left out, or mapped to 0, gets the suggested account (created
 // if new). categories (groups from PreviewMUFG) give expenses and income a
 // category; a group left out gets its suggested one, if the user has it.
 // Both choices are remembered for the next import.
@@ -750,7 +751,7 @@ func (s *Store) readMUFGFor(ctx context.Context, userID int64, data []byte) ([]m
 // recorded in another account (MUFGBalance.Misplaced): those stay a
 // difference to fix by moving them, rather than being hidden in the
 // starting balance, which would be wrong once they're moved.
-func (s *Store) ImportMUFG(ctx context.Context, userID int64, data []byte, accounts map[string]int64, categories []CategoryChoice, matchBalance bool) (MUFGResult, error) {
+func (s *Store) ImportMUFG(ctx context.Context, userID int64, data []byte, accounts map[string]AccountPick, categories []CategoryChoice, matchBalance bool) (MUFGResult, error) {
 	res := MUFGResult{ImportResult: ImportResult{Problems: []string{}}, Rows: []MUFGRow{}}
 	rows, err := s.readMUFGFor(ctx, userID, data)
 	if err != nil {
@@ -777,9 +778,20 @@ func (s *Store) ImportMUFG(ctx context.Context, userID int64, data []byte, accou
 	}
 	account := map[string]int64{}
 	for _, a := range suggested {
-		id := accounts[a.Role]
+		pick := accounts[a.Role]
+		id := pick.ID
 		if _, ok := owned[strconv.FormatInt(id, 10)]; id != 0 && !ok {
 			return res, db.ErrNotFound
+		}
+		if id == 0 && pick.NewName != "" {
+			var made bool
+			id, made, err = accountNamed(ctx, tx, userID, pick.NewName, a.NewKind)
+			if err != nil {
+				return res, err
+			}
+			if made {
+				res.AccountsCreated++
+			}
 		}
 		if id == 0 && a.AccountID != nil {
 			id = *a.AccountID

@@ -218,6 +218,21 @@ func (s *Store) ImportBudgetBakers(ctx context.Context, userID int64, data []byt
 	}
 	for _, ch := range choices.Accounts {
 		if ch.AccountID == 0 {
+			n, err := accountName(ch.NewName)
+			if err != nil {
+				return res, err
+			}
+			if n == "" {
+				continue
+			}
+			id, created, err := accountNamed(ctx, tx, userID, n, guessAccountKind(n))
+			if err != nil {
+				return res, err
+			}
+			if created {
+				res.AccountsCreated++
+			}
+			accounts[strings.ToLower(ch.Name)] = id
 			continue
 		}
 		if _, ok := owned[strconv.FormatInt(ch.AccountID, 10)]; !ok {
