@@ -17,7 +17,7 @@ test('read an IC card, and import its entries once', async ({ page }) => {
   await expect(page.getByLabel(/^Top-ups are paid from/)).toHaveValue(String(cash.id));
 
   const rows = page.getByRole('table', { name: 'Card entries' });
-  await expect(rows.getByRole('row').filter({ hasText: 'Shop payment' })).toContainText(/13:45.*-¥150/);
+  await expect(rows.getByRole('row').filter({ hasText: 'Shop payment' })).toContainText(/13:45.*−¥150/);
   await expect(rows.getByRole('row').filter({ hasText: 'Top-up' })).toContainText(`Transfer: ${cash.name} → The card`);
   await expect(rows.getByRole('row').filter({ hasText: 'Start: amount unknown' })).toContainText('¥1,000');
   // Stations and bus companies are named from the server's list.

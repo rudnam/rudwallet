@@ -1,4 +1,5 @@
 // Records grouped by day, newest first.
+import { useEffect, useRef } from 'react';
 import type { Transaction } from '../api';
 import { t as tr } from '../i18n';
 import { dayKey, formatDay, formatTime } from '../money';
@@ -20,6 +21,12 @@ export function TransactionList({
   onToggle?: (t: Transaction) => void;
 }) {
   const w = useWallet();
+  // Records this list didn't show last time slide in; on first draw, none do.
+  const shown = useRef<Set<number> | null>(null);
+  const fresh = (id: number) => shown.current !== null && !shown.current.has(id);
+  useEffect(() => {
+    shown.current = new Set(records.map((t) => t.id));
+  }, [records]);
   const days: { key: string; date: Date; items: Transaction[] }[] = [];
   for (const t of records) {
     const date = new Date(t.occurred_at);
@@ -41,7 +48,7 @@ export function TransactionList({
             </div>
             <ul className="list card flush">
               {day.items.map((t) => (
-                <Row key={t.id} t={t} onOpen={onOpen} selected={selected?.has(t.id)} onToggle={selected && onToggle} />
+                <Row key={t.id} t={t} onOpen={onOpen} selected={selected?.has(t.id)} onToggle={selected && onToggle} fresh={fresh(t.id)} />
               ))}
             </ul>
           </section>
@@ -62,11 +69,14 @@ function Row({
   onOpen,
   selected,
   onToggle,
+  fresh,
 }: {
   t: Transaction;
   onOpen: (t: Transaction) => void;
   selected?: boolean;
   onToggle?: (t: Transaction) => void;
+  /** Just arrived: it slides in. */
+  fresh?: boolean;
 }) {
   const w = useWallet();
   const cat = w.category(t.category_id);
@@ -133,7 +143,7 @@ function Row({
   );
 
   return (
-    <li>
+    <li className={fresh ? 'record-new' : undefined}>
       {onToggle ? (
         <label className={selected ? 'record selectable on' : 'record selectable'}>
           <input type="checkbox" checked={!!selected} onChange={() => onToggle(t)} aria-label={`${title}, ${amount}`} />

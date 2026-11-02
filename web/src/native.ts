@@ -240,3 +240,16 @@ export function onAppLinks(handlers: {
     tapped.then((l) => l?.remove());
   };
 }
+
+/** The phone's haptics (android/…/HapticsPlugin.java); nothing on the web or in an app build from before them. */
+const haptics = registerPlugin<{ tick(): Promise<void>; confirm(): Promise<void> }>('Haptics');
+
+/** A light tap, for a choice: a key on the number pad, a category. */
+export function hapticTick(): void {
+  if (isApp) haptics.tick().catch(() => {});
+}
+
+/** A firmer tap, for something done: a record saved. */
+export function hapticConfirm(): void {
+  if (isApp) haptics.confirm().catch(() => {});
+}

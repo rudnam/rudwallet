@@ -25,6 +25,7 @@ export const icons = {
     'M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1',
   check: 'M5 12.5l4.5 4.5L19 7',
   close: 'M6 6l12 12M18 6L6 18',
+  backspace: 'M21 5H9l-6 7 6 7h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1zM12 9l6 6M18 9l-6 6',
   copy: 'M9 9h11v11H9zM5 15H4V4h11v1',
   mail: 'M3 6h18v12H3zM3 7l9 6 9-6',
   download: 'M12 4v11M7 10.5l5 5 5-5M5 20h14',

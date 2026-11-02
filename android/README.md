@@ -56,6 +56,8 @@ While working on the app, `cd web && npm run android`, then open `android/` in A
 
 The splash screen (`styles.xml`, Android 12's, back-ported) stays up until the web app has drawn Home or the sign-in page: `SplashPlugin` hears it from `appDrawn()` in `web/src/native.ts`, and `MainActivity` gives it 3 seconds at most. The web app keeps who is signed in and the answers Home needs in the web view's storage (`web/src/api.ts`), so it usually opens on them at once and asks the server again meanwhile.
 
+The phone taps lightly when a number pad key or a category is picked, and more firmly when a record is saved: `HapticsPlugin` plays the view's own haptic feedback (so it follows the system's touch feedback setting and needs no permission), called through `hapticTick()` and `hapticConfirm()` in `web/src/native.ts`. App builds from before it simply don't tap.
+
 A record added without a connection is kept on the phone (`web/src/outbox.ts`), counted in the balances and lists with a **Not sent yet** badge, and sent when the server answers again: on the next start, when the app comes back into view, or when the phone is back online. It carries a `client_id`, so a resend after a lost answer doesn't add it twice. Until it's sent it can be edited or deleted on the phone; other edits and deletes need a connection. One the server refuses (say, its account was deleted meanwhile) stays with **Couldn't send** until it's changed or deleted.
 
 ## How the app signs in

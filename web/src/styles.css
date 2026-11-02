@@ -227,7 +227,10 @@ a.button.secondary:hover { background: var(--sunken); }
     background: linear-gradient(90deg, var(--sunken) 239px, var(--border) 239px 240px, transparent 240px);
   }
   .nav {
-    position: sticky; inset: 0 auto auto; height: 100dvh; flex-direction: column; justify-content: flex-start; gap: 2px;
+    /* The page's height is rounded up to a whole pixel and the column's isn't:
+       the negative margin lets the bar stay at the very top when scrolled to
+       the bottom, instead of being pushed up by the fraction. */
+    position: sticky; inset: 0 auto auto; height: 100dvh; margin-bottom: -1px; flex-direction: column; justify-content: flex-start; gap: 2px;
     border-top: 0; border-right: 1px solid var(--border); padding: 24px 14px; background: var(--sunken);
     backdrop-filter: none;
   }
@@ -537,7 +540,7 @@ li.record:hover:not(:disabled) { background: none; } /* a row to read, not to ta
   border: 1px solid var(--border); border-radius: 20px; background: var(--surface); color: var(--text);
   padding: 20px; width: min(500px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); box-shadow: var(--shadow-lift);
 }
-.dialog[open] { animation: pop 0.2s ease-out; }
+.dialog[open] { animation: pop 0.32s cubic-bezier(0.32, 0.72, 0, 1); }
 .dialog-grab { display: none; }
 .dialog::backdrop { background: rgb(20 18 15 / 0.45); backdrop-filter: blur(2px); }
 @keyframes pop { from { opacity: 0; transform: translateY(12px) scale(0.98); } }
@@ -548,7 +551,8 @@ li.record:hover:not(:disabled) { background: none; } /* a row to read, not to ta
   }
   .dialog-top { touch-action: none; cursor: grab; user-select: none; }
   .dialog-grab { display: block; width: 36px; height: 4px; border-radius: 2px; background: var(--border); margin: 0 auto 10px; }
-  @keyframes pop { from { transform: translateY(40px); opacity: 0.6; } }
+  .dialog[open] { animation-duration: 0.42s; }
+  @keyframes pop { from { transform: translateY(100%); } }
 }
 .dialog-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .dialog-head button.link { color: var(--muted); font-size: 1.1rem; width: 36px; height: 36px; padding: 0; border-radius: 50%; }
@@ -641,6 +645,44 @@ li.record:hover:not(:disabled) { background: none; } /* a row to read, not to ta
 
 /* ---------- Settings ---------- */
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* ---------- The add sheet ---------- */
+/* The number pad: big keys in the thumb's reach, in place of the keyboard. */
+.number-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.number-pad .key {
+  height: 50px; border-radius: 14px; background: var(--sunken); color: var(--text); border: 0;
+  font-family: var(--serif); font-size: 1.45rem; font-weight: 400; font-variant-numeric: tabular-nums;
+  transition: background 0.1s, transform 0.08s;
+}
+/* Not the accent of other buttons; on a touch screen, no hover left behind by a tap. */
+.number-pad .key:hover:not(:disabled) { background: var(--sunken); }
+@media (hover: hover) { .number-pad .key:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 8%, var(--sunken)); } }
+.number-pad .key:active:not(:disabled) { transform: scale(0.95); background: color-mix(in srgb, var(--text) 12%, var(--sunken)); }
+.number-pad .glyph { width: 24px; height: 24px; }
+/* Accounts as chips that scroll sideways, each with its colour. */
+.account-pick { display: flex; gap: 6px; overflow-x: auto; padding: 6px 2px; scrollbar-width: none; }
+.account-pick::-webkit-scrollbar { display: none; }
+.account-pick label {
+  position: relative; flex: none; display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 999px; font-size: 0.9rem; font-weight: 500; white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+.account-pick label:hover { background: var(--sunken); }
+.account-pick label.on { background: var(--accent-soft); border-color: var(--accent); font-weight: 600; }
+.account-pick input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.account-pick label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 1px; }
+.chip.when { justify-self: start; margin: 6px 0; font-variant-numeric: tabular-nums; }
+/* Recent payees: a row of chips under the payee, no label of its own. */
+.detail.payee-suggest { grid-template-columns: minmax(0, 1fr); min-height: 0; padding: 0 10px 10px 14px; border-top: 0; }
+.payee-suggest .chips { list-style: none; margin: 0; padding: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.payee-suggest .chip { white-space: nowrap; background: var(--sunken); border-color: transparent; }
+
+/* A record that has just arrived settles into its list. */
+.record-new { animation: arrive 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes arrive {
+  from { opacity: 0; transform: translateY(-8px); background: var(--accent-soft); }
+  60% { opacity: 1; transform: none; background: var(--accent-soft); }
+}
 .chip {
   display: inline-flex; align-items: center; gap: 6px; background: var(--surface); color: var(--text);
   border: 1px solid var(--border); padding: 6px 12px; font-weight: 500; font-size: 0.9rem; border-radius: 999px;

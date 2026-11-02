@@ -68,7 +68,7 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
         <div className="wallet-face">
           <span className="wallet-label">{t('Total balance')}</span>
           <span className="hero-figure">
-            <Figure amount={total} />
+            <Figure amount={total} animate />
           </span>
           <span className="wallet-month">
             <span>

@@ -70,7 +70,7 @@ test('a possible duplicate shows the record it matches, and is deleted in one ta
   await page.goto('/app/#/review');
   const card = page.getByRole('listitem', { name: '大戸屋' });
   await expect(card.getByRole('status')).toContainText('Possible duplicate of a record you already have:');
-  await expect(card.getByRole('status')).toContainText(/Lunch · -¥1,820/);
+  await expect(card.getByRole('status')).toContainText(/Lunch · −¥1,820/);
   await card.getByRole('button', { name: 'Delete duplicate' }).click();
   await expect(page.getByText('Deleted 大戸屋')).toBeVisible();
   await expect(card).toHaveCount(0);

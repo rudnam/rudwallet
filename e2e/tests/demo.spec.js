@@ -20,7 +20,7 @@ test('the introduction page opens a demo full of sample data', async ({ page }) 
   // Last month is complete whatever today's date, rent (the 27th) included.
   await page.goto('/app/#/records');
   await page.getByRole('button', { name: 'Previous month' }).click();
-  await expect(page.getByRole('button', { name: /^Rent, -¥72,000$/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Rent, −¥72,000$/ })).toBeVisible();
 
   // Nothing that reaches outside the app.
   await page.goto('/app/#/settings?section=claude');
