@@ -4,6 +4,7 @@
 const { test, expect, signUp, asAndroidApp, icCardRead } = require('./fixtures');
 
 test('read an IC card, and import its entries once', async ({ page }) => {
+  test.slow(); // two reads, and screenshots at two widths
   await asAndroidApp(page, { icCard: icCardRead });
   await signUp(page);
   const cash = (await (await page.request.get('/api/wallet')).json()).accounts[0];
