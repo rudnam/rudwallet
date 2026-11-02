@@ -29,7 +29,7 @@ export function ClaudeSettings() {
 const mcpURL = `${server || location.origin}/mcp`;
 
 function Connections() {
-  const [tokens, setTokens] = useState<MCPToken[] | null>(null);
+  const [tokens, setTokens] = useState<MCPToken[] | null>(() => api.seen.mcpTokens() ?? null);
   const [name, setName] = useState('');
   const [fresh, setFresh] = useState<MCPToken | null>(null);
   const [copied, setCopied] = useState('');

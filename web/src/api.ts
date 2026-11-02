@@ -449,9 +449,36 @@ export function unreachable(err: unknown): boolean {
   return err instanceof TypeError || (err instanceof DOMException && (err.name === 'TimeoutError' || err.name === 'AbortError'));
 }
 
-async function request<T>(method: string, path: string, body?: unknown, contentType?: string, signal?: AbortSignal): Promise<T> {
+/**
+ * GETs under way, so asking again for what's already coming (say, a page
+ * opening on what was fetched ahead for it) waits for that answer.
+ */
+const underWay = new Map<string, Promise<unknown>>();
+
+function request<T>(method: string, path: string, body?: unknown, contentType?: string, signal?: AbortSignal): Promise<T> {
+  if (method !== 'GET' || signal) return send<T>(method, path, body, contentType, signal);
+  let p = underWay.get(path) as Promise<T> | undefined;
+  if (!p) {
+    p = send<T>(method, path);
+    const asked = p;
+    underWay.set(path, asked);
+    const done = () => underWay.get(path) === asked && underWay.delete(path);
+    asked.then(done, done);
+  }
+  return p;
+}
+
+/** Asks for path ahead of time, unless its answer was seen since the last change; nothing shows a failure. */
+function prefetch(path: string) {
+  if (!lastSeen.has(path)) request('GET', path).catch(() => {});
+}
+
+async function send<T>(method: string, path: string, body?: unknown, contentType?: string, signal?: AbortSignal): Promise<T> {
   const changes = method !== 'GET';
-  if (changes) lastSeen.clear();
+  if (changes) {
+    lastSeen.clear();
+    underWay.clear(); // a GET sent before the change may answer from before it
+  }
   try {
     const raw = contentType !== undefined;
     const res = await fetch(server + path, {
@@ -480,8 +507,17 @@ async function request<T>(method: string, path: string, body?: unknown, contentT
     throw err;
   } finally {
     // A GET that was under way during the change may have stored an old answer.
-    if (changes) lastSeen.clear();
+    if (changes) {
+      lastSeen.clear();
+      underWay.clear();
+    }
   }
+}
+
+function statsPath(from: Date, to: Date, accountId?: number): string {
+  const p = new URLSearchParams({ from: from.toISOString(), to: to.toISOString(), tz: Intl.DateTimeFormat().resolvedOptions().timeZone });
+  if (accountId) p.set('account_id', String(accountId));
+  return `/api/stats?${p}`;
 }
 
 /** Who is signed in, for the outbox. */
@@ -617,11 +653,7 @@ export const api = {
   /** Brings back records deleted in the last day. */
   restoreTransactions: (ids: number[]) => request<RestoreResult>('POST', '/api/transactions/restore', { ids }),
 
-  stats: (from: Date, to: Date, accountId?: number) => {
-    const p = new URLSearchParams({ from: from.toISOString(), to: to.toISOString(), tz: Intl.DateTimeFormat().resolvedOptions().timeZone });
-    if (accountId) p.set('account_id', String(accountId));
-    return request<Stats>('GET', `/api/stats?${p}`);
-  },
+  stats: (from: Date, to: Date, accountId?: number) => request<Stats>('GET', statsPath(from, to, accountId)),
 
   budgets: () => request<Budget[]>('GET', '/api/budgets'),
   createBudget: (b: Omit<Budget, 'id'>) => request<Budget>('POST', '/api/budgets', b),
@@ -642,6 +674,18 @@ export const api = {
     transactions: (f: TransactionFilter = {}) => lastSeen.get(`/api/transactions${query(f)}`) as Transaction[] | undefined,
     budgets: () => lastSeen.get('/api/budgets') as Budget[] | undefined,
     tags: () => lastSeen.get('/api/tags') as Tag[] | undefined,
+    stats: (from: Date, to: Date, accountId?: number) => lastSeen.get(statsPath(from, to, accountId)) as Stats | undefined,
+    rules: () => lastSeen.get('/api/rules') as Rules | undefined,
+    notifications: () => lastSeen.get('/api/notifications') as { notifications: PaymentNotification[] } | undefined,
+    mcpTokens: () => lastSeen.get('/api/mcp/tokens') as MCPToken[] | undefined,
+  },
+
+  /** Loads what a page will ask for before it's opened, so it opens at once (see seen). */
+  prefetch: {
+    transactions: (f: TransactionFilter = {}) => prefetch(`/api/transactions${query(f)}`),
+    stats: (from: Date, to: Date, accountId?: number) => prefetch(statsPath(from, to, accountId)),
+    budgets: () => prefetch('/api/budgets'),
+    tags: () => prefetch('/api/tags'),
   },
 
   mcpTokens: () => request<MCPToken[]>('GET', '/api/mcp/tokens'),

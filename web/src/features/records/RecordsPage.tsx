@@ -2,7 +2,7 @@
 // through every month. Records can be chosen to delete, categorise, move or
 // tag many at once.
 import { useEffect, useState } from 'react';
-import { api, errorMessage, type BulkChange, type Tag, type Transaction } from '../../api';
+import { api, errorMessage, type BulkChange, type Tag, type Transaction, type TransactionFilter } from '../../api';
 import { cleanTag } from '../../components/TagField';
 import { TransactionForm } from '../../components/TransactionForm';
 import { TransactionList } from '../../components/TransactionList';
@@ -33,14 +33,27 @@ export function RecordsPage({ route }: { route: Route }) {
   // While choosing records: the chosen IDs.
   const [selected, setSelected] = useState<Set<number> | null>(null);
 
-  const { records, error, reload } = useRecords({
-    from: everyMonth ? undefined : month,
-    to: everyMonth ? undefined : addMonths(month, 1),
+  const filterKey = p.toString();
+  const filter: TransactionFilter = {
     account_id: account,
     category_id: category,
     q: search || undefined,
     tag: tag || undefined,
+  };
+  const { records, error, reload } = useRecords({
+    from: everyMonth ? undefined : month,
+    to: everyMonth ? undefined : addMonths(month, 1),
+    ...filter,
   });
+
+  // Once a month is in, the months either side load too, so stepping to them is instant.
+  const loaded = records !== null;
+  useEffect(() => {
+    if (!loaded || everyMonth) return;
+    for (const m of [addMonths(month, -1), addMonths(month, 1)])
+      if (m <= new Date()) api.prefetch.transactions({ from: m, to: addMonths(m, 1), ...filter });
+    // filterKey holds the month and the filter.
+  }, [loaded, filterKey]);
 
   // The tags to filter by; they change as records are tagged.
   useEffect(() => {
@@ -48,7 +61,6 @@ export function RecordsPage({ route }: { route: Route }) {
   }, [records]);
 
   // A different month or filter starts the choice afresh.
-  const filterKey = p.toString();
   useEffect(() => setSelected((s) => (s ? new Set() : s)), [filterKey]);
   // Records that leave the list (moved to an account not shown) leave the choice.
   useEffect(() => setSelected((s) => (s && records ? new Set(records.filter((t) => s.has(t.id)).map((t) => t.id)) : s)), [records]);

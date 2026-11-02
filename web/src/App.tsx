@@ -11,7 +11,8 @@ import { HomePage } from './features/home/HomePage';
 import { RecordsPage } from './features/records/RecordsPage';
 import { ReviewPage } from './features/review/ReviewPage';
 import { SettingsPage } from './features/settings/SettingsPage';
-import { StatsPage } from './features/stats/StatsPage';
+import { prefetchStats, StatsPage } from './features/stats/StatsPage';
+import { addMonths, monthStart } from './money';
 import { appDrawn, onAppLinks } from './native';
 import { initialNotice, signinErrors, type Notice } from './notice';
 import { href, navigate, replaceRoute, useRoute } from './router';
@@ -244,6 +245,18 @@ const pages: { page: string; label: Key; icon: string }[] = [
   { page: 'settings', label: 'Settings', icon: icons.settings },
 ];
 
+/** Asks ahead for what Home, Records, Stats, Review and Budgets open on. */
+function prefetchPages() {
+  const month = monthStart(new Date());
+  const thisMonth = { from: month, to: addMonths(month, 1) };
+  api.prefetch.transactions(thisMonth);
+  api.prefetch.transactions({ ...thisMonth, status: 'confirmed' });
+  api.prefetch.transactions({ status: 'review' });
+  api.prefetch.budgets();
+  api.prefetch.tags();
+  prefetchStats();
+}
+
 /** Pages outside the main navigation, and the entry they belong under. */
 const subpages: Record<string, string> = {};
 
@@ -291,6 +304,13 @@ function Shell({
   useEffect(() => {
     refresh();
   }, [route.page, refresh]);
+  // Once the page is drawn, what the other pages open on loads in the
+  // background, so moving between them is instant. What's already been seen
+  // since the last change isn't asked for again.
+  useEffect(() => {
+    const id = setTimeout(prefetchPages, 500);
+    return () => clearTimeout(id);
+  }, [route.page]);
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return;
