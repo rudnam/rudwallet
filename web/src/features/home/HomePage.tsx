@@ -309,7 +309,9 @@ function CardStack({ accounts }: { accounts: Account[] }) {
       >
         <span className="wallet-card-head">
           <span className="ellipsis">{front.name}</span>
-          <span className="wallet-card-kind">{t(accountKinds[front.kind]?.label ?? 'Other')}</span>
+          {t(accountKinds[front.kind]?.label ?? 'Other') !== front.name && (
+            <span className="wallet-card-kind">{t(accountKinds[front.kind]?.label ?? 'Other')}</span>
+          )}
         </span>
         <span className="wallet-card-big">{w.money(front.balance)}</span>
       </a>
@@ -326,5 +328,6 @@ function inkOn(color: string): 'ink-light' | 'ink-dark' {
     return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
   });
   const l = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  return 1.05 / (l + 0.05) >= (l + 0.05) / 0.05 ? 'ink-light' : 'ink-dark';
+  // White unless the colour is too light for it (3:1 is enough at this size).
+  return 1.05 / (l + 0.05) >= 3 ? 'ink-light' : 'ink-dark';
 }

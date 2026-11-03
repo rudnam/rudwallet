@@ -63,7 +63,9 @@ export function AccountPage({ route }: { route: Route }) {
       <div className="wallet-card front static ink-light" style={{ '--c': account.color } as CSSProperties}>
         <span className="wallet-card-head">
           <h1 className="ellipsis">{account.name}</h1>
-          <span className="wallet-card-kind">{t(accountKinds[account.kind]?.label ?? 'Other')}</span>
+          {t(accountKinds[account.kind]?.label ?? 'Other') !== account.name && (
+            <span className="wallet-card-kind">{t(accountKinds[account.kind]?.label ?? 'Other')}</span>
+          )}
         </span>
         <span className="wallet-card-big">{w.money(account.balance)}</span>
       </div>
