@@ -1,7 +1,7 @@
 // The overview: balances, this month's spending, budgets, latest records.
 import { useEffect, useState, type CSSProperties } from 'react';
 import { api, type Account, type Budget, type Transaction } from '../../api';
-import { Meter, type BarItem } from '../../components/charts';
+import type { BarItem } from '../../components/charts';
 import { TransactionForm } from '../../components/TransactionForm';
 import { TransactionList } from '../../components/TransactionList';
 import { addMonths, daysInMonth, monthStart } from '../../money';
@@ -11,7 +11,7 @@ import { Figure } from '../../components/Figure';
 import { AccountForm, accountKinds } from '../settings/SettingsPage';
 import { useRecords } from '../../useRecords';
 import { useWallet } from '../../wallet';
-import { t, tn, tx } from '../../i18n';
+import { t, tx } from '../../i18n';
 import { locale } from '../../language';
 
 export function HomePage({ onAdd }: { onAdd: () => void }) {
@@ -27,38 +27,22 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
 
   const confirmed = (records ?? []).filter((t) => t.status === 'confirmed');
   const spent = sum(confirmed.filter((t) => t.kind === 'expense'));
-  const income = sum(confirmed.filter((t) => t.kind === 'income'));
   const accounts = w.accounts.filter((a) => !a.archived);
   const total = accounts.reduce((s, a) => s + a.balance, 0);
 
   return (
     <section className="stack loose">
-      <header className="wallet-head">
-        <span className="muted">{new Date().toLocaleDateString(locale(), { weekday: 'long', month: 'long', day: 'numeric' })}</span>
-        <a className="icon-button" href={href('records')} aria-label={t('Search records')}>
-          <Icon d={icons.search} />
-        </a>
-      </header>
-
-      {w.review_count > 0 && (
-        <a className="banner" href={href('review')}>
-          <span className="attention-dot" aria-hidden="true" />
-          <span className="grow">
-            <strong>{tn(w.review_count, '{n} payment to review', '{n} payments to review')}</strong>
-            <span className="muted small block">{t('Waiting for a quick check')}</span>
-          </span>
-          <span className="chev" aria-hidden="true">
-            <Icon d={icons.chevron} />
-          </span>
-        </a>
-      )}
-
       {records !== null && budgets !== null && !w.me.demo && (
         <SetUp hasRecords={(records ?? []).length > 0} hasBudget={budgets.length > 0} />
       )}
 
       <section className="balance" aria-label={t('Total balance')}>
-        <span className="balance-label">{t('Total balance')}</span>
+        <span className="balance-head">
+          <span className="balance-label">{t('Total balance')}</span>
+          <a className="icon-button" href={href('records')} aria-label={t('Search records')}>
+            <Icon d={icons.search} />
+          </a>
+        </span>
         <span className="hero-figure">
           <Figure amount={total} animate />
         </span>
@@ -68,31 +52,19 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
       <section className="stack tight" aria-label={month.toLocaleDateString(locale(), { month: 'long' })}>
         <div className="section-head">
           <h2 className="section-label">{month.toLocaleDateString(locale(), { month: 'long' })}</h2>
-          <a href={href('stats')}>{t('Insights')}</a>
         </div>
-        <div className="card flush">
-          <div className="month-row">
-            <span className="muted small">{t('Spent this month')}</span>
+        {/* One line: how the month stands. Budgets, trends and where it went are on Insights. */}
+        <a className="card month-row month-link" href={href('stats')}>
+          <span className="row">
+            <span className="grow muted small">{t('Spent this month')}</span>
             <span className="month-figure">{w.money(spent)}</span>
-            <span className="muted small">
-              {spent === 0 && records !== null
-                ? t('No spending recorded this month yet.')
-                : headline(records === null ? null : spent, budgets, confirmed, month, w.money)}
-            </span>
-          </div>
-          {income > 0 && (
-            <div className="month-row inline">
-              <span>{t('Income')}</span>
-              <strong className="income">{w.money(income)}</strong>
-            </div>
-          )}
-          {(budgets ?? []).map((b) => (
-            <div key={b.id} className="month-row">
-              <span>{b.name}</span>
-              <Meter spent={budgetSpent(b, confirmed)} limit={b.amount} format={(n) => w.money(n)} />
-            </div>
-          ))}
-        </div>
+          </span>
+          <span className="muted small">
+            {spent === 0 && records !== null
+              ? t('No spending recorded this month yet.')
+              : headline(records === null ? null : spent, budgets, confirmed, month, w.money)}
+          </span>
+        </a>
       </section>
 
       <div className="stack">
@@ -286,7 +258,7 @@ function CardStack({ accounts }: { accounts: Account[] }) {
   const order = [...rest].reverse();
   const edge = 54;
   return (
-    <div className="card-stack" role="list" aria-label={t('Accounts')} style={{ height: order.length * edge + 200 }}>
+    <div className="card-stack" role="list" aria-label={t('Accounts')} style={{ height: order.length * edge + 150 }}>
       {order.map((a, i) => (
         <a
           key={a.id}

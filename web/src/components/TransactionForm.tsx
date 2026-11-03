@@ -82,6 +82,7 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
   const pad = quick && !typing;
   // The date shows as a chip until the user asks to change it.
   const [editingWhen, setEditingWhen] = useState(false);
+  const [extras, setExtras] = useState(false);
 
   // Suggest payees from the last few months; picking one fills in its category.
   useEffect(() => {
@@ -292,31 +293,20 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
     }
   }
 
-  const accountSelect = (label: string, value: number, set: (id: number) => void) => (
-    <label className="detail">
-      <span>{label}</span>
-      <select value={value} onChange={(e) => set(Number(e.target.value))}>
-        {accounts.map((a) => (
-          <option key={a.id} value={a.id}>
-            {a.name}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-
-  const accountChips = (
+  // Accounts as a row of chips in their colours: for an expense or income, the
+  // account; for a transfer, where from and where to.
+  const accountPick = (label: string, name: string, value: number, set: (id: number) => void) => (
     <div className="detail">
-      <span id="record-account">{t('Account')}</span>
-      <div className="account-pick" role="radiogroup" aria-labelledby="record-account">
+      <span id={`record-${name}`}>{label}</span>
+      <div className="account-pick" role="radiogroup" aria-labelledby={`record-${name}`}>
         {accounts.map((a) => (
-          <label key={a.id} className={accountId === a.id ? 'on' : ''}>
+          <label key={a.id} className={value === a.id ? 'on' : ''}>
             <input
               type="radio"
-              name="account"
-              checked={accountId === a.id}
+              name={name}
+              checked={value === a.id}
               onChange={() => {
-                setAccountId(a.id);
+                set(a.id);
                 hapticSelect();
               }}
             />
@@ -327,6 +317,9 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
       </div>
     </div>
   );
+  const accountChips = accountPick(t('Account'), 'account', accountId, setAccountId);
+  // On the phone's quick sheet, note and tags wait behind one row until wanted.
+  const showExtras = !quick || extras || note !== '' || tags.length > 0;
 
   // Recent payees, offered while a new record has none yet.
   const recentPayees = !record && !payee ? [...habits.keys()].slice(0, fewPayees) : [];
@@ -443,8 +436,8 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
         <div className="details">
           {kind === 'transfer' ? (
             <>
-              {accountSelect(t('From'), accountId, setAccountId)}
-              {accountSelect(t('To'), toAccountId, setToAccountId)}
+              {accountPick(t('From'), 'from', accountId, setAccountId)}
+              {accountPick(t('To'), 'to', toAccountId, setToAccountId)}
             </>
           ) : (
             <label className="detail">
@@ -508,14 +501,25 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
               </button>
             </div>
           )}
-          <label className="detail">
-            <span>{t('Note')}</span>
-            <input value={note} maxLength={500} placeholder={t('Optional')} onChange={(e) => setNote(e.target.value)} />
-          </label>
-          <div className="detail">
-            <label htmlFor="record-tags">{t('Tags')}</label>
-            <TagField id="record-tags" tags={tags} onTags={setTags} text={tagText} onText={setTagText} suggestions={knownTags} />
-          </div>
+          {showExtras ? (
+            <>
+              <label className="detail">
+                <span>{t('Note')}</span>
+                <input value={note} maxLength={500} placeholder={t('Optional')} onChange={(e) => setNote(e.target.value)} />
+              </label>
+              <div className="detail">
+                <label htmlFor="record-tags">{t('Tags')}</label>
+                <TagField id="record-tags" tags={tags} onTags={setTags} text={tagText} onText={setTagText} suggestions={knownTags} />
+              </div>
+            </>
+          ) : (
+            <div className="detail">
+              <span>{t('More')}</span>
+              <button type="button" className="chip when" onClick={() => setExtras(true)}>
+                {t('Add a note or tags')}
+              </button>
+            </div>
+          )}
         </div>
         {error && (
           <p role="alert" className="error">

@@ -91,17 +91,14 @@ function Connections() {
 
   return (
     <div className="card stack">
-      <h2>{t('Connect Claude to your wallet')}</h2>
+      <p className="small">{t('Claude can sort records with no category, fix mistakes and answer questions about your spending.')}</p>
       <p className="small">
-        {t('Let Claude look through your records and tidy them: sort records, fix categories, and answer questions about your spending.')}
-      </p>
-      <p className="small">
-        {tx('{where} (claude.ai, desktop or mobile): open Settings → Connectors, add a custom connector with the address below, then click Connect and allow it here. Leave the OAuth fields empty.', {
+        {tx('{where}: Settings › Connectors › Add custom connector, paste this address, then allow it here.', {
           where: <strong>{t('In the Claude app')}</strong>,
         })}
       </p>
       <div className="address">
-        <span className="muted small">{t('MCP server address')}</span>
+        <span className="muted small">{t('Address for Claude')}</span>
         <code data-testid="mcp-url">{mcpURL}</code>
       </div>
 

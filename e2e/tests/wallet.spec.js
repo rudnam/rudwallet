@@ -15,10 +15,9 @@ test('add, edit and delete a record', async ({ page }) => {
   await expect(dialog.getByRole('radiogroup', { name: 'Account' }).getByRole('radio', { name: 'Cash' })).toBeChecked();
   // The date is a chip, until it's tapped.
   await expect(dialog.getByRole('group', { name: 'Date' }).getByRole('button', { name: /^Today, / })).toBeVisible();
-  // A transfer's options get the dialog's colours, not a white list with pale text.
+  // A transfer picks both accounts as chips.
   await dialog.getByRole('radio', { name: 'Transfer' }).check();
-  expect(await dialog.getByLabel('From').locator('option').first().evaluate((o) => getComputedStyle(o).backgroundColor))
-    .not.toBe('rgba(0, 0, 0, 0)');
+  await expect(dialog.getByRole('radiogroup', { name: 'From' }).getByRole('radio', { name: 'Cash' })).toBeChecked();
   await dialog.getByRole('radio', { name: 'Expense' }).check();
   await dialog.getByRole('radio', { name: 'Food & Drinks' }).check();
   await dialog.getByLabel('Payee').fill('Ramen Taro');
@@ -99,8 +98,8 @@ test('a new account, a transfer, and a budget that runs over', async ({ page }) 
   const rec = page.getByRole('dialog', { name: 'New record' });
   await rec.getByText('Transfer', { exact: true }).click();
   await rec.getByLabel('Amount (JPY)').fill('10000');
-  await rec.getByLabel('From').selectOption({ label: 'MUFG' });
-  await rec.getByLabel('To').selectOption({ label: 'Cash' });
+  await rec.getByRole('radiogroup', { name: 'From' }).getByRole('radio', { name: 'MUFG' }).check();
+  await rec.getByRole('radiogroup', { name: 'To' }).getByRole('radio', { name: 'Cash' }).check();
   await rec.getByRole('button', { name: 'Save' }).click();
   await page.goto('/app/#/');
   const accounts = page.getByRole('list', { name: 'Accounts' });
@@ -110,7 +109,7 @@ test('a new account, a transfer, and a budget that runs over', async ({ page }) 
 
   // A food budget of ¥1,000, then a ¥1,200 lunch.
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Insights' }).click();
-  await page.getByRole('link', { name: 'Budgets', exact: true }).click();
+  await page.getByRole('link', { name: 'Set a budget' }).click();
   await page.getByRole('button', { name: 'New budget' }).click();
   const b = page.getByRole('dialog', { name: 'New budget' });
   await b.getByLabel('Category').selectOption({ label: 'Food & Drinks' });

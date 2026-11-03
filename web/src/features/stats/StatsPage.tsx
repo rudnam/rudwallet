@@ -98,9 +98,20 @@ export function StatsPage({ route }: { route: Route }) {
         <div>
           <h1>{t('Insights')}</h1>
         </div>
-        <a className="button secondary" href={href('budgets')}>
-          {t('Budgets')}
-        </a>
+        {/* Which accounts count: all of them unless one is picked. */}
+          <select
+            aria-label={t('Account')}
+            className={account ? 'chip-select set' : 'chip-select'}
+            value={account ?? ''}
+            onChange={(e) => go(period, Number(e.target.value) || undefined)}
+          >
+            <option value="">{t('All accounts')}</option>
+            {w.accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
       </header>
 
       <div className="stack">
@@ -150,21 +161,6 @@ export function StatsPage({ route }: { route: Route }) {
             </button>
           </div>
         )}
-        <div className="filters">
-          <select
-            aria-label={t('Account')}
-            className={account ? 'set' : undefined}
-            value={account ?? ''}
-            onChange={(e) => go(period, Number(e.target.value) || undefined)}
-          >
-            <option value="">{t('All accounts')}</option>
-            {w.accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
 
       {error && (
@@ -176,9 +172,6 @@ export function StatsPage({ route }: { route: Route }) {
       <div className="hero plain balance">
         <span className="muted">{t('Spent')}</span>
         <span className="hero-figure">{s ? <Figure amount={s.spent} /> : '…'}</span>
-        {stats && <span className="muted small">{stats.past[0].days.length === 0
-              ? t('No records in {period} to compare with.', { period: periodName(past[0]) })
-              : comparison(stats.now.spent, stats.past[0].spent, past[0], ongoing, w.money)}</span>}
         {/* The same line under the figure as on Home. Income and net say nothing new without income. */}
         <span className="balance-month">
           <span>
@@ -358,30 +351,6 @@ function samePoint(p: Period, n: number): Period {
   const end = addDays(p.from, n);
   return { ...p, to: end < p.to ? end : p.to };
 }
-
-/** "the week before", "September", "2025", "the 30 days before". */
-function periodName(prev: Period, len = lengthInDays(prev)): string {
-  return prev.span === 'week'
-    ? t('the week before')
-    : prev.span === 'month'
-      ? prev.from.toLocaleDateString(locale(), { month: 'long' })
-      : prev.span === 'year'
-        ? yearName(prev.from)
-        : t('the {n} days before', { n: len });
-}
-
-/** "¥1,200 less than September at this point", for the period before. */
-function comparison(now: number, before: number, prev: Period, ongoing: boolean, money: (n: number) => string): string {
-  const vars = { period: periodName(prev), amount: money(Math.abs(now - before)) };
-  if (now === before && before === 0) return t('Nothing spent here or in {period}.', vars);
-  if (ongoing) {
-    if (now === before) return t('The same as {period} at this point.', vars);
-    return t(now < before ? '{amount} less than {period} at this point' : '{amount} more than {period} at this point', vars);
-  }
-  if (now === before) return t('The same as {period}.', vars);
-  return t(now < before ? '{amount} less than {period}' : '{amount} more than {period}', vars);
-}
-
 // ---------- Trends ----------
 
 const notEnough: Record<Span, Key> = {
@@ -510,7 +479,10 @@ function MonthAhead({ now, budgets, days, period }: { now: Stats; budgets: Budge
 
   return (
     <div className="card stack month-ahead" aria-label={title}>
-      <h2>{title}</h2>
+      <div className="section-head">
+        <h2>{title}</h2>
+        <a href={href('budgets')}>{budgets.length > 0 ? t('Edit budgets') : t('Set a budget')}</a>
+      </div>
       <div>
         <strong className="block">{t('Heading for about {amount}', { amount: w.money(heading((s) => s.spent)) })}</strong>
         <span className="muted small block">

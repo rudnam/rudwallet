@@ -48,7 +48,7 @@ export function RulesSettings() {
       <div className="card stack">
         <p className="small">
           {t(
-            "When you confirm a payment from a notification, its shop's category and its card's account are remembered, and the next payment there is filled in for you. Payments at a shop's branches (a name that starts with the shop's) share its category.",
+            "Confirm a payment once, and its shop's category and its card's account fill in by themselves next time. A shop's branches share its category.",
           )}
         </p>
         {error && (
@@ -62,7 +62,7 @@ export function RulesSettings() {
           <p className="muted">{t('Loading…')}</p>
         ) : rules.payees.length === 0 ? (
           <p className="muted small">
-            {tx('No shops yet. Confirm a payment under {review}, or add one below.', { review: <a href={href('review')}>{t('Activity')}</a> })}
+            {t('No shops yet. Each one you confirm in Activity is added here.')}
           </p>
         ) : (
           <ul className="list rows" aria-label={t('Shops')}>
@@ -140,7 +140,7 @@ export function RulesSettings() {
           </ul>
         )}
         <p className="muted small">
-          {tx("A forgotten card's payments go to the account chosen under {notifications} until you confirm one elsewhere.", {
+          {tx('Forget a card, and its payments go to the account set in {notifications}.', {
             notifications: <a href={href('settings', { section: 'notifications' })}>{t('Payment notifications')}</a>,
           })}
         </p>
