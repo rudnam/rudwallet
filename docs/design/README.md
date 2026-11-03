@@ -26,7 +26,7 @@ its own).
   gradient. Appearance follows the phone unless changed in Settings. In
   light mode the cards keep their full colour, and the main action (the
   plus, Save) turns near-black instead of white.
-- **Geist** for text and figures. Japanese uses the phone's own font (Noto
+- **Inter** for text and figures. Japanese uses the phone's own font (Noto
   Sans CJK JP on Android), so no Japanese font ships with the app.
 - **Accounts are a stack of cards** in each account's colour, straight (not
   tilted), separated by a faint edge and a soft shadow. Tapping a card opens

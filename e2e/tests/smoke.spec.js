@@ -19,12 +19,12 @@ test('client-side routes load the app', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
 });
 
-test('the bundled font loads: Geist, for everything', async ({ page }) => {
+test('the bundled font loads: Inter, for everything', async ({ page }) => {
   await page.goto('/app/');
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
   const loaded = await page.evaluate(async () => {
     await document.fonts.ready;
     return [...document.fonts].filter((f) => f.status === 'loaded').map((f) => f.family.replace(/"/g, ''));
   });
-  expect(loaded).toContain('Geist');
+  expect(loaded).toContain('Inter');
 });
