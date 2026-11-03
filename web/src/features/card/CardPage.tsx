@@ -91,7 +91,7 @@ export function CardPage() {
     setBusy(true);
     setError('');
     try {
-      const accounts = Object.fromEntries(preview.accounts.map((a) => [a.role, a.account_id ?? 0]));
+      const accounts = preview.accounts.map((a) => ({ name: a.role, account_id: a.account_id ?? 0 }));
       const res = await api.importICCard(read, accounts, categoryChoices(preview.categories, suggestedChoices(preview.categories)), false);
       setResult(res);
       setPreview({ ...preview, new: 0, rows: res.rows.map((r) => (r.status === 'new' ? { ...r, status: 'imported' } : r)), balance: res.balance });

@@ -506,6 +506,8 @@ export const ja = {
   '{n} payment, {from} to {to}. Choose where each way of paying is recorded:': '{from}〜{to}の支払い{n}件。支払い方法ごとに記録する口座を選んでください:',
   '{n} payments, {from} to {to}. Choose where each way of paying is recorded:': '{from}〜{to}の支払い{n}件。支払い方法ごとに記録する口座を選んでください:',
   'New account: {name}': '新しい口座: {name}',
+  'New account name': '新しい口座の名前',
+  'You already have an account named {name}; its records go there.': '「{name}」という口座がすでにあるため、記録はその口座に入ります。',
   "Don't import": '取り込まない',
   'Import the rest': '残りを取り込む',
   "These rows can't be read and will be left out:": '次の行は読み取れないため、取り込みません:',

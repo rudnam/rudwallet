@@ -200,6 +200,12 @@ test('import records exported from Wallet by BudgetBakers', async ({ page }) => 
   await page.getByLabel('CSV file', { exact: true }).setInputFiles(file);
   await expect(page.getByText(/^4 records/)).toBeVisible();
   await expect(page.getByLabel(/^Rakuten Bank/).locator('option:checked')).toHaveText('New account: Rakuten Bank');
+  // The new account's name can be changed; one the user has is used as it is.
+  await page.getByLabel('New account name').fill('Rakuten Savings');
+  await expect(page.getByLabel(/^Rakuten Bank/).locator('option:checked')).toHaveText('New account: Rakuten Savings');
+  await page.getByLabel('New account name').fill('cash');
+  await expect(page.getByText('You already have an account named Cash; its records go there.')).toBeVisible();
+  await page.getByLabel('New account name').fill('Rakuten Savings');
   // BudgetBakers' categories are matched to the closest of the user's.
   await expect(page.getByLabel('Category for Bar, cafe').locator('option:checked')).toHaveText('Food & Drinks');
   await expect(page.getByLabel('Category for Salary').locator('option:checked')).toHaveText('Salary');
@@ -223,7 +229,8 @@ test('import records exported from Wallet by BudgetBakers', async ({ page }) => 
   await expect(page.getByRole('status')).toContainText('Imported 0 records, skipped 4 already imported');
   await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
   await page.getByRole('link', { name: /Accounts/ }).click();
-  await expect(page.getByRole('list', { name: 'Accounts' })).toContainText('Rakuten Bank');
+  await expect(page.getByRole('list', { name: 'Accounts' })).toContainText('Rakuten Savings');
+  await expect(page.getByRole('list', { name: 'Accounts' })).not.toContainText('Rakuten Bank');
 
   await page.goto('/app/#/records');
   await expect(page.getByRole('button', { name: /Aeon, −¥2,480/ })).toBeVisible();
