@@ -10,6 +10,7 @@ import { cancelICCardRead, icCardReader, onICCardTapped, openNFCSettings, readIC
 import { useWallet } from '../../wallet';
 import { t, tn, type Key } from '../../i18n';
 import { ImportCategories, ImportSummary, categoryChoices, shortDate, suggestedChoices, type Choices } from './ImportCategories';
+import { ImportAccount, accountChoices, type NewNames } from './ImportAccount';
 
 const roles: Record<ICRole, Key> = {
   card: 'The card',
@@ -30,6 +31,7 @@ export function ICCardImport() {
   const [read, setRead] = useState<ICCardRead | null>(null);
   const [preview, setPreview] = useState<ICPreview | null>(null);
   const [choice, setChoice] = useState<Record<string, number>>({});
+  const [names, setNames] = useState<NewNames>({});
   const [cats, setCats] = useState<Choices>({});
   const [match, setMatch] = useState(true);
   const [result, setResult] = useState<ICResult | null>(null);
@@ -91,6 +93,7 @@ export function ICCardImport() {
       setRead(card);
       setPreview(p);
       setChoice(Object.fromEntries(p.accounts.map((a) => [a.role, a.account_id ?? 0])));
+      setNames(Object.fromEntries(p.accounts.map((a) => [a.role, a.new_name])));
       setCats(suggestedChoices(p.categories));
       setMatch(!p.gap);
     } catch (err) {
@@ -116,7 +119,7 @@ export function ICCardImport() {
     setBusy(true);
     setError('');
     try {
-      setResult(await api.importICCard(read, choice, categoryChoices(preview?.categories ?? [], cats), match));
+      setResult(await api.importICCard(read, accountChoices(choice, names), categoryChoices(preview?.categories ?? [], cats), match));
       reset();
       await w.refresh();
     } catch (err) {
@@ -176,20 +179,20 @@ export function ICCardImport() {
             <p className="notice warn">{t('The card was used more often than it keeps since it was last read, so some entries are lost. The difference shows in the balance below.')}</p>
           )}
           {preview.accounts.map((a) => (
-            <label key={a.role} className="field">
-              <span>
-                {t(roles[a.role])}
-                <span className="muted small"> · {tn(a.count, '{n} record', '{n} records')}</span>
-              </span>
-              <select value={choice[a.role]} onChange={(e) => setChoice({ ...choice, [a.role]: Number(e.target.value) })}>
-                {accounts.map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {x.name}
-                  </option>
-                ))}
-                {!accounts.some((x) => x.name.toLowerCase() === a.new_name.toLowerCase()) && <option value={0}>{t('New account: {name}', { name: a.new_name })}</option>}
-              </select>
-            </label>
+            <ImportAccount
+              key={a.role}
+              label={
+                <>
+                  {t(roles[a.role])}
+                  <span className="muted small"> · {tn(a.count, '{n} record', '{n} records')}</span>
+                </>
+              }
+              accounts={accounts}
+              value={choice[a.role]}
+              onChange={(id) => setChoice({ ...choice, [a.role]: id })}
+              newName={names[a.role] ?? ''}
+              onNewName={(n) => setNames({ ...names, [a.role]: n })}
+            />
           ))}
           {preview.categories.length > 0 && (
             <>
@@ -223,13 +226,13 @@ export function ICCardImport() {
                     </td>
                     <td className="amount">{r.status === 'start' ? '' : w.money(r.amount, true)}</td>
                     <td className="amount">{w.money(r.balance)}</td>
-                    <td>{status(r, name(choice['top-up']) || (preview.accounts.find((a) => a.role === 'top-up')?.new_name ?? ''))}</td>
+                    <td>{status(r, name(choice['top-up']) || names['top-up']?.trim() || (preview.accounts.find((a) => a.role === 'top-up')?.new_name ?? ''))}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <BalanceNote balance={preview.balance} match={match} done={false} newName={preview.accounts[0]?.new_name ?? ''} />
+          <BalanceNote balance={preview.balance} match={match} done={false} newName={names[preview.accounts[0]?.role]?.trim() || (preview.accounts[0]?.new_name ?? '')} />
           <label className="check">
             <input type="checkbox" checked={match} onChange={(e) => setMatch(e.target.checked)} />
             {t("Update the card's account to match the card's balance")}

@@ -18,6 +18,7 @@ import { RulesSettings } from './RulesSettings';
 import { serverText, t, tn, tx, type Key } from '../../i18n';
 import { language, languages } from '../../language';
 import { ImportCategories, ImportSummary, categoryChoices, shortDate, suggestedChoices, type Choices } from './ImportCategories';
+import { ImportAccount, accountChoices, type NewNames } from './ImportAccount';
 import { ICCardImport } from './ICCardImport';
 
 /** Each kind of account: what to call it, its icon and colour, and names people often use (pass both through t). */
@@ -691,6 +692,7 @@ function PayPayImport() {
   const [csv, setCsv] = useState('');
   const [preview, setPreview] = useState<PayPayPreview | null>(null);
   const [choice, setChoice] = useState<Record<string, number>>({});
+  const [names, setNames] = useState<NewNames>({});
   const [cats, setCats] = useState<Choices>({});
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState('');
@@ -713,6 +715,7 @@ function PayPayImport() {
       setCsv(text);
       setPreview(p);
       setChoice(Object.fromEntries(p.methods.map((m) => [m.method, m.skip ? skipAccount : (m.account_id ?? 0)])));
+      setNames(Object.fromEntries(p.methods.map((m) => [m.method, m.new_name])));
       setCats(suggestedChoices(p.categories));
     } catch (err) {
       setError(errorMessage(err));
@@ -727,7 +730,7 @@ function PayPayImport() {
     setBusy(true);
     setError('');
     try {
-      setResult(await api.importPayPay(csv, choice, categoryChoices(preview?.categories ?? [], cats)));
+      setResult(await api.importPayPay(csv, accountChoices(choice, names), categoryChoices(preview?.categories ?? [], cats)));
       reset();
       await w.refresh();
     } catch (err) {
@@ -777,24 +780,22 @@ function PayPayImport() {
                   })}
           </p>
           {preview.methods.map((m) => (
-            <label key={m.method} className="field">
-              <span>
-                {m.method}
-                {language() === 'en' && payPayMethodNames[m.method] && <span className="muted"> · {payPayMethodNames[m.method]}</span>}
-                <span className="muted small"> · {tn(m.count, '{n} record', '{n} records')}</span>
-              </span>
-              <select value={choice[m.method]} onChange={(e) => setChoice({ ...choice, [m.method]: Number(e.target.value) })}>
-                {accounts.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-                {!accounts.some((a) => a.name.toLowerCase() === m.new_name.toLowerCase()) && (
-                  <option value={0}>{t('New account: {name}', { name: m.new_name })}</option>
-                )}
-                <option value={skipAccount}>{t("Don't import")}</option>
-              </select>
-            </label>
+            <ImportAccount
+              key={m.method}
+              label={
+                <>
+                  {m.method}
+                  {language() === 'en' && payPayMethodNames[m.method] && <span className="muted"> · {payPayMethodNames[m.method]}</span>}
+                  <span className="muted small"> · {tn(m.count, '{n} record', '{n} records')}</span>
+                </>
+              }
+              accounts={accounts}
+              value={choice[m.method]}
+              onChange={(id) => setChoice({ ...choice, [m.method]: id })}
+              newName={names[m.method] ?? ''}
+              onNewName={(n) => setNames({ ...names, [m.method]: n })}
+              canSkip
+            />
           ))}
           {preview.categories.length > 0 && (
             <>
@@ -901,6 +902,7 @@ function MUFGImport() {
   const [csv, setCsv] = useState('');
   const [preview, setPreview] = useState<MUFGPreview | null>(null);
   const [choice, setChoice] = useState<Record<string, number>>({});
+  const [names, setNames] = useState<NewNames>({});
   const [cats, setCats] = useState<Choices>({});
   const [result, setResult] = useState<MUFGResult | null>(null);
   const [match, setMatch] = useState(true);
@@ -924,6 +926,7 @@ function MUFGImport() {
       setCsv(text);
       setPreview(p);
       setChoice(Object.fromEntries(p.accounts.map((a) => [a.role, a.account_id ?? 0])));
+      setNames(Object.fromEntries(p.accounts.map((a) => [a.role, a.new_name])));
       setCats(suggestedChoices(p.categories));
     } catch (err) {
       setError(errorMessage(err));
@@ -938,7 +941,7 @@ function MUFGImport() {
     setBusy(true);
     setError('');
     try {
-      setResult(await api.importMUFG(csv, choice, categoryChoices(preview?.categories ?? [], cats), match));
+      setResult(await api.importMUFG(csv, accountChoices(choice, names), categoryChoices(preview?.categories ?? [], cats), match));
       reset();
       await w.refresh();
     } catch (err) {
@@ -951,7 +954,7 @@ function MUFGImport() {
   const name = (id: number | undefined) => w.accounts.find((a) => a.id === id)?.name ?? '';
   const roleName = (role: MUFGRole | undefined) => {
     const a = preview?.accounts.find((x) => x.role === role);
-    return a ? name(choice[a.role]) || a.new_name : '';
+    return a ? name(choice[a.role]) || names[a.role]?.trim() || a.new_name : '';
   };
   const accounts = w.accounts.filter((a) => !a.archived || Object.values(choice).includes(a.id));
   return (
@@ -977,23 +980,24 @@ function MUFGImport() {
             })}
           </p>
           {preview.accounts.map((a) => (
-            <label key={a.role} className="field">
-              <span>
-                {t(mufgRoles[a.role])}
-                <span className="muted small"> · {tn(a.count, '{n} record', '{n} records')}</span>
-              </span>
-              <select value={choice[a.role]} onChange={(e) => setChoice({ ...choice, [a.role]: Number(e.target.value) })}>
-                {accounts.map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {x.name}
-                  </option>
-                ))}
-                {!accounts.some((x) => x.name.toLowerCase() === a.new_name.toLowerCase()) && <option value={0}>{t('New account: {name}', { name: a.new_name })}</option>}
-              </select>
+            <div key={a.role} className="field">
+              <ImportAccount
+                label={
+                  <>
+                    {t(mufgRoles[a.role])}
+                    <span className="muted small"> · {tn(a.count, '{n} record', '{n} records')}</span>
+                  </>
+                }
+                accounts={accounts}
+                value={choice[a.role]}
+                onChange={(id) => setChoice({ ...choice, [a.role]: id })}
+                newName={names[a.role] ?? ''}
+                onNewName={(n) => setNames({ ...names, [a.role]: n })}
+              />
               {a.candidates.length > 0 && (
                 <span className="muted small">{t('Also looks like this account: {names}', { names: a.candidates.map(name).join(t(', ')) })}</span>
               )}
-            </label>
+            </div>
           ))}
           {preview.categories.length > 0 && (
             <>
@@ -1076,6 +1080,7 @@ function BudgetBakersImport() {
   const [csv, setCsv] = useState('');
   const [preview, setPreview] = useState<BudgetBakersPreview | null>(null);
   const [choice, setChoice] = useState<Record<string, number>>({});
+  const [names, setNames] = useState<NewNames>({});
   const [cats, setCats] = useState<Choices>({});
   const [result, setResult] = useState<ImportResult | null>(null);
   const [error, setError] = useState('');
@@ -1098,6 +1103,7 @@ function BudgetBakersImport() {
       setCsv(text);
       setPreview(p);
       setChoice(Object.fromEntries(p.accounts.map((a) => [a.name, a.account_id ?? 0])));
+      setNames(Object.fromEntries(p.accounts.map((a) => [a.name, a.name])));
       setCats(suggestedChoices(p.categories));
     } catch (err) {
       setError(errorMessage(err));
@@ -1112,7 +1118,7 @@ function BudgetBakersImport() {
     setBusy(true);
     setError('');
     try {
-      setResult(await api.importBudgetBakers(csv, choice, categoryChoices(preview?.categories ?? [], cats)));
+      setResult(await api.importBudgetBakers(csv, accountChoices(choice, names), categoryChoices(preview?.categories ?? [], cats)));
       reset();
       await w.refresh();
     } catch (err) {
@@ -1162,20 +1168,20 @@ function BudgetBakersImport() {
                   })}
           </p>
           {preview.accounts.map((a) => (
-            <label key={a.name} className="field">
-              <span>
-                {a.name}
-                <span className="muted small"> · {tn(a.count, '{n} record', '{n} records')}</span>
-              </span>
-              <select value={choice[a.name]} onChange={(e) => setChoice({ ...choice, [a.name]: Number(e.target.value) })}>
-                {accounts.map((acc) => (
-                  <option key={acc.id} value={acc.id}>
-                    {acc.name}
-                  </option>
-                ))}
-                {!accounts.some((acc) => acc.name.toLowerCase() === a.name.toLowerCase()) && <option value={0}>{t('New account: {name}', { name: a.name })}</option>}
-              </select>
-            </label>
+            <ImportAccount
+              key={a.name}
+              label={
+                <>
+                  {a.name}
+                  <span className="muted small"> · {tn(a.count, '{n} record', '{n} records')}</span>
+                </>
+              }
+              accounts={accounts}
+              value={choice[a.name]}
+              onChange={(id) => setChoice({ ...choice, [a.name]: id })}
+              newName={names[a.name] ?? ''}
+              onNewName={(n) => setNames({ ...names, [a.name]: n })}
+            />
           ))}
           {preview.categories.length > 0 && (
             <>

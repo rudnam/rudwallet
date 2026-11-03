@@ -382,6 +382,104 @@ func TestImportBudgetBakersChoices(t *testing.T) {
 
 func ptr(n int64) *int64 { return &n }
 
+// An account in an import file can go to a new account under a name the
+// user typed, or, when they already have one by that name, to it.
+func TestImportNewAccountName(t *testing.T) {
+	ts := newTestServer(t)
+	c := newClient(t, ts)
+	c.signup("a@example.com")
+	cash := overview(t, c).Accounts[0]
+	csv := strings.Join([]string{
+		"account;category;currency;amount;ref_currency_amount;type;payment_type;note;date;transfer;payee;labels",
+		"Wallet;Food & Drinks;JPY;1200;1200;Expense;Cash;;2026-10-01T03:00:00.000Z;false;Ramen Shop;",
+		"Bank;Salary;JPY;300000;300000;Income;Transfer;;2026-10-25T00:00:00.000Z;false;;",
+		"PayPay Card;Food & Drinks;JPY;318;318;Expense;Cash;;2026-10-11T04:53:13.000Z;false;Soba;",
+	}, "\n")
+	importWith := func(accounts []wallet.AccountChoice, res *wallet.ImportResult) int {
+		return c.do("POST", "/api/import/budgetbakers", map[string]any{"csv": csv, "accounts": accounts}, res)
+	}
+	if code := importWith([]wallet.AccountChoice{{Name: "Bank", NewName: strings.Repeat("x", 61)}}, &wallet.ImportResult{}); code != 400 {
+		t.Errorf("a name over 60 characters: %d, want 400", code)
+	}
+	var res wallet.ImportResult
+	code := importWith([]wallet.AccountChoice{
+		{Name: "Bank", NewName: "  MUFG Savings  "},
+		{Name: "Wallet", NewName: strings.ToUpper(cash.Name)}, // the user's Cash, ignoring case
+		{Name: "PayPay Card"},                                 // as before: the account named after it
+	}, &res)
+	if code != 200 || res.Imported != 3 || res.AccountsCreated != 2 {
+		t.Fatalf("import: %d %+v (want 3 records; MUFG Savings and PayPay Card created)", code, res)
+	}
+	byName := map[string]int64{}
+	for _, a := range overview(t, c).Accounts {
+		byName[a.Name] = a.ID
+	}
+	if len(byName) != 3 || byName["MUFG Savings"] == 0 || byName["PayPay Card"] == 0 {
+		t.Errorf("accounts after import: %v (want Cash, MUFG Savings, PayPay Card)", byName)
+	}
+	var list []wallet.Transaction
+	c.do("GET", "/api/transactions", nil, &list)
+	want := map[int64]int64{1200: cash.ID, 300000: byName["MUFG Savings"], 318: byName["PayPay Card"]}
+	for _, r := range list {
+		if r.AccountID != want[r.Amount] {
+			t.Errorf("record of %d in account %d, want %d", r.Amount, r.AccountID, want[r.Amount])
+		}
+	}
+
+	// The next export's accounts are suggested where they went this time.
+	var p wallet.BudgetBakersPreview
+	c.send("/api/import/budgetbakers?preview=1", "text/csv", []byte(csv), nil, &p)
+	for _, a := range p.Accounts {
+		if a.AccountID == nil || *a.AccountID != map[string]int64{"Wallet": cash.ID, "Bank": byName["MUFG Savings"], "PayPay Card": byName["PayPay Card"]}[a.Name] {
+			t.Errorf("%s: suggested %v", a.Name, a.AccountID)
+		}
+	}
+	// What the import remembers isn't a card rule for the user to manage.
+	var rules wallet.Rules
+	c.do("GET", "/api/rules", nil, &rules)
+	if len(rules.Cards) != 0 {
+		t.Errorf("card rules: %+v", rules.Cards)
+	}
+}
+
+// A way of paying with a suggested account can still go to a new one, and
+// two ways can share it.
+func TestImportPayPayNewAccountName(t *testing.T) {
+	ts := newTestServer(t)
+	c := newClient(t, ts)
+	c.signup("a@example.com")
+	overview(t, c)
+	var card wallet.Account
+	if code := c.do("POST", "/api/accounts", map[string]any{"name": "PayPay Gold", "kind": "credit_card"}, &card); code != 201 {
+		t.Fatalf("create account: %d", code)
+	}
+	csv := strings.Join([]string{
+		"取引日,出金金額（円）,入金金額（円）,海外出金金額,通貨,変換レート（円）,利用国,取引内容,取引先,取引方法,支払い区分,利用者,取引番号",
+		"2026/10/01 08:15,\"1,200\",-,-,-,-,-,支払い,ローソン,PayPay残高,-,本人,00001",
+		"2026/10/02 12:05,\"1,280\",-,-,-,-,-,支払い,お店,PayPayカード,一回払い,本人,00002",
+	}, "\n")
+	var res wallet.ImportResult
+	code := c.do("POST", "/api/import/paypay", map[string]any{"csv": csv, "accounts": []wallet.AccountChoice{
+		{Name: "PayPayカード", NewName: "Family PayPay"},
+		{Name: "PayPay残高", NewName: "family paypay"},
+	}}, &res)
+	if code != 200 || res.Imported != 2 || res.AccountsCreated != 1 {
+		t.Fatalf("import: %d %+v (want 2 records in one new account)", code, res)
+	}
+	var list []wallet.Transaction
+	c.do("GET", "/api/transactions", nil, &list)
+	if len(list) != 2 || list[0].AccountID != list[1].AccountID || list[0].AccountID == card.ID {
+		t.Errorf("records: %+v (want both in the new Family PayPay, not PayPay Gold)", list)
+	}
+	var p wallet.PayPayPreview
+	c.send("/api/import/paypay?preview=1", "text/csv", []byte(csv), nil, &p)
+	for _, m := range p.Methods {
+		if m.AccountID == nil || *m.AccountID != list[0].AccountID {
+			t.Errorf("%s: the next import should suggest Family PayPay: %+v", m.Method, m)
+		}
+	}
+}
+
 // Newer Wallet exports leave amounts unsigned and give the direction in type.
 func TestImportBudgetBakersUnsignedAmounts(t *testing.T) {
 	ts := newTestServer(t)

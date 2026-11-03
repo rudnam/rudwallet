@@ -650,7 +650,8 @@ func (s *Store) readICCardFor(ctx context.Context, userID int64, read ICCardRead
 // ---------- Import ----------
 
 // ImportICCard records a card's history. accounts maps a role to the
-// account for it; a role left out, or mapped to 0, gets the suggested
+// account for it; one with a NewName goes to the account by that name
+// (created if new), and a role left out, or mapped to 0, gets the suggested
 // account (created if new). categories (groups from PreviewICCard) give
 // payments and refunds a category; a group left out gets its suggested
 // one, if the user has it. Both are remembered for the next read.
@@ -659,7 +660,7 @@ func (s *Store) readICCardFor(ctx context.Context, userID int64, read ICCardRead
 // way is matched (icMatcher.status) and not recorded again. With
 // matchBalance, the card's account then gets the starting balance that
 // makes its balance the card's.
-func (s *Store) ImportICCard(ctx context.Context, userID int64, read ICCardRead, accounts map[string]int64, categories []CategoryChoice, matchBalance bool) (ICResult, error) {
+func (s *Store) ImportICCard(ctx context.Context, userID int64, read ICCardRead, accounts map[string]AccountPick, categories []CategoryChoice, matchBalance bool) (ICResult, error) {
 	res := ICResult{ImportResult: ImportResult{Problems: []string{}}, Rows: []ICRow{}}
 	idm, rows, err := s.readICCardFor(ctx, userID, read)
 	if err != nil {
@@ -687,9 +688,20 @@ func (s *Store) ImportICCard(ctx context.Context, userID int64, read ICCardRead,
 	}
 	account := map[string]int64{}
 	for _, a := range suggested {
-		id := accounts[a.Role]
+		pick := accounts[a.Role]
+		id := pick.ID
 		if _, ok := owned[strconv.FormatInt(id, 10)]; id != 0 && !ok {
 			return res, db.ErrNotFound
+		}
+		if id == 0 && pick.NewName != "" {
+			var made bool
+			id, made, err = accountNamed(ctx, tx, userID, pick.NewName, a.NewKind)
+			if err != nil {
+				return res, err
+			}
+			if made {
+				res.AccountsCreated++
+			}
 		}
 		if id == 0 && a.AccountID != nil {
 			id = *a.AccountID

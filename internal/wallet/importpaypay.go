@@ -236,7 +236,8 @@ func (rs payeeRuleSet) match(payee string) *int64 {
 }
 
 // ImportPayPay imports a PayPay export. accounts maps a 取引方法 to the
-// account for it; a method left out, or mapped to 0, gets the suggested
+// account for it; one with a NewName goes to the account by that name
+// (created if new), a method left out, or mapped to 0, gets the suggested
 // account (created if new), and one mapped to SkipAccount isn't imported
 // (as is one left out that was skipped last time).
 // The choice is remembered for the next import. A charge into the balance
@@ -252,7 +253,7 @@ func (rs payeeRuleSet) match(payee string) *int64 {
 // each payment once. A payment already recorded another way (from its
 // notification, or by hand) in the same account, for the same amount, within a day, is
 // skipped and counted as Matched.
-func (s *Store) ImportPayPay(ctx context.Context, userID int64, data []byte, accounts map[string]int64, categories []CategoryChoice) (ImportResult, error) {
+func (s *Store) ImportPayPay(ctx context.Context, userID int64, data []byte, accounts map[string]AccountPick, categories []CategoryChoice) (ImportResult, error) {
 	res := ImportResult{Problems: []string{}}
 	rows, err := s.readPayPayFor(ctx, userID, data, &res)
 	if err != nil {
@@ -277,7 +278,8 @@ func (s *Store) ImportPayPay(ctx context.Context, userID int64, data []byte, acc
 	skip := map[string]bool{}
 	created := map[string]int64{} // new accounts by name, which methods can share
 	for _, m := range methods {
-		id, chosen := accounts[m.Method]
+		pick, chosen := accounts[m.Method]
+		id := pick.ID
 		if id == SkipAccount || !chosen && m.Skip {
 			skip[m.Method] = true
 			if _, err := tx.ExecContext(ctx,
@@ -293,6 +295,16 @@ func (s *Store) ImportPayPay(ctx context.Context, userID int64, data []byte, acc
 		}
 		if _, ok := owned[strconv.FormatInt(id, 10)]; id != 0 && !ok {
 			return res, db.ErrNotFound
+		}
+		if id == 0 && pick.NewName != "" {
+			var made bool
+			id, made, err = accountNamed(ctx, tx, userID, pick.NewName, m.NewKind)
+			if err != nil {
+				return res, err
+			}
+			if made {
+				res.AccountsCreated++
+			}
 		}
 		if id == 0 && m.AccountID != nil {
 			id = *m.AccountID

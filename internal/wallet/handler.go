@@ -565,6 +565,8 @@ func (h *Handler) deleteBudget(w http.ResponseWriter, r *http.Request) error {
 
 // importBudgetBakers takes the CSV file as the request body, or JSON:
 // {"csv", "accounts": [AccountChoice], "categories": [CategoryChoice]}.
+// An AccountChoice with account_id 0 and a new_name sends the account's
+// records to the account by that name, created if missing.
 // With ?preview=1 (and the CSV file) it only reads the file and suggests
 // where its accounts and categories go. tz_offset is the browser's
 // Date.getTimezoneOffset(), in minutes.
@@ -600,7 +602,8 @@ func (h *Handler) importBudgetBakers(w http.ResponseWriter, r *http.Request) err
 // way of paying in it and a category for each shop. Otherwise it imports,
 // sending each way of paying to the account chosen for it, given either in
 // the JSON or as ?account=<id>:<取引方法> (0, or none: the suggestion;
-// -1: don't import it).
+// -1: don't import it; 0 with a new_name in the JSON: the account by that
+// name, created if missing).
 func (h *Handler) importPayPay(w http.ResponseWriter, r *http.Request) error {
 	data, choices, err := readImport(w, r)
 	if err != nil {
@@ -614,22 +617,19 @@ func (h *Handler) importPayPay(w http.ResponseWriter, r *http.Request) error {
 		httpx.WriteJSON(w, http.StatusOK, p)
 		return nil
 	}
-	accounts := map[string]int64{}
+	accounts := map[string]AccountPick{}
 	for _, v := range r.URL.Query()["account"] {
 		idText, method, ok := strings.Cut(v, ":")
 		id, err := strconv.ParseInt(idText, 10, 64)
 		if !ok || err != nil || id < SkipAccount {
 			return httpx.Errorf(http.StatusBadRequest, "account must be <id>:<payment method>")
 		}
-		accounts[method] = id
+		accounts[method] = AccountPick{ID: id}
 	}
 	var categories []CategoryChoice
 	if choices != nil {
-		for _, a := range choices.Accounts {
-			if a.AccountID < SkipAccount {
-				return httpx.Errorf(http.StatusBadRequest, "no such account")
-			}
-			accounts[a.Name] = a.AccountID
+		if err := accountPicks(choices.Accounts, SkipAccount, accounts); err != nil {
+			return storeErr(err, "account")
 		}
 		categories = choices.Categories
 	}
@@ -663,15 +663,12 @@ func (h *Handler) importMUFG(w http.ResponseWriter, r *http.Request) error {
 		httpx.WriteJSON(w, http.StatusOK, p)
 		return nil
 	}
-	accounts := map[string]int64{}
+	accounts := map[string]AccountPick{}
 	var categories []CategoryChoice
 	match := r.URL.Query().Get("match_balance") == "1"
 	if choices != nil {
-		for _, a := range choices.Accounts {
-			if a.AccountID < 0 {
-				return httpx.Errorf(http.StatusBadRequest, "no such account")
-			}
-			accounts[a.Name] = a.AccountID
+		if err := accountPicks(choices.Accounts, 0, accounts); err != nil {
+			return storeErr(err, "account")
 		}
 		categories = choices.Categories
 		match = match || choices.MatchBalance
@@ -706,12 +703,9 @@ func (h *Handler) importICCard(w http.ResponseWriter, r *http.Request) error {
 		httpx.WriteJSON(w, http.StatusOK, p)
 		return nil
 	}
-	accounts := map[string]int64{}
-	for _, a := range in.Accounts {
-		if a.AccountID < 0 {
-			return httpx.Errorf(http.StatusBadRequest, "no such account")
-		}
-		accounts[a.Name] = a.AccountID
+	accounts := map[string]AccountPick{}
+	if err := accountPicks(in.Accounts, 0, accounts); err != nil {
+		return storeErr(err, "account")
 	}
 	res, err := h.store.ImportICCard(r.Context(), userID(r), in.ICCardRead, accounts, in.Categories, in.MatchBalance)
 	if err := storeErr(err, "account"); err != nil {

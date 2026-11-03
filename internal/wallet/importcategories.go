@@ -3,9 +3,11 @@ package wallet
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"slices"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 // Imports let the user decide where records go before anything is
@@ -43,10 +45,67 @@ type CategoryChoice struct {
 
 // AccountChoice sends the records of an account in the file (a BudgetBakers
 // account, a PayPay way of paying) to one of the user's accounts; 0 takes
-// the suggestion.
+// the suggestion, or, with NewName, the account by that name (created when
+// the user has none).
 type AccountChoice struct {
 	Name      string `json:"name"`
 	AccountID int64  `json:"account_id"`
+	NewName   string `json:"new_name,omitempty"`
+}
+
+// AccountPick is the account chosen for a group of an import's records: an
+// existing one (ID), the account named NewName (created if missing), or,
+// with neither, the suggestion.
+type AccountPick struct {
+	ID      int64
+	NewName string
+}
+
+// accountPicks reads an import's account choices by name. min is the
+// smallest account ID allowed (SkipAccount where records can be left out).
+func accountPicks(choices []AccountChoice, min int64, into map[string]AccountPick) error {
+	for _, a := range choices {
+		if a.AccountID < min {
+			return invalid("no such account")
+		}
+		p := AccountPick{ID: a.AccountID}
+		if a.AccountID == 0 {
+			n, err := accountName(a.NewName)
+			if err != nil {
+				return err
+			}
+			p.NewName = n
+		}
+		into[a.Name] = p
+	}
+	return nil
+}
+
+// accountName checks a new account's name; empty stays empty (none given).
+func accountName(s string) (string, error) {
+	s = strings.TrimSpace(s)
+	if utf8.RuneCountInString(s) > maxName {
+		return "", invalid("a account name must be 1 to %d characters", maxName)
+	}
+	return s, nil
+}
+
+// accountNamed is the user's account with the name, ignoring case, created
+// with the kind when there is none. created says it was.
+func accountNamed(ctx context.Context, tx *sql.Tx, userID int64, name, kind string) (id int64, created bool, err error) {
+	err = tx.QueryRowContext(ctx,
+		`SELECT id FROM wallet_accounts WHERE user_id = $1 AND lower(name) = lower($2) ORDER BY id LIMIT 1`,
+		userID, name).Scan(&id)
+	if err == nil {
+		return id, false, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return 0, false, err
+	}
+	err = tx.QueryRowContext(ctx,
+		`INSERT INTO wallet_accounts (user_id, name, kind) VALUES ($1, $2, $3) RETURNING id`,
+		userID, name, kind).Scan(&id)
+	return id, err == nil, err
 }
 
 // ImportChoices is what the user picked in an import's preview. A group or

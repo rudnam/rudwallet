@@ -222,6 +222,17 @@ export interface PayPayMethod {
   skip: boolean;
 }
 
+/**
+ * Where an import sends a group of records (by account name in the file, way
+ * of paying, or role): an account ID, skipAccount, or 0 for the suggestion,
+ * or, with new_name, the account by that name (created if missing).
+ */
+export interface AccountChoice {
+  name: string;
+  account_id: number;
+  new_name?: string;
+}
+
 /** As the account for a way of paying in an import: leave its records out. */
 export const skipAccount = -1;
 
@@ -790,29 +801,29 @@ export const api = {
 
   previewBudgetBakers: (csv: string) =>
     request<BudgetBakersPreview>('POST', `/api/import/budgetbakers?preview=1&tz_offset=${new Date().getTimezoneOffset()}`, csv, 'text/csv'),
-  /** accounts maps each account in the file to an account ID, or 0 for a new one. */
-  importBudgetBakers: (csv: string, accounts: Record<string, number>, categories: CategoryChoice[]) =>
+  /** accounts says where each account in the file goes. */
+  importBudgetBakers: (csv: string, accounts: AccountChoice[], categories: CategoryChoice[]) =>
     request<ImportResult>('POST', `/api/import/budgetbakers?tz_offset=${new Date().getTimezoneOffset()}`, {
       csv,
-      accounts: Object.entries(accounts).map(([name, account_id]) => ({ name, account_id })),
+      accounts,
       categories,
     }),
   previewMUFG: (csv: string) => request<MUFGPreview>('POST', '/api/import/mufg?preview=1', csv, 'text/csv'),
-  /** accounts maps each role to an account ID, or 0 for a new account. */
+  /** accounts says which account each role is. */
   /** match_balance: also set the bank account's starting balance so it matches the statement. */
-  importMUFG: (csv: string, accounts: Record<string, number>, categories: CategoryChoice[], match_balance: boolean) =>
+  importMUFG: (csv: string, accounts: AccountChoice[], categories: CategoryChoice[], match_balance: boolean) =>
     request<MUFGResult>('POST', '/api/import/mufg', {
       csv,
-      accounts: Object.entries(accounts).map(([name, account_id]) => ({ name, account_id })),
+      accounts,
       categories,
       match_balance,
     }),
   previewICCard: (read: ICCardRead) => request<ICPreview>('POST', '/api/import/ic-card?preview=1', read),
-  /** accounts maps each role to an account ID, or 0 for a new account. */
-  importICCard: (read: ICCardRead, accounts: Record<string, number>, categories: CategoryChoice[], match_balance: boolean) =>
+  /** accounts says which account each role is. */
+  importICCard: (read: ICCardRead, accounts: AccountChoice[], categories: CategoryChoice[], match_balance: boolean) =>
     request<ICResult>('POST', '/api/import/ic-card', {
       ...read,
-      accounts: Object.entries(accounts).map(([name, account_id]) => ({ name, account_id })),
+      accounts,
       categories,
       match_balance,
     }),
@@ -820,11 +831,11 @@ export const api = {
   reconcileAccount: (id: number, balance: number) =>
     request<{ transaction: Transaction | null }>('POST', `/api/accounts/${id}/reconcile`, { balance }),
   previewPayPay: (csv: string) => request<PayPayPreview>('POST', '/api/import/paypay?preview=1', csv, 'text/csv'),
-  /** accounts maps each payment method to an account ID, 0 for a new account, or skipAccount. */
-  importPayPay: (csv: string, accounts: Record<string, number>, categories: CategoryChoice[]) =>
+  /** accounts says where each payment method goes, or skipAccount. */
+  importPayPay: (csv: string, accounts: AccountChoice[], categories: CategoryChoice[]) =>
     request<ImportResult>('POST', '/api/import/paypay', {
       csv,
-      accounts: Object.entries(accounts).map(([name, account_id]) => ({ name, account_id })),
+      accounts,
       categories,
     }),
 };
