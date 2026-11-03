@@ -4,45 +4,31 @@ const { test, expect } = require('./fixtures');
 test('the introduction page leads to the app', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Your money, quietly kept in order.' })).toBeVisible();
-  await expect(page.getByRole('list', { name: 'Features' })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Where records come from' })).toContainText('Transit IC cards');
   await page.getByRole('link', { name: 'Get started' }).first().click();
   await expect(page).toHaveURL(/\/app\/$/);
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
 });
 
-test('how it works follows the scroll, and everything shows once scrolled to', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
-  const stage = page.locator('.how-stage');
-  await expect(stage).toHaveAttribute('data-step', '1');
-  for (const step of ['1', '2', '3']) {
-    // Bring the step to two thirds of the way down the screen, below the stage.
-    await page.locator(`.how-step[data-step="${step}"]`).evaluate((el) =>
-      window.scrollBy(0, el.getBoundingClientRect().top - innerHeight * 0.66),
-    );
-    await expect(stage).toHaveAttribute('data-step', step);
-    await expect(page.locator(`.how-step[data-step="${step}"]`)).toHaveClass(/\bon\b/);
-    await page.waitForTimeout(1200); // let the stage settle for the picture
-    await page.screenshot({ path: test.info().outputPath(`phone-how-${step}.png`) });
-  }
-  await expect(page.locator('.how-learned')).toBeVisible();
-  // Each section fades in as it arrives.
-  const close = page.getByRole('heading', { name: 'Start with one card.' });
-  await close.scrollIntoViewIfNeeded();
-  await expect(page.locator('.landing-close')).toHaveClass(/\bin\b/);
-  await expect(close).toBeVisible();
-});
-
-test('how it works at desktop width', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto('/');
-  for (const step of ['1', '2', '3']) {
-    await page.locator(`.how-step[data-step="${step}"]`).evaluate((el) =>
-      window.scrollBy(0, el.getBoundingClientRect().top + el.offsetHeight / 2 - innerHeight / 2),
-    );
-    await expect(page.locator('.how-stage')).toHaveAttribute('data-step', step);
-    await page.waitForTimeout(1200);
-    await page.screenshot({ path: test.info().outputPath(`desktop-how-${step}.png`) });
+test('the path of a payment shows stop by stop, and everything shows once scrolled to', async ({ page }) => {
+  for (const [name, size] of [['phone', { width: 390, height: 844 }], ['desktop', { width: 1280, height: 800 }]]) {
+    await page.setViewportSize(size);
+    await page.goto('/');
+    await page.screenshot({ path: test.info().outputPath(`${name}-hero.png`) });
+    const flow = page.getByRole('heading', { name: 'From a payment to a record.' });
+    await flow.scrollIntoViewIfNeeded();
+    const stops = page.locator('.flow-stop');
+    await expect(stops).toHaveCount(3);
+    await expect(stops.nth(0)).toContainText('支払いを受け付けました');
+    await stops.nth(2).scrollIntoViewIfNeeded();
+    await expect(stops.nth(2)).toHaveClass(/\bin\b/);
+    await page.waitForTimeout(900); // let the stops settle for the picture
+    await page.screenshot({ path: test.info().outputPath(`${name}-flow.png`) });
+    // Each section fades in as it arrives.
+    const close = page.getByRole('heading', { name: 'Start with one card.' });
+    await close.scrollIntoViewIfNeeded();
+    await expect(page.locator('.landing-close')).toHaveClass(/\bin\b/);
+    await expect(close).toBeVisible();
   }
 });
 

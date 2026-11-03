@@ -713,6 +713,8 @@ export const api = {
 
   createAccount: (a: Omit<Account, 'id' | 'balance'>) => request<Account>('POST', '/api/accounts', a),
   updateAccount: (id: number, a: Omit<Account, 'id' | 'balance'>) => request<Account>('PUT', `/api/accounts/${id}`, a),
+  /** The accounts in a new order, the first first (Wallet's front card). */
+  setAccountOrder: (ids: number[]) => request<void>('PUT', '/api/accounts/order', { ids }),
   deleteAccount: (id: number) => request<void>('DELETE', `/api/accounts/${id}`),
 
   /** Default categories the user doesn't have yet. */

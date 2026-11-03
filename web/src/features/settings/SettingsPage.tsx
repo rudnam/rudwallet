@@ -38,7 +38,7 @@ const swatches = ['#c8463d', '#d97757', '#b08a3e', '#4f8a4c', '#2a8a8a', '#3b6ea
  * The menu, in groups. An `app` section is listed only in the Android app,
  * though its page still opens on the web; a `page` row opens another page.
  */
-const sections: { id: string; label: Key; title: Key; glyph: string; group: Key; app?: boolean; page?: string }[] = [
+const sections: { id: string; label: Key; title: Key; glyph: string; group: Key; app?: boolean; page?: string; hidden?: boolean }[] = [
   { id: 'accounts', label: 'Accounts', title: 'Accounts', glyph: 'bank', group: 'Money' },
   { id: 'categories', label: 'Categories', title: 'Categories', glyph: 'other', group: 'Money' },
   { id: 'budgets', label: 'Budgets', title: 'Budgets', glyph: 'budgets', group: 'Money', page: 'budgets' },
@@ -47,7 +47,8 @@ const sections: { id: string; label: Key; title: Key; glyph: string; group: Key;
   { id: 'import', label: 'Import', title: 'Import records', glyph: 'school', group: 'Recording payments' },
   { id: 'appearance', label: 'Appearance', title: 'Appearance', glyph: 'appearance', group: 'App' },
   { id: 'language', label: 'Language', title: 'Language', glyph: 'globe', group: 'App' },
-  { id: 'general', label: 'Currency', title: 'Currency', glyph: 'money', group: 'App' },
+  // Currency: only until the first record (Wallet's checklist links here); not in the list.
+  { id: 'general', label: 'Currency', title: 'Currency', glyph: 'money', group: 'App', hidden: true },
   { id: 'widgets', label: 'Home screen widgets', title: 'Home screen widgets', glyph: 'phone', group: 'App', app: true },
   { id: 'claude', label: 'Claude', title: 'Claude', glyph: 'spark', group: 'App' },
 ];
@@ -97,8 +98,8 @@ export function SettingsPage({
   const appearance = currentAppearance;
   const summary: Record<string, string> = {
     notifications: w.settings.auto_confirm ? t('Auto-confirm on') : '',
-    rules: t('What was learned'),
-    claude: t('Connect apps'),
+    rules: '',
+    claude: '',
     accounts: tn(active, '{n} account', '{n} accounts'),
     categories: tn(w.categories.length, '{n} category', '{n} categories'),
     general: w.settings.currency,
@@ -116,7 +117,7 @@ export function SettingsPage({
             <h2 className="section-label">{t(g)}</h2>
             <ul className="list flush card flush">
               {sections
-                .filter((s) => s.group === g && (isApp || !s.app))
+                .filter((s) => s.group === g && !s.hidden && (isApp || !s.app))
                 .map((s) => (
                   <li key={s.id}>
                     <a className="menu-row" href={s.page ? href(s.page) : href('settings', { section: s.id })}>

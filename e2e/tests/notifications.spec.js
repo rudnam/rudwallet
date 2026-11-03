@@ -18,7 +18,7 @@ test('a Google Wallet payment waits for review, once', async ({ page }) => {
   expect((await send(tap))[0].duplicate).toBe(true);
 
   await page.goto('/app/');
-  await expect(page.getByRole('link', { name: /1 payment to review/ })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Main' }).getByLabel('1 to review')).toBeVisible();
   await page.goto('/app/#/review');
   await expect(page.getByRole('listitem', { name: 'Lawson' })).toContainText('Google Wallet · Visa ••1234');
 
@@ -53,7 +53,7 @@ test('PayPay payments wait for review, and an offer is skipped', async ({ page }
   await expect(list.getByRole('listitem').filter({ hasText: '今だけ' })).toContainText('Not a payment');
   // Where payments go, and auto-confirm, are set here.
   await expect(page.getByLabel('Payments go to')).toBeVisible();
-  await expect(page.getByLabel("Confirm payments automatically when the shop's category is already known")).toBeVisible();
+  await expect(page.getByLabel(/Confirm known shops/)).toBeVisible();
 });
 
 test('a possible duplicate shows the record it matches, and is deleted in one tap', async ({ page }) => {

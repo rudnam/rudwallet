@@ -4,7 +4,10 @@
     <color name="widget_text">#EEEFF1</color>
     <color name="widget_muted">#8D919A</color>
     <color name="widget_track">#24262B</color>
+    <color name="widget_chart">#C9CBD0</color>
+    <color name="widget_warning">#F0A35E</color>
+    <color name="widget_danger">#F2867C</color>
+    <color name="widget_attention">#F0A35E</color>
     <color name="widget_accent">#EEEFF1</color>
     <color name="widget_on_accent">#0A0B0D</color>
-    <color name="widget_danger">#F2867C</color>
 </resources>

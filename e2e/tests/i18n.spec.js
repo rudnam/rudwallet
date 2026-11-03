@@ -69,7 +69,7 @@ test('Japanese can be picked on the sign-in screen, and the introduction page fo
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'お金のことを、静かに整えて。' })).toBeVisible();
   // BudgetBakers' app is called Wallet; only our own name became RudWallet.
-  await expect(page.getByText('PayPayやBudgetBakersのWalletから履歴を持ってきて')).toHaveCount(1);
+  await expect(page.getByText(/BudgetBakersのWalletから/)).toHaveCount(1);
   await page.getByRole('button', { name: 'English' }).click();
   await expect(page.getByRole('heading', { name: 'Your money, quietly kept in order.' })).toBeVisible();
   await page.goto('/app/');
@@ -130,7 +130,7 @@ for (const [name, viewport] of [
       await page.request.get(await confirmationLink(page.request, email));
       await seed(page);
       await page.goto('/app/');
-      await expect(page.getByRole('link', { name: /確認待ちの支払いが1件/ })).toBeVisible();
+      await expect(page.getByRole('navigation', { name: 'メイン' }).getByLabel('確認待ち1件')).toBeVisible();
       await expect(page.getByRole('list', { name: '口座' })).toBeVisible();
       await shot('2-overview');
 

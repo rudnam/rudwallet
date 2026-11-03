@@ -8,7 +8,7 @@ test('the introduction page opens a demo full of sample data', async ({ page }) 
   await page.getByRole('link', { name: 'Try the demo' }).first().click();
   await expect(page.getByRole('note')).toContainText('This is a demo with sample data.');
   await expect(page.getByText('Total balance')).toBeVisible();
-  await expect(page.getByRole('link', { name: /2 payments to review/ })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Main' }).getByLabel('2 to review')).toBeVisible();
   await expect(page.getByRole('list', { name: 'Accounts' })).toBeVisible();
   await expect(page).toHaveURL(/\/app\/#\/home$/); // ?demo is gone, so a reload doesn't start another
   await expect(page.getByRole('navigation', { name: 'Main' })).toContainText('Demo');
@@ -52,7 +52,7 @@ test.describe('in Japanese', () => {
     await page.goto('/app/');
     await page.getByRole('button', { name: 'デモを試す' }).click();
     await expect(page.getByRole('note')).toContainText('サンプルデータのデモです。');
-    await expect(page.getByRole('link', { name: /確認待ちの支払いが2件/ })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'メイン' }).getByLabel('確認待ち2件')).toBeVisible();
     await expect(page.getByText('三菱UFJ銀行').first()).toBeVisible();
     await page.goto('/app/#/budgets');
     await expect(page.getByRole('list', { name: '予算' })).toContainText('外食');

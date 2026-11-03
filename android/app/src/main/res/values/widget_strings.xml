@@ -1,33 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Home screen widgets (java/com/rudnam/wallet/widget). -->
+<!-- Home screen widgets (java/com/rudnam/wallet/widget). Worded as the web app words the same
+     things (web/src/locales), so a figure reads the same on the home screen and in the app. -->
 <resources>
     <string name="widget_month_label">This month</string>
-    <string name="widget_month_description">What you’ve spent this month, your budget, and payments to review</string>
+    <string name="widget_month_description">What you’ve spent this month, what a day can take, and payments to check</string>
     <string name="widget_budgets_label">Budgets</string>
-    <string name="widget_budgets_description">Each monthly budget: what’s spent, and what’s left</string>
+    <string name="widget_budgets_description">Each monthly budget, and what’s left of it</string>
     <string name="widget_new_record_label">New record</string>
     <string name="widget_new_record_description">One tap to add a record</string>
 
     <string name="widget_add">New record</string>
-    <string name="widget_spent_in">Spent in %1$s</string>
+    <string name="widget_spent_this_month">Spent this month</string>
     <string name="widget_budgets_in">Budgets · %1$s</string>
-    <string name="widget_left_of">%1$s left of %2$s</string>
-    <string name="widget_over_of">%1$s over the %2$s budget</string>
+    <string name="widget_per_day">%1$s a day keeps you within budget</string>
+    <string name="widget_over_budget">%1$s over budget this month</string>
     <string name="widget_balance">Total balance %1$s</string>
     <string name="widget_left">%1$s left</string>
     <string name="widget_over">%1$s over</string>
-    <plurals name="widget_review">
-        <item quantity="one">%d payment to review</item>
-        <item quantity="other">%d payments to review</item>
-    </plurals>
+    <string name="widget_to_check">%1$d to check</string>
     <string name="widget_sign_in">Sign in to RudWallet to see this month</string>
     <string name="widget_offline">Can’t reach RudWallet right now</string>
-    <string name="widget_no_budgets">No budgets yet. Tap to add one.</string>
+    <string name="widget_no_budgets">No budgets yet. Tap to set one.</string>
 
     <!-- Sample figures for the widget picker's previews. -->
-    <string name="widget_preview_month">Spent in October</string>
     <string name="widget_preview_spent">¥84,320</string>
-    <string name="widget_preview_detail">¥35,680 left of ¥120,000</string>
-    <string name="widget_preview_review">1 payment to review</string>
+    <string name="widget_preview_detail">¥2,378 a day keeps you within budget</string>
+    <string name="widget_preview_review">1 to check</string>
     <string name="widget_preview_budgets">Budgets · October</string>
 </resources>

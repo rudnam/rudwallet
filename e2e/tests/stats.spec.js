@@ -50,7 +50,7 @@ test('stats over other periods, and how spending compares with usual', async ({ 
   await expect(page.getByRole('img', { name: 'Spending per month' })).toBeVisible();
   // The seeded months reach back three months before the one shown.
   if (new Date(now.getFullYear(), now.getMonth() - 4, 1).getFullYear() === new Date(now.getFullYear(), now.getMonth() - 1, 1).getFullYear())
-    await expect(page.locator('.hero')).toContainText(/No records in \d{4} to compare with/);
+    await expect(page.getByText(/Not enough history yet\. Once you have records from the years before/)).toBeVisible();
 
   // A week, by day.
   await page.getByText('Week', { exact: true }).click();

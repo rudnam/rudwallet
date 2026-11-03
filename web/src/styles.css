@@ -330,6 +330,9 @@ a.button.secondary:hover { background: var(--sunken); }
   font-family: var(--serif); font-size: clamp(2.25rem, 10vw, 3.5rem); font-weight: 600; letter-spacing: -0.03em; line-height: 1.1;
   letter-spacing: -0.02em; overflow-wrap: anywhere; font-variant-numeric: lining-nums tabular-nums;
 }
+/* The line under Insights' figure: per day, and income and net when there is income. */
+.balance-month { display: flex; flex-wrap: wrap; gap: 2px 16px; font-size: 0.9rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.balance-month strong { color: var(--text); font-weight: 600; }
 /* Large amounts: the currency sign smaller and lighter, raised to the digits' cap height. */
 .figure-cur { margin-right: 0.04em; }
 .figure-frac { font-size: 0.7em; opacity: 0.7; }
@@ -353,11 +356,15 @@ a.button.secondary:hover { background: var(--sunken); }
 }
 .icon-button .nav-icon { width: 18px; height: 18px; }
 .balance { display: flex; flex-direction: column; gap: 4px; }
+.balance-head { display: flex; justify-content: space-between; align-items: center; }
 .balance-label { color: var(--muted); font-size: 0.875rem; }
+.month-link { color: var(--text); text-decoration: none; padding: 14px 16px; }
+.month-link:hover { background: var(--sunken); }
+.month-link .month-figure { font-size: 1.25rem; }
 .balance .hero-figure { font-size: clamp(2.25rem, 10vw, 2.75rem); font-weight: 600; letter-spacing: -0.035em; line-height: 1.1; }
 .card-stack { position: relative; margin-top: 22px; }
 .wallet-card {
-  position: absolute; left: 0; right: 0; height: 200px; display: flex; flex-direction: column; padding: 14px 18px;
+  position: absolute; left: 0; right: 0; height: 150px; display: flex; flex-direction: column; padding: 14px 18px;
   border-radius: var(--radius); text-decoration: none; background: color-mix(in srgb, var(--c) var(--card-mix), #000);
   box-shadow: var(--card-edge); transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -365,6 +372,11 @@ a.button.secondary:hover { background: var(--sunken); }
 .card-stack > .wallet-card:first-child { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18); }
 .wallet-card.front { box-shadow: var(--card-edge), var(--card-front); }
 .wallet-card:active { transform: scale(0.99); }
+/* Hold a card to lift it, then drag it to another place in the stack. */
+.card-stack .wallet-card { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), top 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.card-stack.arranging { cursor: grabbing; }
+.wallet-card.lifted { transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1); transform: scale(1.03); box-shadow: var(--card-edge), var(--shadow-lift); }
+@media (prefers-reduced-motion: reduce) { .card-stack .wallet-card { transition: none; } }
 .wallet-card:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
 .ink-light { color: #ffffff; }
 .ink-dark { color: #111214; }
@@ -430,14 +442,14 @@ button.bar-row:active:not(:disabled) { transform: none; }
   display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border-radius: 50%;
   font-size: 1.4rem; color: var(--text); background: var(--sunken);
 }
-.summary { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 0; font-size: 0.9rem; }
+.summary { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 18px; margin: -8px 0 0; font-size: 0.85rem; }
 .summary strong { font-weight: 600; font-variant-numeric: tabular-nums; margin-left: 4px; }
 .summary strong.income { color: var(--positive); }
 .search-scope { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .search-scope strong { font-family: var(--serif); font-size: 1.2rem; font-weight: 600; letter-spacing: -0.03em; }
-.filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.filters .search { grid-column: 1 / -1; }
-@media (min-width: 800px) { .filters { grid-template-columns: 1fr 1fr 1.5fr; } .filters .search { grid-column: auto; } }
+.filters { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.filters .search { grid-column: 1; grid-row: 1; }
+
 /* Choosing records: a bar of actions that stays in view. */
 .bulk-bar {
   position: sticky; top: 8px; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
@@ -966,3 +978,8 @@ button.wide .nav-icon { width: 18px; height: 18px; }
 .choice-list .menu-row { cursor: pointer; }
 .choice-list .menu-row + .menu-row { border-top: 1px solid var(--border); }
 .choice-list input { width: 18px; height: 18px; flex: none; margin: 0; }
+
+/* The three filters in one row: search, account, category. */
+.filters select, .filters input[type='search'] { padding-left: 14px; padding-right: 30px; font-size: 0.9rem; }
+.filters input[type='search'] { padding-right: 12px; }
+@media (max-width: 560px) { .filters select, .filters input[type='search'] { font-size: 15px; } }

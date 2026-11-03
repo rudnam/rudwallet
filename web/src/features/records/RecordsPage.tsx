@@ -130,9 +130,24 @@ export function RecordsPage({
           </button>
         </div>
       )}
+      <p className="summary">
+        <span>
+          <span className="muted">{t('Spent')}</span> <strong>{w.money(out)}</strong>
+        </span>
+        {inc > 0 && (
+          <>
+            <span>
+              <span className="muted">{t('Income')}</span> <strong className="income">{w.money(inc)}</strong>
+            </span>
+            <span>
+              <span className="muted">{t('Net')}</span> <strong>{w.money(inc - out, true)}</strong>
+            </span>
+          </>
+        )}
+      </p>
       <div className="filters">
         <select aria-label={t('Account')} className={account ? 'set' : undefined} value={account ?? ''} onChange={(e) => set({ account: e.target.value })}>
-          <option value="">{t('All accounts')}</option>
+          <option value="">{t('Account')}</option>
           {w.accounts.map((a) => (
             <option key={a.id} value={a.id}>
               {a.name}
@@ -140,7 +155,7 @@ export function RecordsPage({
           ))}
         </select>
         <select aria-label={t('Category')} className={category ? 'set' : undefined} value={category ?? ''} onChange={(e) => set({ category: e.target.value })}>
-          <option value="">{t('All categories')}</option>
+          <option value="">{t('Category')}</option>
           <option value="none">{t('No category')}</option>
           {w.categories.map((c) => (
             <option key={c.id} value={c.id}>
@@ -156,7 +171,7 @@ export function RecordsPage({
             set({ q });
           }}
         >
-          <input type="search" aria-label={t('Search records')} placeholder={t('Search payee, note or tag')} value={q} onChange={(e) => setQ(e.target.value)} />
+          <input type="search" aria-label={t('Search records')} placeholder={t('Search')} value={q} onChange={(e) => setQ(e.target.value)} />
         </form>
       </div>
       {(tags.length > 0 || tag) && (
@@ -174,21 +189,6 @@ export function RecordsPage({
         </ul>
       )}
       {above}
-      <p className="summary">
-        <span>
-          <span className="muted">{t('Spent')}</span> <strong>{w.money(out)}</strong>
-        </span>
-        {inc > 0 && (
-          <>
-            <span>
-              <span className="muted">{t('Income')}</span> <strong className="income">{w.money(inc)}</strong>
-            </span>
-            <span>
-              <span className="muted">{t('Net')}</span> <strong>{w.money(inc - out, true)}</strong>
-            </span>
-          </>
-        )}
-      </p>
       {error && (
         <p role="alert" className="error">
           {error}

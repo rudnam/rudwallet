@@ -16,19 +16,16 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:ellipsize="end"
-        android:letterSpacing="0.08"
         android:singleLine="true"
         android:text="@string/widget_preview_budgets"
-        android:textAllCaps="true"
         android:textColor="@color/widget_muted"
-        android:textSize="11sp"
-        android:textStyle="bold" />
+        android:textSize="13sp" />
 
     <LinearLayout
         android:id="@+id/content"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="2dp"
         android:orientation="vertical">
 
         <LinearLayout

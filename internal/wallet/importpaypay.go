@@ -469,7 +469,7 @@ func (s *Store) payPayMethods(ctx context.Context, userID int64, rows []payPayRo
 	}
 	var all []acct
 	q, err := s.db.QueryContext(ctx,
-		`SELECT id, name, kind FROM wallet_accounts WHERE user_id = $1 ORDER BY archived, id`, userID)
+		`SELECT a.id, a.name, a.kind FROM wallet_accounts a WHERE a.user_id = $1 ORDER BY a.archived, `+accountOrder, userID)
 	if err != nil {
 		return nil, err
 	}

@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- The home screen widgets' colours: the web app's tokens (web/src/styles.css): its surface, text,
-     the main action colour (meters, the add button) and danger. Dark ones are in values-night. -->
+     meters (chart, status-warning, status-critical), the add button (accent) and "to check"
+     (attention). Dark ones are in values-night. -->
 <resources>
     <color name="widget_bg">#FFFFFF</color>
     <color name="widget_text">#111214</color>
     <color name="widget_muted">#696D75</color>
     <color name="widget_track">#EDEDEA</color>
+    <color name="widget_chart">#33363C</color>
+    <color name="widget_warning">#B4560B</color>
+    <color name="widget_danger">#C0362C</color>
+    <color name="widget_attention">#B4560B</color>
     <color name="widget_accent">#111214</color>
     <color name="widget_on_accent">#FFFFFF</color>
-    <color name="widget_danger">#C0362C</color>
 </resources>

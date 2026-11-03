@@ -27,11 +27,16 @@ func scanAccount(row interface{ Scan(...any) error }) (Account, error) {
 	return a, err
 }
 
+// accountOrder is the user's order of their accounts (see SetAccountOrder),
+// for a query on wallet_accounts a. An account with no position (added by a
+// release before positions) sorts by its id, as before.
+const accountOrder = `COALESCE(a.position, a.id), a.id`
+
 const accountColumns = `a.id, a.name, a.kind, a.initial_balance, ` + balanceSQL + `, a.color, a.archived`
 
 func (s *Store) Accounts(ctx context.Context, userID int64) ([]Account, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT `+accountColumns+` FROM wallet_accounts a WHERE a.user_id = $1 ORDER BY a.archived, a.id`, userID)
+		`SELECT `+accountColumns+` FROM wallet_accounts a WHERE a.user_id = $1 ORDER BY a.archived, `+accountOrder, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +66,10 @@ var ErrDuplicateName = errors.New("duplicate name")
 
 func (s *Store) CreateAccount(ctx context.Context, userID int64, a Account) (Account, error) {
 	err := s.db.QueryRowContext(ctx,
-		`INSERT INTO wallet_accounts (user_id, name, kind, initial_balance, color) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+		`INSERT INTO wallet_accounts (user_id, name, kind, initial_balance, color, position)
+		 VALUES ($1, $2, $3, $4, $5,
+		   (SELECT COALESCE(max(COALESCE(a.position, a.id)), 0) + 1 FROM wallet_accounts a WHERE a.user_id = $1))
+		 RETURNING id`,
 		userID, a.Name, a.Kind, a.InitialBalance, a.Color).Scan(&a.ID)
 	if db.IsUniqueViolation(err) {
 		return a, ErrDuplicateName
@@ -84,6 +92,32 @@ func (s *Store) UpdateAccount(ctx context.Context, userID int64, a Account) (Acc
 		return a, err
 	}
 	return s.account(ctx, userID, a.ID)
+}
+
+// SetAccountOrder puts the user's accounts in the order of ids, the first
+// first: in front on Wallet, and where payments go when no account is set.
+// Accounts not listed keep their place after them. One that isn't the
+// user's is db.ErrNotFound, and nothing changes.
+func (s *Store) SetAccountOrder(ctx context.Context, userID int64, ids []int64) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	// Listed ones take 1..n; the rest move behind them, keeping their order.
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE wallet_accounts a SET position = COALESCE(a.position, a.id) + $2 WHERE a.user_id = $1`,
+		userID, int64(len(ids))+1); err != nil {
+		return err
+	}
+	for i, id := range ids {
+		res, err := tx.ExecContext(ctx,
+			`UPDATE wallet_accounts SET position = $3 WHERE user_id = $1 AND id = $2`, userID, id, i+1)
+		if err := rowsChanged(res, err); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 // SetBalance changes an account's starting balance so that its balance (from

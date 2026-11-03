@@ -38,6 +38,7 @@ func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) ht
 	route("PUT /api/settings", h.updateSettings)
 
 	route("POST /api/accounts", h.createAccount)
+	route("PUT /api/accounts/order", h.setAccountOrder)
 	route("PUT /api/accounts/{id}", h.updateAccount)
 	route("DELETE /api/accounts/{id}", h.deleteAccount)
 	route("POST /api/accounts/{id}/reconcile", h.reconcileAccount)
@@ -235,6 +236,25 @@ func (h *Handler) deleteAccount(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	if err := storeErr(h.store.DeleteAccount(r.Context(), userID(r), id), "account"); err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}
+
+// setAccountOrder takes {"ids": [account id, …]}, the first first: Wallet's
+// card stack, front to back.
+func (h *Handler) setAccountOrder(w http.ResponseWriter, r *http.Request) error {
+	var in struct {
+		IDs []int64 `json:"ids"`
+	}
+	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
+		return err
+	}
+	if len(in.IDs) == 0 || len(in.IDs) > 1000 {
+		return httpx.Errorf(http.StatusBadRequest, "ids must list the accounts in their new order")
+	}
+	if err := storeErr(h.store.SetAccountOrder(r.Context(), userID(r), in.IDs), "account"); err != nil {
 		return err
 	}
 	w.WriteHeader(http.StatusNoContent)

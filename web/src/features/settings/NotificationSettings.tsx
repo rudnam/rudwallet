@@ -59,8 +59,8 @@ export function NotificationSettings() {
   return (
     <div className="card stack">
       <p className="small">
-        {tx('Pay with PayPay or Google Wallet and the payment waits under {review} moments later, with the shop, amount and card filled in.', {
-          review: <a href={href('review')}>{t('Activity')}</a>,
+        {tx('Pay with PayPay or Google Wallet, and the payment appears in {activity} moments later.', {
+          activity: <a href={href('records')}>{t('Activity')}</a>,
         })}
       </p>
 
@@ -95,16 +95,15 @@ export function NotificationSettings() {
         </div>
       )}
 
-      <p className="muted small">
-        {t(
-          "Only PayPay's and Google Wallet's notifications are read; everything else stays on your phone. Each payment is recorded once: if you already added it, the two are matched instead of counted twice. Notifications that arrive while you're offline are sent later.",
-        )}
-      </p>
+      <p className="muted small">{t("Only PayPay's and Google Wallet's notifications are read; nothing else leaves your phone.")}</p>
 
       <div className="stack tight">
         <label className="check">
           <input type="checkbox" checked={autoConfirm} onChange={(e) => setSetting({ auto_confirm: e.target.checked })} />
-          {t("Confirm payments automatically when the shop's category is already known")}
+          <span className="grow">
+            {t('Confirm known shops')}
+            <span className="muted small block">{t('No check when the shop already has a category')}</span>
+          </span>
         </label>
         <label className="field">
           {t('Payments go to')}
@@ -112,7 +111,7 @@ export function NotificationSettings() {
             value={w.settings.default_account_id ?? ''}
             onChange={(e) => setSetting({ default_account_id: e.target.value ? Number(e.target.value) : null })}
           >
-            <option value="">{t('The first account, until you pick one for a card')}</option>
+            <option value="">{t('First account')}</option>
             {w.accounts
               .filter((a) => !a.archived)
               .map((a) => (
@@ -123,8 +122,7 @@ export function NotificationSettings() {
           </select>
         </label>
         <p className="muted small">
-          {t('When you confirm a payment in another account, that card is remembered for next time.')}{' '}
-          {tx('See and change what was remembered under {rules}.', {
+          {tx('A card you’ve used before goes to its own account: see {rules}.', {
             rules: <a href={href('settings', { section: 'rules' })}>{t('Shops and cards')}</a>,
           })}
         </p>

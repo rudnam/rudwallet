@@ -78,7 +78,7 @@ for (const [name, viewport] of [
     };
 
     await page.goto('/');
-    await expect(page.getByRole('list', { name: 'Features' })).toBeVisible();
+    await expect(page.getByRole('list', { name: 'Where records come from' })).toBeVisible();
     // Sections fade in as they're scrolled to: scroll through, so the
     // picture of the whole page has them all.
     for (let y = 0; y < (await page.evaluate(() => document.body.scrollHeight)); y += 400) {
@@ -116,7 +116,7 @@ for (const [name, viewport] of [
 
     await seed(page);
     await page.reload();
-    await expect(page.getByRole('link', { name: /3 payments to review/ })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Main' }).getByLabel('3 to review')).toBeVisible();
     await expect(page.getByRole('list', { name: 'Accounts' })).toBeVisible();
     await shot('2-overview');
 

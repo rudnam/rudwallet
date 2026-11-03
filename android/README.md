@@ -70,8 +70,8 @@ The app's requests come from `https://localhost`, another origin, so the browser
 
 Three widgets, written natively (Java, framework APIs only) in `app/src/main/java/com/rudnam/wallet/widget`:
 
-- **This month**: spent this month, what's left of the budget for all expenses (or the total balance if there is none), and payments to review. Its plus opens the new record form.
-- **Budgets**: each monthly budget with a meter, as many as the widget is tall enough for.
+- **This month**: what Wallet's month line says: spent this month, the meter of the budget for all expenses, and what a day can take to stay within it (or how far over it is; the total balance if there's no such budget), and how many payments there are to check. Its plus opens the new record form.
+- **Budgets**: each monthly budget with a meter, as many as the widget is tall enough for. Meters turn orange at 80% and red when over, as in the app.
 - **New record**: one tap opens the new record form.
 
 They read `GET /api/widget` with the app's session, so they work once the app is signed in, and say so when it isn't. Taps open the app at a page through `com.rudnam.wallet://open/<page>`. They update about every 30 minutes (Android's minimum for `updatePeriodMillis`), whenever the app goes to the background, and on sign-in and sign-out; offline, they keep the last figures.

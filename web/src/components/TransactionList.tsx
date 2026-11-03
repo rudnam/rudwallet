@@ -47,7 +47,8 @@ export function TransactionList({
           <section key={day.key} className="day" role="listitem" aria-label={formatDay(day.date)}>
             <div className="day-head">
               <span>{formatDay(day.date)}</span>
-              <span>{w.money(net, true)}</span>
+              {/* Nothing confirmed yet that day: no total, rather than ¥0. */}
+              {net !== 0 && <span>{w.money(net, true)}</span>}
             </div>
             <ul className="list card flush">
               {day.items.map((t) => (
