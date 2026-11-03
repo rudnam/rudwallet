@@ -69,7 +69,7 @@ test('Japanese can be picked on the sign-in screen, and the introduction page fo
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'お金のことを、静かに整えて。' })).toBeVisible();
   // BudgetBakers' app is called Wallet; only our own name became RudWallet.
-  await expect(page.getByText('PayPayやBudgetBakersのWalletから履歴を持ってきて')).toHaveCount(1);
+  await expect(page.getByText(/BudgetBakersのWalletから/)).toHaveCount(1);
   await page.getByRole('button', { name: 'English' }).click();
   await expect(page.getByRole('heading', { name: 'Your money, quietly kept in order.' })).toBeVisible();
   await page.goto('/app/');

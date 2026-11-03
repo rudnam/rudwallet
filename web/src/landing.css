@@ -1,234 +1,118 @@
 /* The introduction page (landing.html). Tokens, fonts and buttons come from
-   styles.css, so it looks like the app. */
+   styles.css, so it looks like the app. No inline styles: the page's CSP
+   allows none, so every colour is a class here. */
 .landing { padding: 0; }
-.landing main, .landing-bar { max-width: 1040px; margin: 0 auto; padding-left: calc(var(--space) * 1.5); padding-right: calc(var(--space) * 1.5); }
+.landing main, .landing-bar { max-width: 1040px; margin: 0 auto; padding-left: 20px; padding-right: 20px; }
 .landing main { overflow-x: clip; }
-.landing-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 20px; padding-bottom: 20px; }
-.landing-bar-end { display: flex; align-items: center; gap: 8px; }
-.landing-brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-family: var(--serif); font-size: 1.35rem; }
-.landing-brand .logo { width: 36px; height: 36px; border-radius: 10px; }
-.landing h2 { font-size: clamp(1.6rem, 3.4vw, 2.25rem); line-height: 1.15; }
-.landing h3 { font-size: 1.15rem; }
 .landing p { margin: 0; }
+.landing-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 18px; padding-bottom: 18px; }
+.landing-bar-end { display: flex; align-items: center; gap: 8px; }
+.landing-brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-weight: 600; font-size: 1.1rem; letter-spacing: -0.02em; }
+.landing-brand .logo { width: 32px; height: 32px; border-radius: 9px; }
+.landing h2 { font-size: clamp(1.6rem, 3.2vw, 2.2rem); line-height: 1.15; letter-spacing: -0.03em; }
 .landing-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.landing-actions .button { padding: 12px 20px; }
 
-.landing-hero { display: grid; grid-template-columns: 1.15fr 1fr; gap: 48px; align-items: center; padding: 48px 0 72px; }
-.landing-pitch { display: flex; flex-direction: column; gap: 20px; }
-.landing-pitch h1 { font-size: clamp(2.25rem, 5vw, 3.5rem); line-height: 1.08; }
-.landing-lead { font-size: 1.125rem; color: var(--muted); max-width: 30em; }
+/* ---------- The hero: what it is, and the app beside it ---------- */
+.landing-hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); gap: 56px; align-items: center; padding: 56px 0 88px; }
+.landing-pitch { display: flex; flex-direction: column; gap: 22px; }
+.landing-pitch h1 { font-size: clamp(2.4rem, 5.4vw, 3.8rem); line-height: 1.04; letter-spacing: -0.045em; }
+.landing-lead { font-size: 1.15rem; line-height: 1.5; color: var(--muted); max-width: 28em; }
 
-.landing-still { display: flex; flex-direction: column; gap: 14px; }
-/* A small stack of account cards, as on Wallet. */
-.landing-stack { position: relative; height: 196px; }
+/* A phone, drawn as a frame around the app's own pieces (no fake status bar). */
+.phone {
+  justify-self: center; width: min(340px, 100%); padding: 12px; border-radius: 40px;
+  background: var(--surface); border: 1px solid var(--border);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 40px 80px -40px rgb(0 0 0 / 0.45);
+}
+.phone-screen { display: flex; flex-direction: column; gap: 6px; padding: 22px 16px 18px; border-radius: 30px; background: var(--bg); }
+.phone-total { font-size: 2rem; font-weight: 600; letter-spacing: -0.035em; font-variant-numeric: tabular-nums; margin-bottom: 10px; }
+.landing-stack { position: relative; height: 172px; margin-bottom: 12px; }
 .landing-card {
-  position: absolute; left: 0; right: 0; height: 128px; display: flex; justify-content: space-between; align-items: flex-start;
-  padding: 12px 16px; border-radius: 14px; color: #ffffff; font-weight: 600; font-size: 0.9rem;
+  position: absolute; left: 0; right: 0; height: 110px; display: flex; justify-content: space-between; align-items: flex-start;
+  padding: 11px 14px; border-radius: 14px; color: #ffffff; font-weight: 600; font-size: 0.85rem; font-variant-numeric: tabular-nums;
   background: color-mix(in srgb, var(--c) var(--card-mix), #000); box-shadow: var(--card-edge);
 }
-/* Colours here, not in style attributes: the CSP allows no inline styles in this page. */
 .landing-card.bank { --c: #3b6ea8; }
 .landing-card.emoney { --c: #d4553f; }
 .landing-card.cash { --c: #4f8a4c; }
 .landing-card:nth-child(1) { top: 0; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18); }
-.landing-card:nth-child(2) { top: 34px; }
-.landing-card.front { top: 68px; flex-direction: column; justify-content: space-between; box-shadow: var(--card-edge), var(--card-front); }
-.landing-card.front strong { font-size: 1.6rem; letter-spacing: -0.035em; font-variant-numeric: tabular-nums; }
-.landing-figure { font-family: var(--serif); font-weight: 600; letter-spacing: -0.03em; font-size: 2rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.landing-review { display: flex; align-items: center; gap: 12px; }
-.landing-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--attention); flex: none; }
-.landing-amount { font-family: var(--serif); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.landing-meter { height: 8px; border-radius: 4px; background: var(--sunken); overflow: hidden; }
-.landing-meter span { display: block; width: var(--fill, 74%); height: 100%; background: var(--chart); border-radius: 4px; }
+.landing-card:nth-child(2) { top: 31px; }
+.landing-card.front { top: 62px; flex-direction: column; justify-content: space-between; box-shadow: var(--card-edge), var(--card-front); }
+.landing-card.front strong { font-size: 1.45rem; letter-spacing: -0.035em; }
+.phone-row {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px;
+  background: var(--surface); border: 1px solid var(--border); font-size: 0.9rem;
+}
+.phone-row strong { font-weight: 500; }
+.phone-amount { font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-.landing-section { padding: 72px 0; border-top: 1px solid var(--border); }
-.landing-head { display: flex; flex-direction: column; gap: 10px; margin-bottom: 40px; max-width: 34em; }
+/* Category tiles, as on a record: the icon in its colour on a tint of it. */
+.tile {
+  flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center;
+  background: color-mix(in srgb, var(--cc) 14%, var(--surface)); border: 1px solid color-mix(in srgb, var(--cc) 26%, transparent);
+  color: color-mix(in srgb, var(--cc) 72%, var(--text));
+}
+.tile svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tile.food { --cc: #e37d95; }
+.tile.book { --cc: #6fa0e0; }
+.tile.question { background: none; border: 1.5px dashed color-mix(in srgb, var(--muted) 45%, transparent); color: var(--muted); font-weight: 600; font-size: 0.85rem; }
 
-/* ---------- How it works ---------- */
-.how-body { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; }
-.how-steps { grid-column: 1; grid-row: 1; list-style: none; margin: 0; padding: 0; }
-.how-step {
-  min-height: 52vh; display: flex; flex-direction: column; justify-content: center; gap: 10px;
-  transition: opacity 0.5s ease;
-}
-.how-step:first-child { min-height: 40vh; justify-content: flex-start; padding-top: 24px; }
-.how-step p { color: var(--muted); max-width: 26em; font-size: 1.05rem; }
-.how-num {
-  display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
-  border: 1.5px solid var(--border); font-size: 0.85rem; font-weight: 600; color: var(--muted);
-  transition: border-color 0.5s, color 0.5s, background 0.5s;
-}
-.how-stage {
-  grid-column: 2; grid-row: 1; align-self: start; position: sticky; top: calc(50vh - 190px);
-  display: flex; flex-direction: column; gap: 12px;
-}
-.how-from { display: flex; align-items: center; gap: 12px; }
-.how-from .nav-icon { color: var(--muted); }
-.how-subject { margin: 14px 0 10px; font-weight: 600; font-size: 0.95rem; }
-.how-lines { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; color: var(--muted); font-size: 0.95rem; }
-.how-field { padding: 1px 6px; margin: 0 -6px; border-radius: 6px; transition: background 0.5s, color 0.5s; }
-.how-mail { transition: opacity 0.6s ease, transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1); transform-origin: top center; }
-.how-record {
-  display: flex; align-items: center; gap: 12px; border-color: var(--accent);
-  transition: opacity 0.6s ease 0.25s, transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) 0.25s, border-color 0.5s;
-}
-.how-glyph {
-  display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; flex: none;
-  background: var(--accent-soft); color: var(--accent);
-}
-.how-glyph > *, .how-record .block > * { grid-area: 1 / 1; transition: opacity 0.4s ease; }
-.how-record .block { display: grid; }
-.how-learned {
-  display: flex; align-items: center; gap: 10px; padding: 0 4px; color: var(--muted); font-size: 0.925rem;
-  transition: opacity 0.6s ease 0.35s, transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) 0.35s;
-}
-.how-learned .nav-icon { color: var(--positive); width: 18px; height: 18px; }
-.how-learned strong { color: var(--text); font-weight: 600; }
-.how-done { opacity: 0; }
+/* ---------- Sections ---------- */
+.landing-section { display: flex; flex-direction: column; gap: 28px; padding: 64px 0; border-top: 1px solid var(--border); }
 
-/* The stage's states. They apply only once landing.ts runs (.live);
-   without it, the notification and its record both simply show. */
-.how.live .how-step:not(.on) { opacity: 0.38; }
-.how.live .how-step.on .how-num { border-color: var(--accent); background: var(--accent); color: var(--accent-text); }
-.how.live .how-stage[data-step='1'] .how-record { opacity: 0; transform: translateY(14px); }
-.how.live .how-stage:not([data-step='3']) .how-learned { opacity: 0; transform: translateY(10px); }
-.how.live .how-stage:not([data-step='1']) .how-field { background: var(--accent-soft); color: var(--text); }
-.how-stage:not([data-step='1']) .how-field:nth-child(2) { transition-delay: 0.1s; }
-.how-stage:not([data-step='1']) .how-field:nth-child(3) { transition-delay: 0.2s; }
-.how.live .how-stage[data-step='3'] .how-mail { opacity: 0.5; transform: scale(0.975); }
-.how.live .how-stage[data-step='3'] .how-field { background: transparent; }
-.how.live .how-stage[data-step='3'] .how-record { border-color: var(--border); }
-.how.live .how-stage[data-step='3'] .how-pending { opacity: 0; }
-.how.live .how-stage[data-step='3'] .how-done { opacity: 1; }
-.how:not(.live) .how-learned { display: none; }
-
-/* ---------- And the rest ---------- */
-.landing-features { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-.landing-features li { display: flex; flex-direction: column; gap: 8px; }
-.landing-features p { font-size: 0.95rem; }
-.feature-art {
-  height: 112px; margin-bottom: 12px; padding: 14px; border-radius: var(--radius-sm); background: var(--sunken);
-  display: flex; flex-direction: column; justify-content: center; gap: 8px; font-size: 0.85rem;
+/* From a payment to a record: three stops, side by side, joined by a line. */
+.flow-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; position: relative; }
+.flow-stop { margin: 0; display: flex; flex-direction: column; gap: 12px; }
+.flow-stop figcaption { color: var(--muted); font-size: 0.95rem; line-height: 1.5; }
+.flow-stop .card { min-height: 112px; padding: 14px 16px; }
+.flow-notice { display: flex; flex-direction: column; gap: 4px; }
+.flow-app { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.85rem; }
+.flow-app svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.flow-app .muted { margin-left: auto; font-weight: 400; }
+.flow-check, .flow-done { display: flex; align-items: center; gap: 12px; }
+.flow-check strong, .flow-done strong { font-weight: 500; display: block; }
+.flow-chip {
+  display: inline-block; margin-top: 6px; padding: 3px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 500;
+  color: var(--attention); background: var(--attention-soft);
 }
-.feature-art.budgets .landing-meter { background: var(--surface); }
-.feature-art.budgets .landing-meter + .row { margin-top: 4px; }
-.feature-art.budgets .landing-meter ~ .landing-meter span { --fill: 52%; }
-.feature-art.bars { flex-direction: row; align-items: flex-end; justify-content: space-between; gap: 10px; padding-bottom: 14px; }
-.feature-art.bars span { flex: 1; height: var(--h); background: var(--chart); border-radius: 4px 4px 2px 2px; opacity: 0.85; transform-origin: bottom; }
-.feature-art.bars span:nth-child(1) { --h: 46%; }
-.feature-art.bars span:nth-child(2) { --h: 62%; }
-.feature-art.bars span:nth-child(3) { --h: 38%; }
-.feature-art.bars span:nth-child(4) { --h: 70%; }
-.feature-art.bars span:nth-child(5) { --h: 54%; }
-.feature-art.bars span:nth-child(6) { --h: 84%; opacity: 1; }
-.feature-art.rows span { display: flex; justify-content: space-between; gap: 8px; padding: 5px 10px; border-radius: 6px; background: var(--surface); }
-.feature-art.rows b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.feature-art.rows i { font-style: normal; color: var(--muted); white-space: nowrap; }
-.feature-art.rows span:last-child { background: transparent; color: var(--positive); }
+.flow-side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.flow-confirm { padding: 4px 10px; border-radius: 9px; font-size: 0.8rem; font-weight: 600; background: var(--accent); color: var(--accent-text); }
 
-/* ---------- On Android ---------- */
-.android { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
-.android-text { display: flex; flex-direction: column; gap: 16px; }
-.android-text p { color: var(--muted); font-size: 1.05rem; max-width: 30em; }
-.android-get { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 8px; }
-.android-get[hidden], [data-apk-hidden][hidden] { display: none; }
-.android-art { display: flex; flex-direction: column; gap: 20px; }
-.merge { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 12px; }
-.merge-source { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; font-size: 0.95rem; }
-.merge-lines { grid-column: 1 / -1; width: 100%; height: 32px; margin: -6px 0; overflow: visible; }
-.merge-lines path { fill: none; stroke: var(--border); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
-.merge-record { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; border-color: var(--accent); }
-.widget {
-  align-self: flex-start; width: min(100%, 260px); display: flex; flex-direction: column; gap: 6px;
-  padding: 16px 18px; border-radius: 22px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-lift);
-}
-.widget .landing-figure { font-size: 1.6rem; }
-.widget .landing-meter { margin: 4px 0 6px; --fill: 61%; }
-.widget-add { align-self: flex-start; padding: 6px 12px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 0.85rem; font-weight: 600; }
+/* Where records come from: plain rows. */
+.source-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 40px; }
+.source-list li { display: flex; flex-direction: column; gap: 4px; padding: 18px 0; border-bottom: 1px solid var(--border); }
+.source-list strong { font-weight: 600; font-size: 1.05rem; letter-spacing: -0.01em; }
+.source-list span { color: var(--muted); line-height: 1.5; }
 
-.landing-close {
-  display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center;
-  padding: 80px 0 96px; border-top: 1px solid var(--border);
-}
-.landing-close .landing-actions { margin-top: 8px; }
+/* The Android app: what it does, and the download. */
+.landing-section.android { flex-direction: row; align-items: center; justify-content: space-between; gap: 32px; }
+.landing-section.android > div:first-child { display: flex; flex-direction: column; gap: 10px; max-width: 34em; }
+.android-get { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.android-get[hidden] { display: none; }
 
-/* ---------- Motion ----------
-   Only when landing.ts finds motion welcome (it adds .motion to <html>), so
-   with reduced motion or no script nothing is ever hidden. Small distances
-   and one easing throughout; each thing moves once, as it comes into view. */
-.motion { scroll-behavior: smooth; }
-.motion .reveal {
-  opacity: 0; transform: translateY(20px);
-  transition: opacity 0.7s ease, transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
+.landing-close { display: flex; flex-direction: column; align-items: center; gap: 20px; text-align: center; padding: 80px 0 96px; border-top: 1px solid var(--border); }
+.landing-close h2 { font-size: clamp(2rem, 4.4vw, 3rem); letter-spacing: -0.04em; }
+
+/* ---------- Phones ---------- */
+@media (max-width: 860px) {
+  .landing-hero { grid-template-columns: minmax(0, 1fr); gap: 40px; padding: 32px 0 56px; }
+  .flow-row { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .source-list { grid-template-columns: minmax(0, 1fr); }
+  .landing-section { padding: 48px 0; }
+  .landing-section.android { flex-direction: column; align-items: flex-start; }
 }
+
+/* ---------- Motion: one entrance, then sections as they arrive ---------- */
+.motion .reveal { opacity: 0; transform: translateY(14px); transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1); }
 .motion .reveal.in { opacity: 1; transform: none; }
-.motion .landing-features .reveal:nth-child(2) { transition-delay: 0.1s; }
-.motion .landing-features .reveal:nth-child(3) { transition-delay: 0.2s; }
-
-/* Meters fill and bars grow as their card arrives. */
-.motion .reveal .landing-meter span { transform: scaleX(0); transform-origin: left; transition: transform 1.2s cubic-bezier(0.2, 0.7, 0.2, 1) 0.35s; }
-.motion .reveal .landing-meter ~ .landing-meter span { transition-delay: 0.5s; }
-.motion .reveal.in .landing-meter span { transform: none; }
-.motion .reveal .bars span { transform: scaleY(0); transition: transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1); }
-.motion .reveal.in .bars span { transform: none; }
-.motion .bars span:nth-child(1) { transition-delay: 0.3s; }
-.motion .bars span:nth-child(2) { transition-delay: 0.37s; }
-.motion .bars span:nth-child(3) { transition-delay: 0.44s; }
-.motion .bars span:nth-child(4) { transition-delay: 0.51s; }
-.motion .bars span:nth-child(5) { transition-delay: 0.58s; }
-.motion .bars span:nth-child(6) { transition-delay: 0.65s; }
-.motion .reveal .rows span { opacity: 0; transform: translateY(6px); transition: opacity 0.5s ease, transform 0.6s ease; }
-.motion .reveal.in .rows span { opacity: 1; transform: none; }
-.motion .rows span:nth-child(1) { transition-delay: 0.35s; }
-.motion .rows span:nth-child(2) { transition-delay: 0.5s; }
-.motion .rows span:nth-child(3) { transition-delay: 0.8s; }
-
-/* Two reports of one payment come together into one record. */
-.motion .merge.reveal { opacity: 1; transform: none; }
-.motion .merge .merge-source, .motion .merge .merge-record { transition: opacity 0.6s ease, transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1); }
-.motion .merge:not(.in) .merge-source { opacity: 0; }
-.motion .merge:not(.in) .merge-source:first-child { transform: translateX(-16px); }
-.motion .merge:not(.in) .merge-source:nth-child(2) { transform: translateX(16px); }
-.motion .merge .merge-source:nth-child(2) { transition-delay: 0.12s; }
-.motion .merge-lines path { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 0.7s ease 0.45s; }
-.motion .merge.in .merge-lines path { stroke-dashoffset: 0; }
-.motion .merge:not(.in) .merge-record { opacity: 0; transform: translateY(-10px) scale(0.98); }
-.motion .merge .merge-record { transition-delay: 0.95s; }
-.motion .widget.reveal { transition-delay: 0.3s; }
-
-/* The hero arrives on load rather than on scroll. */
-@keyframes landing-rise { from { opacity: 0; transform: translateY(14px); } }
-@keyframes landing-fill { from { transform: scaleX(0); } }
-.motion .landing-pitch > *, .motion .landing-still > * { animation: landing-rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) backwards; }
+.motion .flow-stop:nth-child(2) { transition-delay: 0.12s; }
+.motion .flow-stop:nth-child(3) { transition-delay: 0.24s; }
+.motion .landing-pitch > *, .motion .phone { animation: landing-rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) backwards; }
 .motion .landing-pitch > :nth-child(2) { animation-delay: 0.08s; }
 .motion .landing-pitch > :nth-child(3) { animation-delay: 0.16s; }
-.motion .landing-still > :nth-child(1) { animation-delay: 0.2s; }
-.motion .landing-still > :nth-child(2) { animation-delay: 0.32s; }
-.motion .landing-still > :nth-child(3) { animation-delay: 0.44s; }
-.motion .landing-still .landing-meter span { transform-origin: left; animation: landing-fill 1.2s cubic-bezier(0.2, 0.7, 0.2, 1) 0.7s backwards; }
-
-@media (max-width: 860px) {
-  .landing-hero { grid-template-columns: 1fr; gap: 36px; padding: 24px 0 56px; }
-
-  .landing-section { padding: 56px 0; }
-  .landing-head { margin-bottom: 24px; }
-  /* The stage sticks to the top, and the steps scroll up beneath it. */
-  .how-body { grid-template-columns: 1fr; gap: 0; }
-  .how-stage {
-    grid-column: 1; grid-row: 1; top: 0; z-index: 1; padding: 12px 0 20px; background: var(--bg);
-    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent);
-    mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent);
-  }
-  .how-steps { grid-column: 1; grid-row: 2; }
-  .how-step, .how-step:first-child { min-height: 46vh; justify-content: flex-start; padding-top: 20px; }
-  .how-step:last-child { min-height: 30vh; }
-  .landing-features { grid-template-columns: 1fr; }
-  .android { grid-template-columns: 1fr; gap: 40px; }
-}
-@media (max-width: 560px) {
-  .landing main, .landing-bar { padding-left: var(--space); padding-right: var(--space); }
-  .how-mail { padding: 12px 14px; }
-  .how-subject { margin: 10px 0 6px; font-size: 0.9rem; }
-  .how-lines { font-size: 0.9rem; gap: 2px; }
-  .how-record { padding: 10px 14px; }
-  .how-glyph { width: 34px; height: 34px; }
+.motion .phone { animation-delay: 0.2s; }
+@keyframes landing-rise { from { opacity: 0; transform: translateY(16px); } }
+@media (prefers-reduced-motion: reduce) {
+  .motion .reveal { opacity: 1; transform: none; }
 }

@@ -18,7 +18,6 @@ else {
     translate();
   });
   revealOnScroll();
-  followSteps();
   offerDemo();
 }
 
@@ -57,35 +56,6 @@ function revealOnScroll() {
     { rootMargin: '0px 0px -12% 0px' },
   );
   document.querySelectorAll('.reveal').forEach((el) => seen.observe(el));
-}
-
-// "How it works": the step that has scrolled past a line across the screen
-// is the one the stage shows. On a phone the stage sits on top, so the line
-// is lower.
-function followSteps() {
-  const section = document.querySelector('.how');
-  const stage = document.querySelector<HTMLElement>('.how-stage');
-  const steps = [...document.querySelectorAll<HTMLElement>('.how-step')];
-  if (!section || !stage || !steps.length) return;
-  section.classList.add('live');
-  const narrow = matchMedia('(max-width: 860px)');
-  let queued = false;
-  const update = () => {
-    queued = false;
-    const line = innerHeight * (narrow.matches ? 0.72 : 0.58);
-    let current = steps[0];
-    for (const step of steps) if (step.getBoundingClientRect().top < line) current = step;
-    if (stage.dataset.step === current.dataset.step && current.classList.contains('on')) return;
-    stage.dataset.step = current.dataset.step;
-    for (const step of steps) step.classList.toggle('on', step === current);
-  };
-  const queue = () => {
-    if (!queued) requestAnimationFrame(update);
-    queued = true;
-  };
-  addEventListener('scroll', queue, { passive: true });
-  addEventListener('resize', queue);
-  update();
 }
 
 // "Try the demo" shows only when the server offers demos.
