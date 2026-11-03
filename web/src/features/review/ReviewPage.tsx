@@ -255,7 +255,7 @@ function ReviewItem({
                 value={categoryId ?? ''}
                 onChange={(e) => onPick(e.target.value ? Number(e.target.value) : null)}
               >
-                <option value="">{tr('Choose a category')}</option>
+                <option value="">{tr('Category')}</option>
                 {w.categories
                   .filter((c) => c.kind === t.kind)
                   .map((c) => (
