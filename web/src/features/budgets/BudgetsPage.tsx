@@ -9,6 +9,7 @@ import { useRecords } from '../../useRecords';
 import { useWallet } from '../../wallet';
 import { t } from '../../i18n';
 import { budgetSpent } from '../home/HomePage';
+import { href } from '../../router';
 
 export function BudgetsPage() {
   const w = useWallet();
@@ -25,6 +26,10 @@ export function BudgetsPage() {
 
   return (
     <section className="stack">
+      <a className="back" href={href('stats')}>
+        <Icon d={icons.back} />
+        {t('Insights')}
+      </a>
       <header className="page-head">
         <div>
           <span className="eyebrow">{formatMonth(month)}</span>

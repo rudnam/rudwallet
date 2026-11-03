@@ -60,7 +60,7 @@ export function NotificationSettings() {
     <div className="card stack">
       <p className="small">
         {tx('Pay with PayPay or Google Wallet and the payment waits under {review} moments later, with the shop, amount and card filled in.', {
-          review: <a href={href('review')}>{t('To review')}</a>,
+          review: <a href={href('review')}>{t('Activity')}</a>,
         })}
       </p>
 
