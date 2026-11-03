@@ -6,6 +6,7 @@ body{background:var(--bg)!important;color:var(--text)!important}
 .panel .row{background:#FFFFFF!important}
 .row + .row{border-top-color:var(--line)!important}
 .ini{background:#F2F2F0!important;border-color:#E3E3DF!important;color:#33363C!important}
+.ini.q{background:transparent!important;border-style:dashed!important;color:var(--muted)!important}
 .iconbtn,.search{border-color:var(--line2)!important;color:var(--soft)!important}
 .tabs{background:rgb(245 245 243/.94)!important;border-top-color:var(--line)!important;color:#8A8E96!important}
 .tabs .on{color:var(--text)!important}

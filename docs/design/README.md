@@ -44,3 +44,6 @@ its own).
 - **Settings is one list of plain rows**, grouped as Money, Recording
   payments and App, with a muted line icon and the current value on the
   right.
+- **Each record leads with its category's icon**, a muted line icon on a
+  plain tile (not a coloured square). A record without a category has a
+  dashed tile with a question mark, so it stands out.
