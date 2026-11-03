@@ -147,7 +147,7 @@ export function RecordsPage({
       </p>
       <div className="filters">
         <select aria-label={t('Account')} className={account ? 'set' : undefined} value={account ?? ''} onChange={(e) => set({ account: e.target.value })}>
-          <option value="">{t('All accounts')}</option>
+          <option value="">{t('Account')}</option>
           {w.accounts.map((a) => (
             <option key={a.id} value={a.id}>
               {a.name}
@@ -155,7 +155,7 @@ export function RecordsPage({
           ))}
         </select>
         <select aria-label={t('Category')} className={category ? 'set' : undefined} value={category ?? ''} onChange={(e) => set({ category: e.target.value })}>
-          <option value="">{t('All categories')}</option>
+          <option value="">{t('Category')}</option>
           <option value="none">{t('No category')}</option>
           {w.categories.map((c) => (
             <option key={c.id} value={c.id}>
