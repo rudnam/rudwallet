@@ -322,13 +322,13 @@ a.button.secondary:hover { background: var(--sunken); }
 .account-balance { font-family: var(--serif); font-size: 1.3rem; font-weight: 400; line-height: 1.15; font-variant-numeric: lining-nums tabular-nums; overflow-wrap: anywhere; }
 .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; }
 
-/* A section set on the page, not in a box: a hairline above says where it starts.
-   Boxes (.card) are kept for things you tap. */
-.panel { border-top: 1px solid var(--border); padding-top: calc(var(--space) * 1.25); }
-.panel + .panel { margin-top: 4px; }
+/* One rule for every page: its header (title, date, the big figure, the
+   period and filters) sits on the page; everything below it is a card. And
+   one left edge: the page's gutter outside cards, the card's padding inside
+   (rows with a hover background reach past it by their own padding). */
 
 /* Bar list: label, bar, value at the tip. */
-.bars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.bars { list-style: none; margin: 0 -6px; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .bar-row {
   display: grid; grid-template-columns: minmax(0, 9.5rem) 1fr auto; align-items: center; gap: 12px; width: 100%;
   background: none; color: var(--text); padding: 8px 6px; font-weight: 400; text-align: left; border-radius: 8px; border: 0;
@@ -349,7 +349,7 @@ button.bar-row:active:not(:disabled) { transform: none; }
 .columns .tick { fill: var(--muted); font-size: 11px; }
 .columns .col { fill: var(--chart); }
 .columns .col.on { fill: var(--accent); }
-.columns .col-break { stroke: var(--bg); stroke-width: 3; fill: none; }
+.columns .col-break { stroke: var(--surface); stroke-width: 3; fill: none; }
 .columns .col-over { fill: var(--text); font-weight: 600; }
 .columns .hit { fill: transparent; cursor: default; }
 .columns .hit:focus-visible { outline: none; stroke: var(--accent); stroke-width: 2; }
@@ -370,7 +370,7 @@ button.bar-row:active:not(:disabled) { transform: none; }
   display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border-radius: 50%;
   font-size: 1.4rem; color: var(--text); background: var(--sunken);
 }
-.summary { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 0; padding: 0 4px; font-size: 0.9rem; }
+.summary { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 0; font-size: 0.9rem; }
 .summary strong { font-weight: 600; font-variant-numeric: tabular-nums; margin-left: 4px; }
 .summary strong.income { color: var(--positive); }
 .search-scope { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
@@ -398,7 +398,7 @@ button.bar-row:active:not(:disabled) { transform: none; }
   background: var(--sunken); color: var(--muted); overflow-wrap: anywhere;
 }
 .bulk-actions select { min-width: 0; }
-.day-head { display: flex; justify-content: space-between; padding: 0 4px 6px; color: var(--muted); font-size: 0.8rem; font-weight: 600; letter-spacing: 0.02em; }
+.day-head { display: flex; justify-content: space-between; padding: 0 0 6px; color: var(--muted); font-size: 0.8rem; font-weight: 600; letter-spacing: 0.02em; }
 .day-head span:last-child { font-variant-numeric: tabular-nums; }
 .days { gap: 18px; }
 .list.flush { gap: 0; }
@@ -714,7 +714,6 @@ details summary { cursor: pointer; color: var(--accent); font-weight: 500; }
 .setup-steps li.done .setup-mark { background: var(--status-good); border-color: var(--status-good); color: var(--surface); }
 button.chip.on { background: var(--accent-soft); border-color: var(--accent); font-weight: 600; }
 .field .muted.small { font-weight: 400; }
-.search-scope { padding-left: 4px; }
 /* Filters read as chips: soft pills, not form fields. They stay native
    selects, so a phone still opens its own list to choose from. */
 .filters select, .filters input[type='search'] {

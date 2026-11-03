@@ -99,7 +99,7 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
         </div>
       </section>
 
-      <div className="panel stack">
+      <div className="card stack">
         <div className="section-head">
           <h2>{t('Where it went in {month}', { month: month.toLocaleDateString(locale(), { month: 'long' }) })}</h2>
           <a href={href('stats')}>{t('More stats')}</a>
@@ -129,7 +129,7 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
       </div>
 
       {budgets && budgets.length > 0 && (
-        <div className="panel stack">
+        <div className="card stack">
           <div className="section-head">
             <h2>{t('Budgets')}</h2>
             <a href={href('budgets')}>{t('All budgets')}</a>
