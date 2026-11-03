@@ -747,6 +747,38 @@ test.describe('on a touch screen', () => {
   });
 });
 
+test('holding a card on Wallet lifts it, and dragging it changes the order', async ({ page }) => {
+  await signUp(page);
+  for (const name of ['Bank', 'Card']) {
+    expect((await page.request.post('/api/accounts', { data: { name, kind: 'bank' } })).status()).toBe(201);
+  }
+  await page.reload();
+  const stack = page.getByRole('list', { name: 'Accounts' });
+  const names = () => stack.getByRole('listitem').locator('.wallet-card-head > .ellipsis').allTextContents();
+  // Back to front: the first account is in front.
+  await expect.poll(names).toEqual(['Card', 'Bank', 'Cash']);
+
+  // Hold the back card, then drag it down to the front.
+  const back = await stack.getByRole('listitem').filter({ hasText: 'Card' }).boundingBox();
+  await page.mouse.move(back.x + 40, back.y + 20);
+  await page.mouse.down();
+  await page.waitForTimeout(600);
+  await expect(stack.locator('.wallet-card.lifted')).toHaveCount(1);
+  for (let y = 1; y <= 6; y++) await page.mouse.move(back.x + 40, back.y + 20 + y * 20);
+  await page.mouse.up();
+  await expect(stack.locator('.wallet-card.lifted')).toHaveCount(0);
+  await expect.poll(names).toEqual(['Bank', 'Cash', 'Card']);
+  // Dropping didn't open the card, and the order is kept.
+  await expect(page.getByText('Total balance')).toBeVisible();
+  await page.reload();
+  await expect.poll(names).toEqual(['Bank', 'Cash', 'Card']);
+  await expect(stack.locator('.wallet-card.front')).toContainText('Card');
+
+  // A tap still opens the card.
+  await stack.getByRole('listitem').first().click({ position: { x: 40, y: 20 } }); // Bank's edge, at the back now
+  await expect(page.getByRole('heading', { level: 1, name: 'Bank' })).toBeVisible();
+});
+
 test('a card on Wallet opens its account, and cash can be counted', async ({ page }) => {
   await signUp(page);
   await page.getByRole('list', { name: 'Accounts' }).getByRole('listitem').filter({ hasText: 'Cash' }).click();

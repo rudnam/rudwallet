@@ -171,6 +171,7 @@ Follow `internal/wallet` or `internal/notify`; a feature is about five files:
 | GET | `/api/wallet` | user | `{settings, accounts, categories, review_count}`. Creates default categories and a Cash account on first call, named in Japanese when `Accept-Language` prefers `ja`. |
 | PUT | `/api/settings` | user | `{currency, auto_confirm, default_account_id}`. The currency is fixed once records exist (`409`). |
 | POST, PUT, DELETE | `/api/accounts[/{id}]` | user | Accounts: `{name, kind, initial_balance, color, archived}` |
+| PUT | `/api/accounts/order` | user | `{ids}`: the accounts in a new order, the first first (Wallet's card stack, front to back; and the account payments go to when none is set). Accounts not listed keep their order behind them. `204`; `404` if one isn't the user's |
 | POST | `/api/accounts/{id}/reconcile` | user | `{balance, category_id?}`: what the account really holds (e.g. cash counted). The difference from the app's balance becomes one record: an expense if less (in Other, unless a category is given), income if more. `201 {transaction}`, or `200 {transaction: null}` when it already matches |
 | POST, PUT, DELETE | `/api/categories[/{id}]` | user | Categories: `{name, kind, icon, color}` |
 | GET | `/api/categories/missing` | user | The default categories the user doesn't have (added since they signed up, or deleted), to add with POST |

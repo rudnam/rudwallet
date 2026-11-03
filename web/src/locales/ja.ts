@@ -825,6 +825,7 @@ export const jaServer: Record<string, string> = {
   'not found': '見つかりません',
   'no such category': 'そのカテゴリはありません',
   'no such account': 'その口座はありません',
+  'ids must list the accounts in their new order': '新しい順に口座を指定してください',
   'no such record': 'その記録はありません',
   'those records can no longer be restored': 'これらの記録はもう元に戻せません',
   'no such budget': 'その予算はありません',

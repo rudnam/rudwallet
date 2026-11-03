@@ -463,7 +463,7 @@ func (s *Store) defaultAccount(ctx context.Context, userID int64, st Settings) (
 	}
 	var id int64
 	err := s.db.QueryRowContext(ctx,
-		`SELECT id FROM wallet_accounts WHERE user_id = $1 ORDER BY archived, id LIMIT 1`, userID).Scan(&id)
+		`SELECT a.id FROM wallet_accounts a WHERE a.user_id = $1 ORDER BY a.archived, `+accountOrder+` LIMIT 1`, userID).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		// Every account was deleted; make one so the payment isn't lost.
 		err = s.db.QueryRowContext(ctx,

@@ -1111,3 +1111,54 @@ func TestRestoreDeletedRecords(t *testing.T) {
 		t.Errorf("no ids: %d, want 400", code)
 	}
 }
+
+func TestAccountOrder(t *testing.T) {
+	ts := newTestServer(t)
+	c, other := newClient(t, ts), newClient(t, ts)
+	c.signup("a@example.com")
+	other.signup("b@example.com")
+	cash := overview(t, c).Accounts[0]
+	var bank, card wallet.Account
+	c.do("POST", "/api/accounts", map[string]any{"name": "Bank", "kind": "bank"}, &bank)
+	c.do("POST", "/api/accounts", map[string]any{"name": "Card", "kind": "credit_card"}, &card)
+	names := func() []string {
+		var out []string
+		for _, a := range overview(t, c).Accounts {
+			out = append(out, a.Name)
+		}
+		return out
+	}
+	if got := fmt.Sprint(names()); got != "[Cash Bank Card]" {
+		t.Fatalf("before: %s, want the order they were added in", got)
+	}
+
+	if code := c.do("PUT", "/api/accounts/order", map[string]any{"ids": []int64{card.ID, cash.ID, bank.ID}}, nil); code != 204 {
+		t.Fatalf("order: %d", code)
+	}
+	if got := fmt.Sprint(names()); got != "[Card Cash Bank]" {
+		t.Errorf("after: %s", got)
+	}
+	// One listed: it goes first, and the rest keep their order behind it.
+	c.do("PUT", "/api/accounts/order", map[string]any{"ids": []int64{bank.ID}}, nil)
+	if got := fmt.Sprint(names()); got != "[Bank Card Cash]" {
+		t.Errorf("one listed: %s", got)
+	}
+	// A new account goes last.
+	c.do("POST", "/api/accounts", map[string]any{"name": "PayPay", "kind": "e_money"}, nil)
+	if got := fmt.Sprint(names()); got != "[Bank Card Cash PayPay]" {
+		t.Errorf("new account: %s", got)
+	}
+
+	if code := other.do("PUT", "/api/accounts/order", map[string]any{"ids": []int64{cash.ID}}, nil); code != 404 {
+		t.Errorf("another user's account: %d, want 404", code)
+	}
+	if code := c.do("PUT", "/api/accounts/order", map[string]any{"ids": []int64{card.ID, 999999}}, nil); code != 404 {
+		t.Errorf("an unknown account: %d, want 404", code)
+	}
+	if got := fmt.Sprint(names()); got != "[Bank Card Cash PayPay]" {
+		t.Errorf("a refused order changed it: %s", got)
+	}
+	if code := c.do("PUT", "/api/accounts/order", map[string]any{"ids": []int64{}}, nil); code != 400 {
+		t.Errorf("no ids: %d, want 400", code)
+	}
+}

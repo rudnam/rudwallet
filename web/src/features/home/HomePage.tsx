@@ -1,5 +1,5 @@
 // The overview: balances, this month's spending, budgets, latest records.
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
 import { api, type Account, type Budget, type Transaction } from '../../api';
 import type { BarItem } from '../../components/charts';
 import { TransactionForm } from '../../components/TransactionForm';
@@ -11,6 +11,7 @@ import { Figure } from '../../components/Figure';
 import { AccountForm, accountKinds } from '../settings/SettingsPage';
 import { useRecords } from '../../useRecords';
 import { useWallet } from '../../wallet';
+import { hapticSelect, hapticThreshold } from '../../native';
 import { t, tx } from '../../i18n';
 import { locale } from '../../language';
 
@@ -252,43 +253,139 @@ export function budgetSpent(b: Budget, list: Transaction[]): number {
  */
 function CardStack({ accounts }: { accounts: Account[] }) {
   const w = useWallet();
-  if (accounts.length === 0) return null;
-  const [front, ...rest] = accounts;
-  // Back to front: the last drawn is on top.
-  const order = [...rest].reverse();
+  // Top to bottom as drawn: the back card first, the front card (accounts[0]) last.
+  const drawn = [...accounts].reverse();
+  // The order just dropped, shown until the wallet comes back with it.
+  const [held, setHeld] = useState<number[] | null>(null);
+  const [drag, setDrag] = useState<{ id: number; from: number; dy: number } | null>(null);
+  const press = useRef<{ id: number; from: number; x: number; y: number; timer: number; pointer: number } | null>(null);
+  const dragged = useRef(false); // a drag just ended: the click it makes doesn't open the card
+  const stack = useRef<HTMLDivElement>(null);
+  const slot = useRef(-1);
+
+  const ids = held && held.length === drawn.length && drawn.every((a) => held.includes(a.id)) ? held : drawn.map((a) => a.id);
+  const byId = new Map(accounts.map((a) => [a.id, a]));
   const edge = 54;
+  const last = ids.length - 1;
+  const to = drag ? Math.max(0, Math.min(last, Math.round((drag.from * edge + drag.dy) / edge))) : -1;
+  const order = drag ? move(ids, drag.from, to) : ids;
+
+  // While a card is held, the finger moves it, not the page.
+  useEffect(() => {
+    const el = stack.current;
+    if (!el) return;
+    const stop = (e: TouchEvent) => {
+      if (drag) e.preventDefault();
+    };
+    el.addEventListener('touchmove', stop, { passive: false });
+    return () => el.removeEventListener('touchmove', stop);
+  }, [drag]);
+
+  useEffect(() => {
+    if (held && held.join() === drawn.map((a) => a.id).join()) setHeld(null);
+  }, [held, drawn]);
+
+  if (accounts.length === 0) return null;
+
+  function down(e: PointerEvent<HTMLAnchorElement>, id: number, from: number) {
+    if (e.button !== 0 || accounts.length < 2) return;
+    const p = { id, from, x: e.clientX, y: e.clientY, pointer: e.pointerId, timer: 0 };
+    p.timer = window.setTimeout(() => {
+      stack.current?.setPointerCapture(p.pointer);
+      slot.current = from;
+      setDrag({ id, from, dy: 0 });
+      hapticThreshold();
+    }, 400);
+    press.current = p;
+  }
+
+  function moveTo(e: PointerEvent<HTMLDivElement>) {
+    const p = press.current;
+    if (!p) return;
+    if (!drag) {
+      // Moved before the hold: a scroll or a swipe, not a drag.
+      if (Math.hypot(e.clientX - p.x, e.clientY - p.y) > 8) cancel();
+      return;
+    }
+    const dy = e.clientY - p.y;
+    const next = Math.max(0, Math.min(last, Math.round((drag.from * edge + dy) / edge)));
+    if (next !== slot.current) {
+      slot.current = next;
+      hapticSelect();
+    }
+    setDrag({ ...drag, dy });
+  }
+
+  function up() {
+    const p = press.current;
+    cancel();
+    if (!p || !drag) return;
+    dragged.current = true;
+    setTimeout(() => (dragged.current = false), 0);
+    if (to === drag.from) return;
+    setHeld(order);
+    // Front first, as the server keeps them.
+    api.setAccountOrder([...order].reverse()).then(w.refresh, () => setHeld(null));
+  }
+
+  function cancel() {
+    if (press.current) clearTimeout(press.current.timer);
+    press.current = null;
+    setDrag(null);
+  }
+
   return (
-    <div className="card-stack" role="list" aria-label={t('Accounts')} style={{ height: order.length * edge + 150 }}>
-      {order.map((a, i) => (
-        <a
-          key={a.id}
-          role="listitem"
-          className={`wallet-card ${inkOn(a.color)}`}
-          style={{ top: i * edge, '--c': a.color } as CSSProperties}
-          href={href('account', { id: a.id })}
-        >
-          <span className="wallet-card-head">
-            <span className="ellipsis">{a.name}</span>
-            <span className="wallet-card-amount">{w.money(a.balance)}</span>
-          </span>
-        </a>
-      ))}
-      <a
-        role="listitem"
-        className={`wallet-card front ${inkOn(front.color)}`}
-        style={{ top: order.length * edge, '--c': front.color } as CSSProperties}
-        href={href('account', { id: front.id })}
-      >
-        <span className="wallet-card-head">
-          <span className="ellipsis">{front.name}</span>
-          {t(accountKinds[front.kind]?.label ?? 'Other') !== front.name && (
-            <span className="wallet-card-kind">{t(accountKinds[front.kind]?.label ?? 'Other')}</span>
-          )}
-        </span>
-        <span className="wallet-card-big">{w.money(front.balance)}</span>
-      </a>
+    <div
+      ref={stack}
+      className={drag ? 'card-stack arranging' : 'card-stack'}
+      role="list"
+      aria-label={t('Accounts')}
+      style={{ height: last * edge + 150 }}
+      onPointerMove={moveTo}
+      onPointerUp={up}
+      onPointerCancel={cancel}
+    >
+      {order.map((id, i) => {
+        const a = byId.get(id)!;
+        const isFront = i === last;
+        const lifted = drag?.id === id;
+        const top = lifted ? drag.from * edge + drag.dy : i * edge;
+        const kind = t(accountKinds[a.kind]?.label ?? 'Other');
+        return (
+          <a
+            key={id}
+            role="listitem"
+            className={`wallet-card${isFront ? ' front' : ''}${lifted ? ' lifted' : ''} ${inkOn(a.color)}`}
+            style={{ top, zIndex: lifted ? ids.length + 1 : i + 1, '--c': a.color } as CSSProperties}
+            href={href('account', { id })}
+            draggable={false}
+            onPointerDown={(e) => down(e, id, ids.indexOf(id))}
+            onContextMenu={(e) => e.preventDefault()}
+            onClick={(e) => {
+              if (dragged.current) e.preventDefault();
+            }}
+          >
+            <span className="wallet-card-head">
+              <span className="ellipsis">{a.name}</span>
+              {isFront ? (
+                kind !== a.name && <span className="wallet-card-kind">{kind}</span>
+              ) : (
+                <span className="wallet-card-amount">{w.money(a.balance)}</span>
+              )}
+            </span>
+            {isFront && <span className="wallet-card-big">{w.money(a.balance)}</span>}
+          </a>
+        );
+      })}
     </div>
   );
+}
+
+/** ids with the one at from moved to to. */
+function move(ids: number[], from: number, to: number): number[] {
+  const out = ids.filter((_, i) => i !== from);
+  out.splice(to, 0, ids[from]);
+  return out;
 }
 
 /** Ink for text on a card's colour: light on dark colours, dark on light ones. */

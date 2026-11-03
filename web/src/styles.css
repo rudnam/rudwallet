@@ -372,6 +372,11 @@ a.button.secondary:hover { background: var(--sunken); }
 .card-stack > .wallet-card:first-child { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18); }
 .wallet-card.front { box-shadow: var(--card-edge), var(--card-front); }
 .wallet-card:active { transform: scale(0.99); }
+/* Hold a card to lift it, then drag it to another place in the stack. */
+.card-stack .wallet-card { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), top 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.card-stack.arranging { cursor: grabbing; }
+.wallet-card.lifted { transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1); transform: scale(1.03); box-shadow: var(--card-edge), var(--shadow-lift); }
+@media (prefers-reduced-motion: reduce) { .card-stack .wallet-card { transition: none; } }
 .wallet-card:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
 .ink-light { color: #ffffff; }
 .ink-dark { color: #111214; }
