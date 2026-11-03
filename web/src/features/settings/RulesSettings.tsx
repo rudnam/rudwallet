@@ -62,7 +62,7 @@ export function RulesSettings() {
           <p className="muted">{t('Loading…')}</p>
         ) : rules.payees.length === 0 ? (
           <p className="muted small">
-            {tx('No shops yet. Confirm a payment under {review}, or add one below.', { review: <a href={href('review')}>{t('To review')}</a> })}
+            {tx('No shops yet. Confirm a payment under {review}, or add one below.', { review: <a href={href('review')}>{t('Activity')}</a> })}
           </p>
         ) : (
           <ul className="list rows" aria-label={t('Shops')}>
