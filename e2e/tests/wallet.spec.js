@@ -677,20 +677,45 @@ test('on a phone, the add record sheet drags down to close', async ({ page }) =>
   const x = box.x + box.width / 2;
   const y = box.y + box.height / 2;
 
-  // A short drag springs back.
+  // A short drag springs back, even a quick one, once the finger has stopped before letting go.
   await page.mouse.move(x, y);
   await page.mouse.down();
-  await page.mouse.move(x, y + 40, { steps: 8 });
-  await page.mouse.up();
-  await expect(dialog).toBeVisible();
+  await page.mouse.move(x, y + 40, { steps: 2 });
   await page.waitForTimeout(300);
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+  await expect(dialog).toBeVisible();
   await dialog.getByLabel('Amount (JPY)').fill('500');
+
+  // So does a slow one.
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  for (let dy = 5; dy <= 40; dy += 5) {
+    await page.mouse.move(x, y + dy);
+    await page.waitForTimeout(40);
+  }
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+  await expect(dialog).toBeVisible();
 
   // A long one closes it.
   await page.mouse.move(x, y);
   await page.mouse.down();
   await page.mouse.move(x, y + 250, { steps: 15 });
   await page.mouse.up();
+  await expect(dialog).toBeHidden();
+
+  // A quick flick closes it too, short as it is. The events go in one go inside the page,
+  // so they're a moment apart however fast this machine is.
+  await page.getByRole('button', { name: 'Add record' }).click();
+  await expect(dialog).toBeVisible();
+  await dialog.evaluate((d) => Promise.all(d.getAnimations().map((a) => a.finished)));
+  await grab.evaluate((el, [x, y]) => {
+    const at = (dy) => ({ bubbles: true, pointerId: 1, pointerType: 'mouse', isPrimary: true, clientX: x, clientY: y + dy });
+    el.dispatchEvent(new PointerEvent('pointerdown', { ...at(0), button: 0, buttons: 1 }));
+    for (const dy of [20, 40, 60]) el.dispatchEvent(new PointerEvent('pointermove', { ...at(dy), buttons: 1 }));
+    el.dispatchEvent(new PointerEvent('pointerup', at(60)));
+  }, [x, y]);
   await expect(dialog).toBeHidden();
 });
 
