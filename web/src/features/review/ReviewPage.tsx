@@ -2,16 +2,16 @@
 // confirm them one by one or all at once (which teaches the app the shop's
 // category and the card's account), or fix them. A possible duplicate shows
 // the record it matches, and can be deleted in one tap.
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
 import { api, errorMessage, type Transaction } from '../../api';
 import { TransactionForm } from '../../components/TransactionForm';
 import { formatDay, formatTime } from '../../money';
 import { href } from '../../router';
 import { useRecords } from '../../useRecords';
-import { Icon, icons } from '../../components/Icon';
+import { CategoryIcon, Icon, icons } from '../../components/Icon';
 import { useToast } from '../../toast';
 import { useWallet } from '../../wallet';
-import { hapticSuccess } from '../../native';
+import { hapticSuccess, hapticThreshold } from '../../native';
 import { t, t as tr, tn, tx } from '../../i18n';
 
 /**
@@ -121,7 +121,7 @@ export function ReviewPage({ compact = false }: { compact?: boolean }) {
       )}
 
       {records && records.length > 0 && (
-        <ul className="list" aria-label={compact ? undefined : t('Payments to review')}>
+        <ul className="list card flush review-list" aria-label={compact ? undefined : t('Payments to review')}>
           {records.map((t) => (
             <ReviewItem
               key={t.id}
@@ -227,26 +227,60 @@ function ReviewItem({
   }
 
   const matchedAt = match && new Date(match.occurred_at);
+  const cat = w.category(categoryId);
+  const canConfirm = t.amount > 0 && !t.duplicate_of_id;
+  // The card that paid, where it says more than the account's name.
+  const paidWith = t.source_label && t.source_label !== w.account(t.account_id)?.name ? t.source_label : w.account(t.account_id)?.name;
+  const swipe = useSwipe(canConfirm && categoryId !== null && !busy ? confirm : undefined);
   return (
-    <li className="card stack tight review-item" aria-label={title}>
-      <div className="row">
-        <span className="grow">
-          <strong>{title}</strong>
-          <span className="muted small block">
-            {formatDay(when)} {formatTime(when)} · {w.account(t.account_id)?.name}
-            {/* The card, unless the account is already called that. */}
-            {t.source_label && t.source_label !== w.account(t.account_id)?.name ? ` · ${t.source_label}` : ''}
-          </span>
+    <li className="review-item" aria-label={title}>
+      <div className="review-swipe">
+        <span className="review-behind" aria-hidden="true" style={{ opacity: swipe.reveal }}>
+          <Icon d={icons.check} className="glyph" />
+          {tr('Confirm')}
         </span>
-        <strong className={`amount review-amount ${t.kind}`}>
-          {t.amount > 0 ? w.money(t.kind === 'income' ? t.amount : -t.amount, true) : tr('Amount?')}
-        </strong>
+        <div className="review-row" {...swipe.handlers} style={swipe.style}>
+          <CategoryIcon icon={cat?.icon} name={cat?.name} color={cat?.color} payee={cat ? undefined : t.payee} />
+          <div className="grow review-main">
+            <button type="button" className="review-title" onClick={onEdit}>
+              {title}
+            </button>
+            <span className="review-when muted small">
+              {formatDay(when)} {formatTime(when)}
+            </span>
+            <span className="review-actions">
+              <select
+                className={categoryId === null ? 'chip-select attention' : 'chip-select'}
+                aria-label={tr('Category for {name}', { name: title })}
+                value={categoryId ?? ''}
+                onChange={(e) => onPick(e.target.value ? Number(e.target.value) : null)}
+              >
+                <option value="">{tr('Choose a category')}</option>
+                {w.categories
+                  .filter((c) => c.kind === t.kind)
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+              </select>
+              <button type="button" className="small-button" disabled={busy} onClick={confirm}>
+                {tr('Confirm')}
+              </button>
+            </span>
+          </div>
+          <span className="record-side">
+            <strong className={`amount ${t.kind}`}>
+              {t.amount > 0 ? w.money(t.kind === 'income' ? t.amount : -t.amount, true) : tr('Amount?')}
+            </strong>
+            <span className="muted small">{paidWith}</span>
+          </span>
+        </div>
       </div>
-      {t.note && <span className="small muted">{t.note}</span>}
+      {t.note && <span className="small muted review-note">{t.note}</span>}
       {t.duplicate_of_id && (
         <div className="notice warn small duplicate" role="status">
           <span className="grow">
-            <Icon d={icons.warning} className="inline-icon" />{' '}
             {match && matchedAt ? (
               <>
                 {tr('Possible duplicate of a record you already have:')}
@@ -264,30 +298,8 @@ function ReviewItem({
           </button>
         </div>
       )}
-      <div className="row wrap">
-        <select
-          aria-label={tr('Category for {name}', { name: title })}
-          value={categoryId ?? ''}
-          onChange={(e) => onPick(e.target.value ? Number(e.target.value) : null)}
-        >
-          <option value="">{tr('No category')}</option>
-          {w.categories
-            .filter((c) => c.kind === t.kind)
-            .map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-        </select>
-        <button type="button" disabled={busy} onClick={confirm}>
-          {tr('Confirm')}
-        </button>
-        <button type="button" className="link" onClick={onEdit}>
-          {tr('Edit')}
-        </button>
-      </div>
       {overriding && (
-        <label className="check small">
+        <label className="check small review-note">
           <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
           {tr('Use {category} for {payee} from now on, instead of {old}', {
             category: w.category(categoryId)?.name ?? '',
@@ -297,7 +309,7 @@ function ReviewItem({
         </label>
       )}
       {error && (
-        <p role="alert" className="error">
+        <p role="alert" className="error review-note">
           {error}
         </p>
       )}
@@ -305,3 +317,62 @@ function ReviewItem({
   );
 }
 
+
+/**
+ * Swipe a row right to confirm it (touch only: a mouse and keyboard use the
+ * Confirm button). Past the point where letting go confirms, the phone
+ * gives a detent; short of it, the row springs back.
+ */
+function useSwipe(onConfirm: (() => void) | undefined) {
+  const [dx, setDx] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const start = useRef<{ x: number; y: number; id: number; horizontal: boolean | null } | null>(null);
+  const past = useRef(false);
+  const threshold = 96;
+
+  const handlers = onConfirm
+    ? {
+        onPointerDown: (e: PointerEvent) => {
+          if (e.pointerType !== 'touch') return;
+          start.current = { x: e.clientX, y: e.clientY, id: e.pointerId, horizontal: null };
+          past.current = false;
+        },
+        onPointerMove: (e: PointerEvent) => {
+          const s = start.current;
+          if (!s || s.id !== e.pointerId) return;
+          const x = e.clientX - s.x;
+          const y = e.clientY - s.y;
+          // Decide once whether this is a swipe or a scroll.
+          if (s.horizontal === null && Math.abs(x) + Math.abs(y) > 8) s.horizontal = Math.abs(x) > Math.abs(y);
+          if (!s.horizontal) return;
+          setDragging(true);
+          const d = Math.max(0, x);
+          setDx(d);
+          if (d >= threshold !== past.current) {
+            past.current = d >= threshold;
+            if (past.current) hapticThreshold();
+          }
+        },
+        onPointerUp: () => {
+          const go = past.current;
+          start.current = null;
+          setDragging(false);
+          setDx(0);
+          if (go) onConfirm();
+        },
+        onPointerCancel: () => {
+          start.current = null;
+          setDragging(false);
+          setDx(0);
+        },
+      }
+    : {};
+  return {
+    handlers,
+    reveal: Math.min(dx / threshold, 1),
+    style: {
+      transform: dx ? `translateX(${dx}px)` : undefined,
+      transition: dragging ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)',
+    } as CSSProperties,
+  };
+}

@@ -96,8 +96,7 @@ export function StatsPage({ route }: { route: Route }) {
     <section className="stack loose">
       <header className="page-head">
         <div>
-          <span className="muted small">{t('Insights')}</span>
-          <h1>{periodTitle(period)}</h1>
+          <h1>{t('Insights')}</h1>
         </div>
         <a className="button secondary" href={href('budgets')}>
           {t('Budgets')}
@@ -198,28 +197,9 @@ export function StatsPage({ route }: { route: Route }) {
         </span>
       </div>
 
-      {stats && days > 0 && <Trends now={stats.now} past={stats.past} period={period} days={days} ongoing={ongoing} />}
-
       {stats && ahead && (
         <MonthAhead now={stats.now} budgets={budgets} days={days} period={period} />
       )}
-
-      <div className="card stack">
-        <h2>{t('Spending over time')}</h2>
-        {series === null ? (
-          <p className="muted">{t('Loading…')}</p>
-        ) : (
-          <DailyColumns
-            values={series.values}
-            labelFor={series.labelFor}
-            tick={series.tick}
-            label={t(stepLabels[series.step].label)}
-            hint={t(stepLabels[series.step].hint)}
-            format={(n) => w.money(n)}
-            compact={(n) => formatCompact(n, w.settings)}
-          />
-        )}
-      </div>
 
       <div className="card stack">
         <h2>{t('Where it went')}</h2>
@@ -242,6 +222,25 @@ export function StatsPage({ route }: { route: Route }) {
                     })
                 : undefined
             }
+          />
+        )}
+      </div>
+
+      {stats && days > 0 && <Trends now={stats.now} past={stats.past} period={period} days={days} ongoing={ongoing} />}
+
+      <div className="card stack">
+        <h2>{t('Spending over time')}</h2>
+        {series === null ? (
+          <p className="muted">{t('Loading…')}</p>
+        ) : (
+          <DailyColumns
+            values={series.values}
+            labelFor={series.labelFor}
+            tick={series.tick}
+            label={t(stepLabels[series.step].label)}
+            hint={t(stepLabels[series.step].hint)}
+            format={(n) => w.money(n)}
+            compact={(n) => formatCompact(n, w.settings)}
           />
         )}
       </div>

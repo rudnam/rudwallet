@@ -764,3 +764,17 @@ test('a card on Wallet opens its account, and cash can be counted', async ({ pag
   await page.getByRole('link', { name: 'Wallet' }).first().click();
   await expect(page.locator('.hero-figure')).toHaveText('¥5,000');
 });
+
+test('appearance follows the phone, or stays light or dark as chosen', async ({ page }) => {
+  await signUp(page);
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Settings' }).click();
+  await page.getByRole('link', { name: /Appearance/ }).click();
+  await expect(page.getByRole('radio', { name: /Automatic/ })).toBeChecked();
+  await page.getByRole('radio', { name: 'Dark', exact: true }).check();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  // Kept on this device.
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.getByRole('radio', { name: /Automatic/ }).check();
+  await expect(page.locator('html')).not.toHaveAttribute('data-theme', /./);
+});
