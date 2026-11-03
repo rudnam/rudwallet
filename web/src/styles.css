@@ -986,3 +986,24 @@ button.wide .nav-icon { width: 18px; height: 18px; }
   .filters select, .filters input[type='search'] { font-size: 15px; }
   .filters select { padding-left: 12px; padding-right: 26px; background-position: right 8px center; }
 }
+
+/* ---------- Page transitions (router.ts) ----------
+   Only the page moves; the tab bar, sidebar and add button stay put. Tabs slide a
+   little towards the tab chosen; a page opened from one comes in from the right and
+   goes back to it the other way; the card tapped on Wallet grows into its page. */
+main.page { view-transition-name: page; }
+::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+::view-transition-old(page) { animation: page-out 0.16s ease-in both; }
+::view-transition-new(page) { animation: page-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+html[data-nav='next']::view-transition-old(page) { --to: -28px; }
+html[data-nav='next']::view-transition-new(page) { --from: 28px; }
+html[data-nav='prev']::view-transition-old(page) { --to: 28px; }
+html[data-nav='prev']::view-transition-new(page) { --from: -28px; }
+html[data-nav='forward']::view-transition-old(page) { --to: -36px; }
+html[data-nav='forward']::view-transition-new(page) { --from: 56px; }
+html[data-nav='back']::view-transition-old(page) { --to: 56px; }
+html[data-nav='back']::view-transition-new(page) { --from: -36px; }
+html[data-nav='fade']::view-transition-new(page) { --rise: 8px; }
+@keyframes page-out { to { opacity: 0; transform: translateX(var(--to, 0)); } }
+@keyframes page-in { from { opacity: 0; transform: translate(var(--from, 0), var(--rise, 0)); } }
+::view-transition-group(*) { animation-duration: 0.34s; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }

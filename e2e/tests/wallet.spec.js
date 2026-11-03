@@ -834,3 +834,44 @@ test('appearance follows the phone, or stays light or dark as chosen', async ({ 
   await page.getByRole('radio', { name: /Automatic/ }).check();
   await expect(page.locator('html')).not.toHaveAttribute('data-theme', /./);
 });
+
+test('moving between pages slides the page, and a card grows into its account', async ({ page }) => {
+  await signUp(page);
+  // Each move marks the page while it animates (styles.css, "Page transitions").
+  const during = async (go) => {
+    const seen = page.evaluate(
+      () =>
+        new Promise((resolve) => {
+          new MutationObserver((_, o) => {
+            const d = document.documentElement.dataset;
+            if (!d.nav) return;
+            o.disconnect();
+            const named = [...document.querySelectorAll('[data-card]')].filter((c) => getComputedStyle(c).viewTransitionName !== 'none');
+            resolve({ nav: d.nav, named: named.length });
+          }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-nav'] });
+        }),
+    );
+    await go();
+    return seen;
+  };
+  const nav = page.getByRole('navigation', { name: 'Main' });
+  expect((await during(() => nav.getByRole('link', { name: 'Activity' }).click())).nav).toBe('next');
+  expect((await during(() => nav.getByRole('link', { name: 'Wallet' }).first().click())).nav).toBe('prev');
+  await expect(page.locator('.hero-figure')).toBeVisible();
+  const opened = await during(() => page.getByRole('list', { name: 'Accounts' }).getByRole('listitem').first().click());
+  // Only the card opened is named, so it alone grows into the page.
+  expect(opened).toEqual({ nav: 'forward', named: 1 });
+  await expect(page.getByRole('heading', { level: 1, name: 'Cash' })).toBeVisible();
+  expect((await during(() => page.goBack())).nav).toBe('back');
+  await expect(page.locator('.hero-figure')).toBeVisible();
+});
+
+test.describe('with reduced motion', () => {
+  test.use({ reducedMotion: 'reduce' });
+  test('pages change without animating', async ({ page }) => {
+    await signUp(page);
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Activity' }).click();
+    await expect(page.getByRole('heading', { name: 'Activity' })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.dataset.nav ?? null)).toBeNull();
+  });
+});

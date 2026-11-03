@@ -357,6 +357,7 @@ function CardStack({ accounts }: { accounts: Account[] }) {
             role="listitem"
             className={`wallet-card${isFront ? ' front' : ''}${lifted ? ' lifted' : ''} ${inkOn(a.color)}`}
             style={{ top, zIndex: lifted ? ids.length + 1 : i + 1, '--c': a.color } as CSSProperties}
+            data-card={id}
             href={href('account', { id })}
             draggable={false}
             onPointerDown={(e) => down(e, id, ids.indexOf(id))}

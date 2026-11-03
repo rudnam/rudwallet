@@ -60,7 +60,7 @@ export function AccountPage({ route }: { route: Route }) {
         </a>
       </header>
 
-      <div className="wallet-card front static ink-light" style={{ '--c': account.color } as CSSProperties}>
+      <div className="wallet-card front static ink-light" style={{ '--c': account.color } as CSSProperties} data-card={account.id}>
         <span className="wallet-card-head">
           <h1 className="ellipsis">{account.name}</h1>
           {t(accountKinds[account.kind]?.label ?? 'Other') !== account.name && (
