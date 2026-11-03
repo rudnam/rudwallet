@@ -86,17 +86,17 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
           )}
         </span>
 
-        <ul className="list card flush accounts" aria-label={t('Accounts')}>
+        <div className="accounts" aria-label={t('Accounts')} role="list">
           {accounts.map((a) => (
-            <li key={a.id}>
-              <a className="account-row" href={href('records', { account: a.id })}>
+            <a key={a.id} role="listitem" className="card account-card" href={href('records', { account: a.id })}>
+              <span className="account-name">
                 <span className="swatch" style={{ background: a.color }} aria-hidden="true" />
-                <span className="grow ellipsis">{a.name}</span>
-                <span className="account-balance">{w.money(a.balance)}</span>
-              </a>
-            </li>
+                <span className="ellipsis">{a.name}</span>
+              </span>
+              <strong className="account-balance">{w.money(a.balance)}</strong>
+            </a>
           ))}
-        </ul>
+        </div>
       </section>
 
       <div className="panel stack">
