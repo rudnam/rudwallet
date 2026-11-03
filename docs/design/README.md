@@ -12,14 +12,20 @@ come from Google Fonts. These are drawings, not the app: the app itself is in
 | Account (opened from the card stack) | `account.png` | `account.html` |
 | Add a record | `add.png` | `add.html` |
 | Insights | `insights.png` | `insights.html` |
+| Settings | `settings.png` | `settings.html` |
+
+Each screen also has a light version, `<screen>-light.png`: the same HTML
+with `light.css` added after its own styles.
 
 `style.css` holds what the screens share (except `wallet.html`, which keeps
 its own).
 
 ## Decisions
 
-- **Dark first**, flat background `#0C0D0F`: no glow or gradient behind it.
-  Light mode is still to be drawn.
+- **Dark and light**, both flat: `#0C0D0F` and `#F5F5F3`, with no glow or
+  gradient. Appearance follows the phone unless changed in Settings. In
+  light mode the cards keep their full colour, and the main action (the
+  plus, Save) turns near-black instead of white.
 - **Geist** for text and figures. Japanese uses the phone's own font (Noto
   Sans CJK JP on Android), so no Japanese font ships with the app.
 - **Accounts are a stack of cards** in each account's colour, straight (not
@@ -35,3 +41,6 @@ its own).
   no weekly prompt.
 - **Adding by hand** is three taps: amount on the docked number pad,
   category, Save.
+- **Settings is one list of plain rows**, grouped as Money, Recording
+  payments and App, with a muted line icon and the current value on the
+  right.
