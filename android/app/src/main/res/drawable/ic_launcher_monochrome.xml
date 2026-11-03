@@ -1,15 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The same wallet as one silhouette (cards and pocket), with the pocket's seam cut out, for themed icons (Android 13+). -->
+<!-- The wallet in one colour, for themed icons (Android 13+): the pocket, and the outlines of the
+     two outer cards fanned out of it. In web/public/icon.svg's coordinates, its 512 units in the
+     middle 72dp of the 108dp canvas, like mipmap-*/ic_launcher_foreground.png. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp" android:height="108dp"
-    android:viewportWidth="672" android:viewportHeight="672">
-    <group android:translateX="80" android:translateY="80">
-        <group android:rotation="-5" android:pivotX="250" android:pivotY="200">
-            <path android:fillColor="#000000" android:pathData="M164,134 H332 Q348,134 348,150 V244 Q348,260 332,260 H164 Q148,260 148,244 V150 Q148,134 164,134 Z" />
+    android:viewportWidth="768" android:viewportHeight="768">
+    <group android:translateX="128" android:translateY="128">
+        <group android:rotation="-10" android:pivotX="226" android:pivotY="248">
+            <path android:strokeColor="#000000" android:strokeWidth="20" android:strokeLineJoin="round"
+                android:pathData="M144,124 H308 Q324,124 324,140 V232 Q324,248 308,248 H144 Q128,248 128,232 V140 Q128,124 144,124 Z" />
         </group>
-        <group android:rotation="4" android:pivotX="280" android:pivotY="210">
-            <path android:fillColor="#000000" android:pathData="M194,146 H362 Q378,146 378,162 V256 Q378,272 362,272 H194 Q178,272 178,256 V162 Q178,146 194,146 Z" />
+        <group android:rotation="7" android:pivotX="294" android:pivotY="260">
+            <path android:strokeColor="#000000" android:strokeWidth="20" android:strokeLineJoin="round"
+                android:pathData="M212,136 H376 Q392,136 392,152 V244 Q392,260 376,260 H212 Q196,260 196,244 V152 Q196,136 212,136 Z" />
+            <path android:fillColor="#000000" android:pathData="M224,164 H250 Q256,164 256,170 V185 Q256,191 250,191 H224 Q218,191 218,185 V170 Q218,164 224,164 Z" />
         </group>
-        <path android:fillColor="#000000" android:fillType="evenOdd" android:pathData="M140,216 H372 Q410,216 410,254 V368 Q410,406 372,406 H140 Q102,406 102,368 V254 Q102,216 140,216 Z M146,233 H366 Q393,233 393,260 V362 Q393,389 366,389 H146 Q119,389 119,362 V260 Q119,233 146,233 Z M146,239 H366 Q387,239 387,260 V362 Q387,383 366,383 H146 Q125,383 125,362 V260 Q125,239 146,239 Z" />
+        <path android:fillColor="#000000"
+            android:pathData="M96,226 H372 Q416,226 416,270 V374 Q416,416 372,416 H140 Q96,416 96,374 Z" />
     </group>
 </vector>

@@ -34,8 +34,8 @@ for (const [name, viewport] of [
   });
 }
 
-test('in dark mode the logo is the dark drawing', async ({ page }) => {
-  // favicon.svg holds a light and a dark drawing; the system theme picks one, as it does for the app.
+test('in dark mode the logo shows on its cream tile', async ({ page }) => {
+  // favicon.svg is one drawing for both themes: the wallet on its own cream tile.
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.setViewportSize({ width: 390, height: 844 });
   const shot = (label) => page.screenshot({ path: test.info().outputPath(`dark-logo-${label}.png`) });
