@@ -8,6 +8,7 @@ import { useWallet } from '../wallet';
 import { Dialog } from './Dialog';
 import { addTag, TagField } from './TagField';
 import { CategoryIcon, Icon, icons } from './Icon';
+import { hapticError, hapticKey, hapticSelect, hapticSuccess } from '../native';
 
 interface Props {
   /** The record to edit; omit to add a new one. */
@@ -30,6 +31,15 @@ type Change = { field: string; from: string; to: string };
 
 /** How many categories show before More. */
 const fewCategories = 7;
+
+/** How many recent payees are offered as one-tap chips on a new record. */
+const fewPayees = 4;
+
+/**
+ * Phones and tablets get the app's own number pad for the amount, so the
+ * keyboard doesn't jump up over the form. A mouse and keyboard type as usual.
+ */
+const touch = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
 
 const kindNames: Record<TransactionKind, Key> = { expense: 'Expense', income: 'Income', transfer: 'Transfer' };
 
@@ -64,6 +74,14 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
   const [busy, setBusy] = useState(false);
   // An edit waiting for the user to check what it changes.
   const [pending, setPending] = useState<{ input: TransactionInput; changes: Change[] } | null>(null);
+  // A new record on a touch screen is entered on the number pad, which stays
+  // at the bottom of the sheet, in the thumb's reach, with Save on it. It
+  // steps aside only while a text field has the phone's keyboard.
+  const quick = touch && !record;
+  const [typing, setTyping] = useState(false);
+  const pad = quick && !typing;
+  // The date shows as a chip until the user asks to change it.
+  const [editingWhen, setEditingWhen] = useState(false);
 
   // Suggest payees from the last few months; picking one fills in its category.
   useEffect(() => {
@@ -99,7 +117,29 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
 
   function changeKind(k: TransactionKind) {
     setKind(k);
+    hapticSelect();
     if (w.category(categoryId)?.kind !== k) setCategoryId(null);
+  }
+
+  function chooseCategory(id: number) {
+    setCategoryId(id);
+    hapticSelect();
+  }
+
+  /** A key on the number pad: a digit, '000', the decimal point, or 'back'. */
+  function press(key: string) {
+    hapticKey();
+    setAmount((a) => {
+      if (key === 'back') return grouped(a.replace(/,/g, '').slice(0, -1));
+      const plain = a.replace(/,/g, '');
+      if (key === '.') return exp === 0 || plain.includes('.') ? a : (plain || '0') + '.';
+      const [, frac] = plain.split('.');
+      if (frac !== undefined && frac.length + key.length > exp) return a;
+      if (plain.replace('.', '').length + key.length > 12) return a;
+      // No leading zeros: 0 and 000 on nothing leave it as it is.
+      if (plain === '0' || plain === '') return /^0+$/.test(key) ? plain : key;
+      return grouped(plain + key);
+    });
   }
 
   function changePayee(p: string) {
@@ -115,6 +155,7 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
     e.preventDefault();
     const minor = parseAmount(amount, exp);
     if (minor === null || minor <= 0) {
+      hapticError();
       setError(exp === 0 ? t('Enter an amount, like 1200.') : t('Enter an amount, like 12.50.'));
       return;
     }
@@ -155,6 +196,7 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
       // Kept on the phone for now: don't hold the form open waiting for the network.
       if (saved.unsent) void w.refresh();
       else await w.refresh();
+      hapticSuccess();
       if (record && !reviewing) toast(t('Saved'), { label: t('Undo'), run: () => undo(record) });
       else if (saved.unsent) toast(t('Saved on this phone. It’s sent when you’re online.'));
       else toast(reviewing ? t('Confirmed') : t('Added {amount}', { amount: w.money(input.amount) }));
@@ -263,6 +305,32 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
     </label>
   );
 
+  const accountChips = (
+    <div className="detail">
+      <span id="record-account">{t('Account')}</span>
+      <div className="account-pick" role="radiogroup" aria-labelledby="record-account">
+        {accounts.map((a) => (
+          <label key={a.id} className={accountId === a.id ? 'on' : ''}>
+            <input
+              type="radio"
+              name="account"
+              checked={accountId === a.id}
+              onChange={() => {
+                setAccountId(a.id);
+                hapticSelect();
+              }}
+            />
+            <span className="swatch" style={{ background: a.color }} aria-hidden="true" />
+            {a.name}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+
+  // Recent payees, offered while a new record has none yet.
+  const recentPayees = !record && !payee ? [...habits.keys()].slice(0, fewPayees) : [];
+
   const title = reviewing ? t('Review payment') : record ? t('Edit record') : t('New record');
   if (pending) {
     return (
@@ -294,7 +362,13 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
   }
   return (
     <Dialog title={title} onClose={onClose}>
-      <form className="stack" onSubmit={save}>
+      <form
+        className="stack"
+        onSubmit={save}
+        // The phone's keyboard and the number pad never show together.
+        onFocus={(e) => setTyping(isTextField(e.target))}
+        onBlur={(e) => setTyping(isTextField(e.relatedTarget))}
+      >
         {reviewing && (
           <p className="notice small">
             {record.source_label
@@ -328,7 +402,7 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
             {currencySymbol(w.settings)}
           </span>
           <input
-            inputMode={exp === 0 ? 'numeric' : 'decimal'}
+            inputMode={quick ? 'none' : exp === 0 ? 'numeric' : 'decimal'}
             autoComplete="off"
             placeholder="0"
             // Grows with the number, so the currency sign stays beside it.
@@ -348,7 +422,7 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
                   type="radio"
                   name="category"
                   checked={categoryId === c.id}
-                  onChange={() => setCategoryId(c.id)}
+                  onChange={() => chooseCategory(c.id)}
                   // Tapping the chosen category again clears it.
                   onClick={() => categoryId === c.id && setCategoryId(null)}
                 />
@@ -390,11 +464,50 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
               </datalist>
             </label>
           )}
-          {kind !== 'transfer' && accountSelect(t('Account'), accountId, setAccountId)}
-          <label className="detail">
-            <span>{t('Date')}</span>
-            <input type="datetime-local" required value={when} onChange={(e) => setWhen(e.target.value)} />
-          </label>
+          {recentPayees.length > 0 && kind !== 'transfer' && (
+            <div className="detail payee-suggest">
+              <span className="sr-only">{t('Recently paid')}</span>
+              <ul className="chips" aria-label={t('Recently paid')}>
+                {recentPayees.map((p) => (
+                  <li key={p}>
+                    <button type="button" className="chip" onClick={() => changePayee(p)}>
+                      {p}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {kind !== 'transfer' && accountChips}
+          {editingWhen ? (
+            <label className="detail">
+              <span>{t('Date')}</span>
+              <input
+                type="datetime-local"
+                required
+                autoFocus
+                value={when}
+                onChange={(e) => setWhen(e.target.value)}
+                ref={(el) => {
+                  // Straight to the phone's picker, where it can.
+                  if (el && touch) {
+                    try {
+                      el.showPicker();
+                    } catch {
+                      /* not allowed here: the field is there to tap */
+                    }
+                  }
+                }}
+              />
+            </label>
+          ) : (
+            <div className="detail" role="group" aria-labelledby="record-date">
+              <span id="record-date">{t('Date')}</span>
+              <button type="button" className="chip when" onClick={() => setEditingWhen(true)}>
+                {when ? `${formatDay(new Date(when))}, ${formatTime(new Date(when))}` : t('Date')}
+              </button>
+            </div>
+          )}
           <label className="detail">
             <span>{t('Note')}</span>
             <input value={note} maxLength={500} placeholder={t('Optional')} onChange={(e) => setNote(e.target.value)} />
@@ -409,6 +522,9 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
             {error}
           </p>
         )}
+        {pad ? (
+          <NumberPad decimal={exp > 0} onPress={press} busy={busy} />
+        ) : (
         <div className="row end dialog-actions">
           {record && (
             <button type="button" className="link danger" disabled={busy} onClick={remove}>
@@ -420,7 +536,59 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
             {reviewing ? t('Confirm') : t('Save')}
           </button>
         </div>
+        )}
       </form>
     </Dialog>
   );
+}
+
+/** Fields that bring up the phone's keyboard: everything but the amount and the choices. */
+function isTextField(el: EventTarget | null): boolean {
+  return (
+    el instanceof HTMLElement &&
+    el.matches('input:not([type=radio]):not([type=checkbox]), textarea') &&
+    !el.matches('.amount-field input')
+  );
+}
+
+/**
+ * The number pad, docked at the bottom of the sheet like the phone's own
+ * keyboard, with Save beside the digits, so a record is a few taps of one
+ * thumb: amount, category, Save.
+ */
+function NumberPad({ decimal, onPress, busy }: { decimal: boolean; onPress: (key: string) => void; busy: boolean }) {
+  const key = (k: string, className = 'key') => (
+    <button
+      key={k}
+      type="button"
+      className={className}
+      // Keep the amount focused, so its caret stays where the digits go.
+      onPointerDown={(e) => e.preventDefault()}
+      onClick={() => onPress(k)}
+      aria-label={k === 'back' ? t('Delete last digit') : undefined}
+    >
+      {k === 'back' ? <Icon d={icons.backspace} className="glyph" /> : k}
+    </button>
+  );
+  return (
+    <div className="number-pad" role="group" aria-label={t('Number pad')}>
+      {['1', '2', '3'].map((k) => key(k))}
+      {key('back', 'key fn')}
+      {['4', '5', '6'].map((k) => key(k))}
+      <button type="submit" className="key save" disabled={busy}>
+        {t('Save')}
+      </button>
+      {['7', '8', '9'].map((k) => key(k))}
+      {key('0', 'key zero')}
+      {/* Yen amounts are mostly round thousands; other currencies need cents. */}
+      {key(decimal ? '.' : '000')}
+    </div>
+  );
+}
+
+/** "12000.5" → "12,000.5": thousands marked as the amount is tapped in (parseAmount drops the commas). */
+function grouped(plain: string): string {
+  const [whole, frac] = plain.split('.');
+  const w = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return frac === undefined ? w : `${w}.${frac}`;
 }

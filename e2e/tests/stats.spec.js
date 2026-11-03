@@ -17,11 +17,11 @@ test('stats over other periods, and how spending compares with usual', async ({ 
     data: { kind: 'income', amount: 10000, account_id: cash, occurred_at: first(0), payee: 'Pay' },
   });
 
-  // From Home, "More stats" opens this month.
+  // From Wallet, Insights opens this month.
   await page.reload();
-  await page.getByRole('link', { name: 'More stats' }).click();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Insights' }).click();
   const month = now.toLocaleDateString(undefined, { year: 'numeric', month: 'long' });
-  await expect(page.getByRole('heading', { level: 1, name: month })).toBeVisible();
+  await expect(page.locator('.month-picker strong').filter({ hasText: month })).toBeVisible();
   await expect(page.locator('.hero-figure')).toHaveText('¥5,000');
 
   const trends = page.getByLabel('Trends');
@@ -39,14 +39,14 @@ test('stats over other periods, and how spending compares with usual', async ({ 
   });
   await page.getByRole('button', { name: 'Previous month' }).click();
   const last = new Date(now.getFullYear(), now.getMonth() - 1, 1).toLocaleDateString(undefined, { year: 'numeric', month: 'long' });
-  await expect(page.getByRole('heading', { level: 1, name: last })).toBeVisible();
+  await expect(page.locator('.month-picker strong').filter({ hasText: last })).toBeVisible();
   await expect(page.locator('.hero-figure')).toHaveText('¥2,000', { timeout: 1000 });
   await page.unroute('**/api/stats?*');
   await expect(trends).toContainText('About your usual spending');
 
   // A year, by month.
   await page.getByText('Year', { exact: true }).click();
-  await expect(page.getByRole('heading', { level: 1, name: String(new Date(now.getFullYear(), now.getMonth() - 1, 1).getFullYear()) })).toBeVisible();
+  await expect(page.locator('.month-picker strong').filter({ hasText: String(new Date(now.getFullYear(), now.getMonth() - 1, 1).getFullYear()) })).toBeVisible();
   await expect(page.getByRole('img', { name: 'Spending per month' })).toBeVisible();
   // The seeded months reach back three months before the one shown.
   if (new Date(now.getFullYear(), now.getMonth() - 4, 1).getFullYear() === new Date(now.getFullYear(), now.getMonth() - 1, 1).getFullYear())

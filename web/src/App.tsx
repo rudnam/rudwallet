@@ -8,9 +8,9 @@ import { TransactionForm } from './components/TransactionForm';
 import { BudgetsPage } from './features/budgets/BudgetsPage';
 import { ConnectPage, rememberConnect, resumeConnect } from './features/settings/ConnectPage';
 import { HomePage } from './features/home/HomePage';
-import { RecordsPage } from './features/records/RecordsPage';
-import { ReviewPage } from './features/review/ReviewPage';
+import { ActivityPage } from './features/records/ActivityPage';
 import { CardPage } from './features/card/CardPage';
+import { AccountPage } from './features/account/AccountPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 import { prefetchStats, StatsPage } from './features/stats/StatsPage';
 import { addMonths, monthStart } from './money';
@@ -238,12 +238,12 @@ const connectNotice = (): Notice => ({ message: t('Sign in to connect an app suc
 /** The notice the app opened with is shown once, not on every sign-in. */
 let noticeShown = false;
 
+// The tabs. Their pages keep the names they had (records, stats), so links,
+// widgets (android/…/widget) and bookmarks still open them.
 const pages: { page: string; label: Key; icon: string }[] = [
-  { page: 'home', label: 'Home', icon: icons.home },
-  { page: 'records', label: 'Records', icon: icons.records },
-  { page: 'stats', label: 'Stats', icon: icons.stats },
-  { page: 'review', label: 'Review', icon: icons.review },
-  { page: 'budgets', label: 'Budgets', icon: icons.budgets },
+  { page: 'home', label: 'Wallet', icon: icons.wallet },
+  { page: 'records', label: 'Activity', icon: icons.records },
+  { page: 'stats', label: 'Insights', icon: icons.stats },
   { page: 'settings', label: 'Settings', icon: icons.settings },
 ];
 
@@ -260,7 +260,7 @@ function prefetchPages() {
 }
 
 /** Pages outside the main navigation, and the entry they belong under. */
-const subpages: Record<string, string> = { card: 'home' };
+const subpages: Record<string, string> = { card: 'home', account: 'home', review: 'records', budgets: 'stats' };
 
 function Shell({
   me,
@@ -334,20 +334,22 @@ function Shell({
 
   let page;
   switch (current) {
+    // Activity: what's waiting for a check, then every record.
     case 'records':
-      page = <RecordsPage route={route} />;
+    case 'review':
+      page = <ActivityPage route={route} />;
       break;
     case 'stats':
       page = <StatsPage route={route} />;
-      break;
-    case 'review':
-      page = <ReviewPage />;
       break;
     case 'budgets':
       page = <BudgetsPage />;
       break;
     case 'card':
       page = <CardPage />;
+      break;
+    case 'account':
+      page = <AccountPage route={route} />;
       break;
     case 'settings':
       page = <SettingsPage route={route} me={me} onSignOut={onSignOut} onDeleted={onDeleted} />;
@@ -375,7 +377,7 @@ function Shell({
           >
             <Icon d={p.icon} />
             <span>{t(p.label)}</span>
-            {p.page === 'review' && w.review_count > 0 && (
+            {p.page === 'records' && w.review_count > 0 && (
               <span className="count" aria-label={t('{n} to review', { n: w.review_count })}>
                 {w.review_count}
               </span>

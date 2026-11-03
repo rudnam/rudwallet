@@ -1,0 +1,44 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="style.css"><style>
+.back{display:flex;align-items:center;gap:4px;color:var(--soft);font-size:15px}
+.big{margin:16px 20px 0;height:214px;border-radius:18px;padding:16px 20px;color:#fff;display:flex;flex-direction:column;background:color-mix(in srgb,#2F5E4B 84%,#000);box-shadow:inset 0 0 0 1px rgb(255 255 255/.12),inset 0 1px 0 rgb(255 255 255/.18),0 18px 36px -18px rgb(0 0 0/.5)}
+.big .h{display:flex;justify-content:space-between;font-weight:600;font-size:15px}
+.big .h span:last-child{font-weight:500;font-size:13px;opacity:.75}
+.big .v{margin-top:auto;font-size:38px;font-weight:600;letter-spacing:-0.035em}
+.big .f{font-size:13px;opacity:.75;margin-top:2px}
+.count{margin:16px 20px 0;padding:16px;display:flex;flex-direction:column;gap:12px}
+.count p{font-size:15px;line-height:1.4}
+.count .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stats{margin:12px 20px 0;display:grid;grid-template-columns:1fr 1fr}
+.stats > div{padding:14px 16px}
+.stats > div + div{border-left:1px solid var(--line)}
+.stats .v{font-size:19px;font-weight:600;letter-spacing:-0.02em;margin-top:4px}
+.list{padding:0 20px}
+.acts2{display:grid;grid-template-columns:1fr;gap:8px;margin:14px 20px 0}
+
+.ini[style*="--cc"]{background:color-mix(in srgb,var(--cc) 14%,transparent)!important;border-color:color-mix(in srgb,var(--cc) 26%,transparent)!important;color:var(--cc)!important}
+.cat i[style*="--cc"]{background:color-mix(in srgb,var(--cc) 14%,transparent);border-color:color-mix(in srgb,var(--cc) 26%,transparent);color:var(--cc)}
+</style></head><body>
+<div class="top"><span class="back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg>Wallet</span><span class="iconbtn"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></span></div>
+<div class="big"><div class="h"><span>Cash</span><span>Wallet</span></div><div class="v num">¥26,450</div><div class="f">Counted on Sunday</div></div>
+
+<div class="acts2"><span class="btn ghost"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h14"/></svg>Count cash</span></div>
+
+<div class="stats panel"><div><div class="m" style="margin:0">Out in November</div><div class="v num">¥3,084</div></div><div><div class="m" style="margin:0">In</div><div class="v num">¥20,000</div></div></div>
+
+<div class="list">
+  <div class="day"><span>Yesterday</span><span class="num">−¥1,430</span></div>
+  <div class="panel">
+    <div class="row"><span class="ini" style="--cc:#E37D95"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11h16a8 8 0 0 1-16 0zM8 4c0 2 2 2 2 4M13 4c0 2 2 2 2 4"/></svg></span><div class="grow"><div class="t">コメダ珈琲店</div><div class="m">Food and drinks</div></div><div class="ra"><div class="a num">−¥1,430</div><div class="m">20:00</div></div></div>
+  </div>
+  <div class="day"><span>Monday 2</span><span class="num">+¥20,000</span></div>
+  <div class="panel">
+    <div class="row"><span class="ini"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h11l-3-3M17 17H6l3 3"/></svg></span><div class="grow"><div class="t">From MUFG</div><div class="m">Transfer</div></div><div class="ra"><div class="a num" style="color:var(--ok)">+¥20,000</div><div class="m">11:00</div></div></div>
+  </div>
+</div>
+<nav class="tabs">
+  <span class="on"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.5" y="6" width="17" height="12" rx="2.5"/><path d="M3.5 10h17"/></svg>Wallet</span>
+  <span data-t="activity"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h9"/></svg>Activity</span>
+  <span data-t="insights"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 19V11M12 19V5M19 19v-6"/></svg>Insights</span>
+  <span data-t="settings"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>Settings</span>
+</nav>
+</body></html>

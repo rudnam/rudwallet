@@ -27,6 +27,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(UpdatesPlugin.class);
         registerPlugin(SplashPlugin.class);
         registerPlugin(ICCardPlugin.class);
+        registerPlugin(HapticsPlugin.class);
         super.onCreate(savedInstanceState);
     }
 }

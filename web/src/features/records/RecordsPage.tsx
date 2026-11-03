@@ -1,7 +1,7 @@
 // All records, a month at a time, with filters; a search, or a tag, looks
 // through every month. Records can be chosen to delete, categorise, move or
 // tag many at once.
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { api, errorMessage, type BulkChange, type Tag, type Transaction, type TransactionFilter } from '../../api';
 import { cleanTag } from '../../components/TagField';
 import { TransactionForm } from '../../components/TransactionForm';
@@ -16,7 +16,19 @@ import { t, tn } from '../../i18n';
 /** The most records the server sends at once (maxList in internal/wallet). */
 const maxRecords = 2000;
 
-export function RecordsPage({ route }: { route: Route }) {
+export function RecordsPage({
+  route,
+  title = t('Records'),
+  above,
+  hideReview = false,
+}: {
+  route: Route;
+  title?: string;
+  /** Shown under the filters, above the summary: Activity's "to check". */
+  above?: ReactNode;
+  /** Leave out records waiting for review (Activity shows them in "to check"). */
+  hideReview?: boolean;
+}) {
   const w = useWallet();
   const p = route.params;
   const monthParam = p.get('month'); // YYYY-MM
@@ -77,6 +89,7 @@ export function RecordsPage({ route }: { route: Route }) {
   const ym = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 
   const confirmed = (records ?? []).filter((t) => t.status === 'confirmed');
+  const shown = records && hideReview ? records.filter((t) => t.status !== 'review') : records;
   const out = confirmed.filter((t) => t.kind === 'expense').reduce((s, t) => s + t.amount, 0);
   const inc = confirmed.filter((t) => t.kind === 'income').reduce((s, t) => s + t.amount, 0);
 
@@ -84,7 +97,7 @@ export function RecordsPage({ route }: { route: Route }) {
     <section className="stack">
       <header className="page-head">
         <div>
-          <h1>{t('Records')}</h1>
+          <h1>{title}</h1>
         </div>
         {records && records.length > 0 && (
           <button type="button" className="secondary" onClick={() => setSelected(selected ? null : new Set())}>
@@ -93,7 +106,7 @@ export function RecordsPage({ route }: { route: Route }) {
         )}
       </header>
       {everyMonth ? (
-        <div className="card search-scope">
+        <div className="search-scope">
           <strong>{search ? t('Results from every month') : t('#{tag} in every month', { tag })}</strong>
           <button
             type="button"
@@ -107,7 +120,7 @@ export function RecordsPage({ route }: { route: Route }) {
           </button>
         </div>
       ) : (
-        <div className="card month-picker">
+        <div className="month-picker">
           <button type="button" className="link" aria-label={t('Previous month')} onClick={() => set({ month: ym(addMonths(month, -1)) })}>
             ‹
           </button>
@@ -118,7 +131,7 @@ export function RecordsPage({ route }: { route: Route }) {
         </div>
       )}
       <div className="filters">
-        <select aria-label={t('Account')} value={account ?? ''} onChange={(e) => set({ account: e.target.value })}>
+        <select aria-label={t('Account')} className={account ? 'set' : undefined} value={account ?? ''} onChange={(e) => set({ account: e.target.value })}>
           <option value="">{t('All accounts')}</option>
           {w.accounts.map((a) => (
             <option key={a.id} value={a.id}>
@@ -126,7 +139,7 @@ export function RecordsPage({ route }: { route: Route }) {
             </option>
           ))}
         </select>
-        <select aria-label={t('Category')} value={category ?? ''} onChange={(e) => set({ category: e.target.value })}>
+        <select aria-label={t('Category')} className={category ? 'set' : undefined} value={category ?? ''} onChange={(e) => set({ category: e.target.value })}>
           <option value="">{t('All categories')}</option>
           <option value="none">{t('No category')}</option>
           {w.categories.map((c) => (
@@ -160,39 +173,41 @@ export function RecordsPage({ route }: { route: Route }) {
           })}
         </ul>
       )}
-      <div className="card tiles summary">
-        <div className="tile">
-          <span className="muted small">{t('Spent')}</span>
-          <strong>{w.money(out)}</strong>
-        </div>
-        <div className="tile">
-          <span className="muted small">{t('Income')}</span>
-          <strong>{w.money(inc)}</strong>
-        </div>
-        <div className="tile">
-          <span className="muted small">{t('Net')}</span>
-          <strong>{w.money(inc - out, true)}</strong>
-        </div>
-      </div>
+      {above}
+      <p className="summary">
+        <span>
+          <span className="muted">{t('Spent')}</span> <strong>{w.money(out)}</strong>
+        </span>
+        {inc > 0 && (
+          <>
+            <span>
+              <span className="muted">{t('Income')}</span> <strong className="income">{w.money(inc)}</strong>
+            </span>
+            <span>
+              <span className="muted">{t('Net')}</span> <strong>{w.money(inc - out, true)}</strong>
+            </span>
+          </>
+        )}
+      </p>
       {error && (
         <p role="alert" className="error">
           {error}
         </p>
       )}
-      {records === null ? (
+      {shown === null ? (
         <p className="muted">{t('Loading…')}</p>
-      ) : records.length === 0 ? (
+      ) : shown.length === 0 ? (
         <div className="card stack empty">
           <p className="muted">{t('No records match.')}</p>
         </div>
       ) : (
         <>
-          {records.length >= maxRecords && (
+          {(records?.length ?? 0) >= maxRecords && (
             <p className="muted small">{t('Showing the newest {n} matches. Add words or a filter to narrow the search.', { n: maxRecords.toLocaleString() })}</p>
           )}
           {selected && (
             <BulkBar
-              records={records}
+              records={shown}
               tags={tags}
               selected={selected}
               onSelect={setSelected}
@@ -200,7 +215,7 @@ export function RecordsPage({ route }: { route: Route }) {
             />
           )}
           <TransactionList
-            records={records}
+            records={shown}
             onOpen={setOpen}
             selected={selected ?? undefined}
             onToggle={(t) => {

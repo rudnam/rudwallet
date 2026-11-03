@@ -9,26 +9,42 @@ import { locale } from './language';
  */
 const plainYen = (s: string) => s.replace(/￥/g, '¥');
 
+/** A true minus sign (−), the width of a plus, not a hyphen (-). */
+const trueMinus = (s: string) => s.replace(/-/g, '\u2212');
+
 /** Formats minor units as money, e.g. 4994 JPY → "¥4,994". */
 export function formatMoney(amount: number, s: Pick<Settings, 'currency' | 'currency_exponent'>, signed = false): string {
-  const value = amount / 10 ** s.currency_exponent;
-  return plainYen(new Intl.NumberFormat(locale(), {
+  return moneyParts(amount, s, signed).map((p) => p.value).join('');
+}
+
+/**
+ * The parts of formatMoney's text, so a large figure can set the currency
+ * sign apart from the digits: [{type: 'minusSign', value: '−'}, {type: 'currency', value: '¥'}, …].
+ */
+export function moneyParts(
+  amount: number,
+  s: Pick<Settings, 'currency' | 'currency_exponent'>,
+  signed = false,
+): Intl.NumberFormatPart[] {
+  return new Intl.NumberFormat(locale(), {
     style: 'currency',
     currency: s.currency,
     minimumFractionDigits: s.currency_exponent,
     maximumFractionDigits: s.currency_exponent,
     signDisplay: signed ? 'exceptZero' : 'auto',
-  }).format(value));
+  })
+    .formatToParts(amount / 10 ** s.currency_exponent)
+    .map((p) => ({ ...p, value: trueMinus(plainYen(p.value)) }));
 }
 
 /** Short form for axis ticks: ¥12K, or in Japanese ¥1.2万. */
 export function formatCompact(amount: number, s: Pick<Settings, 'currency' | 'currency_exponent'>): string {
-  return plainYen(new Intl.NumberFormat(locale(), {
+  return trueMinus(plainYen(new Intl.NumberFormat(locale(), {
     style: 'currency',
     currency: s.currency,
     notation: 'compact',
     maximumFractionDigits: 1,
-  }).format(amount / 10 ** s.currency_exponent));
+  }).format(amount / 10 ** s.currency_exponent)));
 }
 
 /** Parses what the user typed ("1,200", "12.50", full-width "１２００円") into minor units, or null. */

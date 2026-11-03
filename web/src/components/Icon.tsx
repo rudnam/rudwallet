@@ -14,6 +14,14 @@ export function Icon({ d, className = 'nav-icon' }: { d: string; className?: str
 
 export const icons = {
   home: 'M3 11l9-7 9 7M5 9.5V20h5v-6h4v6h5V9.5',
+  search: 'M11 4.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 1 0 0-13M20 20l-4.4-4.4',
+  chevron: 'M9 6l6 6-6 6',
+  back: 'M15 6l-6 6 6 6',
+  appearance: 'M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 1 0 0-17M12 3.5v17',
+  question: 'M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5h.01',
+  edit: 'M4 20h4L19 9l-4-4L4 16z',
+  count: 'M4 7h16M4 12h16M4 17h16',
+  wallet: 'M5.5 6h13A2.5 2.5 0 0 1 21 8.5v7a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 15.5v-7A2.5 2.5 0 0 1 5.5 6zM3 10h18',
   records: 'M4 6h16M4 12h16M4 18h10',
   stats: 'M4 20h16M7 16v-4M12 16V6M17 16v-7',
   up: 'M4 17l6-6 4 4 6-7M15 8h5v5',
@@ -25,6 +33,7 @@ export const icons = {
     'M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1',
   check: 'M5 12.5l4.5 4.5L19 7',
   close: 'M6 6l12 12M18 6L6 18',
+  backspace: 'M21 5H9l-6 7 6 7h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1zM12 9l6 6M18 9l-6 6',
   copy: 'M9 9h11v11H9zM5 15H4V4h11v1',
   mail: 'M3 6h18v12H3zM3 7l9 6 9-6',
   download: 'M12 4v11M7 10.5l5 5 5-5M5 20h14',
@@ -90,25 +99,38 @@ export function glyphKey(icon: string | undefined): string | undefined {
   return fromEmoji[icon.replace(/[️‍]/g, '')];
 }
 
-/** A category's mark: its line icon, or its initial if it has none, on a wash of its colour. */
+/**
+ * A category's mark: its line icon (or its initial if it has none) in the
+ * category's colour on a faint tint of it (docs/design). With no category, a
+ * question mark on a dashed outline, so a record waiting for one stands out.
+ */
 export function CategoryIcon({
   icon,
   name,
   color,
   size,
+  payee,
 }: {
   icon?: string;
   name?: string;
   color?: string;
   size?: 'small';
+  payee?: string;
 }) {
   const key = glyphKey(icon);
   const hex = color && /^#[0-9a-f]{6}$/i.test(color) ? color : undefined;
-  const style: CSSProperties | undefined = hex
-    ? { background: `${hex}1f`, color: `color-mix(in srgb, ${hex} 75%, var(--text))` }
-    : undefined;
+  // The tint and the ink come from the category's colour (styles.css .cat-icon).
+  const style = hex ? ({ '--cc': hex } as CSSProperties) : undefined;
+  const cls = size === 'small' ? 'cat-icon small' : 'cat-icon';
+  if (!key && !name && payee !== undefined) {
+    return (
+      <span className={`${cls} uncategorized`} aria-hidden="true">
+        <Icon d={icons.question} className="glyph" />
+      </span>
+    );
+  }
   return (
-    <span className={size === 'small' ? 'cat-icon small' : 'cat-icon'} aria-hidden="true" style={style}>
+    <span className={cls} aria-hidden="true" style={style}>
       {key ? <Icon d={glyphs[key].d} className="glyph" /> : name ? <span className="initial">{name[0]}</span> : <Icon d={icons.dot} className="glyph" />}
     </span>
   );

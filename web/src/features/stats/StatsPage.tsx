@@ -5,7 +5,8 @@ import { api, errorMessage, type Budget, type Stats } from '../../api';
 import { CategoryBars, DailyColumns, type BarItem } from '../../components/charts';
 import { CategoryIcon, Icon, icons } from '../../components/Icon';
 import { addMonths, dayKey, formatCompact, formatMonth } from '../../money';
-import { navigate, type Route } from '../../router';
+import { Figure } from '../../components/Figure';
+import { href, navigate, type Route } from '../../router';
 import { useWallet } from '../../wallet';
 import { t, tn, tx, type Key } from '../../i18n';
 import { locale } from '../../language';
@@ -95,9 +96,11 @@ export function StatsPage({ route }: { route: Route }) {
     <section className="stack loose">
       <header className="page-head">
         <div>
-          <span className="eyebrow">{t('Stats')}</span>
-          <h1>{periodTitle(period)}</h1>
+          <h1>{t('Insights')}</h1>
         </div>
+        <a className="button secondary" href={href('budgets')}>
+          {t('Budgets')}
+        </a>
       </header>
 
       <div className="stack">
@@ -131,7 +134,7 @@ export function StatsPage({ route }: { route: Route }) {
             </label>
           </div>
         ) : (
-          <div className="card month-picker">
+          <div className="month-picker">
             <button type="button" className="link" aria-label={t(previousLabel[period.span])} onClick={() => go(shift(period, -1))}>
               ‹
             </button>
@@ -150,6 +153,7 @@ export function StatsPage({ route }: { route: Route }) {
         <div className="filters">
           <select
             aria-label={t('Account')}
+            className={account ? 'set' : undefined}
             value={account ?? ''}
             onChange={(e) => go(period, Number(e.target.value) || undefined)}
           >
@@ -169,41 +173,33 @@ export function StatsPage({ route }: { route: Route }) {
         </p>
       )}
 
-      <div className="card hero">
+      <div className="hero plain balance">
         <span className="muted">{t('Spent')}</span>
-        <span className="hero-figure">{s ? w.money(s.spent) : '…'}</span>
+        <span className="hero-figure">{s ? <Figure amount={s.spent} /> : '…'}</span>
         {stats && <span className="muted small">{stats.past[0].days.length === 0
               ? t('No records in {period} to compare with.', { period: periodName(past[0]) })
               : comparison(stats.now.spent, stats.past[0].spent, past[0], ongoing, w.money)}</span>}
-        <div className="tiles">
-          <Tile label={t('Income')} value={s ? w.money(s.income) : '…'} className="income" />
-          <Tile label={t('Net')} value={s ? w.money(s.income - s.spent, true) : '…'} />
-          <Tile label={t('Per day')} value={s && days > 0 ? w.money(Math.round(s.spent / days)) : '–'} />
-        </div>
+        {/* The same line under the figure as on Home. Income and net say nothing new without income. */}
+        <span className="balance-month">
+          <span>
+            {t('Per day')} <strong>{s && days > 0 ? w.money(Math.round(s.spent / days)) : '–'}</strong>
+          </span>
+          {s && s.income > 0 && (
+            <>
+              <span>
+                {t('Income')} <strong>{w.money(s.income)}</strong>
+              </span>
+              <span>
+                {t('Net')} <strong>{w.money(s.income - s.spent, true)}</strong>
+              </span>
+            </>
+          )}
+        </span>
       </div>
-
-      {stats && days > 0 && <Trends now={stats.now} past={stats.past} period={period} days={days} ongoing={ongoing} />}
 
       {stats && ahead && (
         <MonthAhead now={stats.now} budgets={budgets} days={days} period={period} />
       )}
-
-      <div className="card stack">
-        <h2>{t('Spending over time')}</h2>
-        {series === null ? (
-          <p className="muted">{t('Loading…')}</p>
-        ) : (
-          <DailyColumns
-            values={series.values}
-            labelFor={series.labelFor}
-            tick={series.tick}
-            label={t(stepLabels[series.step].label)}
-            hint={t(stepLabels[series.step].hint)}
-            format={(n) => w.money(n)}
-            compact={(n) => formatCompact(n, w.settings)}
-          />
-        )}
-      </div>
 
       <div className="card stack">
         <h2>{t('Where it went')}</h2>
@@ -230,6 +226,25 @@ export function StatsPage({ route }: { route: Route }) {
         )}
       </div>
 
+      {stats && days > 0 && <Trends now={stats.now} past={stats.past} period={period} days={days} ongoing={ongoing} />}
+
+      <div className="card stack">
+        <h2>{t('Spending over time')}</h2>
+        {series === null ? (
+          <p className="muted">{t('Loading…')}</p>
+        ) : (
+          <DailyColumns
+            values={series.values}
+            labelFor={series.labelFor}
+            tick={series.tick}
+            label={t(stepLabels[series.step].label)}
+            hint={t(stepLabels[series.step].hint)}
+            format={(n) => w.money(n)}
+            compact={(n) => formatCompact(n, w.settings)}
+          />
+        )}
+      </div>
+
       {incomes.length > 0 && (
         <div className="card stack">
           <h2>{t('Where it came from')}</h2>
@@ -237,15 +252,6 @@ export function StatsPage({ route }: { route: Route }) {
         </div>
       )}
     </section>
-  );
-}
-
-function Tile({ label, value, className }: { label: string; value: string; className?: string }) {
-  return (
-    <div className="tile">
-      <span className="muted small">{label}</span>
-      <strong className={className}>{value}</strong>
-    </div>
   );
 }
 

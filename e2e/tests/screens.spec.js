@@ -117,7 +117,7 @@ for (const [name, viewport] of [
     await seed(page);
     await page.reload();
     await expect(page.getByRole('link', { name: /3 payments to review/ })).toBeVisible();
-    await expect(page.getByRole('list', { name: 'Spending by category' })).toBeVisible();
+    await expect(page.getByRole('list', { name: 'Accounts' })).toBeVisible();
     await shot('2-overview');
 
     await page.goto('/app/#/stats');
@@ -156,7 +156,7 @@ for (const [name, viewport] of [
     await expect(page.getByRole('button', { name: 'Undo' })).toBeVisible();
     await shot('4-records-edit-undo');
     await page.getByRole('button', { name: 'Undo' }).click();
-    await expect(page.getByRole('button', { name: /コメダ珈琲店, -¥1,430/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /コメダ珈琲店, −¥1,430/ })).toBeVisible();
 
     await page.getByRole('list', { name: 'Filter by tag' }).getByRole('button', { name: /Date night/ }).click();
     await expect(page.getByText('#Date night in every month')).toBeVisible();

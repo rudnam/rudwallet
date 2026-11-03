@@ -9,7 +9,8 @@ import { amountInput, parseAmount } from '../../money';
 import { href, type Route } from '../../router';
 import { useToast } from '../../toast';
 import { useWallet } from '../../wallet';
-import { isApp } from '../../native';
+import { hapticSelect, isApp } from '../../native';
+import { setAppearance, useAppearance, type Appearance } from '../../appearance';
 import { WidgetSettings } from './WidgetSettings';
 import { NotificationSettings } from './NotificationSettings';
 import { ClaudeSettings } from './ClaudeSettings';
@@ -33,18 +34,25 @@ export const accountKinds: Record<AccountKind, { label: Key; glyph: string; colo
 
 const swatches = ['#c8463d', '#d97757', '#b08a3e', '#4f8a4c', '#2a8a8a', '#3b6ea8', '#5b4a8a', '#a8508a', '#6f6c63'];
 
-/** The menu. An `app` section is listed only in the Android app, though its page still opens on the web. */
-const sections: { id: string; label: Key; title: Key; glyph: string; app?: boolean }[] = [
-  { id: 'notifications', label: 'Payment notifications', title: 'Payment notifications', glyph: 'card' },
-  { id: 'rules', label: 'Shops and cards', title: 'Shops and cards', glyph: 'shopping' },
-  { id: 'claude', label: 'Claude', title: 'Claude', glyph: 'spark' },
-  { id: 'accounts', label: 'Accounts', title: 'Accounts', glyph: 'bank' },
-  { id: 'categories', label: 'Categories', title: 'Categories', glyph: 'other' },
-  { id: 'general', label: 'Currency', title: 'Currency', glyph: 'money' },
-  { id: 'import', label: 'Import', title: 'Import records', glyph: 'school' },
-  { id: 'widgets', label: 'Home screen widgets', title: 'Home screen widgets', glyph: 'phone', app: true },
-  { id: 'language', label: 'Language', title: 'Language', glyph: 'globe' },
+/**
+ * The menu, in groups. An `app` section is listed only in the Android app,
+ * though its page still opens on the web; a `page` row opens another page.
+ */
+const sections: { id: string; label: Key; title: Key; glyph: string; group: Key; app?: boolean; page?: string }[] = [
+  { id: 'accounts', label: 'Accounts', title: 'Accounts', glyph: 'bank', group: 'Money' },
+  { id: 'categories', label: 'Categories', title: 'Categories', glyph: 'other', group: 'Money' },
+  { id: 'budgets', label: 'Budgets', title: 'Budgets', glyph: 'budgets', group: 'Money', page: 'budgets' },
+  { id: 'rules', label: 'Shops and cards', title: 'Shops and cards', glyph: 'shopping', group: 'Money' },
+  { id: 'notifications', label: 'Payment notifications', title: 'Payment notifications', glyph: 'card', group: 'Recording payments' },
+  { id: 'import', label: 'Import', title: 'Import records', glyph: 'school', group: 'Recording payments' },
+  { id: 'appearance', label: 'Appearance', title: 'Appearance', glyph: 'appearance', group: 'App' },
+  { id: 'language', label: 'Language', title: 'Language', glyph: 'globe', group: 'App' },
+  { id: 'general', label: 'Currency', title: 'Currency', glyph: 'money', group: 'App' },
+  { id: 'widgets', label: 'Home screen widgets', title: 'Home screen widgets', glyph: 'phone', group: 'App', app: true },
+  { id: 'claude', label: 'Claude', title: 'Claude', glyph: 'spark', group: 'App' },
 ];
+const groups: Key[] = ['Money', 'Recording payments', 'App'];
+const appearanceNames: Record<Appearance, Key> = { auto: 'Automatic', light: 'Light', dark: 'Dark' };
 
 export function SettingsPage({
   route,
@@ -59,6 +67,7 @@ export function SettingsPage({
 }) {
   const [deleting, setDeleting] = useState(false);
   const w = useWallet();
+  const currentAppearance = useAppearance();
   const open = sections.find((s) => s.id === route.params.get('section'));
 
   if (open) {
@@ -79,11 +88,13 @@ export function SettingsPage({
         {open.id === 'import' && <Import />}
         {open.id === 'widgets' && <WidgetSettings />}
         {open.id === 'language' && <LanguageSettings />}
+        {open.id === 'appearance' && <AppearanceSettings />}
       </section>
     );
   }
 
   const active = w.accounts.filter((a) => !a.archived).length;
+  const appearance = currentAppearance;
   const summary: Record<string, string> = {
     notifications: w.settings.auto_confirm ? t('Auto-confirm on') : '',
     rules: t('What was learned'),
@@ -94,25 +105,33 @@ export function SettingsPage({
     import: 'PayPay, MUFG, BudgetBakers',
     widgets: 'Android',
     language: languages.find((l) => l.code === language())!.name,
+    appearance: t(appearanceNames[appearance]),
   };
   return (
     <section className="stack loose">
       <h1>{t('Settings')}</h1>
-      <nav className="card flush" aria-label={t('Settings sections')}>
-        <ul className="list flush">
-          {sections.filter((s) => isApp || !s.app).map((s) => (
-            <li key={s.id}>
-              <a className="menu-row" href={href('settings', { section: s.id })}>
-                <span className="cat-icon" aria-hidden="true">
-                  <Icon d={s.glyph in icons ? icons[s.glyph as keyof typeof icons] : glyphs[s.glyph].d} className="glyph" />
-                </span>
-                <span className="grow">{t(s.label)}</span>
-                <span className="muted small">{summary[s.id]}</span>
-                <Icon d="M9 5l7 7-7 7" className="inline-icon chev-icon" />
-              </a>
-            </li>
-          ))}
-        </ul>
+      <nav className="stack settings-groups" aria-label={t('Settings sections')}>
+        {groups.map((g) => (
+          <section key={g} className="stack tight" aria-label={t(g)}>
+            <h2 className="section-label">{t(g)}</h2>
+            <ul className="list flush card flush">
+              {sections
+                .filter((s) => s.group === g && (isApp || !s.app))
+                .map((s) => (
+                  <li key={s.id}>
+                    <a className="menu-row" href={s.page ? href(s.page) : href('settings', { section: s.id })}>
+                      <span className="menu-icon" aria-hidden="true">
+                        <Icon d={s.glyph in icons ? icons[s.glyph as keyof typeof icons] : glyphs[s.glyph].d} className="glyph" />
+                      </span>
+                      <span className="grow">{t(s.label)}</span>
+                      <span className="muted small">{summary[s.id]}</span>
+                      <Icon d="M9 5l7 7-7 7" className="inline-icon chev-icon" />
+                    </a>
+                  </li>
+                ))}
+            </ul>
+          </section>
+        ))}
       </nav>
       {me.demo ? (
         // Ending a demo deletes it.
@@ -1217,5 +1236,32 @@ function BudgetBakersImport() {
       )}
       {result && <ImportSummary result={result} />}
     </div>
+  );
+}
+
+/** Light, dark, or as the phone is: kept on this device. */
+function AppearanceSettings() {
+  const current = useAppearance();
+  return (
+    <fieldset className="card flush choice-list">
+      <legend className="sr-only">{t('Appearance')}</legend>
+      {(['auto', 'light', 'dark'] as const).map((a) => (
+        <label key={a} className="menu-row">
+          <input
+            type="radio"
+            name="appearance"
+            checked={current === a}
+            onChange={() => {
+              setAppearance(a);
+              hapticSelect();
+            }}
+          />
+          <span className="grow">
+            {t(appearanceNames[a])}
+            {a === 'auto' && <span className="muted small block">{t('Light or dark, as your phone is set')}</span>}
+          </span>
+        </label>
+      ))}
+    </fieldset>
   );
 }

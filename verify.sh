@@ -49,8 +49,12 @@ trap 'down; rm -f "$golog"' EXIT
 
 # Pull the browser image while the app builds, not after: it's large, and a
 # fresh machine (CI) or a new Playwright version has to download it.
+# Not when the image is the local copy .claude/hooks/session-start.sh made
+# to trust a cloud session's TLS proxy: a pull would replace it.
 pullpid=''
-if [[ $mode == all || $mode == e2e ]]; then
+pw_image="mcr.microsoft.com/playwright:v${PW_VERSION}-noble"
+if [[ ($mode == all || $mode == e2e) &&
+      -z $(docker image inspect -f '{{index .Config.Labels "ccr.proxy-ca"}}' "$pw_image" 2>/dev/null) ]]; then
   dc --profile e2e pull -q e2e >/dev/null 2>&1 & pullpid=$!
 fi
 

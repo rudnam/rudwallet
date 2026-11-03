@@ -1,0 +1,52 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="style.css"><style>
+body{height:auto;min-height:844px;padding-bottom:110px;overflow:visible}
+.per{display:flex;justify-content:space-between;align-items:center;padding:12px 20px 0}
+.per .arrows{display:flex;gap:8px}
+.lead{padding:22px 20px 0}
+.lead .v{font-size:40px;font-weight:600;letter-spacing:-0.035em;margin-top:6px}
+.lead p{font-size:15px;color:var(--soft);margin-top:8px;line-height:1.45}
+.pace{margin:18px 20px 0;padding:16px}
+.bar{position:relative;height:8px;border-radius:4px;background:#1E2025;margin-top:12px}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:#EEEFF1}
+.bar u{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--muted);border-radius:1px}
+.legend{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);margin-top:8px}
+.sec{padding:26px 20px 0}
+.sh{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:10px}
+.cbar{height:4px;border-radius:2px;background:#1E2025;margin-top:8px}
+.cbar i{display:block;height:100%;border-radius:2px;background:var(--soft)}
+.up{color:var(--warn)}
+.ch{display:flex;gap:12px;align-items:flex-start}
+.arrow{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;flex:none;background:rgb(240 163 94/.12);color:var(--warn)}
+.arrow.dn{background:rgb(95 192 138/.12);color:var(--ok)}
+</style></head><body>
+<div class="top"><h1 style="padding:0">Insights</h1></div>
+<div class="per"><span class="chip">This month<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span><span class="arrows"><span class="iconbtn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 6-6 6 6 6"/></svg></span><span class="iconbtn" style="opacity:.4"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg></span></span></div>
+
+<div class="lead"><div class="m" style="margin:0;font-size:13px">Spent in November</div><div class="v num">¥13,110</div><p>You can spend ¥6,674 a day and stay within budget. That’s 35% less than your usual by the 3rd.</p></div>
+
+<div class="pace panel"><div style="display:flex;justify-content:space-between;font-size:14px"><span>Everything budget</span><span class="num" style="color:var(--soft)">¥186,890 left</span></div>
+  <div class="bar"><i style="width:7%"></i><u style="left:10%"></u></div>
+  <div class="legend"><span>¥13,110 of ¥200,000</span><span>Even pace by today</span></div>
+</div>
+
+<div class="sec"><div class="sh"><span>Where it went</span><span>See records</span></div>
+  <div class="panel">
+    <div class="row"><div class="grow"><div style="display:flex;justify-content:space-between"><span class="t">Transport</span><span class="num">¥12,450</span></div><div class="cbar"><i style="width:95%"></i></div></div></div>
+    <div class="row"><div class="grow"><div style="display:flex;justify-content:space-between"><span class="t">Shopping</span><span class="num">¥4,994</span></div><div class="cbar"><i style="width:38%"></i></div></div></div>
+    <div class="row"><div class="grow"><div style="display:flex;justify-content:space-between"><span class="t">Food and drinks</span><span class="num">¥660</span></div><div class="cbar"><i style="width:5%"></i></div></div></div>
+  </div>
+</div>
+
+<div class="sec"><div class="sh"><span>What changed</span><span>vs your usual</span></div>
+  <div class="panel">
+    <div class="row ch"><span class="arrow"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg></span><div class="grow"><div class="t">Shopping is ¥3,794 above usual</div><div class="m">Mostly IKEAオンライン, ¥4,994</div></div></div>
+    <div class="row ch"><span class="arrow dn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg></span><div class="grow"><div class="t">Food and drinks is ¥3,403 below usual</div><div class="m">¥660 so far, usually ¥4,063 by now</div></div></div>
+  </div>
+</div>
+<nav class="tabs">
+  <span data-t="wallet"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.5" y="6" width="17" height="12" rx="2.5"/><path d="M3.5 10h17"/></svg>Wallet</span>
+  <span data-t="activity"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 7h14M5 12h14M5 17h9"/></svg>Activity</span>
+  <span class="on"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 19V11M12 19V5M19 19v-6"/></svg>Insights</span>
+  <span data-t="settings"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>Settings</span>
+</nav>
+</body></html>

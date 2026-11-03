@@ -32,7 +32,7 @@ test.describe('on a phone set to Japanese', () => {
     await dialog.getByRole('button', { name: '保存' }).click();
     await expect(page.getByText('¥1,200を追加しました')).toBeVisible();
     await page.goto('/app/#/records');
-    await expect(page.getByRole('button', { name: /^コメダ珈琲店, -¥1,200$/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^コメダ珈琲店, −¥1,200$/ })).toBeVisible();
 
     // English in Settings › Language: the app, not the names the wallet has.
     await page.goto('/app/#/settings?section=language');
@@ -131,7 +131,7 @@ for (const [name, viewport] of [
       await seed(page);
       await page.goto('/app/');
       await expect(page.getByRole('link', { name: /確認待ちの支払いが1件/ })).toBeVisible();
-      await expect(page.getByRole('list', { name: 'カテゴリ別の支出' })).toBeVisible();
+      await expect(page.getByRole('list', { name: '口座' })).toBeVisible();
       await shot('2-overview');
 
       await page.goto('/app/#/stats');
