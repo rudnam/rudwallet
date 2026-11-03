@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Currency;
 import java.util.Date;
 import java.util.Locale;
@@ -66,9 +67,12 @@ final class Widgets {
 
     // ---------- This month ----------
 
+    /**
+     * Says what Wallet's month line says: spent so far, the overall budget's meter, and what that
+     * means today (a day's share of what's left, or how far over), else the total balance.
+     */
     static RemoteViews month(Context c, JSONObject s, String problem) {
         RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.widget_month);
-        v.setTextViewText(R.id.eyebrow, c.getString(R.string.widget_spent_in, monthName()));
         v.setOnClickPendingIntent(R.id.add, open(c, "add"));
         if (s == null) {
             showMessage(v, c, problem);
@@ -84,14 +88,14 @@ final class Widgets {
         JSONObject budget = s.optJSONObject("budget");
         if (budget != null) {
             long amount = budget.optLong("amount");
-            boolean over = spent > amount;
-            meter(v, R.id.meter, R.id.meter_over, spent, amount);
-            v.setTextColor(R.id.detail, c.getColor(over ? R.color.widget_danger : R.color.widget_muted));
-            v.setTextViewText(R.id.detail, over
-                    ? c.getString(R.string.widget_over_of, format(money, s, spent - amount), format(money, s, amount))
-                    : c.getString(R.string.widget_left_of, format(money, s, amount - spent), format(money, s, amount)));
+            int state = meter(v, R.id.meter, R.id.meter_warn, R.id.meter_over, spent, amount);
+            v.setTextColor(R.id.detail, c.getColor(state == OVER ? R.color.widget_danger : R.color.widget_muted));
+            v.setTextViewText(R.id.detail, state == OVER
+                    ? c.getString(R.string.widget_over_budget, format(money, s, spent - amount))
+                    : c.getString(R.string.widget_per_day, format(money, s, Math.floorDiv(amount - spent, daysLeft()))));
         } else {
             v.setViewVisibility(R.id.meter, View.GONE);
+            v.setViewVisibility(R.id.meter_warn, View.GONE);
             v.setViewVisibility(R.id.meter_over, View.GONE);
             v.setTextColor(R.id.detail, c.getColor(R.color.widget_muted));
             v.setTextViewText(R.id.detail, c.getString(R.string.widget_balance, format(money, s, s.optLong("balance"))));
@@ -100,7 +104,7 @@ final class Widgets {
         int review = s.optInt("review_count");
         if (review > 0) {
             v.setViewVisibility(R.id.review, View.VISIBLE);
-            v.setTextViewText(R.id.review, c.getResources().getQuantityString(R.plurals.widget_review, review, review));
+            v.setTextViewText(R.id.review, c.getString(R.string.widget_to_check, review));
             v.setOnClickPendingIntent(R.id.review, open(c, "review"));
         } else {
             v.setViewVisibility(R.id.review, View.GONE);
@@ -111,7 +115,7 @@ final class Widgets {
     // ---------- Budgets ----------
 
     /** Each budget row is about this tall, and the title takes the rest. */
-    private static final int ROW_DP = 38, TITLE_DP = 44;
+    private static final int ROW_DP = 40, TITLE_DP = 42;
 
     static RemoteViews budgets(Context c, JSONObject s, String problem, Bundle options) {
         RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.widget_budgets);
@@ -141,12 +145,12 @@ final class Widgets {
             long amount = b.optLong("amount"), spent = b.optLong("spent");
             RemoteViews row = new RemoteViews(c.getPackageName(), R.layout.widget_budget_row);
             row.setTextViewText(R.id.name, b.optString("name"));
-            boolean over = spent > amount;
-            row.setTextViewText(R.id.left, over
+            int state = meter(row, R.id.meter, R.id.meter_warn, R.id.meter_over, spent, amount);
+            row.setTextViewText(R.id.left, state == OVER
                     ? c.getString(R.string.widget_over, format(money, s, spent - amount))
                     : c.getString(R.string.widget_left, format(money, s, amount - spent)));
-            row.setTextColor(R.id.left, c.getColor(over ? R.color.widget_danger : R.color.widget_muted));
-            meter(row, R.id.meter, R.id.meter_over, spent, amount);
+            row.setTextColor(R.id.left, c.getColor(
+                    state == OVER ? R.color.widget_danger : state == WARN ? R.color.widget_warning : R.color.widget_muted));
             v.addView(R.id.rows, row);
         }
         return v;
@@ -162,14 +166,26 @@ final class Widgets {
         v.setOnClickPendingIntent(R.id.root, open(c, "home"));
     }
 
-    /** Fills one of two bars: the accent one, or the warning one when over. */
-    private static void meter(RemoteViews v, int bar, int overBar, long spent, long amount) {
-        boolean over = spent > amount;
+    private static final int OK = 0, WARN = 1, OVER = 2;
+
+    /**
+     * Fills the bar for the budget's state, as the web app's Meter: within it, 80% or more of it
+     * used, or over. Returns that state.
+     */
+    private static int meter(RemoteViews v, int okBar, int warnBar, int overBar, long spent, long amount) {
+        int state = spent > amount ? OVER : amount > 0 && spent * 10 >= amount * 8 ? WARN : OK;
         // ProgressBar takes ints; per mille keeps any amount in range.
         int progress = amount <= 0 ? 1000 : (int) Math.min(1000, spent * 1000 / amount);
-        v.setViewVisibility(bar, over ? View.GONE : View.VISIBLE);
-        v.setViewVisibility(overBar, over ? View.VISIBLE : View.GONE);
-        v.setProgressBar(over ? overBar : bar, 1000, progress, false);
+        int[] bars = {okBar, warnBar, overBar};
+        for (int i = 0; i < bars.length; i++) v.setViewVisibility(bars[i], i == state ? View.VISIBLE : View.GONE);
+        v.setProgressBar(bars[state], 1000, progress, false);
+        return state;
+    }
+
+    /** Days left in the month, today included, as the web app counts them. */
+    private static long daysLeft() {
+        Calendar now = Calendar.getInstance();
+        return now.getActualMaximum(Calendar.DAY_OF_MONTH) - now.get(Calendar.DAY_OF_MONTH) + 1;
     }
 
     /** Opens the app at a page of the web app, e.g. "add" for #/add (see web/src/native.ts). */

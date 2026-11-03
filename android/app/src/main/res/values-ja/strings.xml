@@ -1,4 +1,4 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="notify_listener_label">Walletの決済通知</string>
+    <string name="notify_listener_label">RudWalletの決済通知</string>
 </resources>
