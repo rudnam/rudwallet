@@ -172,7 +172,7 @@ export function StatsPage({ route }: { route: Route }) {
       <div className="hero plain balance">
         <span className="muted">{t('Spent')}</span>
         <span className="hero-figure">{s ? <Figure amount={s.spent} /> : '…'}</span>
-        {/* The same line under the figure as on Home. Income and net say nothing new without income. */}
+        {/* Per day, and income and net (which say nothing new without income). */}
         <span className="balance-month">
           <span>
             {t('Per day')} <strong>{s && days > 0 ? w.money(Math.round(s.spent / days)) : '–'}</strong>
@@ -483,22 +483,27 @@ function MonthAhead({ now, budgets, days, period }: { now: Stats; budgets: Budge
         <h2>{title}</h2>
         <a href={href('budgets')}>{budgets.length > 0 ? t('Edit budgets') : t('Set a budget')}</a>
       </div>
-      <div>
-        <strong className="block">{t('Heading for about {amount}', { amount: w.money(heading((s) => s.spent)) })}</strong>
-        <span className="muted small block">
-          {t('{spent} so far, at the same rate per day.', { spent: w.money(now.spent) })}
-        </span>
-      </div>
+      <dl className="ahead-stats">
+        <div>
+          <dt>{t('On pace for')}</dt>
+          <dd>{w.money(heading((s) => s.spent))}</dd>
+        </div>
+        <div>
+          <dt>{t('Days left')}</dt>
+          <dd>{left}</dd>
+        </div>
+      </dl>
       {budgets.length > 0 && (
         <div className="stack tight">
-          <h3 className="small muted">{tn(left, 'To stay within budget, {n} day left', 'To stay within budget, {n} days left')}</h3>
-          <ul className="movers" aria-label={t('Per day to stay within budget')}>
+          <h3 className="small muted">{t('Per day to stay within budget')}</h3>
+          <ul className="movers ahead" aria-label={t('Per day to stay within budget')}>
             {budgets.map((b) => {
               const c = w.category(b.category_id);
               const spent = forBudget(b)(now);
               // The most a day that keeps within it, against the rate so far.
               const allowed = Math.floor((b.amount - spent) / left);
               const rate = Math.round(spent / days);
+              const over = spent >= b.amount;
               return (
                 <li key={b.id}>
                   {c ? (
@@ -508,18 +513,16 @@ function MonthAhead({ now, budgets, days, period }: { now: Stats; budgets: Budge
                       <Icon d={icons.budgets} className="glyph" />
                     </span>
                   )}
-                  <span className="grow ellipsis">{b.name}</span>
-                  <span className="mover-figures">
-                    {spent >= b.amount ? (
-                      <strong className="over">{t('Over by {amount}', { amount: w.money(spent - b.amount) })}</strong>
-                    ) : (
-                      <strong>{t('Up to {amount} a day', { amount: w.money(allowed) })}</strong>
-                    )}
+                  <span className="grow">
+                    <span className="block ellipsis">{b.name}</span>
                     <span className="muted small block">
-                      {spent < b.amount && rate > allowed && <Icon d={icons.warning} className="inline-icon" />}{' '}
-                      {t('Now {amount} a day', { amount: w.money(rate) })}
+                      {!over && rate > allowed && <Icon d={icons.warning} className="inline-icon" />}{' '}
+                      {t('So far {amount} a day', { amount: w.money(rate) })}
                     </span>
                   </span>
+                  <strong className={over ? 'ahead-figure over' : 'ahead-figure'}>
+                    {over ? t('Over by {amount}', { amount: w.money(spent - b.amount) }) : w.money(allowed)}
+                  </strong>
                 </li>
               );
             })}
