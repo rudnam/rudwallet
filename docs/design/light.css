@@ -58,3 +58,8 @@ body > .big{background:#2F5E4B!important;box-shadow:inset 0 1px 0 rgb(255 255 25
 .sw::after{background:#FFFFFF!important}
 .chev{color:#B5B7BC!important}
 .av{background:#F2F2F0!important;border-color:var(--line2)!important}
+
+/* Category icons: a deeper shade of the category's colour on a pale tint. */
+.ini[style*="--cc"]{background:color-mix(in srgb,var(--cc) 12%,#FFFFFF)!important;border-color:color-mix(in srgb,var(--cc) 24%,#FFFFFF)!important;color:color-mix(in srgb,var(--cc) 70%,#000000)!important}
+.cat i[style*="--cc"]{background:color-mix(in srgb,var(--cc) 12%,#FFFFFF)!important;border-color:color-mix(in srgb,var(--cc) 24%,#FFFFFF)!important;color:color-mix(in srgb,var(--cc) 70%,#000000)!important}
+.cat.on i[style*="--cc"]{background:color-mix(in srgb,var(--cc) 82%,#000000)!important;border-color:transparent!important;color:#FFFFFF!important}

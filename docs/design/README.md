@@ -44,6 +44,8 @@ its own).
 - **Settings is one list of plain rows**, grouped as Money, Recording
   payments and App, with a muted line icon and the current value on the
   right.
-- **Each record leads with its category's icon**, a muted line icon on a
-  plain tile (not a coloured square). A record without a category has a
-  dashed tile with a question mark, so it stands out.
+- **Each record leads with its category's icon**, drawn in the category's
+  own colour on a faint tint of it (not a solid coloured square); a picked
+  category in the add sheet fills with its colour. A record without a
+  category has a dashed tile with a question mark, so it stands out.
+  Orange is never a category colour: it means "needs a look".

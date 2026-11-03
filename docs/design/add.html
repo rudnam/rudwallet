@@ -27,6 +27,10 @@ body{background:#060708}
 .k{height:50px;border-radius:12px;background:#202226;display:grid;place-items:center;font-size:24px;font-weight:400;color:var(--text);box-shadow:inset 0 1px 0 rgb(255 255 255/.05)}
 .k.fn{background:transparent;box-shadow:none;color:var(--muted)}
 .k.save{grid-row:span 3;height:auto;background:#EEEFF1;color:#0A0B0D;font-size:17px;font-weight:600}
+
+.ini[style*="--cc"]{background:color-mix(in srgb,var(--cc) 14%,transparent)!important;border-color:color-mix(in srgb,var(--cc) 26%,transparent)!important;color:var(--cc)!important}
+.cat i[style*="--cc"]{background:color-mix(in srgb,var(--cc) 14%,transparent);border-color:color-mix(in srgb,var(--cc) 26%,transparent);color:var(--cc)}
+.cat.on i[style*="--cc"]{background:var(--cc);border-color:var(--cc);color:#0C0D0F}
 </style></head><body>
 <div class="dim"></div>
 <div class="sheet">
@@ -35,10 +39,10 @@ body{background:#060708}
   <div class="seg"><span class="on">Expense</span><span>Income</span><span>Transfer</span></div>
   <div class="amount num"><small>¥</small>1,480<span class="caret"></span></div>
   <div class="cats">
-    <span class="cat on"><i><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11h16a8 8 0 0 1-16 0zM8 4c0 2 2 2 2 4M13 4c0 2 2 2 2 4"/></svg></i>Food</span>
-    <span class="cat"><i><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1.5 11h-11zM9 8V6a3 3 0 0 1 6 0v2"/></svg></i>Groceries</span>
-    <span class="cat"><i><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3.5" width="12" height="14" rx="3"/><path d="M6 11h12M9 21l1.5-3.5M15 21l-1.5-3.5"/></svg></i>Transport</span>
-    <span class="cat"><i><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l-1 13H7zM9 7a3 3 0 0 1 6 0"/></svg></i>Shopping</span>
+    <span class="cat on"><i style="--cc:#E37D95"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11h16a8 8 0 0 1-16 0zM8 4c0 2 2 2 2 4M13 4c0 2 2 2 2 4"/></svg></i>Food</span>
+    <span class="cat"><i style="--cc:#5FBF8A"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1.5 11h-11zM9 8V6a3 3 0 0 1 6 0v2"/></svg></i>Groceries</span>
+    <span class="cat"><i style="--cc:#6FA0E0"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="3.5" width="12" height="14" rx="3"/><path d="M6 11h12M9 21l1.5-3.5M15 21l-1.5-3.5"/></svg></i>Transport</span>
+    <span class="cat"><i style="--cc:#B08BE3"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l-1 13H7zM9 7a3 3 0 0 1 6 0"/></svg></i>Shopping</span>
     <span class="cat"><i><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18" cy="12" r="1.3"/></svg></i>All</span>
   </div>
   <div class="det">
