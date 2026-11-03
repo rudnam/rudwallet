@@ -11,9 +11,15 @@ import { useRecords } from '../../useRecords';
 import { Icon, icons } from '../../components/Icon';
 import { useToast } from '../../toast';
 import { useWallet } from '../../wallet';
+import { hapticSuccess } from '../../native';
 import { t, t as tr, tn, tx } from '../../i18n';
 
-export function ReviewPage() {
+/**
+ * The payments waiting for a check. On its own (compact unset) it's a page;
+ * in Activity (compact) it's the "N to check" section above the records,
+ * and nothing at all when nothing is waiting.
+ */
+export function ReviewPage({ compact = false }: { compact?: boolean }) {
   const w = useWallet();
   const { records, reload } = useRecords({ status: 'review' });
   const [open, setOpen] = useState<Transaction | null>(null);
@@ -54,6 +60,7 @@ export function ReviewPage() {
       }
       for (const [category_id, ids] of changed) await api.bulkTransactions({ ids, action: 'categorize', category_id });
       const { changed: n } = await api.bulkTransactions({ ids: ready.map((t) => t.id), action: 'confirm' });
+      hapticSuccess();
       toast(tn(n, 'Confirmed {n} payment', 'Confirmed {n} payments'));
       setPicked({});
       await Promise.all([reload(), w.refresh()]);
@@ -65,14 +72,22 @@ export function ReviewPage() {
   }
 
   const empty = records !== null && records.length === 0;
+  if (compact && (records === null || empty)) return null;
   return (
-    <section className="stack loose">
-      <header className="stack tight">
-        <h1>{t('To review')}</h1>
-        <p className="muted lede">
-          {t("Payments read from your phone's notifications. Pick a category and confirm; next time it's remembered.")}
-        </p>
-      </header>
+    <section className={compact ? 'stack to-check' : 'stack loose'} aria-label={compact ? t('Payments to review') : undefined}>
+      {compact ? (
+        <h2 className="to-check-head">
+          <span className="attention-dot" aria-hidden="true" />
+          {t('{n} to check', { n: records?.length ?? 0 })}
+        </h2>
+      ) : (
+        <header className="stack tight">
+          <h1>{t('To review')}</h1>
+          <p className="muted lede">
+            {t("Payments read from your phone's notifications. Pick a category and confirm; next time it's remembered.")}
+          </p>
+        </header>
+      )}
       {error && (
         <p role="alert" className="error">
           {error}
@@ -106,7 +121,7 @@ export function ReviewPage() {
       )}
 
       {records && records.length > 0 && (
-        <ul className="list" aria-label={t('Payments to review')}>
+        <ul className="list" aria-label={compact ? undefined : t('Payments to review')}>
           {records.map((t) => (
             <ReviewItem
               key={t.id}
@@ -177,6 +192,7 @@ function ReviewItem({
         ...(overriding ? { remember } : {}),
       });
       await w.refresh();
+      hapticSuccess();
       toast(tr('Confirmed {payee}', { payee: title }));
       onDone();
     } catch (err) {

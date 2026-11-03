@@ -6,7 +6,7 @@ import { CategoryBars, DailyColumns, type BarItem } from '../../components/chart
 import { CategoryIcon, Icon, icons } from '../../components/Icon';
 import { addMonths, dayKey, formatCompact, formatMonth } from '../../money';
 import { Figure } from '../../components/Figure';
-import { navigate, type Route } from '../../router';
+import { href, navigate, type Route } from '../../router';
 import { useWallet } from '../../wallet';
 import { t, tn, tx, type Key } from '../../i18n';
 import { locale } from '../../language';
@@ -96,9 +96,12 @@ export function StatsPage({ route }: { route: Route }) {
     <section className="stack loose">
       <header className="page-head">
         <div>
-          <span className="eyebrow">{t('Stats')}</span>
+          <span className="muted small">{t('Insights')}</span>
           <h1>{periodTitle(period)}</h1>
         </div>
+        <a className="button secondary" href={href('budgets')}>
+          {t('Budgets')}
+        </a>
       </header>
 
       <div className="stack">

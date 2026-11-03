@@ -242,14 +242,26 @@ export function onAppLinks(handlers: {
 }
 
 /** The phone's haptics (android/…/HapticsPlugin.java); nothing on the web or in an app build from before them. */
-const haptics = registerPlugin<{ tick(): Promise<void>; confirm(): Promise<void> }>('Haptics');
+const haptics = registerPlugin<Record<'key' | 'select' | 'threshold' | 'success' | 'error', () => Promise<void>>>('Haptics');
 
-/** A light tap, for a choice: a key on the number pad, a category. */
-export function hapticTick(): void {
-  if (isApp) haptics.tick().catch(() => {});
+// Haptics mark moments, not every touch: a short gap keeps fast typing on
+// the number pad from running together into a buzz.
+let lastHaptic = 0;
+function haptic(kind: 'key' | 'select' | 'threshold' | 'success' | 'error', gap = 35): void {
+  if (!isApp) return;
+  const now = performance.now();
+  if (now - lastHaptic < gap && kind !== 'success' && kind !== 'error') return;
+  lastHaptic = now;
+  haptics[kind]().catch(() => {});
 }
 
-/** A firmer tap, for something done: a record saved. */
-export function hapticConfirm(): void {
-  if (isApp) haptics.confirm().catch(() => {});
-}
+/** A key on the number pad: as light as the phone's keyboard. */
+export const hapticKey = () => haptic('key');
+/** A choice made: a category, an account, expense or income. */
+export const hapticSelect = () => haptic('select');
+/** A swipe passing the point where letting go acts. */
+export const hapticThreshold = () => haptic('threshold');
+/** Something saved or confirmed. */
+export const hapticSuccess = () => haptic('success');
+/** Something that couldn't be done, such as saving without an amount. */
+export const hapticError = () => haptic('error');

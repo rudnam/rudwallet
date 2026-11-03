@@ -9,7 +9,7 @@ test('the introduction page opens a demo full of sample data', async ({ page }) 
   await expect(page.getByRole('note')).toContainText('This is a demo with sample data.');
   await expect(page.getByText('Total balance')).toBeVisible();
   await expect(page.getByRole('link', { name: /2 payments to review/ })).toBeVisible();
-  await expect(page.getByRole('list', { name: 'Spending by category' })).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Accounts' })).toBeVisible();
   await expect(page).toHaveURL(/\/app\/#\/home$/); // ?demo is gone, so a reload doesn't start another
   await expect(page.getByRole('navigation', { name: 'Main' })).toContainText('Demo');
 
@@ -81,7 +81,7 @@ for (const [lang, locale, tryIt] of [
         await shot('1-sign-in');
         await page.getByRole('button', { name: tryIt }).click();
         await expect(page.getByRole('note')).toBeVisible();
-        await expect(page.locator('.bars')).toBeVisible();
+        await expect(page.locator('.card-stack')).toBeVisible();
         await shot('2-home');
         await page.goto('/app/#/stats');
         await expect(page.locator('.trends')).toBeVisible();

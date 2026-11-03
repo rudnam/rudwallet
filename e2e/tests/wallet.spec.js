@@ -25,15 +25,14 @@ test('add, edit and delete a record', async ({ page }) => {
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();
 
-  // The overview updates: balance, spending by category, latest records.
+  // Wallet updates: the balance and the latest records; Insights, where it went.
   await expect(page.locator('.hero-figure')).toHaveText(/−¥1,200/);
-  await expect(page.getByRole('list', { name: 'Spending by category' })).toContainText('Food & Drinks');
   const latest = page.getByRole('list', { name: 'Latest records' });
   await expect(latest).toContainText('Ramen Taro');
 
   // Edit it from the Records page.
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Records' }).click();
-  await expect(page.getByRole('heading', { name: 'Records' })).toBeVisible();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Activity' }).click();
+  await expect(page.getByRole('heading', { name: 'Activity' })).toBeVisible();
   await page.getByRole('button', { name: /Ramen Taro/ }).click();
   const edit = page.getByRole('dialog', { name: 'Edit record' });
   await edit.getByLabel('Amount (JPY)').fill('980');
@@ -110,7 +109,8 @@ test('a new account, a transfer, and a budget that runs over', async ({ page }) 
   await expect(page.locator('.hero-figure')).toHaveText('¥50,000');
 
   // A food budget of ¥1,000, then a ¥1,200 lunch.
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Budgets' }).click();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Insights' }).click();
+  await page.getByRole('link', { name: 'Budgets', exact: true }).click();
   await page.getByRole('button', { name: 'New budget' }).click();
   const b = page.getByRole('dialog', { name: 'New budget' });
   await b.getByLabel('Category').selectOption({ label: 'Food & Drinks' });
@@ -465,7 +465,7 @@ test('choose records to recategorise, move and delete them together', async ({ p
   await bar.getByLabel('Move to account').selectOption({ label: 'Bank' });
   await expect(page.getByText('Moved 4 records.')).toBeVisible();
   await page.getByRole('button', { name: 'Done' }).click();
-  await expect(page.getByRole('button', { name: /Bakery/ })).toContainText('Food & Drinks · Bank');
+  await expect(page.getByRole('button', { name: /Bakery/ })).toContainText(/Food & Drinks.*Bank/);
 
   // Delete two.
   await page.getByRole('button', { name: 'Select' }).click();
@@ -504,10 +504,10 @@ test('a page seen before shows at once while it reloads, unless something change
   const nav = page.getByRole('navigation', { name: 'Main' });
 
   // Back on Home, the records it showed before are there straight away.
-  await nav.getByRole('link', { name: 'Records' }).click();
+  await nav.getByRole('link', { name: 'Activity' }).click();
   await expect(page.getByRole('button', { name: /Ramen Taro/ })).toBeVisible();
   hold();
-  await nav.getByRole('link', { name: 'Home' }).click();
+  await nav.getByRole('link', { name: 'Wallet', exact: true }).click();
   await expect(latest).toContainText('−¥1,200');
   release();
 
@@ -515,7 +515,7 @@ test('a page seen before shows at once while it reloads, unless something change
   // the new amount instead of showing the old one.
   await page.goto('/app/#/records?q=ramen');
   await expect(page.getByRole('button', { name: /Ramen Taro, −¥1,200/ })).toBeVisible();
-  await nav.getByRole('link', { name: 'Home' }).click();
+  await nav.getByRole('link', { name: 'Wallet', exact: true }).click();
   await latest.getByRole('button', { name: /Ramen Taro/ }).click();
   const edit = page.getByRole('dialog', { name: 'Edit record' });
   await edit.getByLabel('Amount (JPY)').fill('980');
@@ -625,7 +625,7 @@ test('a record added offline is kept on the phone and sent once back online', as
   await page.screenshot({ path: test.info().outputPath('offline-home.png'), animations: 'disabled' });
 
   // Elsewhere in the app too, where the server would list it.
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Records' }).click();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Activity' }).click();
   await expect(page.getByRole('button', { name: /Ramen Taro, −¥980/ })).toBeVisible();
 
   // Back online: it's sent, as edited, once.
@@ -746,4 +746,21 @@ test.describe('on a touch screen', () => {
     await expect(page.getByText('Added ¥1,002')).toBeVisible();
     await expect(page.locator('.hero-figure')).toHaveText('−¥1,002');
   });
+});
+
+test('a card on Wallet opens its account, and cash can be counted', async ({ page }) => {
+  await signUp(page);
+  await page.getByRole('list', { name: 'Accounts' }).getByRole('listitem').filter({ hasText: 'Cash' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Cash' })).toBeVisible();
+  // What's in the wallet becomes the balance; the difference is recorded.
+  await page.getByRole('button', { name: 'Count cash' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Count cash' });
+  await dialog.getByLabel('Amount (JPY)').fill('5000');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText('Counted: ¥5,000')).toBeVisible();
+  await expect(page.locator('.wallet-card-big')).toHaveText('¥5,000');
+  await expect(page.getByRole('list', { name: 'Records' })).toContainText('¥5,000');
+  // Back to Wallet.
+  await page.getByRole('link', { name: 'Wallet' }).first().click();
+  await expect(page.locator('.hero-figure')).toHaveText('¥5,000');
 });

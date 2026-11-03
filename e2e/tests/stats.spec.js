@@ -17,9 +17,9 @@ test('stats over other periods, and how spending compares with usual', async ({ 
     data: { kind: 'income', amount: 10000, account_id: cash, occurred_at: first(0), payee: 'Pay' },
   });
 
-  // From Home, "More stats" opens this month.
+  // From Wallet, Insights opens this month.
   await page.reload();
-  await page.getByRole('link', { name: 'More stats' }).click();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Insights' }).click();
   const month = now.toLocaleDateString(undefined, { year: 'numeric', month: 'long' });
   await expect(page.getByRole('heading', { level: 1, name: month })).toBeVisible();
   await expect(page.locator('.hero-figure')).toHaveText('¥5,000');

@@ -28,7 +28,7 @@ test('tag records, filter by a tag, and tag many at once', async ({ page }) => {
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();
 
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Records' }).click();
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Activity' }).click();
   // The tag was spelled as before; the record shows its tags.
   const row = page.getByRole('button', { name: /Takoyaki/ });
   await expect(row.getByLabel('Tags')).toHaveText('#Osaka trip#Street food');

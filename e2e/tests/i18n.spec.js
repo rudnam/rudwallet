@@ -131,7 +131,7 @@ for (const [name, viewport] of [
       await seed(page);
       await page.goto('/app/');
       await expect(page.getByRole('link', { name: /確認待ちの支払いが1件/ })).toBeVisible();
-      await expect(page.getByRole('list', { name: 'カテゴリ別の支出' })).toBeVisible();
+      await expect(page.getByRole('list', { name: '口座' })).toBeVisible();
       await shot('2-overview');
 
       await page.goto('/app/#/stats');

@@ -117,7 +117,7 @@ for (const [name, viewport] of [
     await seed(page);
     await page.reload();
     await expect(page.getByRole('link', { name: /3 payments to review/ })).toBeVisible();
-    await expect(page.getByRole('list', { name: 'Spending by category' })).toBeVisible();
+    await expect(page.getByRole('list', { name: 'Accounts' })).toBeVisible();
     await shot('2-overview');
 
     await page.goto('/app/#/stats');

@@ -8,7 +8,7 @@ import { useWallet } from '../wallet';
 import { Dialog } from './Dialog';
 import { addTag, TagField } from './TagField';
 import { CategoryIcon, Icon, icons } from './Icon';
-import { hapticConfirm, hapticTick } from '../native';
+import { hapticError, hapticKey, hapticSelect, hapticSuccess } from '../native';
 
 interface Props {
   /** The record to edit; omit to add a new one. */
@@ -117,17 +117,18 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
 
   function changeKind(k: TransactionKind) {
     setKind(k);
+    hapticSelect();
     if (w.category(categoryId)?.kind !== k) setCategoryId(null);
   }
 
   function chooseCategory(id: number) {
     setCategoryId(id);
-    hapticTick();
+    hapticSelect();
   }
 
   /** A key on the number pad: a digit, '000', the decimal point, or 'back'. */
   function press(key: string) {
-    hapticTick();
+    hapticKey();
     setAmount((a) => {
       if (key === 'back') return grouped(a.replace(/,/g, '').slice(0, -1));
       const plain = a.replace(/,/g, '');
@@ -154,6 +155,7 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
     e.preventDefault();
     const minor = parseAmount(amount, exp);
     if (minor === null || minor <= 0) {
+      hapticError();
       setError(exp === 0 ? t('Enter an amount, like 1200.') : t('Enter an amount, like 12.50.'));
       return;
     }
@@ -194,7 +196,7 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
       // Kept on the phone for now: don't hold the form open waiting for the network.
       if (saved.unsent) void w.refresh();
       else await w.refresh();
-      hapticConfirm();
+      hapticSuccess();
       if (record && !reviewing) toast(t('Saved'), { label: t('Undo'), run: () => undo(record) });
       else if (saved.unsent) toast(t('Saved on this phone. It’s sent when you’re online.'));
       else toast(reviewing ? t('Confirmed') : t('Added {amount}', { amount: w.money(input.amount) }));
@@ -315,7 +317,7 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
               checked={accountId === a.id}
               onChange={() => {
                 setAccountId(a.id);
-                hapticTick();
+                hapticSelect();
               }}
             />
             <span className="swatch" style={{ background: a.color }} aria-hidden="true" />

@@ -18,7 +18,7 @@
 .landing-lead { font-size: 1.125rem; color: var(--muted); max-width: 30em; }
 
 .landing-still { display: flex; flex-direction: column; gap: 12px; transform: rotate(-1.5deg); }
-.landing-figure { font-family: var(--serif); font-size: 2rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.landing-figure { font-family: var(--serif); font-weight: 600; letter-spacing: -0.03em; font-size: 2rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .landing-review { display: flex; align-items: center; gap: 12px; border-color: var(--accent); }
 .landing-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex: none; }
 .landing-amount { font-family: var(--serif); font-variant-numeric: tabular-nums; white-space: nowrap; }

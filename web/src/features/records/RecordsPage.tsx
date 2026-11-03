@@ -1,7 +1,7 @@
 // All records, a month at a time, with filters; a search, or a tag, looks
 // through every month. Records can be chosen to delete, categorise, move or
 // tag many at once.
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { api, errorMessage, type BulkChange, type Tag, type Transaction, type TransactionFilter } from '../../api';
 import { cleanTag } from '../../components/TagField';
 import { TransactionForm } from '../../components/TransactionForm';
@@ -16,7 +16,19 @@ import { t, tn } from '../../i18n';
 /** The most records the server sends at once (maxList in internal/wallet). */
 const maxRecords = 2000;
 
-export function RecordsPage({ route }: { route: Route }) {
+export function RecordsPage({
+  route,
+  title = t('Records'),
+  above,
+  hideReview = false,
+}: {
+  route: Route;
+  title?: string;
+  /** Shown under the filters, above the summary: Activity's "to check". */
+  above?: ReactNode;
+  /** Leave out records waiting for review (Activity shows them in "to check"). */
+  hideReview?: boolean;
+}) {
   const w = useWallet();
   const p = route.params;
   const monthParam = p.get('month'); // YYYY-MM
@@ -77,6 +89,7 @@ export function RecordsPage({ route }: { route: Route }) {
   const ym = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 
   const confirmed = (records ?? []).filter((t) => t.status === 'confirmed');
+  const shown = records && hideReview ? records.filter((t) => t.status !== 'review') : records;
   const out = confirmed.filter((t) => t.kind === 'expense').reduce((s, t) => s + t.amount, 0);
   const inc = confirmed.filter((t) => t.kind === 'income').reduce((s, t) => s + t.amount, 0);
 
@@ -84,7 +97,7 @@ export function RecordsPage({ route }: { route: Route }) {
     <section className="stack">
       <header className="page-head">
         <div>
-          <h1>{t('Records')}</h1>
+          <h1>{title}</h1>
         </div>
         {records && records.length > 0 && (
           <button type="button" className="secondary" onClick={() => setSelected(selected ? null : new Set())}>
@@ -160,6 +173,7 @@ export function RecordsPage({ route }: { route: Route }) {
           })}
         </ul>
       )}
+      {above}
       <p className="summary">
         <span>
           <span className="muted">{t('Spent')}</span> <strong>{w.money(out)}</strong>
@@ -180,20 +194,20 @@ export function RecordsPage({ route }: { route: Route }) {
           {error}
         </p>
       )}
-      {records === null ? (
+      {shown === null ? (
         <p className="muted">{t('Loading…')}</p>
-      ) : records.length === 0 ? (
+      ) : shown.length === 0 ? (
         <div className="card stack empty">
           <p className="muted">{t('No records match.')}</p>
         </div>
       ) : (
         <>
-          {records.length >= maxRecords && (
+          {(records?.length ?? 0) >= maxRecords && (
             <p className="muted small">{t('Showing the newest {n} matches. Add words or a filter to narrow the search.', { n: maxRecords.toLocaleString() })}</p>
           )}
           {selected && (
             <BulkBar
-              records={records}
+              records={shown}
               tags={tags}
               selected={selected}
               onSelect={setSelected}
@@ -201,7 +215,7 @@ export function RecordsPage({ route }: { route: Route }) {
             />
           )}
           <TransactionList
-            records={records}
+            records={shown}
             onOpen={setOpen}
             selected={selected ?? undefined}
             onToggle={(t) => {

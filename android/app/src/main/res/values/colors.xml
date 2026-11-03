@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- The web app's background (the bg token in web/src/styles.css); values-night has the dark one. -->
-    <color name="paper">#F5F3EC</color>
+    <color name="paper">#F5F5F3</color>
 </resources>

@@ -74,7 +74,8 @@ test('a possible duplicate shows the record it matches, and is deleted in one ta
   await card.getByRole('button', { name: 'Delete duplicate' }).click();
   await expect(page.getByText('Deleted 大戸屋')).toBeVisible();
   await expect(card).toHaveCount(0);
-  await expect(page.getByText('All caught up.')).toBeVisible();
+  // Nothing left to check: the section goes, leaving the records.
+  await expect(page.getByRole('region', { name: 'Payments to review' })).toHaveCount(0);
 
   // Undo brings it back, still flagged.
   await page.getByRole('button', { name: 'Undo' }).click();

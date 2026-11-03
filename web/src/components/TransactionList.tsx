@@ -12,6 +12,7 @@ export function TransactionList({
   label = tr('Records'),
   selected,
   onToggle,
+  detail,
 }: {
   records: Transaction[];
   onOpen: (t: Transaction) => void;
@@ -19,6 +20,8 @@ export function TransactionList({
   /** While choosing records: the chosen IDs. Rows become checkboxes. */
   selected?: Set<number>;
   onToggle?: (t: Transaction) => void;
+  /** Under each amount: the account (the default), or the time on an account's own page. */
+  detail?: 'account' | 'time';
 }) {
   const w = useWallet();
   // Records this list didn't show last time slide in; on first draw, none do.
@@ -48,7 +51,7 @@ export function TransactionList({
             </div>
             <ul className="list card flush">
               {day.items.map((t) => (
-                <Row key={t.id} t={t} onOpen={onOpen} selected={selected?.has(t.id)} onToggle={selected && onToggle} fresh={fresh(t.id)} />
+                <Row key={t.id} t={t} onOpen={onOpen} selected={selected?.has(t.id)} onToggle={selected && onToggle} fresh={fresh(t.id)} detail={detail} />
               ))}
             </ul>
           </section>
@@ -70,6 +73,7 @@ function Row({
   selected,
   onToggle,
   fresh,
+  detail = 'account',
 }: {
   t: Transaction;
   onOpen: (t: Transaction) => void;
@@ -77,6 +81,7 @@ function Row({
   onToggle?: (t: Transaction) => void;
   /** Just arrived: it slides in. */
   fresh?: boolean;
+  detail?: 'account' | 'time';
 }) {
   const w = useWallet();
   const cat = w.category(t.category_id);
@@ -85,13 +90,16 @@ function Row({
     t.kind === 'transfer'
       ? tr('Transfer to {account}', { account: w.account(t.to_account_id)?.name ?? '?' })
       : t.payee || cat?.name || (t.kind === 'income' ? tr('Income') : tr('Expense'));
-  const sub = [
-    t.kind === 'transfer' ? tr('from {account}', { account: account?.name ?? '?' }) : (cat?.name ?? tr('No category')),
-    t.kind !== 'transfer' && account?.name,
-    formatTime(new Date(t.occurred_at)),
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  // Under the name, what it was; under the amount, where it was paid from
+  // (or, on an account's own page, when).
+  const waiting = t.status === 'review' && t.kind !== 'transfer' && !cat;
+  const sub =
+    t.kind === 'transfer'
+      ? tr('from {account}', { account: account?.name ?? '?' })
+      : waiting
+        ? tr('Choose a category')
+        : (cat?.name ?? tr('No category'));
+  const side = detail === 'time' ? formatTime(new Date(t.occurred_at)) : account?.name;
   const amount =
     t.kind === 'transfer' ? w.money(t.amount) : w.money(t.kind === 'income' ? t.amount : -t.amount, true);
 
@@ -107,7 +115,6 @@ function Row({
         <span className="grow">
           <span className="record-title">
             {title}
-            {t.status === 'review' && <span className="badge">{tr('To review')}</span>}
             {t.unsent &&
               (t.unsent.error ? (
                 <span className="badge refused">{tr('Couldn’t send')}</span>
@@ -116,18 +123,8 @@ function Row({
                   {tr('Not sent yet')}
                 </span>
               ))}
-            {t.source === 'email' && t.status === 'confirmed' && (
-              <span className="badge quiet" title={tr('Recorded from an email')}>
-                <Icon d={icons.mail} className="inline-icon" /> {tr('Email')}
-              </span>
-            )}
-            {t.source === 'notification' && t.status === 'confirmed' && (
-              <span className="badge quiet" title={tr('Recorded from a payment notification')}>
-                {tr('Phone')}
-              </span>
-            )}
           </span>
-          <span className="muted small">{sub}</span>
+          <span className={waiting ? 'small attention' : 'muted small'}>{sub}</span>
           {t.tags?.length ? (
             <span className="record-tags" aria-label={tr('Tags')}>
               {t.tags.map((tag) => (
@@ -138,7 +135,10 @@ function Row({
             </span>
           ) : null}
         </span>
-        <span className={`amount ${t.kind}`}>{t.amount === 0 && t.status === 'review' ? tr('Amount?') : amount}</span>
+        <span className="record-side">
+          <span className={`amount ${t.kind}`}>{t.amount === 0 && t.status === 'review' ? tr('Amount?') : amount}</span>
+          {side && <span className="muted small">{side}</span>}
+        </span>
     </>
   );
 
