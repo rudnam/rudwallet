@@ -1,5 +1,7 @@
 package com.rudnam.wallet.core.data.di
 
+import com.rudnam.wallet.core.data.repository.ActivityRepository
+import com.rudnam.wallet.core.data.repository.OfflineFirstActivityRepository
 import com.rudnam.wallet.core.data.repository.OfflineFirstRecordRepository
 import com.rudnam.wallet.core.data.repository.OfflineFirstWalletRepository
 import com.rudnam.wallet.core.data.repository.RecordRepository
@@ -24,6 +26,9 @@ internal interface DataModule {
 
     @Binds
     fun recordRepository(impl: OfflineFirstRecordRepository): RecordRepository
+
+    @Binds
+    fun activityRepository(impl: OfflineFirstActivityRepository): ActivityRepository
 
     @Binds
     fun outboxScheduler(impl: WorkManagerOutboxScheduler): OutboxScheduler

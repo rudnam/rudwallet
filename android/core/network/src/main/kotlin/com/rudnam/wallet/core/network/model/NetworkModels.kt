@@ -100,6 +100,18 @@ data class NetworkIds(val ids: List<Long>)
 @Serializable
 data class NetworkTag(val name: String, val count: Int = 0)
 
+@Serializable
+data class NetworkBulkChange(
+    val ids: List<Long>,
+    val action: String,
+    @SerialName("category_id") val categoryId: Long? = null,
+    @SerialName("account_id") val accountId: Long? = null,
+    val tag: String? = null,
+)
+
+@Serializable
+data class NetworkBulkResult(val changed: Int = 0, val skipped: Int = 0)
+
 /** What the API says when it refuses something: a message for the user. */
 @Serializable
 data class NetworkError(val error: String = "")

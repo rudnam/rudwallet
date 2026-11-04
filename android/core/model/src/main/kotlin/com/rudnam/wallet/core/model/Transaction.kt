@@ -116,3 +116,50 @@ data class RecordInput(
 fun Transaction.asInput(remember: Boolean? = null) = RecordInput(
     kind, amount, accountId, toAccountId, categoryId, occurredAt, payee, note, status, tags, remember,
 )
+
+/** A tag in use, and on how many records (GET /api/tags). */
+data class Tag(val name: String, val count: Int)
+
+/** What to show in Activity: a month, or every month when searching or looking at a tag. */
+data class RecordFilter(
+    val accountId: Long? = null,
+    /** A category, or [NO_CATEGORY] for records without one. */
+    val categoryId: Long? = null,
+    val query: String = "",
+    val tag: String = "",
+) {
+    /** A search or a tag looks through every month. */
+    val everyMonth: Boolean get() = query.isNotBlank() || tag.isNotBlank()
+
+    fun matches(t: Transaction): Boolean =
+        (accountId == null || t.accountId == accountId || t.toAccountId == accountId) &&
+            (categoryId == null || (if (categoryId == NO_CATEGORY) t.categoryId == null && t.kind != TransactionKind.Transfer else t.categoryId == categoryId)) &&
+            (tag.isBlank() || t.tags.any { it.equals(tag, ignoreCase = true) })
+
+    companion object {
+        const val NO_CATEGORY = -1L
+    }
+}
+
+/** One change to many records at once (POST /api/transactions/bulk). */
+sealed interface BulkChange {
+    val ids: List<Long>
+
+    data class Delete(override val ids: List<Long>) : BulkChange
+
+    /** null clears it; only records of the category's kind change, never transfers. */
+    data class Categorize(override val ids: List<Long>, val categoryId: Long?) : BulkChange
+
+    /** For a transfer, the account it comes from. */
+    data class Move(override val ids: List<Long>, val accountId: Long) : BulkChange
+
+    /** Records to review that are ready: a category, an amount, not a possible duplicate. */
+    data class Confirm(override val ids: List<Long>) : BulkChange
+
+    data class AddTag(override val ids: List<Long>, val tag: String) : BulkChange
+
+    data class RemoveTag(override val ids: List<Long>, val tag: String) : BulkChange
+}
+
+/** How many records a [BulkChange] changed; the rest didn't fit it and stayed as they were. */
+data class BulkResult(val changed: Int, val skipped: Int)

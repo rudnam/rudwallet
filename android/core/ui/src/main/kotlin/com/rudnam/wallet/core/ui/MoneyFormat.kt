@@ -43,7 +43,13 @@ class MoneyFormat(
 
     /** A day and time: "Today, 9:30", or e.g. "Thu, Nov 12, 18:05". */
     fun dateTime(at: Instant, today: String? = null, yesterday: String? = null, now: Instant = Instant.now()): String {
-        val day = if (today != null && yesterday != null) day(at, today, yesterday, now) else day(at, "", "", Instant.EPOCH)
+        val day = if (today != null && yesterday != null) {
+            day(at, today, yesterday, now)
+        } else {
+            // A date without Today or Yesterday, with the year only when it isn't this one.
+            val date = at.atZone(zone).toLocalDate()
+            date.format(DateTimeFormatter.ofPattern(pattern(if (date.year == now.atZone(zone).year) "EEEMMMd" else "EEEyMMMd"), locale))
+        }
         return day + ", " + at.atZone(zone).toLocalTime().format(DateTimeFormatter.ofPattern(pattern("jmm"), locale))
     }
 

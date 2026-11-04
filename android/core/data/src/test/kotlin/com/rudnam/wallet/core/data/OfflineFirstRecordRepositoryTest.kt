@@ -66,6 +66,11 @@ class OfflineFirstRecordRepositoryTest {
         override suspend fun notifications() = NetworkNotifications()
         override suspend fun downloads() = NetworkDownloads()
         override suspend fun confirmedSince(from: Instant) = emptyList<NetworkTransaction>()
+        override suspend fun search(
+            from: Instant?, to: Instant?, accountId: Long?, categoryId: String?, query: String?, tag: String?, status: String?,
+        ) = emptyList<NetworkTransaction>()
+        override suspend fun bulk(change: com.rudnam.wallet.core.network.model.NetworkBulkChange) =
+            com.rudnam.wallet.core.network.model.NetworkBulkResult(change.ids.size, 0)
         override suspend fun tags() = listOf(NetworkTag("trip", 3))
         override suspend fun deleteRecord(id: Long) = check()
         override suspend fun restoreRecords(ids: List<Long>) = check()

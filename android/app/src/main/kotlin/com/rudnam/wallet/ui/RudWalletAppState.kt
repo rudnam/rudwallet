@@ -13,6 +13,7 @@ import androidx.navigation.NavHostController
 import androidx.compose.runtime.collectAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.rudnam.wallet.feature.activity.navigation.ActivityRoute
 import com.rudnam.wallet.feature.record.navigation.RecordRoute
 import com.rudnam.wallet.feature.wallet.navigation.WalletRoute
 import com.rudnam.wallet.navigation.TopLevelDestination
@@ -68,6 +69,11 @@ class RudWalletAppState(val navController: NavHostController) {
             if (!navController.popBackStack(WalletRoute, inclusive = false)) showWallet()
             return
         }
+        // Activity (records, and review, which opens the same page), with its filters.
+        if (page == "records" || page == "review") {
+            if (path == page) navigateToTab(TopLevelDestination.Activity) else navController.navigate(ActivityRoute.fromPath(path))
+            return
+        }
         // Another tab's own page, as the tab itself shows it.
         TopLevelDestination.entries.firstOrNull { it.page == path }?.let {
             navigateToTab(it)
@@ -97,7 +103,8 @@ class RudWalletAppState(val navController: NavHostController) {
 internal fun webPathOf(entry: NavBackStackEntry): String? {
     val destination = entry.destination
     if (destination.hasRoute<WebRoute>()) return entry.toRoute<WebRoute>().path
-    return TopLevelDestination.entries.firstOrNull { it != TopLevelDestination.Wallet && destination.hasRoute(it.route::class) }?.page
+    // The tabs still on the web.
+    return TopLevelDestination.entries.firstOrNull { it.web && destination.hasRoute(it.route::class) }?.page
 }
 
 @Composable

@@ -7,9 +7,10 @@ import androidx.navigation.compose.ComposeNavigator
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.testing.TestNavHostController
+import androidx.navigation.toRoute
 import com.rudnam.wallet.feature.wallet.navigation.WalletRoute
 import com.rudnam.wallet.navigation.TopLevelDestination
-import com.rudnam.wallet.navigation.ActivityTabRoute
+import com.rudnam.wallet.feature.activity.navigation.ActivityRoute
 import com.rudnam.wallet.navigation.InsightsTabRoute
 import com.rudnam.wallet.navigation.SettingsTabRoute
 import com.rudnam.wallet.navigation.WebRoute
@@ -44,7 +45,7 @@ class RudWalletAppStateTest {
             NavHost(nav, startDestination = WalletRoute) {
                 composable<WalletRoute> {}
                 composable<WebRoute> {}
-                composable<ActivityTabRoute> {}
+                composable<ActivityRoute> {}
                 composable<InsightsTabRoute> {}
                 composable<SettingsTabRoute> {}
             }
@@ -95,12 +96,26 @@ class RudWalletAppStateTest {
     fun `pages open one after another, each its own`() {
         compose.runOnIdle { state.openPath("account?id=3") }
         compose.runOnIdle { state.openPath("budgets") }
-        compose.runOnIdle { state.openPath("records?account=3") }
+        compose.runOnIdle { state.openPath("settings?section=rules") }
         compose.runOnIdle {
-            assertEquals("records?account=3", currentWebPath())
+            assertEquals("settings?section=rules", currentWebPath())
             assertTrue(state.navController.popBackStack())
             assertEquals("budgets", currentWebPath())
         }
+    }
+
+    @Test
+    fun `records and review are native, with their filters`() {
+        compose.runOnIdle { state.openPath("records?account=3&category=none") }
+        compose.runOnIdle {
+            assertNull(webPath)
+            assertEquals(TopLevelDestination.Activity, tab)
+            val route = state.navController.currentBackStackEntry!!.toRoute<ActivityRoute>()
+            assertEquals(3L, route.account)
+            assertEquals(com.rudnam.wallet.core.model.RecordFilter.NO_CATEGORY, route.category)
+            state.openPath("review")
+        }
+        compose.runOnIdle { assertEquals(TopLevelDestination.Activity, tab) }
     }
 
     @Test

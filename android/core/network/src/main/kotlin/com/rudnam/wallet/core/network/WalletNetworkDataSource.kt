@@ -1,6 +1,8 @@
 package com.rudnam.wallet.core.network
 
 import com.rudnam.wallet.core.network.model.NetworkBudget
+import com.rudnam.wallet.core.network.model.NetworkBulkChange
+import com.rudnam.wallet.core.network.model.NetworkBulkResult
 import com.rudnam.wallet.core.network.model.NetworkDownloads
 import com.rudnam.wallet.core.network.model.NetworkNotifications
 import com.rudnam.wallet.core.network.model.NetworkRecordInput
@@ -44,6 +46,18 @@ interface WalletNetworkDataSource {
 
     /** The tags on the user's records, the most used first. */
     suspend fun tags(): List<NetworkTag>
+
+    /**
+     * Records matching a search: in [from, to) if given, else every month;
+     * with [status] "review", the ones waiting for a check. At most 2000,
+     * the newest first.
+     */
+    suspend fun search(
+        from: Instant? = null, to: Instant? = null, accountId: Long? = null, categoryId: String? = null,
+        query: String? = null, tag: String? = null, status: String? = null,
+    ): List<NetworkTransaction>
+
+    suspend fun bulk(change: NetworkBulkChange): NetworkBulkResult
 }
 
 /** The server ended the session (401), or nobody is signed in. */

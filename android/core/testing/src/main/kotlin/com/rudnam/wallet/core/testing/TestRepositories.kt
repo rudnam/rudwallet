@@ -76,3 +76,27 @@ class TestRecordRepository(private val wallet: TestWalletRepository? = null) : c
     override suspend fun lastAccount() = lastAccount
     override suspend fun sendPending() = SyncResult.Done
 }
+
+/** An [ActivityRepository] the test fills in; it keeps the changes it's asked for. */
+class TestActivityRepository : com.rudnam.wallet.core.data.repository.ActivityRepository {
+    private val review = MutableStateFlow<List<Transaction>>(emptyList())
+    val changes = mutableListOf<com.rudnam.wallet.core.model.BulkChange>()
+    val restored = mutableListOf<List<Long>>()
+    var searchResult: com.rudnam.wallet.core.data.repository.SearchResult = com.rudnam.wallet.core.data.repository.SearchResult.Found(emptyList(), false)
+    var bulkOutcome: com.rudnam.wallet.core.data.repository.BulkOutcome? = null
+    var tagList = listOf(com.rudnam.wallet.core.model.Tag("dinner", 4), com.rudnam.wallet.core.model.Tag("trip", 2))
+    var matches: Map<Long, Transaction> = emptyMap()
+
+    fun sendReview(list: List<Transaction>) {
+        review.value = list
+    }
+
+    override val toReview: Flow<List<Transaction>> = review
+    override suspend fun refreshReview() = SyncResult.Done
+    override suspend fun search(filter: com.rudnam.wallet.core.model.RecordFilter) = searchResult
+    override suspend fun bulk(change: com.rudnam.wallet.core.model.BulkChange) =
+        bulkOutcome ?: com.rudnam.wallet.core.data.repository.BulkOutcome.Done(com.rudnam.wallet.core.model.BulkResult(change.ids.size, 0)).also { changes += change }
+    override suspend fun restore(ids: List<Long>) = com.rudnam.wallet.core.data.repository.BulkOutcome.Done(com.rudnam.wallet.core.model.BulkResult(ids.size, 0)).also { restored += ids }
+    override suspend fun tags() = tagList
+    override suspend fun match(id: Long, near: java.time.Instant) = matches[id]
+}

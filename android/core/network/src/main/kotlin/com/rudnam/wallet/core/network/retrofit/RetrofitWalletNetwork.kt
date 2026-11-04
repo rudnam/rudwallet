@@ -3,6 +3,8 @@ package com.rudnam.wallet.core.network.retrofit
 import com.rudnam.wallet.core.network.ApiException
 import com.rudnam.wallet.core.network.WalletNetworkDataSource
 import com.rudnam.wallet.core.network.model.NetworkBudget
+import com.rudnam.wallet.core.network.model.NetworkBulkChange
+import com.rudnam.wallet.core.network.model.NetworkBulkResult
 import com.rudnam.wallet.core.network.model.NetworkDownloads
 import com.rudnam.wallet.core.network.model.NetworkError
 import com.rudnam.wallet.core.network.model.NetworkIds
@@ -36,10 +38,17 @@ internal interface WalletApi {
 
     @GET("api/transactions")
     suspend fun transactions(
-        @Query("from") from: String,
+        @Query("from") from: String? = null,
         @Query("to") to: String? = null,
         @Query("status") status: String? = null,
+        @Query("account_id") accountId: Long? = null,
+        @Query("category_id") categoryId: String? = null,
+        @Query("q") query: String? = null,
+        @Query("tag") tag: String? = null,
     ): List<NetworkTransaction>
+
+    @POST("api/transactions/bulk")
+    suspend fun bulk(@Body change: NetworkBulkChange): NetworkBulkResult
 
     @POST("api/transactions")
     suspend fun createTransaction(@Body input: NetworkRecordInput): NetworkTransaction
@@ -85,6 +94,12 @@ internal class RetrofitWalletNetwork @Inject constructor(retrofit: Retrofit, pri
     override suspend fun restoreRecords(ids: List<Long>) = call { api.restoreTransactions(NetworkIds(ids)).orThrow() }
 
     override suspend fun tags() = call { api.tags() }
+
+    override suspend fun search(
+        from: Instant?, to: Instant?, accountId: Long?, categoryId: String?, query: String?, tag: String?, status: String?,
+    ) = call { api.transactions(from?.let(::rfc3339), to?.let(::rfc3339), status, accountId, categoryId, query, tag) }
+
+    override suspend fun bulk(change: NetworkBulkChange) = call { api.bulk(change) }
 
     override suspend fun budgets() = call { api.budgets() }
 

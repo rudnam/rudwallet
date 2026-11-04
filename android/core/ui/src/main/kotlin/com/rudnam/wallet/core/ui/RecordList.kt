@@ -2,6 +2,7 @@ package com.rudnam.wallet.core.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -25,7 +27,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -62,6 +68,9 @@ fun LazyListScope.recordDays(
     format: MoneyFormat,
     onOpen: (Transaction) -> Unit,
     now: Instant = Instant.now(),
+    /** While choosing records: the chosen ids. Rows then choose rather than open. */
+    selected: Set<Long>? = null,
+    onToggle: (Transaction) -> Unit = {},
 ) {
     for (day in records.byDay()) {
         item(key = "day-${day.first().id}", contentType = "day") {
@@ -70,7 +79,7 @@ fun LazyListScope.recordDays(
                 WalletPanel(Modifier.fillMaxWidth()) {
                     day.forEachIndexed { i, t ->
                         if (i > 0) HorizontalDivider(color = WalletTheme.colors.border)
-                        RecordRow(t, wallet, format) { onOpen(t) }
+                        RecordRow(t, wallet, format, chosen = selected?.let { t.id in it }) { if (selected != null) onToggle(t) else onOpen(t) }
                     }
                 }
             }
@@ -96,7 +105,7 @@ private fun DayHeading(day: List<Transaction>, format: MoneyFormat, now: Instant
 /** One record: its category, what it was, and the amount with the account it was paid from. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun RecordRow(t: Transaction, wallet: Wallet, format: MoneyFormat, onClick: () -> Unit) {
+fun RecordRow(t: Transaction, wallet: Wallet, format: MoneyFormat, chosen: Boolean? = null, onClick: () -> Unit) {
     val colors = WalletTheme.colors
     val category = wallet.category(t.categoryId)
     val account = wallet.account(t.accountId)
@@ -127,10 +136,20 @@ fun RecordRow(t: Transaction, wallet: Wallet, format: MoneyFormat, onClick: () -
     }
     val spoken = listOfNotNull(title, status, subtitle, amount, account?.name).joinToString(", ")
     ListItem(
-        modifier = Modifier.clickable(onClick = onClick).clearAndSetSemantics { contentDescription = spoken },
-        colors = ListItemDefaults.colors(containerColor = colors.surface),
+        modifier = if (chosen != null) {
+            Modifier.toggleable(chosen, role = Role.Checkbox) { onClick() }.clearAndSetSemantics {
+                contentDescription = spoken
+                role = Role.Checkbox
+                toggleableState = ToggleableState(chosen)
+            }
+        } else {
+            Modifier.clickable(onClick = onClick).clearAndSetSemantics { contentDescription = spoken }
+        },
+        colors = ListItemDefaults.colors(containerColor = if (chosen == true) colors.sunken else colors.surface),
         leadingContent = {
-            if (t.kind == TransactionKind.Transfer) {
+            if (chosen != null) {
+                Checkbox(checked = chosen, onCheckedChange = null)
+            } else if (t.kind == TransactionKind.Transfer) {
                 Box(Modifier.size(40.dp).clip(MaterialTheme.shapes.small).background(colors.sunken), contentAlignment = Alignment.Center) {
                     LineIcon(WalletIcons.transfer, contentDescription = null, tint = colors.muted, size = 20.dp)
                 }

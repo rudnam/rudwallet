@@ -69,6 +69,7 @@ dependencies {
     implementation(project(":core:ui"))
     implementation(project(":feature:wallet"))
     implementation(project(":feature:record"))
+    implementation(project(":feature:activity"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.material3)

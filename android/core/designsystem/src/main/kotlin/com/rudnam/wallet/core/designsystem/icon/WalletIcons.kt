@@ -42,6 +42,8 @@ object WalletIcons {
     const val check = "M5 12.5l4.5 4.5L19 7"
     const val download = "M12 4v11M7 10.5l5 5 5-5M5 20h14"
     const val chevron = "M9 6l6 6-6 6"
+    const val back = "M15 6l-6 6 6 6"
+    const val expand = "M6 9l6 6 6-6"
     const val close = "M6 6l12 12M18 6L6 18"
     const val more = "M6 12h.01M12 12h.01M18 12h.01"
     const val level = "M4 12h16M15 7l5 5-5 5"

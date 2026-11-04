@@ -71,6 +71,11 @@ class OfflineFirstWalletRepositoryTest {
         override suspend fun updateRecord(id: Long, input: com.rudnam.wallet.core.network.model.NetworkRecordInput) = error("not used")
         override suspend fun deleteRecord(id: Long) = Unit
         override suspend fun restoreRecords(ids: List<Long>) = Unit
+        override suspend fun search(
+            from: Instant?, to: Instant?, accountId: Long?, categoryId: String?, query: String?, tag: String?, status: String?,
+        ) = emptyList<NetworkTransaction>()
+        override suspend fun bulk(change: com.rudnam.wallet.core.network.model.NetworkBulkChange) =
+            com.rudnam.wallet.core.network.model.NetworkBulkResult(change.ids.size, 0)
         override suspend fun tags() = emptyList<com.rudnam.wallet.core.network.model.NetworkTag>()
     }
 

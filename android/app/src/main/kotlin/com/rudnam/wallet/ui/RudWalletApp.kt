@@ -45,13 +45,14 @@ import com.rudnam.wallet.core.data.repository.SaveResult
 import com.rudnam.wallet.core.model.Transaction
 import com.rudnam.wallet.core.model.WalletSettings
 import com.rudnam.wallet.core.ui.MoneyFormat
+import com.rudnam.wallet.feature.activity.ActivityNavigation
+import com.rudnam.wallet.feature.activity.navigation.activityScreen
 import com.rudnam.wallet.feature.record.navigation.RecordRoute
 import com.rudnam.wallet.feature.record.navigation.recordSheet
 import com.rudnam.wallet.feature.wallet.WalletNavigation
 import com.rudnam.wallet.feature.wallet.navigation.WalletRoute
 import com.rudnam.wallet.feature.wallet.navigation.walletScreen
 import com.rudnam.wallet.navigation.TopLevelDestination
-import com.rudnam.wallet.navigation.ActivityTabRoute
 import com.rudnam.wallet.navigation.InsightsTabRoute
 import com.rudnam.wallet.navigation.SettingsTabRoute
 import com.rudnam.wallet.navigation.WebRoute
@@ -103,10 +104,16 @@ fun RudWalletApp(
                     },
                     snackbar = snackbar,
                 )
+                activityScreen(
+                    navigation = object : ActivityNavigation {
+                        override fun openRecord(record: Transaction) = appState.navController.navigate(RecordRoute(record.id))
+                        override fun addRecord() = appState.navController.navigate(RecordRoute())
+                    },
+                    snackbar = snackbar,
+                )
                 recordSheet(onDone = { appState.navController.popBackStack() })
                 // Web pages and the tabs still on the web: the web view underneath shows them (WebHost).
                 composable<WebRoute> { }
-                composable<ActivityTabRoute> { }
                 composable<InsightsTabRoute> { }
                 composable<SettingsTabRoute> { }
             }

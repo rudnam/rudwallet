@@ -77,6 +77,23 @@ interface TransactionDao {
     @Query("DELETE FROM transactions WHERE id = :id")
     suspend fun delete(id: Long)
 
+    /** Records waiting for a check, from any month, newest first. */
+    @Query("SELECT * FROM transactions WHERE status = 'review' ORDER BY occurredAt DESC, id DESC")
+    fun observeReview(): Flow<List<TransactionEntity>>
+
+    /** Makes the records to review what the server says they are (some were confirmed or deleted elsewhere). */
+    @Transaction
+    suspend fun replaceReview(records: List<TransactionEntity>) {
+        deleteReview()
+        upsert(records)
+    }
+
+    @Query("DELETE FROM transactions WHERE status = 'review'")
+    suspend fun deleteReview()
+
+    @Query("DELETE FROM transactions WHERE id IN (:ids)")
+    suspend fun deleteAll(ids: List<Long>)
+
     /** Records since [from] the phone has, newest first. */
     @Query("SELECT * FROM transactions WHERE occurredAt >= :from ORDER BY occurredAt DESC, id DESC")
     suspend fun since(from: Instant): List<TransactionEntity>

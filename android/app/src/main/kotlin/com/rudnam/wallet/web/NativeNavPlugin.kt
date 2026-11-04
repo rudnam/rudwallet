@@ -101,6 +101,6 @@ class NativeNavPlugin : Plugin() {
 
     companion object {
         /** The website's pages the app draws natively. The web app hands these to native code. */
-        val NATIVE_PAGES = listOf("home")
+        val NATIVE_PAGES = listOf("home", "records", "review")
     }
 }
