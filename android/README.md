@@ -1,6 +1,8 @@
 # Android app
 
-The Android app is the web app (`web/`) packaged with [Capacitor](https://capacitorjs.com): the React build ships inside the app, runs in a web view at `https://localhost`, and talks to the server's API. Native code adds what the web can't do: home screen widgets, Sign in with Google through the phone's browser, and reading transit IC cards over NFC.
+The Android app is becoming a native app (Kotlin, Jetpack Compose, Material 3), a page at a time. The app's shell is native: the activity, the four tabs, navigation, and **Wallet**. The pages not ported yet are still the web app (`web/`), built into the app and shown by [Capacitor](https://capacitorjs.com) in a web view under the native tabs. When the last page is native, Capacitor and the web bundle leave the app; the website stays. See **Native app** below for how it's built, and **The web view, until it's gone** for how the two fit together.
+
+Native code also does what the web can't: home screen widgets, Sign in with Google through the phone's browser, reading payment notifications, and reading transit IC cards over NFC.
 
 - Package `com.rudnam.wallet` (permanent once published), talking to https://wallet.rudnam.com (`web/.env.android`).
 - Web app changes reach phones only with a new app build. Server changes reach them at once, so keep the API compatible with the last release (add fields; don't rename or remove them).
@@ -20,7 +22,7 @@ It builds the web app for the app (`npm run android` in `web/`, which also copie
 
 CI builds a debug APK on every push and pull request (the `android` job in `.github/workflows/ci.yml`, kept for a week as the `android-debug-apk` artifact), so a change that breaks the native code fails there. It needs no signing key.
 
-The version is chosen for you: `version.sh` gives one above the `versionCode` the site offers (`app/build.gradle` holds only the floor), and the name is `build.gradle`'s `versionName` plus it, e.g. `2.1.5`. Set `WALLET_VERSION_CODE` or `WALLET_VERSION_NAME` to choose your own. For a Play Store release, upload `wallet.aab` in the Play Console. Versions 1 and 2 were the earlier Trusted Web Activity app, which this replaces under the same package and key, so it installs as an update.
+The version is chosen for you: `version.sh` gives one above the `versionCode` the site offers (`app/build.gradle.kts` holds only the floor), and the name is its `versionName` plus it, e.g. `2.1.5`. Set `WALLET_VERSION_CODE` or `WALLET_VERSION_NAME` to choose your own. For a Play Store release, upload `wallet.aab` in the Play Console. Versions 1 and 2 were the earlier Trusted Web Activity app, which this replaces under the same package and key, so it installs as an update.
 
 ### Releasing
 
@@ -52,13 +54,50 @@ Builds from before this (`versionCode` 3 and older) don't check, and were signed
 
 While working on the app, `cd web && npm run android`, then open `android/` in Android Studio, or `cd android && ./gradlew installDebug`. A debug build needs no signing key.
 
+## Native app
+
+The structure follows Android's [architecture guide](https://developer.android.com/topic/architecture): one activity, Compose screens with a ViewModel each, data flowing one way, an offline-first data layer, and Hilt putting it together.
+
+| Module | What it is |
+|---|---|
+| `app` | The activity (`MainActivity`: edge to edge, the splash screen, links into the app), the app's scaffold and tabs (`ui/RudWalletApp.kt`), navigation (`ui/RudWalletAppState.kt`, `navigation/`), and the web view host (`web/`). Also the Java that predates the native app: widgets, payment notifications, the Capacitor plugins. |
+| `feature/wallet` | Wallet: `WalletViewModel` (state as a `StateFlow` of `WalletUiState`), `WalletScreen`, the card stack, and its navigation entry. Each tab becomes a `feature/*` module like this one. |
+| `core/model` | The app's types (accounts, categories, records, budgets) in plain Kotlin. |
+| `core/network` | The API with Retrofit and kotlinx.serialization (`WalletNetworkDataSource`); `AuthInterceptor` signs requests in as the app. The server's address is `VITE_SERVER` in `web/.env.android`, or `-Prudwallet.server=…`. |
+| `core/database` | Room: the phone's copy of the wallet. Schemas are kept in `core/database/schemas`; a new version adds a migration. |
+| `core/data` | Repositories, offline first: screens read Room's flows, and `refresh` brings Room up to date from the server (`OfflineFirstWalletRepository`). `UpdateRepository` offers newer builds. |
+| `core/datastore` | The session (for now, the token the web app keeps in Capacitor's preferences) and the user's preferences (DataStore). |
+| `core/designsystem` | RudWallet on Material 3: the colours (`theme/Theme.kt`, the same tokens as `web/src/styles.css`), Inter (`res/font`, converted from `web/src/fonts` by `android/fonts.py`), the line icons, `WalletPanel`. |
+| `core/ui` | Pieces that know the models: `MoneyFormat` (money and dates in the app's language), `CategoryIcon`, the record list. |
+| `core/common`, `core/testing` | Dispatchers and the clock, injected; fakes and a sample wallet for tests. |
+
+Build setup: versions in `gradle/libs.versions.toml`, shared module setup in `build-logic` (convention plugins `rudwallet.android.*`). AGP and Kotlin stay on the versions Capacitor's modules are built for until Capacitor leaves. Release builds are shrunk with R8 (`app/proguard-rules.pro`; Capacitor and the libraries bring their own rules). Strings are resources, in English and Japanese (`values-ja`), and the app's language is Android's per-app language: the system's app settings, or the web app's Settings › Language, which passes it on.
+
+**Tests** run on the JVM: `./gradlew testDebugUnitTest` in `android/`. ViewModels against fake repositories (`core/testing`), the repository against an in-memory database, the API's JSON and sign-in against a mock server, navigation, and screenshots of the screens with Robolectric and Roborazzi (light, dark, Japanese) in each module's `build/outputs/roborazzi` with `-Proborazzi.test.record=true`. CI runs them in the `android` job, runs Android Lint on the native modules (`./gradlew lintNative`), builds a release (to check R8), and keeps the screenshots as the `native-screenshots` artifact. `./verify.sh` doesn't run them; its browser tests cover the web app's side (`e2e/tests/embedded.spec.js`).
+
+### The web view, until it's gone
+
+`WebPageFragment` holds Capacitor's bridge: one web view for the life of the activity, laid out under the native tabs, clear of the system bars and the keyboard (`RudWalletApp.kt`, `WebHost`). A page that isn't native is a `WebRoute(path)` (or a tab's own route): its destination is empty, and the web view underneath shows it.
+
+The web app knows it's inside the native app when the `NativeNav` plugin exists (`embedded` in `web/src/native.ts`), and then:
+
+- It draws no tabs and no plus of its own (`.embedded` in `web/src/styles.css`).
+- It asks for every page change (`NativeNav.go`) instead of making it, and shows the page the app says (`show`); native navigation keeps the back stack, and Android's back gesture moves through it. A sheet or dialog that's open tells the app (`overlay`), so back closes it first (`back`). Capacitor's own back handling is off (`App.disableBackButtonHandler` in `web/capacitor.config.json`).
+- `#/add` is the new record sheet on its own, and `#/record?id=…&from=…&to=…` a record's form, for Wallet's plus and its records; closing either leaves the page.
+- Appearance and Language follow the app (`config`), and a choice made in its Settings goes to the app.
+- It handles Google sign-in coming back and IC cards itself (`MainActivity` passes those intents to the web view); `<package>://open/<page>` from the widgets the app opens itself.
+
+Signing in and out still happen in the web view: the app follows the session token (`SessionStore`), showing the sign-in page when it goes and Wallet when it comes, and empties its database on signing out.
+
+To make a page native: add its `feature/*` module with a route, open its paths natively in `RudWalletAppState.openPath`, add it to `NativeNavPlugin.NATIVE_PAGES`, and replace its tab's `*TabRoute` if it's a tab.
+
 ## Starting up, and working offline
 
-The splash screen (`styles.xml`, Android 12's, back-ported) stays up until the web app has drawn Home or the sign-in page: `SplashPlugin` hears it from `appDrawn()` in `web/src/native.ts`, and `MainActivity` gives it 3 seconds at most. The web app keeps who is signed in and the answers Home needs in the web view's storage (`web/src/api.ts`), so it usually opens on them at once and asks the server again meanwhile.
+The splash screen (`styles.xml`, Android 12's, back-ported) stays up until the session is known and, signed out, until the web view has drawn the sign-in page (`SplashPlugin`), 3 seconds at most. Wallet opens on what's in the database at once and asks the server meanwhile; offline, it shows what it has, and pulling down to refresh says the server can't be reached.
 
 Haptics mark moments, not every touch (`HapticsPlugin`, called through `web/src/native.ts`): a number pad key feels like the phone's keyboard (`KEYBOARD_TAP`); picking a category, an account or expense/income is a light tick (`SEGMENT_TICK`, `CLOCK_TICK` before Android 14); a swipe passing the point where letting go acts is a detent (`GESTURE_THRESHOLD_ACTIVATE`); something saved or confirmed is `CONFIRM`; something refused, such as saving without an amount, is `REJECT` (both from Android 11, with the nearest older feedback before). Opening pages and rows doesn't buzz. All follow the system's touch feedback setting and need no permission; taps closer than 35 ms apart are merged, so fast typing doesn't run into a buzz. App builds from before simply don't tap.
 
-A record added without a connection is kept on the phone (`web/src/outbox.ts`), counted in the balances and lists with a **Not sent yet** badge, and sent when the server answers again: on the next start, when the app comes back into view, or when the phone is back online. It carries a `client_id`, so a resend after a lost answer doesn't add it twice. Until it's sent it can be edited or deleted on the phone; other edits and deletes need a connection. One the server refuses (say, its account was deleted meanwhile) stays with **Couldn't send** until it's changed or deleted.
+In the web view's pages, a record added without a connection is kept on the phone (`web/src/outbox.ts`), counted in the balances and lists with a **Not sent yet** badge, and sent when the server answers again: on the next start, when the app comes back into view, or when the phone is back online. It carries a `client_id`, so a resend after a lost answer doesn't add it twice. Until it's sent it can be edited or deleted on the phone; other edits and deletes need a connection. One the server refuses (say, its account was deleted meanwhile) stays with **Couldn't send** until it's changed or deleted.
 
 ## How the app signs in
 

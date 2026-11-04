@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="core_ui_today">今日</string>
+    <string name="core_ui_yesterday">昨日</string>
+    <string name="core_ui_transfer_to">%sへ振替</string>
+    <string name="core_ui_transfer_from">%sから</string>
+    <string name="core_ui_income">収入</string>
+    <string name="core_ui_expense">支出</string>
+    <string name="core_ui_no_category">カテゴリなし</string>
+    <string name="core_ui_choose_category">カテゴリを選んでください</string>
+    <string name="core_ui_amount_unknown">金額不明</string>
+</resources>

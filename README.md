@@ -17,7 +17,7 @@ A Go API, a React frontend, and PostgreSQL, shipped as one Docker image.
 - **Frontend:** React + TypeScript, bundled by Vite and embedded in the Go binary. Installable as a PWA.
 - **Database:** PostgreSQL. Migrations are embedded SQL files, applied on startup.
 - **Packaging:** one small, non-root Docker image (under 20 MB) with no shell.
-- **Android:** the same web app, packaged with Capacitor, plus native home screen widgets (this month, budgets, and a New record button) and a reader for PayPay's and Google Wallet's payment notifications (see [android/README.md](android/README.md)).
+- **Android:** a native app (Kotlin, Jetpack Compose) taking over from the web app a page at a time: the shell and Wallet are native, the other pages still the web app in a web view (Capacitor). Plus native home screen widgets (this month, budgets, and a New record button) and a reader for PayPay's and Google Wallet's payment notifications (see [android/README.md](android/README.md)).
 
 ## Quick start
 
@@ -140,6 +140,7 @@ The code is split by **feature**: each one owns its SQL, HTTP handlers and page.
 | `web/landing.html`, `web/src/landing.*` | The introduction page at `/`: plain HTML in the app's styles. It sends links meant for the app (`/#/records`, `/?email=…`) and installs from before the app moved on to `/app/`. |
 | `web/src/` | The React app (`web/index.html`, served at `/app/`): `api.ts` (typed API client), `App.tsx` (sign-in gate and navigation), `wallet.tsx` (shared accounts and categories), `outbox.ts` (records added offline, sent later), `components/`, and `features/<name>/` pages. |
 | `web/src/i18n.tsx`, `language.ts`, `locales/ja.ts` | English and Japanese. Text is written in English and passed through `t()`; `locales/ja.ts` has each one in Japanese, and a missing entry fails the type check. The language is the device's unless picked in Settings › Language or on the sign-in screen (kept in the browser). Server messages are translated in `locales/ja.ts` too. |
+| `android/` | The Android app: native modules (`app`, `core/*`, `feature/*`; Kotlin, Compose, Hilt, Room), the web view for pages not ported yet, widgets and payment notifications. See [android/README.md](android/README.md). |
 | `e2e/` | Playwright browser tests, and the throwaway stack that `verify.sh` and `preview.sh` use. |
 | `deploy/` | Where the app runs: `local.yml` (this machine) and `aws.yml` (production). |
 

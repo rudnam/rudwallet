@@ -4,6 +4,7 @@
   "webDir": "dist-android",
   "android": { "path": "../android" },
   "plugins": {
-    "SystemBars": { "insetsHandling": "native", "initialViewportFitValueHint": "cover" }
+    "SystemBars": { "insetsHandling": "disable" },
+    "App": { "disableBackButtonHandler": true }
   }
 }

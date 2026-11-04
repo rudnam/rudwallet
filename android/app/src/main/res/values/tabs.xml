@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The four tabs, worded as the website words them. -->
+<resources>
+    <string name="tab_wallet">Wallet</string>
+    <string name="tab_activity">Activity</string>
+    <string name="tab_insights">Insights</string>
+    <string name="tab_settings">Settings</string>
+    <plurals name="to_review">
+        <item quantity="one">%d to review</item>
+        <item quantity="other">%d to review</item>
+    </plurals>
+</resources>

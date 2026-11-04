@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, ApiError, errorMessage, savedMe, type Me } from './api';
+import { api, ApiError, errorMessage, savedMe, type Me, type Transaction } from './api';
 import { AuthForm } from './components/AuthForm';
 import { ResetPasswordForm } from './components/ResetPasswordForm';
 import { Splash } from './components/Splash';
@@ -14,7 +14,9 @@ import { AccountPage } from './features/account/AccountPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 import { prefetchStats, StatsPage } from './features/stats/StatsPage';
 import { addMonths, monthStart } from './money';
-import { appDrawn, onAppLinks } from './native';
+import { appDrawn, embedded, nativeBack, nativeConfig, nativeSetAppearance, nativeSetLanguage, onAppLinks } from './native';
+import { appearance, setAppearance } from './appearance';
+import { pickedLanguage, setLanguage } from './language';
 import { initialNotice, signinErrors, type Notice } from './notice';
 import { href, navigate, replaceRoute, useRoute } from './router';
 import { t, tx, type Key } from './i18n';
@@ -54,6 +56,19 @@ export function App() {
     return me ? { status: 'signed-in', me } : { status: 'loading' };
   });
   const route = useRoute();
+
+  // Embedded in the Android app (native.ts), the app owns Appearance and
+  // Language: this follows what it says. A choice made here before the app
+  // had its own goes to the app once.
+  useEffect(() => {
+    nativeConfig().then((app) => {
+      if (!app) return;
+      if (app.appearance !== 'auto') setAppearance(app.appearance, true);
+      else if (appearance() !== 'auto') nativeSetAppearance(appearance());
+      if (app.language === 'en' || app.language === 'ja') setLanguage(app.language, true);
+      else if (pickedLanguage()) nativeSetLanguage(pickedLanguage());
+    });
+  }, []);
 
   // In the Android app: Google sign-in coming back from the browser, and
   // widgets opening a page.
@@ -294,12 +309,40 @@ function Shell({
   const current = pages.some((p) => p.page === route.page) || route.page in subpages ? route.page : 'home';
   const navPage = subpages[current] ?? current;
 
-  // The Android widget's New record button opens #/add.
+  // The Android widget's New record button opens #/add. Embedded in the app
+  // (native.ts), #/add is the sheet alone, a page of the app's that closes
+  // with the sheet.
   useEffect(() => {
     if (route.page !== 'add') return;
-    history.replaceState(null, '', href('home'));
+    if (!embedded) history.replaceState(null, '', href('home'));
     setAdding(true);
   }, [route]);
+
+  // Embedded: #/record?id=…&from=…&to=… is a record the app's Wallet opened, in its form.
+  const [opened, setOpened] = useState<Transaction | null>(null);
+  useEffect(() => {
+    if (!embedded || route.page !== 'record') return;
+    const id = Number(route.params.get('id'));
+    const from = new Date(route.params.get('from') ?? '');
+    const to = new Date(route.params.get('to') ?? '');
+    api.transactions({ from, to }).then(
+      (list) => {
+        const t = list.find((r) => r.id === id);
+        if (t) setOpened(t);
+        else nativeBack(); // deleted meanwhile
+      },
+      () => nativeBack(),
+    );
+  }, [route]);
+  const sheetOnly = embedded && (route.page === 'add' || route.page === 'record');
+  const closeAdding = () => {
+    setAdding(false);
+    if (embedded && route.page === 'add') nativeBack();
+  };
+  const closeOpened = () => {
+    setOpened(null);
+    nativeBack();
+  };
 
   // Payments arrive while the app is open: reload balances and the review
   // count on every page change and whenever the app comes back into view.
@@ -389,15 +432,21 @@ function Shell({
         </span>
       </nav>
       <main className="page" key={`${route.page}-${version}`}>
-        {me.demo && <DemoBanner onCreateAccount={onCreateAccount} />}
-        <UpdateBanner />
-        {me.confirm_email && <ConfirmEmail email={me.email} />}
-        {page}
+        {!sheetOnly && (
+          <>
+            {me.demo && <DemoBanner onCreateAccount={onCreateAccount} />}
+            {/* Embedded, the app offers its own updates. */}
+            {!embedded && <UpdateBanner />}
+            {me.confirm_email && <ConfirmEmail email={me.email} />}
+            {page}
+          </>
+        )}
       </main>
       <button type="button" className="fab" aria-label={t('Add record')} onClick={() => setAdding(true)}>
         <Plus />
       </button>
-      {adding && <TransactionForm onClose={() => setAdding(false)} onSaved={() => setVersion((v) => v + 1)} />}
+      {adding && <TransactionForm onClose={closeAdding} onSaved={() => setVersion((v) => v + 1)} />}
+      {opened && <TransactionForm record={opened} onClose={closeOpened} onSaved={() => setVersion((v) => v + 1)} />}
     </div>
   );
 }

@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- The web app draws everything; these only colour the window around it. -->
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Compose draws the app; these colour the window before it has, in the ground colour. -->
     <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="colorPrimary">@color/paper</item>
         <item name="colorPrimaryDark">@color/paper</item>
         <item name="colorAccent">@color/widget_accent</item>
         <item name="android:windowBackground">@color/paper</item>
         <item name="android:windowLightStatusBar">@bool/light_bars</item>
-        <item name="android:windowLightNavigationBar">@bool/light_bars</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="27">@bool/light_bars</item>
     </style>
 
     <style name="AppTheme.NoActionBar" parent="AppTheme">

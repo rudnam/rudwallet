@@ -28,7 +28,7 @@ export WALLET_KEYSTORE_PASSWORD WALLET_KEY_PASSWORD
 
 # The version: one above what the site offers (version.sh), unless given.
 : "${WALLET_VERSION_CODE:=$(./version.sh)}"
-: "${WALLET_VERSION_NAME:=$(sed -n "s/.*WALLET_VERSION_NAME') ?: \"\(.*\)\".*/\1/p" app/build.gradle).$WALLET_VERSION_CODE}"
+: "${WALLET_VERSION_NAME:=$(sed -n 's/.*WALLET_VERSION_NAME") ?: "\(.*\)".*/\1/p' app/build.gradle.kts).$WALLET_VERSION_CODE}"
 export WALLET_VERSION_CODE WALLET_VERSION_NAME
 
 # The web app, built for the app (web/.env.android) and copied in.
