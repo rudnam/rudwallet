@@ -13,11 +13,12 @@ function parse(): Route {
   return { page: path || 'home', params: new URLSearchParams(qs) };
 }
 
-// Moving between pages animates with the browser's View Transitions (styles.css,
-// "Page transitions"): tabs slide towards the tab chosen, a page opened from one
-// comes in from the right and goes back the way it came, and a card on Wallet
-// grows into its account's page. Without the API, or with reduced motion, the page
-// just changes.
+// Moving between pages: the new page is drawn at once and slides in briefly (well
+// under a fifth of a second), with only transform and opacity animating, so it runs
+// on the GPU. The old page is gone at once: nothing is captured and nothing
+// crossfades. Tabs slide in from the side of the tab chosen, a page opened from one
+// comes in from the right and its tab from the left on the way back, and a card on
+// Wallet grows into its account's page. With reduced motion, the page just changes.
 const tabs = ['home', 'records', 'stats', 'settings'];
 /** Pages opened from a tab, and the tab they belong to (App.tsx's subpages). */
 const opened: Record<string, string> = { card: 'home', account: 'home', review: 'records', budgets: 'stats' };
@@ -43,53 +44,72 @@ function move(from: Route, to: Route): Move | null {
   return 'fade';
 }
 
+const ease = 'cubic-bezier(0.2, 0.8, 0.2, 1)';
+const entrances: Record<Move, [Keyframe[], number]> = {
+  next: [[{ opacity: 0, transform: 'translateX(14px)' }, { opacity: 1, transform: 'none' }], 160],
+  prev: [[{ opacity: 0, transform: 'translateX(-14px)' }, { opacity: 1, transform: 'none' }], 160],
+  forward: [[{ opacity: 0, transform: 'translateX(28px)' }, { opacity: 1, transform: 'none' }], 190],
+  back: [[{ opacity: 0, transform: 'translateX(-20px)' }, { opacity: 1, transform: 'none' }], 170],
+  fade: [[{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], 150],
+};
+
+/** The card just tapped on Wallet, so its account's page can grow out of it. */
+let tappedCard: { id: string; rect: DOMRect; at: number } | null = null;
+
+/** Called as a card on Wallet is tapped, before its page opens. */
+export function openingCard(id: number, rect: DOMRect) {
+  tappedCard = { id: String(id), rect, at: performance.now() };
+}
+
+/** Grows the account's card out of the card tapped on Wallet, and brings the rest of the page in. */
+function growCard(main: HTMLElement, id: string): boolean {
+  const from = tappedCard;
+  tappedCard = null;
+  if (!from || from.id !== id || performance.now() - from.at > 1000) return false;
+  const card = main.querySelector<HTMLElement>(`[data-card="${CSS.escape(id)}"]`);
+  if (!card) return false;
+  const to = card.getBoundingClientRect();
+  if (!to.width || !to.height) return false;
+  const dx = from.rect.left - to.left;
+  const dy = from.rect.top - to.top;
+  card.animate(
+    [
+      { transformOrigin: 'top left', transform: `translate(${dx}px, ${dy}px) scale(${from.rect.width / to.width}, ${from.rect.height / to.height})` },
+      { transformOrigin: 'top left', transform: 'none' },
+    ],
+    { duration: 240, easing: ease },
+  );
+  for (const el of card.parentElement?.children ?? []) {
+    if (el !== card) el.animate([{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }], { duration: 200, delay: 60, easing: ease, fill: 'backwards' });
+  }
+  return true;
+}
+
 let current = parse();
 const listeners = new Set<() => void>();
 
 function onHashChange() {
   const next = parse();
   const how = move(current, next);
-  // The page drawn is always the one the address names when it's drawn: a transition
-  // updates the page only once the old one is captured, and by then another move may
-  // have come and gone, so an update made from the route it started with could put
-  // back a page the address has already left.
-  const show = () => {
-    const now = parse();
-    if (now.page === current.page && now.params.toString() === current.params.toString()) return;
-    current = now;
-    listeners.forEach((l) => l());
-    window.scrollTo(0, 0);
-  };
+  current = next;
+  // Drawn now, so the new page is on screen in this same frame and can be animated.
+  flushSync(() => listeners.forEach((l) => l()));
+  window.scrollTo(0, 0);
   const html = document.documentElement;
-  if (
-    !how ||
-    next.page === 'add' || // the new record sheet, not a page
-    !document.startViewTransition ||
-    document.visibilityState !== 'visible' ||
-    matchMedia('(prefers-reduced-motion: reduce)').matches
-  ) {
-    show();
+  const main = document.querySelector<HTMLElement>('main.page');
+  if (!how || !main || next.page === 'add' || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    tappedCard = null;
     return;
   }
+  // The last move, for the tests.
+  if (how === 'forward' && next.page === 'account' && growCard(main, next.params.get('id') ?? '')) {
+    html.dataset.nav = 'card';
+    return;
+  }
+  tappedCard = null;
   html.dataset.nav = how;
-  // The card opened (or returned to) on Wallet and the card at the top of its account's
-  // page share a name, before and after the change, so the one grows into the other.
-  const account = (next.page === 'account' ? next : current.page === 'account' ? current : null)?.params.get('id');
-  const card = () => (account ? document.querySelector<HTMLElement>(`[data-card="${CSS.escape(account)}"]`) : null);
-  const name = (el: HTMLElement | null) => el?.style.setProperty('view-transition-name', 'account-card');
-  name(card());
-  const transition = document.startViewTransition(() => {
-    flushSync(show);
-    name(card());
-  });
-  // A transition skipped for the next one, or one the page was too busy to draw,
-  // rejects these; the page has changed either way.
-  transition.ready.catch(() => {});
-  transition.updateCallbackDone.catch(() => {});
-  void transition.finished.finally(() => {
-    card()?.style.removeProperty('view-transition-name');
-    if (html.dataset.nav === how) delete html.dataset.nav;
-  });
+  const [frames, duration] = entrances[how];
+  main.animate(frames, { duration, easing: ease });
 }
 window.addEventListener('hashchange', onHashChange);
 

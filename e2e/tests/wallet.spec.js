@@ -790,7 +790,10 @@ test('holding a card on Wallet lifts it, and dragging it changes the order', asy
   await page.waitForTimeout(600);
   await expect(stack.locator('.wallet-card.lifted')).toHaveCount(1);
   for (let y = 1; y <= 6; y++) await page.mouse.move(back.x + 40, back.y + 20 + y * 20);
+  // Letting go saves the order; the reload below waits for it to be saved.
+  const saved = page.waitForResponse((r) => r.url().endsWith('/api/accounts/order') && r.request().method() === 'PUT');
   await page.mouse.up();
+  expect((await saved).status()).toBe(204);
   await expect(stack.locator('.wallet-card.lifted')).toHaveCount(0);
   await expect.poll(names).toEqual(['Bank', 'Cash', 'Card']);
   // Dropping didn't open the card, and the order is kept.
@@ -835,35 +838,26 @@ test('appearance follows the phone, or stays light or dark as chosen', async ({ 
   await expect(page.locator('html')).not.toHaveAttribute('data-theme', /./);
 });
 
-test('moving between pages slides the page, and a card grows into its account', async ({ page }) => {
+test('moving between pages slides the new page in quickly, and a card grows into its account', async ({ page }) => {
   await signUp(page);
-  // Each move marks the page while it animates (styles.css, "Page transitions").
-  const during = async (go) => {
-    const seen = page.evaluate(
-      () =>
-        new Promise((resolve) => {
-          new MutationObserver((_, o) => {
-            const d = document.documentElement.dataset;
-            if (!d.nav) return;
-            o.disconnect();
-            const named = [...document.querySelectorAll('[data-card]')].filter((c) => getComputedStyle(c).viewTransitionName !== 'none');
-            resolve({ nav: d.nav, named: named.length });
-          }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-nav'] });
-        }),
-    );
+  // Each move marks how it moved (router.ts), and is over in a quarter of a second at most.
+  const moved = async (go, how) => {
+    await page.evaluate(() => delete document.documentElement.dataset.nav);
     await go();
-    return seen;
+    await expect.poll(() => page.evaluate(() => document.documentElement.dataset.nav ?? null)).toBe(how);
+    const longest = await page.evaluate(() => Math.max(0, ...document.getAnimations().map((a) => Number(a.effect.getComputedTiming().endTime))));
+    expect(longest).toBeLessThanOrEqual(260);
   };
   const nav = page.getByRole('navigation', { name: 'Main' });
-  expect((await during(() => nav.getByRole('link', { name: 'Activity' }).click())).nav).toBe('next');
-  expect((await during(() => nav.getByRole('link', { name: 'Wallet' }).first().click())).nav).toBe('prev');
+  await moved(() => nav.getByRole('link', { name: 'Activity' }).click(), 'next');
+  await moved(() => nav.getByRole('link', { name: 'Wallet' }).first().click(), 'prev');
   await expect(page.locator('.hero-figure')).toBeVisible();
-  const opened = await during(() => page.getByRole('list', { name: 'Accounts' }).getByRole('listitem').first().click());
-  // Only the card opened is named, so it alone grows into the page.
-  expect(opened).toEqual({ nav: 'forward', named: 1 });
+  await moved(() => page.getByRole('list', { name: 'Accounts' }).getByRole('listitem').first().click(), 'card');
   await expect(page.getByRole('heading', { level: 1, name: 'Cash' })).toBeVisible();
-  expect((await during(() => page.goBack())).nav).toBe('back');
+  await moved(() => page.goBack(), 'back');
   await expect(page.locator('.hero-figure')).toBeVisible();
+  await moved(() => nav.getByRole('link', { name: 'Settings' }).click(), 'next');
+  await moved(() => page.goto('/app/#/settings?section=accounts'), 'forward');
 });
 
 test('two moves in quick succession end on the page the address names', async ({ page }) => {
