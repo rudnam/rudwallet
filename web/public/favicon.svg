@@ -1,49 +1,38 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-<style>.dk{display:none}@media (prefers-color-scheme:dark){.lt{display:none}.dk{display:inline}}</style>
-<g class="lt">
+<!-- The RudWallet mark: a cognac leather wallet with three cards fanned out of it, in the
+     app's account colours. Rounded like other icons, for tabs and the logo in the app; icon.svg is the same, full bleed.
+     android/icons.sh draws every PNG from these two. -->
 <defs>
-<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fdfcf8"/><stop offset="1" stop-color="#ebe6d8"/></linearGradient>
-<linearGradient id="white" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf9"/><stop offset="1" stop-color="#f1ece3"/></linearGradient>
-<linearGradient id="cognac" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d27d45"/><stop offset="1" stop-color="#a5571f"/></linearGradient>
-<linearGradient id="hl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".7"/><stop offset=".08" stop-color="#fff" stop-opacity="0"/></linearGradient>
-<filter id="sh" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#5c4f38" flood-opacity=".38"/></filter>
-<filter id="sh2" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#5c4f38" flood-opacity=".25"/></filter>
-<clipPath id="tile"><rect width="512" height="512" rx="112"/></clipPath>
-<linearGradient id="blueCard" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a6ea6"/><stop offset="1" stop-color="#2b4677"/></linearGradient><linearGradient id="walletLea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c4683f"/><stop offset="1" stop-color="#933f20"/></linearGradient><linearGradient id="paper" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fbfaf6"/><stop offset="1" stop-color="#ebe6d9"/></linearGradient>
+<filter id="soft" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#3b2613" flood-opacity=".32"/></filter>
+<filter id="soft2" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#2a1a0c" flood-opacity=".3"/></filter>
+<filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="3"/><feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .18 0"/><feComposite in2="SourceGraphic" operator="in"/></filter>
+<filter id="leather"><feTurbulence type="fractalNoise" baseFrequency=".055" numOctaves="4" seed="8"/><feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .55 -.18"/><feComposite in2="SourceGraphic" operator="in"/></filter>
+<linearGradient id="chip" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3d892"/><stop offset="1" stop-color="#b48a3a"/></linearGradient>
+<linearGradient id="ra-lea" x1="0" y1="0" x2=".2" y2="1"><stop offset="0" stop-color="#c97a43"/><stop offset=".55" stop-color="#a5532a"/><stop offset="1" stop-color="#7a3616"/></linearGradient>
+<radialGradient id="ra-sheen" cx=".28" cy=".1" r=".8"><stop offset="0" stop-color="#ffd9b0" stop-opacity=".35"/><stop offset="1" stop-color="#ffd9b0" stop-opacity="0"/></radialGradient>
+<radialGradient id="ra-bg" cx=".3" cy=".12" r="1.1"><stop offset="0" stop-color="#faf6ef"/><stop offset="1" stop-color="#e4dccc"/></radialGradient>
+<clipPath id="ra-clip"><path d="M96 226H372Q416 226 416 270V374Q416 416 372 416H140Q96 416 96 374Z"/></clipPath>
+<clipPath id="round"><rect width="512" height="512" rx="112"/></clipPath>
 </defs>
-<g clip-path="url(#tile)">
-<rect width="512" height="512" fill="url(#bg)"/>
-
-<g filter="url(#sh)">
-<path d="M152 176H360Q396 176 396 212V346Q396 382 360 382H152Q116 382 116 346V212Q116 176 152 176Z" fill="#6a2a12"/>
-<g transform="rotate(-5 250 200)"><path d="M164 134H332Q348 134 348 150V244Q348 260 332 260H164Q148 260 148 244V150Q148 134 164 134Z" fill="url(#paper)" filter="url(#sh2)"/><path d="M164 134H332Q348 134 348 150V244Q348 260 332 260H164Q148 260 148 244V150Q148 134 164 134Z" fill="url(#hl)"/></g>
-<g transform="rotate(4 280 210)"><path d="M194 146H362Q378 146 378 162V256Q378 272 362 272H194Q178 272 178 256V162Q178 146 194 146Z" fill="url(#blueCard)" filter="url(#sh2)"/><path d="M194 146H362Q378 146 378 162V256Q378 272 362 272H194Q178 272 178 256V162Q178 146 194 146Z" fill="url(#hl)"/><path d="M206 176H232Q238 176 238 182V198Q238 204 232 204H206Q200 204 200 198V182Q200 176 206 176Z" fill="#fff" opacity=".55"/></g>
-<path d="M140 216H372Q410 216 410 254V368Q410 406 372 406H140Q102 406 102 368V254Q102 216 140 216Z" fill="url(#walletLea)" filter="url(#sh2)"/><path d="M140 216H372Q410 216 410 254V368Q410 406 372 406H140Q102 406 102 368V254Q102 216 140 216Z" fill="url(#hl)"/>
-<path d="M146 236H366Q390 236 390 260V362Q390 386 366 386H146Q122 386 122 362V260Q122 236 146 236Z" fill="none" stroke="#fff" stroke-opacity=".16" stroke-width="2.5"/>
-</g>
-</g>
-</g>
-<g class="dk">
-<defs>
-<linearGradient id="dk-bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2e2c29"/><stop offset="1" stop-color="#1c1b19"/></linearGradient>
-<linearGradient id="dk-white" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf9"/><stop offset="1" stop-color="#f1ece3"/></linearGradient>
-<linearGradient id="dk-cognac" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d27d45"/><stop offset="1" stop-color="#a5571f"/></linearGradient>
-<linearGradient id="dk-hl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".08" stop-color="#fff" stop-opacity="0"/></linearGradient>
-<filter id="dk-sh" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000000" flood-opacity=".38"/></filter>
-<filter id="dk-sh2" x="-30%" y="-30%" width="160%" height="170%"><feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity=".25"/></filter>
-<clipPath id="dk-tile"><rect width="512" height="512" rx="112"/></clipPath>
-<linearGradient id="dk-blueCard" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6488c4"/><stop offset="1" stop-color="#3b5c93"/></linearGradient><linearGradient id="dk-walletLea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d97757"/><stop offset="1" stop-color="#a9502f"/></linearGradient><linearGradient id="dk-paper" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e6e1d5"/><stop offset="1" stop-color="#c9c2b2"/></linearGradient>
-</defs>
-<g clip-path="url(#dk-tile)">
-<rect width="512" height="512" fill="url(#dk-bg)"/>
-
-<g filter="url(#dk-sh)">
-<path d="M152 176H360Q396 176 396 212V346Q396 382 360 382H152Q116 382 116 346V212Q116 176 152 176Z" fill="#4f1f0d"/>
-<g transform="rotate(-5 250 200)"><path d="M164 134H332Q348 134 348 150V244Q348 260 332 260H164Q148 260 148 244V150Q148 134 164 134Z" fill="url(#dk-paper)" filter="url(#dk-sh2)"/><path d="M164 134H332Q348 134 348 150V244Q348 260 332 260H164Q148 260 148 244V150Q148 134 164 134Z" fill="url(#dk-hl)"/></g>
-<g transform="rotate(4 280 210)"><path d="M194 146H362Q378 146 378 162V256Q378 272 362 272H194Q178 272 178 256V162Q178 146 194 146Z" fill="url(#dk-blueCard)" filter="url(#dk-sh2)"/><path d="M194 146H362Q378 146 378 162V256Q378 272 362 272H194Q178 272 178 256V162Q178 146 194 146Z" fill="url(#dk-hl)"/><path d="M206 176H232Q238 176 238 182V198Q238 204 232 204H206Q200 204 200 198V182Q200 176 206 176Z" fill="#fff" opacity=".55"/></g>
-<path d="M140 216H372Q410 216 410 254V368Q410 406 372 406H140Q102 406 102 368V254Q102 216 140 216Z" fill="url(#dk-walletLea)" filter="url(#dk-sh2)"/><path d="M140 216H372Q410 216 410 254V368Q410 406 372 406H140Q102 406 102 368V254Q102 216 140 216Z" fill="url(#dk-hl)"/>
-<path d="M146 236H366Q390 236 390 260V362Q390 386 366 386H146Q122 386 122 362V260Q122 236 146 236Z" fill="none" stroke="#fff" stroke-opacity=".16" stroke-width="2.5"/>
-</g>
+<g clip-path="url(#round)">
+<rect id="tile" width="512" height="512" fill="url(#ra-bg)"/>
+<ellipse cx="256" cy="426" rx="168" ry="15" fill="#3a2410" opacity=".28"/><g filter="url(#soft)">
+<path d="M108 204H366Q402 204 402 240V384H108Z" fill="#3f190a"/>
+<g transform="rotate(-10 226.0 248)"><linearGradient id="k1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4f8a4c"/><stop offset="1" stop-color="#2f5b2e"/></linearGradient>
+<rect x="128" y="124" width="196" height="124" rx="16" fill="url(#k1)" filter="url(#soft2)"/>
+<rect x="128" y="124" width="196" height="124" rx="16" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="2"/>
+</g><g transform="rotate(-2 258.0 250)"><linearGradient id="k2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d97757"/><stop offset="1" stop-color="#a9502f"/></linearGradient>
+<rect x="160" y="126" width="196" height="124" rx="16" fill="url(#k2)" filter="url(#soft2)"/>
+<rect x="160" y="126" width="196" height="124" rx="16" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="2"/>
+</g><g transform="rotate(7 294.0 260)"><linearGradient id="k3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c8463d"/><stop offset="1" stop-color="#8f2a23"/></linearGradient>
+<rect x="196" y="136" width="196" height="124" rx="16" fill="url(#k3)" filter="url(#soft2)"/>
+<rect x="196" y="136" width="196" height="124" rx="16" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="2"/>
+<rect x="218" y="158" width="34" height="27" rx="6" fill="url(#chip)"/></g>
+<path d="M96 226H372Q416 226 416 270V374Q416 416 372 416H140Q96 416 96 374Z" fill="url(#ra-lea)"/>
+<g clip-path="url(#ra-clip)"><rect x="60" y="200" width="400" height="240" fill="#fff" filter="url(#leather)" opacity=".28"/><rect x="60" y="200" width="400" height="240" fill="#000" filter="url(#grain)" opacity=".35"/>
+<rect x="60" y="200" width="400" height="240" fill="url(#ra-sheen)"/></g>
+<path d="M98 228H414" stroke="#f0b48a" stroke-width="3" opacity=".6"/>
+<path d="M116 246H366Q398 246 398 278V366Q398 398 366 398H146Q116 398 116 368Z" fill="none" stroke="#f3dcb8" stroke-width="3.5" stroke-dasharray="10 8" stroke-linecap="round" opacity=".9"/>
 </g>
 </g>
 </svg>

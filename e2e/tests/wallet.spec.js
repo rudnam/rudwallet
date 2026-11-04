@@ -677,20 +677,45 @@ test('on a phone, the add record sheet drags down to close', async ({ page }) =>
   const x = box.x + box.width / 2;
   const y = box.y + box.height / 2;
 
-  // A short drag springs back.
+  // A short drag springs back, even a quick one, once the finger has stopped before letting go.
   await page.mouse.move(x, y);
   await page.mouse.down();
-  await page.mouse.move(x, y + 40, { steps: 8 });
-  await page.mouse.up();
-  await expect(dialog).toBeVisible();
+  await page.mouse.move(x, y + 40, { steps: 2 });
   await page.waitForTimeout(300);
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+  await expect(dialog).toBeVisible();
   await dialog.getByLabel('Amount (JPY)').fill('500');
+
+  // So does a slow one.
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  for (let dy = 5; dy <= 40; dy += 5) {
+    await page.mouse.move(x, y + dy);
+    await page.waitForTimeout(40);
+  }
+  await page.mouse.up();
+  await page.waitForTimeout(300);
+  await expect(dialog).toBeVisible();
 
   // A long one closes it.
   await page.mouse.move(x, y);
   await page.mouse.down();
   await page.mouse.move(x, y + 250, { steps: 15 });
   await page.mouse.up();
+  await expect(dialog).toBeHidden();
+
+  // A quick flick closes it too, short as it is. The events go in one go inside the page,
+  // so they're a moment apart however fast this machine is.
+  await page.getByRole('button', { name: 'Add record' }).click();
+  await expect(dialog).toBeVisible();
+  await dialog.evaluate((d) => Promise.all(d.getAnimations().map((a) => a.finished)));
+  await grab.evaluate((el, [x, y]) => {
+    const at = (dy) => ({ bubbles: true, pointerId: 1, pointerType: 'mouse', isPrimary: true, clientX: x, clientY: y + dy });
+    el.dispatchEvent(new PointerEvent('pointerdown', { ...at(0), button: 0, buttons: 1 }));
+    for (const dy of [20, 40, 60]) el.dispatchEvent(new PointerEvent('pointermove', { ...at(dy), buttons: 1 }));
+    el.dispatchEvent(new PointerEvent('pointerup', at(60)));
+  }, [x, y]);
   await expect(dialog).toBeHidden();
 });
 
@@ -808,4 +833,60 @@ test('appearance follows the phone, or stays light or dark as chosen', async ({ 
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.getByRole('radio', { name: /Automatic/ }).check();
   await expect(page.locator('html')).not.toHaveAttribute('data-theme', /./);
+});
+
+test('moving between pages slides the page, and a card grows into its account', async ({ page }) => {
+  await signUp(page);
+  // Each move marks the page while it animates (styles.css, "Page transitions").
+  const during = async (go) => {
+    const seen = page.evaluate(
+      () =>
+        new Promise((resolve) => {
+          new MutationObserver((_, o) => {
+            const d = document.documentElement.dataset;
+            if (!d.nav) return;
+            o.disconnect();
+            const named = [...document.querySelectorAll('[data-card]')].filter((c) => getComputedStyle(c).viewTransitionName !== 'none');
+            resolve({ nav: d.nav, named: named.length });
+          }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-nav'] });
+        }),
+    );
+    await go();
+    return seen;
+  };
+  const nav = page.getByRole('navigation', { name: 'Main' });
+  expect((await during(() => nav.getByRole('link', { name: 'Activity' }).click())).nav).toBe('next');
+  expect((await during(() => nav.getByRole('link', { name: 'Wallet' }).first().click())).nav).toBe('prev');
+  await expect(page.locator('.hero-figure')).toBeVisible();
+  const opened = await during(() => page.getByRole('list', { name: 'Accounts' }).getByRole('listitem').first().click());
+  // Only the card opened is named, so it alone grows into the page.
+  expect(opened).toEqual({ nav: 'forward', named: 1 });
+  await expect(page.getByRole('heading', { level: 1, name: 'Cash' })).toBeVisible();
+  expect((await during(() => page.goBack())).nav).toBe('back');
+  await expect(page.locator('.hero-figure')).toBeVisible();
+});
+
+test('two moves in quick succession end on the page the address names', async ({ page }) => {
+  await signUp(page);
+  await page.goto('/app/#/records');
+  await expect(page.getByRole('heading', { name: 'Activity' })).toBeVisible();
+  // Off to Insights and straight back, before the first move has drawn.
+  await page.evaluate(() => {
+    location.hash = '#/stats';
+    setTimeout(() => (location.hash = '#/records'), 0);
+  });
+  await page.waitForTimeout(800);
+  await expect(page).toHaveURL(/#\/records$/);
+  await expect(page.getByRole('heading', { name: 'Activity' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Insights' })).toHaveCount(0);
+});
+
+test.describe('with reduced motion', () => {
+  test.use({ reducedMotion: 'reduce' });
+  test('pages change without animating', async ({ page }) => {
+    await signUp(page);
+    await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Activity' }).click();
+    await expect(page.getByRole('heading', { name: 'Activity' })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.dataset.nav ?? null)).toBeNull();
+  });
 });

@@ -7,11 +7,15 @@ import { t } from '../i18n';
 const SHEET = '(max-width: 560px)';
 const CLOSE_DISTANCE = 100; // px
 const CLOSE_VELOCITY = 0.5; // px/ms
+// The speed of a flick is how far the finger went in its last moments before letting
+// go, not between its last two events: those can be a millisecond apart, and a finger
+// that stopped before letting go isn't flicking.
+const FLICK_WINDOW = 100; // ms
 
 /** A modal dialog (the native <dialog>, so focus and Escape just work). */
 export function Dialog({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null);
-  const drag = useRef<{ id: number; y: number; t: number; dy: number; v: number } | null>(null);
+  const drag = useRef<{ id: number; y: number; dy: number; moves: { t: number; dy: number }[] } | null>(null);
 
   useEffect(() => {
     const d = ref.current;
@@ -27,7 +31,7 @@ export function Dialog({ title, onClose, children }: { title: string; onClose: (
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
     if (!window.matchMedia(SHEET).matches || (e.target as Element).closest('button')) return;
     e.currentTarget.setPointerCapture(e.pointerId);
-    drag.current = { id: e.pointerId, y: e.clientY, t: e.timeStamp, dy: 0, v: 0 };
+    drag.current = { id: e.pointerId, y: e.clientY, dy: 0, moves: [{ t: e.timeStamp, dy: 0 }] };
     if (ref.current) ref.current.style.transition = 'none';
   };
 
@@ -35,10 +39,9 @@ export function Dialog({ title, onClose, children }: { title: string; onClose: (
     const g = drag.current;
     if (!g || g.id !== e.pointerId || !ref.current) return;
     const dy = Math.max(0, e.clientY - g.y);
-    const dt = e.timeStamp - g.t;
-    if (dt > 0) g.v = (dy - g.dy) / dt;
     g.dy = dy;
-    g.t = e.timeStamp;
+    g.moves.push({ t: e.timeStamp, dy });
+    while (g.moves.length > 2 && e.timeStamp - g.moves[0].t > FLICK_WINDOW) g.moves.shift();
     ref.current.style.transform = `translateY(${dy}px)`;
   };
 
@@ -48,7 +51,12 @@ export function Dialog({ title, onClose, children }: { title: string; onClose: (
     if (!g || g.id !== e.pointerId || !d) return;
     drag.current = null;
     d.style.transition = 'transform 0.2s ease-out';
-    if (g.dy > CLOSE_DISTANCE || (g.dy > 10 && g.v > CLOSE_VELOCITY)) {
+    // How far it moved in the window before letting go, over at least 16 ms (a frame), so
+    // events a moment apart don't make a twitch look fast.
+    const recent = g.moves.filter((m) => e.timeStamp - m.t <= FLICK_WINDOW);
+    const first = recent[0];
+    const v = first ? (g.dy - first.dy) / Math.max(e.timeStamp - first.t, 16) : 0;
+    if (g.dy > CLOSE_DISTANCE || (g.dy > 10 && v > CLOSE_VELOCITY)) {
       d.style.transform = 'translateY(100%)';
       setTimeout(onClose, 180);
     } else {
