@@ -7,7 +7,9 @@ import { App as CapApp } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { Capacitor, registerPlugin, type PluginListenerHandle } from '@capacitor/core';
 import { Preferences } from '@capacitor/preferences';
-import type { ICCardRead } from './api';
+import type { ICCardRead, Transaction } from './api';
+import { appearance, type Appearance } from './appearance';
+import { locale } from './language';
 
 /** True inside the Android app. */
 export const isApp = Capacitor.isNativePlatform();
@@ -106,6 +108,58 @@ export function cancelICCardRead(): void {
 /** Opens Android's NFC settings. */
 export function openNFCSettings(): void {
   icCard.openSettings().catch(() => {});
+}
+
+/** A record or page the native Wallet asks the web app to open. */
+export type NativeOpen = { page: string; params?: Record<string, string> } | { record: Transaction };
+
+/**
+ * Native screens (android/…/screens): drawn over the web view, a page at a
+ * time while the app moves to native. Only Wallet (#/home) so far, and only
+ * when turned on in Settings. This web app still decides where the user is:
+ * it shows the native Wallet on #/home and hides it everywhere else, and
+ * the native screen asks for the pages that aren't native yet with "open".
+ */
+const nativeScreens = registerPlugin<{
+  status(): Promise<{ home: boolean }>;
+  setEnabled(o: { home: boolean }): Promise<void>;
+  show(o: { screen: 'home'; locale: string; appearance: Appearance }): Promise<void>;
+  hide(): Promise<void>;
+  addListener(event: 'open', f: (e: NativeOpen) => void): Promise<PluginListenerHandle>;
+}>('NativeScreens');
+
+/** Whether the native Wallet is on; null on the web, where there's none. */
+export async function nativeHome(): Promise<boolean | null> {
+  if (!isApp) return null;
+  try {
+    return (await nativeScreens.status()).home;
+  } catch {
+    return null;
+  }
+}
+
+/** Turns the native Wallet on or off. */
+export async function setNativeHome(on: boolean): Promise<void> {
+  await nativeScreens.setEnabled({ home: on });
+}
+
+/**
+ * Shows the native Wallet over this page (if it's on), writing dates and
+ * money in the app's locale and following Settings › Appearance; or hides it.
+ */
+export function showNativeHome(show: boolean): void {
+  if (!isApp) return;
+  (show ? nativeScreens.show({ screen: 'home', locale: locale(), appearance: appearance() }) : nativeScreens.hide()).catch(() => {});
+}
+
+/** Pages and records the native Wallet asks for. */
+export function onNativeOpen(f: (e: NativeOpen) => void): () => void {
+  if (!isApp) return () => {};
+  // Fails on an app build from before native screens: nothing will ask.
+  const l = nativeScreens.addListener('open', f).catch(() => null);
+  return () => {
+    l.then((h) => h?.remove()).catch(() => {});
+  };
 }
 
 // Kept in Capacitor's preferences, which the widgets and the notification listener read too.

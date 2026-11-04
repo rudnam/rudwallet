@@ -1,5 +1,5 @@
 // The overview: balances, this month's spending, budgets, latest records.
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type PointerEvent } from 'react';
 import { api, type Account, type Budget, type Transaction } from '../../api';
 import type { BarItem } from '../../components/charts';
 import { TransactionForm } from '../../components/TransactionForm';
@@ -129,6 +129,27 @@ function headline(
 
 const setupDoneKey = 'wallet:setup-dismissed';
 
+// Whether the checklist is on screen. The Android app's native Wallet has
+// none yet, so it steps aside for the web one while it shows (App.tsx).
+let setUpShowing = false;
+const setUpListeners = new Set<() => void>();
+function markSetUp(showing: boolean) {
+  if (showing === setUpShowing) return;
+  setUpShowing = showing;
+  for (const l of setUpListeners) l();
+}
+
+/** True while Wallet shows the first-run checklist. */
+export function useSetUpShowing(): boolean {
+  return useSyncExternalStore(
+    (l) => {
+      setUpListeners.add(l);
+      return () => setUpListeners.delete(l);
+    },
+    () => setUpShowing,
+  );
+}
+
 /**
  * The first things a new user does, ticked off as they go: their real
  * accounts, payment notifications and a budget. Hidden once done or dismissed.
@@ -169,7 +190,12 @@ function SetUp({ hasRecords, hasBudget }: { hasRecords: boolean; hasBudget: bool
     },
   ];
   const left = steps.filter((s) => !s.done).length;
-  if (hidden || notified === null || left === 0) return null;
+  const showing = !(hidden || notified === null || left === 0);
+  useEffect(() => {
+    markSetUp(showing);
+    return () => markSetUp(false);
+  }, [showing]);
+  if (!showing) return null;
 
   return (
     <div className="card stack setup" aria-label={t('Get set up')}>

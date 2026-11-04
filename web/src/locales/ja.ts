@@ -798,6 +798,14 @@ export const ja = {
   'Spent so far, what’s left of your budget, and payments to review.': 'ここまでの支出、予算の残り、確認待ちの支払い。',
   'Each monthly budget: what’s spent, and what’s left.': '月の予算ごとの、使った額と残り。',
   'One tap to add a record.': 'ワンタップで記録を追加。',
+  // Settings › Native Wallet (Android app)
+  'Native Wallet': 'ネイティブのウォレット',
+  'This version of the app can’t do this yet. Update it to try.': 'このバージョンのアプリではまだ使えません。アップデートしてお試しください。',
+  'Wallet drawn by Android itself rather than as a web page: quicker to open, smoother to scroll, and pull down to refresh. The other pages open as before.':
+    'ウォレットをWebページではなくAndroidが直接表示します。すばやく開き、なめらかにスクロールでき、下に引くと更新できます。ほかの画面はこれまでどおりです。',
+  'Use the native Wallet': 'ネイティブのウォレットを使う',
+  'New and still being finished: records you added offline show once they’re sent, and cards are rearranged with it turned off.':
+    '新しく、まだ仕上げ中です。オフラインで追加した記録は送信されてから表示されます。カードの並べ替えは、オフにしてから行ってください。',
 } as const satisfies Record<string, string>;
 
 /**

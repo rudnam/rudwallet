@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, ApiError, errorMessage, savedMe, type Me } from './api';
+import { api, ApiError, errorMessage, savedMe, type Me, type Transaction } from './api';
 import { AuthForm } from './components/AuthForm';
 import { ResetPasswordForm } from './components/ResetPasswordForm';
 import { Splash } from './components/Splash';
@@ -7,20 +7,21 @@ import { Icon, icons, Logo, Plus } from './components/Icon';
 import { TransactionForm } from './components/TransactionForm';
 import { BudgetsPage } from './features/budgets/BudgetsPage';
 import { ConnectPage, rememberConnect, resumeConnect } from './features/settings/ConnectPage';
-import { HomePage } from './features/home/HomePage';
+import { HomePage, useSetUpShowing } from './features/home/HomePage';
 import { ActivityPage } from './features/records/ActivityPage';
 import { CardPage } from './features/card/CardPage';
 import { AccountPage } from './features/account/AccountPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 import { prefetchStats, StatsPage } from './features/stats/StatsPage';
 import { addMonths, monthStart } from './money';
-import { appDrawn, onAppLinks } from './native';
+import { appDrawn, nativeHome, onAppLinks, onNativeOpen, showNativeHome } from './native';
 import { initialNotice, signinErrors, type Notice } from './notice';
 import { href, navigate, replaceRoute, useRoute } from './router';
 import { t, tx, type Key } from './i18n';
 import { LanguagePicker } from './features/settings/LanguageSettings';
 import { ToastProvider, useToast } from './toast';
-import { useUpdate } from './updates';
+import { useAppearance } from './appearance';
+import { useUpdate, type Update } from './updates';
 import { useWallet, WalletProvider } from './wallet';
 
 /** The app's name, shown in the sidebar and on the sign-in screen. Also in index.html and the manifest. */
@@ -111,6 +112,12 @@ export function App() {
   }, [signedInMe]);
   useEffect(() => {
     if (session.status === 'signed-out') savedMe.set(null);
+  }, [session.status]);
+
+  // In the Android app, the native Wallet (native.ts) covers nothing but a
+  // signed-in Wallet: never the sign-in page.
+  useEffect(() => {
+    if (session.status !== 'signed-in') showNativeHome(false);
   }, [session.status]);
 
   // In the Android app, the splash screen stays until there's a page to see
@@ -288,6 +295,9 @@ function Shell({
     if (notice) toast(notice);
   }, [notice, toast]);
   const [adding, setAdding] = useState(false);
+  // A record the native Wallet asked to open.
+  const [opened, setOpened] = useState<Transaction | null>(null);
+  const updates = useUpdate();
   // Bumped after adding a record, so the page reloads its data.
   const [version, setVersion] = useState(0);
   const { refresh } = w;
@@ -300,6 +310,32 @@ function Shell({
     history.replaceState(null, '', href('home'));
     setAdding(true);
   }, [route]);
+
+  // In the Android app, Wallet can be native (Settings › Native Wallet). It
+  // shows on Wallet while nothing is open over it; what it doesn't have yet
+  // (a demo's banner, an email to confirm, an update, the first-run
+  // checklist) keeps the web Wallet. Checked again on every page change, so
+  // turning it on, or a new Appearance, applies at once.
+  const [nativeOn, setNativeOn] = useState(false);
+  useEffect(() => {
+    nativeHome().then((on) => setNativeOn(!!on), () => {});
+  }, [route.page]);
+  const setUp = useSetUpShowing();
+  const native = nativeOn && current === 'home' && !adding && !opened && !me.demo && !me.confirm_email && !updates.update && !setUp;
+  const look = useAppearance();
+  useEffect(() => {
+    showNativeHome(native);
+  }, [native, look]);
+  useEffect(() => () => showNativeHome(false), []);
+  useEffect(
+    () =>
+      onNativeOpen((e) => {
+        if ('record' in e) setOpened(e.record);
+        else if (e.page === 'add') setAdding(true);
+        else navigate(e.page, e.params);
+      }),
+    [],
+  );
 
   // Payments arrive while the app is open: reload balances and the review
   // count on every page change and whenever the app comes back into view.
@@ -390,7 +426,7 @@ function Shell({
       </nav>
       <main className="page" key={`${route.page}-${version}`}>
         {me.demo && <DemoBanner onCreateAccount={onCreateAccount} />}
-        <UpdateBanner />
+        <UpdateBanner {...updates} />
         {me.confirm_email && <ConfirmEmail email={me.email} />}
         {page}
       </main>
@@ -398,6 +434,7 @@ function Shell({
         <Plus />
       </button>
       {adding && <TransactionForm onClose={() => setAdding(false)} onSaved={() => setVersion((v) => v + 1)} />}
+      {opened && <TransactionForm record={opened} onClose={() => setOpened(null)} onSaved={() => setVersion((v) => v + 1)} />}
     </div>
   );
 }
@@ -419,8 +456,7 @@ function DemoBanner({ onCreateAccount }: { onCreateAccount: () => void }) {
 }
 
 /** In the Android app, when the server has a newer build (updates.ts). */
-function UpdateBanner() {
-  const { update, install, later } = useUpdate();
+function UpdateBanner({ update, install, later }: { update: Update | null; install: () => void; later: () => void }) {
   if (!update) return null;
   return (
     <div className="notice update-banner" role="note">

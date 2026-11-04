@@ -81,11 +81,16 @@ function resetLink(request, to) {
  * as ({idm, history}; icEntry), for a phone with NFC turned on; tapICCard
  * taps one. Native calls are kept in window.calls ("Plugin.method"), and
  * links opened in the phone's browser in window.opened. Call before the
- * first page.goto.
+ * first page.goto. nativeHome, if set, is a build
+ * with native screens (android/…/screens), the native Wallet turned on or not:
+ * window.nativeHome says whether it's showing ('shown' or 'hidden'),
+ * window.nativeLook the locale and appearance it was last shown with, and
+ * nativeOpen(page, e) sends its "open" event.
  */
-async function asAndroidApp(page, { build = 3, installer = 'com.google.android.packageinstaller', icCard = null } = {}) {
+async function asAndroidApp(page, { build = 3, installer = 'com.google.android.packageinstaller', icCard = null, nativeHome = null } = {}) {
   await page.addInitScript(
-    ({ build, installer, icCard }) => {
+    ({ build, installer, icCard, nativeHome }) => {
+      const native = { on: !!nativeHome?.on };
       const answers = {
         'App.getInfo': () => ({ name: 'RudWallet', id: 'com.rudnam.wallet', build: String(build), version: '2.0' }),
         'Updates.installer': () => ({ installer }),
@@ -94,6 +99,17 @@ async function asAndroidApp(page, { build = 3, installer = 'com.google.android.p
         'ICCard.read': () => icCard,
         'ICCard.cancel': () => undefined,
         'ICCard.removeListener': ({ callbackId }) => void delete window.listeners[callbackId],
+        'NativeScreens.status': () => ({ home: native.on }),
+        'NativeScreens.setEnabled': ({ home }) => {
+          native.on = home;
+          if (!home) window.nativeHome = 'hidden';
+        },
+        'NativeScreens.show': ({ locale, appearance }) => {
+          if (native.on) window.nativeHome = 'shown';
+          window.nativeLook = { locale, appearance };
+        },
+        'NativeScreens.hide': () => void (window.nativeHome = 'hidden'),
+        'NativeScreens.removeListener': ({ callbackId }) => void delete window.listeners[callbackId],
       };
       window.listeners = {}; // callbackId: {event: "Plugin.event", callback}
       window.calls = [];
@@ -111,6 +127,17 @@ async function asAndroidApp(page, { build = 3, installer = 'com.google.android.p
               { name: 'addListener', rtype: 'callback' },
             ],
           },
+          ...(nativeHome === null
+            ? []
+            : [
+                {
+                  name: 'NativeScreens',
+                  methods: [
+                    ...['status', 'setEnabled', 'show', 'hide', 'removeListener'].map((name) => ({ name, rtype: 'promise' })),
+                    { name: 'addListener', rtype: 'callback' },
+                  ],
+                },
+              ]),
         ],
         nativeCallback: (plugin, method, options, callback) => {
           window.calls.push(`${plugin}.${method}`);
@@ -124,11 +151,18 @@ async function asAndroidApp(page, { build = 3, installer = 'com.google.android.p
         },
       };
     },
-    { build, installer, icCard },
+    { build, installer, icCard, nativeHome },
   );
 }
 
 /** Taps a transit IC card to the phone, as the Android app reports it (a page set up with asAndroidApp). */
+/** The native Wallet asks the web app to open a page or a record (asAndroidApp with nativeHome). */
+async function nativeOpen(page, e) {
+  await page.evaluate((e) => {
+    for (const l of Object.values(window.listeners)) if (l.event === 'NativeScreens.open') l.callback(e);
+  }, e);
+}
+
 async function tapICCard(page, read) {
   await page.evaluate((read) => {
     for (const l of Object.values(window.listeners)) if (l.event === 'ICCard.tapped') l.callback(read);
@@ -196,4 +230,4 @@ async function sendNotifications(request, ...notifications) {
   return (await res.json()).notifications;
 }
 
-module.exports = { test, expect: base.expect, signUp, asAndroidApp, uniqueEmail, PASSWORD, confirmationLink, resetLink, PAYPAY, payPayCard, sendNotifications, icCardRead, icEntry, tapICCard };
+module.exports = { test, expect: base.expect, signUp, asAndroidApp, uniqueEmail, PASSWORD, confirmationLink, resetLink, PAYPAY, payPayCard, sendNotifications, icCardRead, icEntry, tapICCard, nativeOpen };

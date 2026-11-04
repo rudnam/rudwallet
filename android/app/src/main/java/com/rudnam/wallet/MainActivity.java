@@ -7,6 +7,8 @@ import androidx.core.splashscreen.SplashScreen;
 
 import com.getcapacitor.BridgeActivity;
 import com.rudnam.wallet.notify.NotificationsPlugin;
+import com.rudnam.wallet.screens.NativeOverlay;
+import com.rudnam.wallet.screens.NativeScreensPlugin;
 import com.rudnam.wallet.widget.WidgetsPlugin;
 
 public class MainActivity extends BridgeActivity {
@@ -28,6 +30,9 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(SplashPlugin.class);
         registerPlugin(ICCardPlugin.class);
         registerPlugin(HapticsPlugin.class);
+        registerPlugin(NativeScreensPlugin.class);
         super.onCreate(savedInstanceState);
+        // Native screens over the web view, for the pages that have one (screens/NativeOverlay.kt).
+        NativeOverlay.attach(this);
     }
 }

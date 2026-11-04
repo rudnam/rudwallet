@@ -12,7 +12,8 @@ import com.getcapacitor.annotation.CapacitorPlugin;
  */
 @CapacitorPlugin(name = "Splash")
 public class SplashPlugin extends Plugin {
-    static volatile boolean drawn = false;
+    /** Set by hide(), or by a native screen once it has drawn (screens/NativeOverlay.kt). */
+    public static volatile boolean drawn = false;
 
     @PluginMethod
     public void hide(PluginCall call) {

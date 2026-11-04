@@ -27,3 +27,5 @@ android/*.idsig
 # kept, so Docker doesn't create it as root when it mounts it.
 /downloads/*
 !/downloads/.gitkeep
+# Kotlin compiler state
+android/.kotlin/

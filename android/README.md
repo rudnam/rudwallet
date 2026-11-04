@@ -1,6 +1,6 @@
 # Android app
 
-The Android app is the web app (`web/`) packaged with [Capacitor](https://capacitorjs.com): the React build ships inside the app, runs in a web view at `https://localhost`, and talks to the server's API. Native code adds what the web can't do: home screen widgets, Sign in with Google through the phone's browser, and reading transit IC cards over NFC.
+The Android app is the web app (`web/`) packaged with [Capacitor](https://capacitorjs.com): the React build ships inside the app, runs in a web view at `https://localhost`, and talks to the server's API. Native code adds what the web can't do: home screen widgets, Sign in with Google through the phone's browser, and reading transit IC cards over NFC. The app is also moving to native screens, one page at a time (see Native screens).
 
 - Package `com.rudnam.wallet` (permanent once published), talking to https://wallet.rudnam.com (`web/.env.android`).
 - Web app changes reach phones only with a new app build. Server changes reach them at once, so keep the API compatible with the last release (add fields; don't rename or remove them).
@@ -59,6 +59,19 @@ The splash screen (`styles.xml`, Android 12's, back-ported) stays up until the w
 Haptics mark moments, not every touch (`HapticsPlugin`, called through `web/src/native.ts`): a number pad key feels like the phone's keyboard (`KEYBOARD_TAP`); picking a category, an account or expense/income is a light tick (`SEGMENT_TICK`, `CLOCK_TICK` before Android 14); a swipe passing the point where letting go acts is a detent (`GESTURE_THRESHOLD_ACTIVATE`); something saved or confirmed is `CONFIRM`; something refused, such as saving without an amount, is `REJECT` (both from Android 11, with the nearest older feedback before). Opening pages and rows doesn't buzz. All follow the system's touch feedback setting and need no permission; taps closer than 35 ms apart are merged, so fast typing doesn't run into a buzz. App builds from before simply don't tap.
 
 A record added without a connection is kept on the phone (`web/src/outbox.ts`), counted in the balances and lists with a **Not sent yet** badge, and sent when the server answers again: on the next start, when the app comes back into view, or when the phone is back online. It carries a `client_id`, so a resend after a lost answer doesn't add it twice. Until it's sent it can be edited or deleted on the phone; other edits and deletes need a connection. One the server refuses (say, its account was deleted meanwhile) stays with **Couldn't send** until it's changed or deleted.
+
+## Native screens
+
+The app is moving from the web view to native screens (Kotlin and Jetpack Compose, `app/src/main/java/com/rudnam/wallet/screens`), one page at a time, so each release can ship a page without waiting for the rest. So far there is one: **Wallet** (`#/home`), off by default; Settings › Native Wallet turns it on.
+
+- **Over the web view.** `NativeOverlay` draws the native screen over the web view, which keeps running underneath. The web app still decides where the user is: on Wallet it calls `NativeScreens.show()`, and anywhere else `hide()` (`web/src/native.ts`, `App.tsx`). So Android's back gesture, links from the widgets and every other page work as before, and going back to a web page is instant.
+- **Taps on what isn't native yet** go back to the web app as an `open` event (`NativeScreensPlugin`): a page and its parameters (a tab, an account's card, search), `add` for the plus, or a record's JSON, which the web app opens in its form. The native screen hides while the form is open and reloads when it comes back.
+- **The same session and data.** It reads the web app's session and server from Capacitor's preferences, as the widgets do, and asks the same API (`WalletApi`: `/api/wallet`, `/api/transactions`, `/api/budgets`). It keeps the last answers for the month, so it opens on them at once and shows them offline.
+- **The same look.** `Theme.kt` holds the web's design tokens (the top of `web/src/styles.css`, light and dark), `Icons.kt` its line icons, and `res/font` its Inter, converted from `web/src/fonts` by `fonts.py`. Change them together. It follows the web app's language and Settings › Appearance, which `show()` passes on.
+- **Where the web Wallet stays:** in a demo, while an email waits to be confirmed or an update is offered, and while the first-run checklist shows (banners the native Wallet doesn't have yet). Not native yet either: rearranging the cards by holding one, and records added offline (the outbox lives in the web view) until they're sent.
+- **Testing.** `./gradlew testDebugUnitTest -Proborazzi.test.record=true` (in `android/`) runs `app/src/test` on the JVM with Robolectric and draws the screens at phone size, light, dark and Japanese, into `app/build/outputs/roborazzi/`. CI runs it in the `android` job and keeps the pictures as the `native-screenshots` artifact. `./verify.sh` doesn't run these; its browser tests cover the web app's side (`e2e/tests/native-home.spec.js`).
+
+To make another page native: add its screen in `screens/`, show it from `App.tsx` for its route like Wallet, and send anything it can't do yet to the web app with `open`.
 
 ## How the app signs in
 

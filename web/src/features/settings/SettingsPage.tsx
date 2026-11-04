@@ -12,6 +12,7 @@ import { useWallet } from '../../wallet';
 import { hapticSelect, isApp } from '../../native';
 import { setAppearance, useAppearance, type Appearance } from '../../appearance';
 import { WidgetSettings } from './WidgetSettings';
+import { NativeHomeSettings } from './NativeHomeSettings';
 import { NotificationSettings } from './NotificationSettings';
 import { ClaudeSettings } from './ClaudeSettings';
 import { LanguageSettings } from './LanguageSettings';
@@ -50,6 +51,7 @@ const sections: { id: string; label: Key; title: Key; glyph: string; group: Key;
   // Currency: only until the first record (Wallet's checklist links here); not in the list.
   { id: 'general', label: 'Currency', title: 'Currency', glyph: 'money', group: 'App', hidden: true },
   { id: 'widgets', label: 'Home screen widgets', title: 'Home screen widgets', glyph: 'phone', group: 'App', app: true },
+  { id: 'native', label: 'Native Wallet', title: 'Native Wallet', glyph: 'phone', group: 'App', app: true },
   { id: 'claude', label: 'Claude', title: 'Claude', glyph: 'spark', group: 'App' },
 ];
 const groups: Key[] = ['Money', 'Recording payments', 'App'];
@@ -88,6 +90,7 @@ export function SettingsPage({
         {open.id === 'general' && <General />}
         {open.id === 'import' && <Import />}
         {open.id === 'widgets' && <WidgetSettings />}
+        {open.id === 'native' && <NativeHomeSettings />}
         {open.id === 'language' && <LanguageSettings />}
         {open.id === 'appearance' && <AppearanceSettings />}
       </section>
@@ -105,6 +108,7 @@ export function SettingsPage({
     general: w.settings.currency,
     import: 'PayPay, MUFG, BudgetBakers',
     widgets: 'Android',
+    native: t('Preview'),
     language: languages.find((l) => l.code === language())!.name,
     appearance: t(appearanceNames[appearance]),
   };
