@@ -790,7 +790,10 @@ test('holding a card on Wallet lifts it, and dragging it changes the order', asy
   await page.waitForTimeout(600);
   await expect(stack.locator('.wallet-card.lifted')).toHaveCount(1);
   for (let y = 1; y <= 6; y++) await page.mouse.move(back.x + 40, back.y + 20 + y * 20);
+  // Letting go saves the order; the reload below waits for it to be saved.
+  const saved = page.waitForResponse((r) => r.url().endsWith('/api/accounts/order') && r.request().method() === 'PUT');
   await page.mouse.up();
+  expect((await saved).status()).toBe(204);
   await expect(stack.locator('.wallet-card.lifted')).toHaveCount(0);
   await expect.poll(names).toEqual(['Bank', 'Cash', 'Card']);
   // Dropping didn't open the card, and the order is kept.
