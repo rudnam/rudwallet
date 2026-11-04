@@ -5,7 +5,7 @@ import type { BarItem } from '../../components/charts';
 import { TransactionForm } from '../../components/TransactionForm';
 import { TransactionList } from '../../components/TransactionList';
 import { addMonths, daysInMonth, monthStart } from '../../money';
-import { href } from '../../router';
+import { href, openingCard } from '../../router';
 import { CategoryIcon, Icon, icons } from '../../components/Icon';
 import { Figure } from '../../components/Figure';
 import { AccountForm, accountKinds } from '../settings/SettingsPage';
@@ -364,6 +364,7 @@ function CardStack({ accounts }: { accounts: Account[] }) {
             onContextMenu={(e) => e.preventDefault()}
             onClick={(e) => {
               if (dragged.current) e.preventDefault();
+              else openingCard(id, e.currentTarget.getBoundingClientRect());
             }}
           >
             <span className="wallet-card-head">
