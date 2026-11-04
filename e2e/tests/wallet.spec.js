@@ -866,6 +866,21 @@ test('moving between pages slides the page, and a card grows into its account', 
   await expect(page.locator('.hero-figure')).toBeVisible();
 });
 
+test('two moves in quick succession end on the page the address names', async ({ page }) => {
+  await signUp(page);
+  await page.goto('/app/#/records');
+  await expect(page.getByRole('heading', { name: 'Activity' })).toBeVisible();
+  // Off to Insights and straight back, before the first move has drawn.
+  await page.evaluate(() => {
+    location.hash = '#/stats';
+    setTimeout(() => (location.hash = '#/records'), 0);
+  });
+  await page.waitForTimeout(800);
+  await expect(page).toHaveURL(/#\/records$/);
+  await expect(page.getByRole('heading', { name: 'Activity' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Insights' })).toHaveCount(0);
+});
+
 test.describe('with reduced motion', () => {
   test.use({ reducedMotion: 'reduce' });
   test('pages change without animating', async ({ page }) => {

@@ -49,8 +49,14 @@ const listeners = new Set<() => void>();
 function onHashChange() {
   const next = parse();
   const how = move(current, next);
+  // The page drawn is always the one the address names when it's drawn: a transition
+  // updates the page only once the old one is captured, and by then another move may
+  // have come and gone, so an update made from the route it started with could put
+  // back a page the address has already left.
   const show = () => {
-    current = next;
+    const now = parse();
+    if (now.page === current.page && now.params.toString() === current.params.toString()) return;
+    current = now;
     listeners.forEach((l) => l());
     window.scrollTo(0, 0);
   };

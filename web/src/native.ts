@@ -49,6 +49,9 @@ export type ICCardTap = ICCardRead | { error: string };
 // it is open.
 let tappedCard: ICCardTap | null = null;
 let tapHandler: ((tap: ICCardTap) => void) | null = null;
+// The address of the page that took the handler: a page on its way out (the address
+// has moved on, but a page transition hasn't swapped it yet) doesn't take taps.
+let tapOwner = '';
 
 /** Takes the card tapped to the phone, if one is waiting for the import. */
 export function takeTappedICCard(): ICCardTap | null {
@@ -65,6 +68,7 @@ export function keepICCard(read: ICCardRead): void {
 /** Hands cards tapped while the card screen or the import is open straight to it. */
 export function onICCardTapped(handler: (tap: ICCardTap) => void): () => void {
   tapHandler = handler;
+  tapOwner = location.hash;
   return () => {
     if (tapHandler === handler) tapHandler = null;
   };
@@ -220,7 +224,7 @@ export function onAppLinks(handlers: {
   // A card tapped to the phone. The plugin keeps it until this listens.
   const tapped = icCard
     .addListener('tapped', (tap) => {
-      if (tapHandler) {
+      if (tapHandler && location.hash === tapOwner) {
         tapHandler(tap);
         return;
       }
