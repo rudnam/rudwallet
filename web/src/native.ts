@@ -24,7 +24,6 @@ export const isApp = Capacitor.isNativePlatform();
 const nativeNav = registerPlugin<{
   config(): Promise<NativeConfig>;
   go(o: { path: string; replace?: boolean }): Promise<void>;
-  back(): Promise<void>;
   overlay(o: { open: boolean }): Promise<void>;
   setAppearance(o: { appearance: string }): Promise<void>;
   setLanguage(o: { language: string }): Promise<void>;
@@ -51,11 +50,6 @@ export function nativeConfig(): Promise<NativeConfig | null> {
 /** Asks the app for a page, e.g. "records?account=3". [replace]: instead of the page shown now. */
 export function nativeGo(path: string, replace = false): void {
   nativeNav.go({ path, replace }).catch(() => {});
-}
-
-/** Leaves the page shown now (a sheet opened on its own was closed). */
-export function nativeBack(): void {
-  nativeNav.back().catch(() => {});
 }
 
 /** Tells the app a sheet or dialog is open, so its back gesture closes that first. */

@@ -10,9 +10,10 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.compose.runtime.collectAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.rudnam.wallet.feature.record.navigation.RecordRoute
 import com.rudnam.wallet.feature.wallet.navigation.WalletRoute
 import com.rudnam.wallet.navigation.TopLevelDestination
 import com.rudnam.wallet.navigation.WebRoute
@@ -27,14 +28,18 @@ class RudWalletAppState(val navController: NavHostController) {
     /** A sheet or dialog is open in the web view: back closes it rather than leaving the page. */
     var webOverlayOpen: Boolean by mutableStateOf(false)
 
+    /** The page on screen: the top entry that isn't a dialog (a sheet over a page leaves the page showing). */
+    private val page: NavBackStackEntry?
+        @Composable get() = navController.visibleEntries.collectAsState().value.lastOrNull { it.destination.navigatorName != "dialog" }
+
     /** The web page shown now, or null on a native screen. */
     val webPath: String?
-        @Composable get() = navController.currentBackStackEntryAsState().value?.let(::webPathOf)
+        @Composable get() = page?.let(::webPathOf)
 
     /** The tab whose page is shown now: the tabs show only there. A page under a tab has its own way back. */
     val currentTab: TopLevelDestination?
         @Composable get() {
-            val destination = navController.currentBackStackEntryAsState().value?.destination ?: return null
+            val destination = page?.destination ?: return null
             return TopLevelDestination.entries.firstOrNull { destination.hasRoute(it.route::class) }
         }
 
@@ -53,6 +58,11 @@ class RudWalletAppState(val navController: NavHostController) {
      */
     fun openPath(path: String, replace: Boolean = false) {
         val page = path.substringBefore('?').ifEmpty { "home" }
+        // The record sheet, over the page shown now.
+        if (page == "add") {
+            navController.navigate(RecordRoute())
+            return
+        }
         // Home is Wallet, where the app starts: back to it, whatever was opened over it.
         if (page == "home") {
             if (!navController.popBackStack(WalletRoute, inclusive = false)) showWallet()

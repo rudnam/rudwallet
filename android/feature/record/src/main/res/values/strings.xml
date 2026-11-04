@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Worded as the website words them; web/src/locales/ja.ts has the Japanese. -->
+<resources>
+    <string name="feature_record_new">New record</string>
+    <string name="feature_record_edit">Edit record</string>
+    <string name="feature_record_review">Review payment</string>
+    <string name="feature_record_expense">Expense</string>
+    <string name="feature_record_income">Income</string>
+    <string name="feature_record_transfer">Transfer</string>
+    <string name="feature_record_type">Type</string>
+    <string name="feature_record_amount">Amount (%s)</string>
+    <string name="feature_record_amount_label">Amount</string>
+    <string name="feature_record_category">Category</string>
+    <string name="feature_record_more">More</string>
+    <string name="feature_record_fewer">Fewer</string>
+    <string name="feature_record_payee">Payee</string>
+    <string name="feature_record_from_whom">From whom</string>
+    <string name="feature_record_payee_hint">Shop or person</string>
+    <string name="feature_record_from_whom_hint">Employer, friend…</string>
+    <string name="feature_record_recently_paid">Recently paid</string>
+    <string name="feature_record_account">Account</string>
+    <string name="feature_record_from">From</string>
+    <string name="feature_record_to">To</string>
+    <string name="feature_record_date">Date</string>
+    <string name="feature_record_note">Note</string>
+    <string name="feature_record_optional">Optional</string>
+    <string name="feature_record_tags">Tags</string>
+    <string name="feature_record_tag_hint">Trip, work…</string>
+    <string name="feature_record_tag_another">Add another</string>
+    <plurals name="feature_record_tag_full">
+        <item quantity="one">At most %d tag</item>
+        <item quantity="other">At most %d tags</item>
+    </plurals>
+    <string name="feature_record_remove_tag">Remove tag %s</string>
+    <string name="feature_record_extras">Add a note or tags</string>
+    <string name="feature_record_save">Save</string>
+    <string name="feature_record_confirm">Confirm</string>
+    <string name="feature_record_delete">Delete</string>
+    <string name="feature_record_delete_ask">Delete this record?</string>
+    <string name="feature_record_cancel">Cancel</string>
+    <string name="feature_record_changes_title">Save changes?</string>
+    <string name="feature_record_changes_save">Save changes</string>
+    <string name="feature_record_back">Back</string>
+    <string name="feature_record_none">None</string>
+    <string name="feature_record_no_amount_yen">Enter an amount, like 1200.</string>
+    <string name="feature_record_no_amount_cents">Enter an amount, like 12.50.</string>
+    <string name="feature_record_offline">Can’t reach the server. Changing a saved record needs a connection.</string>
+    <string name="feature_record_sent_meanwhile">This record was just sent. Open it again to change it.</string>
+    <string name="feature_record_signed_out">You’ve been signed out. Sign in again to save.</string>
+    <string name="feature_record_delete_digit">Delete last digit</string>
+    <string name="feature_record_number_pad">Number pad</string>
+    <string name="feature_record_notice_card">From a notification (%s). Check it, pick a category, and confirm. Next time, this shop and card are filled in for you.</string>
+    <string name="feature_record_notice">From a notification. Check it, pick a category, and confirm. Next time, this shop and card are filled in for you.</string>
+    <string name="feature_record_duplicate">You already have a record of the same amount around this time. If it’s the same payment, delete this one.</string>
+    <string name="feature_record_waiting">Saved on this phone. It’s sent when you’re online.</string>
+    <string name="feature_record_refused">The server didn’t take this record: %s. Change it and save, or delete it.</string>
+</resources>

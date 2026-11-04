@@ -42,6 +42,11 @@ object WalletIcons {
     const val check = "M5 12.5l4.5 4.5L19 7"
     const val download = "M12 4v11M7 10.5l5 5 5-5M5 20h14"
     const val chevron = "M9 6l6 6-6 6"
+    const val close = "M6 6l12 12M18 6L6 18"
+    const val more = "M6 12h.01M12 12h.01M18 12h.01"
+    const val level = "M4 12h16M15 7l5 5-5 5"
+    const val backspace = "M21 5H9l-6 7 6 7h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1zM12 9l6 6M18 9l-6 6"
+    const val calendar = "M4 6.5h16V20H4zM4 10.5h16M8.5 4v4M15.5 4v4"
     const val dot = "M12 12h.01"
     const val plus = "M12 5v14M5 12h14"
 

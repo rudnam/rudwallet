@@ -102,7 +102,6 @@ async function asAndroidApp(page, { build = 3, installer = 'com.google.android.p
         'ICCard.removeListener': ({ callbackId }) => void delete window.listeners[callbackId],
         'NativeNav.config': () => nativeNav,
         'NativeNav.go': asked('go'),
-        'NativeNav.back': asked('back'),
         'NativeNav.overlay': asked('overlay'),
         'NativeNav.setAppearance': asked('setAppearance'),
         'NativeNav.setLanguage': asked('setLanguage'),
@@ -129,7 +128,7 @@ async function asAndroidApp(page, { build = 3, installer = 'com.google.android.p
                 {
                   name: 'NativeNav',
                   methods: [
-                    ...['config', 'go', 'back', 'overlay', 'setAppearance', 'setLanguage', 'removeListener'].map((name) => ({ name, rtype: 'promise' })),
+                    ...['config', 'go', 'overlay', 'setAppearance', 'setLanguage', 'removeListener'].map((name) => ({ name, rtype: 'promise' })),
                     { name: 'addListener', rtype: 'callback' },
                   ],
                 },

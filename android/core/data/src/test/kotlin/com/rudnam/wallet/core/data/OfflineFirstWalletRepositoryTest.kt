@@ -65,6 +65,13 @@ class OfflineFirstWalletRepositoryTest {
         override suspend fun notifications() = NetworkNotifications()
 
         override suspend fun downloads() = NetworkDownloads(NetworkApk("/download/wallet.apk", 5))
+
+        override suspend fun confirmedSince(from: Instant) = records
+        override suspend fun createRecord(input: com.rudnam.wallet.core.network.model.NetworkRecordInput) = error("not used")
+        override suspend fun updateRecord(id: Long, input: com.rudnam.wallet.core.network.model.NetworkRecordInput) = error("not used")
+        override suspend fun deleteRecord(id: Long) = Unit
+        override suspend fun restoreRecords(ids: List<Long>) = Unit
+        override suspend fun tags() = emptyList<com.rudnam.wallet.core.network.model.NetworkTag>()
     }
 
     private val from = Instant.parse("2026-10-31T15:00:00Z")
@@ -73,7 +80,7 @@ class OfflineFirstWalletRepositoryTest {
     @Test
     fun `a refresh fills the phone, offline keeps it, and signing out empties it`() = runTest {
         val network = FakeNetwork()
-        val repository = OfflineFirstWalletRepository(network, db.walletDao(), db.transactionDao(), db.budgetDao(), WalletCache(db), StandardTestDispatcher(testScheduler))
+        val repository = OfflineFirstWalletRepository(network, db.walletDao(), db.transactionDao(), db.budgetDao(), db.outboxDao(), WalletCache(db), StandardTestDispatcher(testScheduler))
         assertNull(repository.wallet.first())
 
         assertEquals(SyncResult.Done, repository.refresh(from, to))

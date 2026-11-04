@@ -15,6 +15,28 @@ data class Wallet(
 
     fun category(id: Long?): Category? = id?.let(categoriesById::get)
 
+    /**
+     * The wallet with records not on the server yet counted in, as the user
+     * expects to see them: each changes its account's balance as it will
+     * once it's sent.
+     */
+    fun withPending(records: List<Transaction>): Wallet {
+        if (records.isEmpty()) return this
+        val change = HashMap<Long, Long>()
+        for (t in records) {
+            if (!t.confirmed) continue
+            when (t.kind) {
+                TransactionKind.Expense -> change.merge(t.accountId, -t.amount, Long::plus)
+                TransactionKind.Income -> change.merge(t.accountId, t.amount, Long::plus)
+                TransactionKind.Transfer -> {
+                    change.merge(t.accountId, -t.amount, Long::plus)
+                    t.toAccountId?.let { change.merge(it, t.amount, Long::plus) }
+                }
+            }
+        }
+        return copy(accounts = accounts.map { a -> change[a.id]?.let { a.copy(balance = a.balance + it) } ?: a })
+    }
+
     /** The accounts in use, archived ones left out. */
     val activeAccounts: List<Account> get() = accounts.filterNot { it.archived }
 

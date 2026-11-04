@@ -38,6 +38,15 @@ class MoneyFormat(
         return if (signed && amount > 0) "+$text" else text
     }
 
+    /** The currency's sign, as [money] writes it: "¥", "$". */
+    val symbol: String get() = tidy(currency.currency?.getSymbol(locale) ?: settings.currency)
+
+    /** A day and time: "Today, 9:30", or e.g. "Thu, Nov 12, 18:05". */
+    fun dateTime(at: Instant, today: String? = null, yesterday: String? = null, now: Instant = Instant.now()): String {
+        val day = if (today != null && yesterday != null) day(at, today, yesterday, now) else day(at, "", "", Instant.EPOCH)
+        return day + ", " + at.atZone(zone).toLocalTime().format(DateTimeFormatter.ofPattern(pattern("jmm"), locale))
+    }
+
     /** The month's name, e.g. "November" or "11月". */
     fun monthName(month: YearMonth): String =
         month.atDay(1).format(DateTimeFormatter.ofPattern(pattern("MMMM"), locale))

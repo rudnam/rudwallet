@@ -1,13 +1,26 @@
 package com.rudnam.wallet.core.network.retrofit
 
+import com.rudnam.wallet.core.network.ApiException
 import com.rudnam.wallet.core.network.WalletNetworkDataSource
 import com.rudnam.wallet.core.network.model.NetworkBudget
 import com.rudnam.wallet.core.network.model.NetworkDownloads
+import com.rudnam.wallet.core.network.model.NetworkError
+import com.rudnam.wallet.core.network.model.NetworkIds
 import com.rudnam.wallet.core.network.model.NetworkNotifications
+import com.rudnam.wallet.core.network.model.NetworkRecordInput
+import com.rudnam.wallet.core.network.model.NetworkTag
 import com.rudnam.wallet.core.network.model.NetworkTransaction
 import com.rudnam.wallet.core.network.model.NetworkWallet
+import kotlinx.serialization.json.Json
+import retrofit2.HttpException
+import retrofit2.Response
 import retrofit2.Retrofit
+import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.POST
+import retrofit2.http.PUT
+import retrofit2.http.Path
 import retrofit2.http.Query
 import java.time.Instant
 import java.time.OffsetDateTime
@@ -22,7 +35,26 @@ internal interface WalletApi {
     suspend fun wallet(): NetworkWallet
 
     @GET("api/transactions")
-    suspend fun transactions(@Query("from") from: String, @Query("to") to: String): List<NetworkTransaction>
+    suspend fun transactions(
+        @Query("from") from: String,
+        @Query("to") to: String? = null,
+        @Query("status") status: String? = null,
+    ): List<NetworkTransaction>
+
+    @POST("api/transactions")
+    suspend fun createTransaction(@Body input: NetworkRecordInput): NetworkTransaction
+
+    @PUT("api/transactions/{id}")
+    suspend fun updateTransaction(@Path("id") id: Long, @Body input: NetworkRecordInput): NetworkTransaction
+
+    @DELETE("api/transactions/{id}")
+    suspend fun deleteTransaction(@Path("id") id: Long): Response<Unit>
+
+    @POST("api/transactions/restore")
+    suspend fun restoreTransactions(@Body ids: NetworkIds): Response<Unit>
+
+    @GET("api/tags")
+    suspend fun tags(): List<NetworkTag>
 
     @GET("api/budgets")
     suspend fun budgets(): List<NetworkBudget>
@@ -35,18 +67,43 @@ internal interface WalletApi {
 }
 
 @Singleton
-internal class RetrofitWalletNetwork @Inject constructor(retrofit: Retrofit) : WalletNetworkDataSource {
+internal class RetrofitWalletNetwork @Inject constructor(retrofit: Retrofit, private val json: Json) : WalletNetworkDataSource {
     private val api = retrofit.create(WalletApi::class.java)
 
-    override suspend fun wallet() = api.wallet()
+    override suspend fun wallet() = call { api.wallet() }
 
-    override suspend fun transactions(from: Instant, to: Instant) = api.transactions(rfc3339(from), rfc3339(to))
+    override suspend fun transactions(from: Instant, to: Instant) = call { api.transactions(rfc3339(from), rfc3339(to)) }
 
-    override suspend fun budgets() = api.budgets()
+    override suspend fun confirmedSince(from: Instant) = call { api.transactions(rfc3339(from), status = "confirmed") }
 
-    override suspend fun notifications() = api.notifications()
+    override suspend fun createRecord(input: NetworkRecordInput) = call { api.createTransaction(input) }
 
-    override suspend fun downloads() = api.downloads()
+    override suspend fun updateRecord(id: Long, input: NetworkRecordInput) = call { api.updateTransaction(id, input) }
+
+    override suspend fun deleteRecord(id: Long) = call { api.deleteTransaction(id).orThrow() }
+
+    override suspend fun restoreRecords(ids: List<Long>) = call { api.restoreTransactions(NetworkIds(ids)).orThrow() }
+
+    override suspend fun tags() = call { api.tags() }
+
+    override suspend fun budgets() = call { api.budgets() }
+
+    override suspend fun notifications() = call { api.notifications() }
+
+    override suspend fun downloads() = call { api.downloads() }
+
+    private fun Response<Unit>.orThrow() {
+        if (!isSuccessful) throw HttpException(this)
+    }
+
+    /** A refusal becomes an [ApiException] with the server's message for the user (internal/httpx). */
+    private suspend fun <T> call(block: suspend () -> T): T = try {
+        block()
+    } catch (e: HttpException) {
+        val body = e.response()?.errorBody()?.string().orEmpty()
+        val message = runCatching { json.decodeFromString<NetworkError>(body).error }.getOrNull().orEmpty()
+        throw ApiException(e.code(), message.ifEmpty { e.message() })
+    }
 
     /** In the phone's time zone, as the web app sends it, e.g. 2026-11-01T00:00:00+09:00. */
     private fun rfc3339(t: Instant): String =

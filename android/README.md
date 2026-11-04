@@ -1,6 +1,6 @@
 # Android app
 
-The Android app is becoming a native app (Kotlin, Jetpack Compose, Material 3), a page at a time. The app's shell is native: the activity, the four tabs, navigation, and **Wallet**. The pages not ported yet are still the web app (`web/`), built into the app and shown by [Capacitor](https://capacitorjs.com) in a web view under the native tabs. When the last page is native, Capacitor and the web bundle leave the app; the website stays. See **Native app** below for how it's built, and **The web view, until it's gone** for how the two fit together.
+The Android app is becoming a native app (Kotlin, Jetpack Compose, Material 3), a page at a time. The app's shell is native: the activity, the four tabs, navigation, **Wallet**, and the **record sheet** (adding, changing, confirming and deleting a record). The pages not ported yet are still the web app (`web/`), built into the app and shown by [Capacitor](https://capacitorjs.com) in a web view under the native tabs. When the last page is native, Capacitor and the web bundle leave the app; the website stays. See **Native app** below for how it's built, and **The web view, until it's gone** for how the two fit together.
 
 Native code also does what the web can't: home screen widgets, Sign in with Google through the phone's browser, reading payment notifications, and reading transit IC cards over NFC.
 
@@ -64,10 +64,11 @@ The structure follows Android's [architecture guide](https://developer.android.c
 |---|---|
 | `app` | The activity (`MainActivity`: edge to edge, the splash screen, links into the app), the app's scaffold and tabs (`ui/RudWalletApp.kt`), navigation (`ui/RudWalletAppState.kt`, `navigation/`), and the web view host (`web/`). Also the Java that predates the native app: widgets, payment notifications, the Capacitor plugins. |
 | `feature/wallet` | Wallet: `WalletViewModel` (state as a `StateFlow` of `WalletUiState`), `WalletScreen`, the card stack, and its navigation entry. Each tab becomes a `feature/*` module like this one. |
+| `feature/record` | The record sheet (`RecordRoute`, a dialog destination holding Material's modal bottom sheet): the number pad, category tiles (the most used first), a shop's usual category and account, accounts, date and time pickers, note and tags; "Save changes?" for an edit, and confirming a record to review. `RecordForm.kt` is its logic in plain Kotlin. |
 | `core/model` | The app's types (accounts, categories, records, budgets) in plain Kotlin. |
 | `core/network` | The API with Retrofit and kotlinx.serialization (`WalletNetworkDataSource`); `AuthInterceptor` signs requests in as the app. The server's address is `VITE_SERVER` in `web/.env.android`, or `-Prudwallet.server=…`. |
 | `core/database` | Room: the phone's copy of the wallet. Schemas are kept in `core/database/schemas`; a new version adds a migration. |
-| `core/data` | Repositories, offline first: screens read Room's flows, and `refresh` brings Room up to date from the server (`OfflineFirstWalletRepository`). `UpdateRepository` offers newer builds. |
+| `core/data` | Repositories, offline first: screens read Room's flows, and `refresh` brings Room up to date from the server (`OfflineFirstWalletRepository`). `RecordRepository` adds, changes and deletes records; a new one without a connection goes to the outbox, and `OutboxWorker` (WorkManager, Hilt) sends it when there's one. `RecordEvents` tells the app what the sheet did, for its snackbar and Undo. `UpdateRepository` offers newer builds. |
 | `core/datastore` | The session (for now, the token the web app keeps in Capacitor's preferences) and the user's preferences (DataStore). |
 | `core/designsystem` | RudWallet on Material 3: the colours (`theme/Theme.kt`, the same tokens as `web/src/styles.css`), Inter (`res/font`, converted from `web/src/fonts` by `android/fonts.py`), the line icons, `WalletPanel`. |
 | `core/ui` | Pieces that know the models: `MoneyFormat` (money and dates in the app's language), `CategoryIcon`, the record list. |
@@ -85,7 +86,7 @@ The web app knows it's inside the native app when the `NativeNav` plugin exists 
 
 - It draws no tabs and no plus of its own (`.embedded` in `web/src/styles.css`).
 - It asks for every page change (`NativeNav.go`) instead of making it, and shows the page the app says (`show`); native navigation keeps the back stack, and Android's back gesture moves through it. A sheet or dialog that's open tells the app (`overlay`), so back closes it first (`back`). Capacitor's own back handling is off (`App.disableBackButtonHandler` in `web/capacitor.config.json`).
-- `#/add` is the new record sheet on its own, and `#/record?id=…&from=…&to=…` a record's form, for Wallet's plus and its records; closing either leaves the page.
+- Asking for `#/add` (the widget's New record, say) opens the app's own record sheet.
 - Appearance and Language follow the app (`config`), and a choice made in its Settings goes to the app.
 - It handles Google sign-in coming back and IC cards itself (`MainActivity` passes those intents to the web view); `<package>://open/<page>` from the widgets the app opens itself.
 
@@ -97,9 +98,11 @@ To make a page native: add its `feature/*` module with a route, open its paths n
 
 The splash screen (`styles.xml`, Android 12's, back-ported) stays up until the session is known and, signed out, until the web view has drawn the sign-in page (`SplashPlugin`), 3 seconds at most. Wallet opens on what's in the database at once and asks the server meanwhile; offline, it shows what it has, and pulling down to refresh says the server can't be reached.
 
+A record added in the record sheet without a connection goes to the outbox (Room's `outbox` table) with a `client_id`, and shows at once in the lists with **Not sent yet**, counted in its account's balance. `OutboxWorker` sends what's waiting, oldest first, as soon as there's a connection, even if the app was closed since; sending one twice adds it once. Until it's sent it can be changed or deleted on the phone; changing or deleting a record the server has needs a connection. One the server refuses stays with **Couldn't send** until it's changed or deleted. Signing out empties the database, the outbox with it.
+
 Haptics mark moments, not every touch (`HapticsPlugin`, called through `web/src/native.ts`): a number pad key feels like the phone's keyboard (`KEYBOARD_TAP`); picking a category, an account or expense/income is a light tick (`SEGMENT_TICK`, `CLOCK_TICK` before Android 14); a swipe passing the point where letting go acts is a detent (`GESTURE_THRESHOLD_ACTIVATE`); something saved or confirmed is `CONFIRM`; something refused, such as saving without an amount, is `REJECT` (both from Android 11, with the nearest older feedback before). Opening pages and rows doesn't buzz. All follow the system's touch feedback setting and need no permission; taps closer than 35 ms apart are merged, so fast typing doesn't run into a buzz. App builds from before simply don't tap.
 
-In the web view's pages, a record added without a connection is kept on the phone (`web/src/outbox.ts`), counted in the balances and lists with a **Not sent yet** badge, and sent when the server answers again: on the next start, when the app comes back into view, or when the phone is back online. It carries a `client_id`, so a resend after a lost answer doesn't add it twice. Until it's sent it can be edited or deleted on the phone; other edits and deletes need a connection. One the server refuses (say, its account was deleted meanwhile) stays with **Couldn't send** until it's changed or deleted.
+In the web view's pages, a record added there without a connection is kept by the web app (`web/src/outbox.ts`), counted in the balances and lists with a **Not sent yet** badge, and sent when the server answers again: on the next start, when the app comes back into view, or when the phone is back online. It carries a `client_id`, so a resend after a lost answer doesn't add it twice. Until it's sent it can be edited or deleted on the phone; other edits and deletes need a connection. One the server refuses (say, its account was deleted meanwhile) stays with **Couldn't send** until it's changed or deleted.
 
 ## How the app signs in
 

@@ -56,3 +56,23 @@ class TestUpdateRepository(var update: AppUpdate? = null) : UpdateRepository {
         this.update = null
     }
 }
+
+/** A [RecordRepository] that keeps what it's asked, and answers as the test says. */
+class TestRecordRepository(private val wallet: TestWalletRepository? = null) : com.rudnam.wallet.core.data.repository.RecordRepository {
+    val added = mutableListOf<com.rudnam.wallet.core.model.RecordInput>()
+    val updated = mutableListOf<Pair<Long, com.rudnam.wallet.core.model.RecordInput>>()
+    val deleted = mutableListOf<Long>()
+    var next: com.rudnam.wallet.core.data.repository.SaveResult = com.rudnam.wallet.core.data.repository.SaveResult.Done
+    var records: Map<Long, Transaction> = emptyMap()
+    var habits = com.rudnam.wallet.core.data.repository.RecordHabits(emptyMap(), emptyMap(), emptyList())
+    var lastAccount: Long? = null
+
+    override suspend fun add(input: com.rudnam.wallet.core.model.RecordInput) = next.also { added += input }
+    override suspend fun update(id: Long, input: com.rudnam.wallet.core.model.RecordInput) = next.also { updated += id to input }
+    override suspend fun delete(id: Long) = next.also { deleted += id }
+    override suspend fun restore(id: Long) = next
+    override suspend fun get(id: Long) = records[id]
+    override suspend fun habits() = habits
+    override suspend fun lastAccount() = lastAccount
+    override suspend fun sendPending() = SyncResult.Done
+}

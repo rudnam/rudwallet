@@ -67,7 +67,15 @@ class MainActivity : AppCompatActivity() {
             }
             val reviewCount by viewModel.reviewCount.collectAsStateWithLifecycle()
             WalletTheme(darkTheme = dark) {
-                RudWalletApp(signedIn = ready.signedIn, reviewCount = reviewCount, links = links.receiveAsFlow())
+                val settings by viewModel.settings.collectAsStateWithLifecycle()
+                RudWalletApp(
+                    signedIn = ready.signedIn,
+                    reviewCount = reviewCount,
+                    links = links.receiveAsFlow(),
+                    recordEvents = viewModel.recordEvents,
+                    settings = settings,
+                    onUndo = viewModel::undo,
+                )
             }
         }
     }

@@ -116,9 +116,6 @@ sealed interface WebRequest {
     /** Go to a page (the web app navigated). [replace]: instead of the page shown now, not on top of it. */
     data class Go(val path: String, val replace: Boolean) : WebRequest
 
-    /** Leave the page shown now, e.g. a sheet opened on its own was closed. */
-    data object Back : WebRequest
-
     /** A sheet or dialog opened or closed over the page: while one is open, back closes it. */
     data class Overlay(val open: Boolean) : WebRequest
 }

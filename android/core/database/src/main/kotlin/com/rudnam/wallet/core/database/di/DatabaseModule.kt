@@ -26,4 +26,7 @@ object DatabaseModule {
 
     @Provides
     fun budgetDao(db: WalletDatabase) = db.budgetDao()
+
+    @Provides
+    fun outboxDao(db: WalletDatabase) = db.outboxDao()
 }

@@ -70,6 +70,16 @@ interface TransactionDao {
 
     @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
     suspend fun upsert(records: List<TransactionEntity>)
+
+    @Query("SELECT * FROM transactions WHERE id = :id")
+    suspend fun get(id: Long): TransactionEntity?
+
+    @Query("DELETE FROM transactions WHERE id = :id")
+    suspend fun delete(id: Long)
+
+    /** Records since [from] the phone has, newest first. */
+    @Query("SELECT * FROM transactions WHERE occurredAt >= :from ORDER BY occurredAt DESC, id DESC")
+    suspend fun since(from: Instant): List<TransactionEntity>
 }
 
 @Dao

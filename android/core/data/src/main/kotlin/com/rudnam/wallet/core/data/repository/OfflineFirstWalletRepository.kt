@@ -4,13 +4,17 @@ import com.rudnam.wallet.core.common.Dispatcher
 import com.rudnam.wallet.core.common.WalletDispatchers
 import com.rudnam.wallet.core.database.WalletCache
 import com.rudnam.wallet.core.database.dao.BudgetDao
+import com.rudnam.wallet.core.database.dao.OutboxDao
+import com.rudnam.wallet.core.database.model.asTransaction
 import com.rudnam.wallet.core.database.dao.TransactionDao
 import com.rudnam.wallet.core.database.dao.WalletDao
 import com.rudnam.wallet.core.database.model.WalletEntity
 import com.rudnam.wallet.core.database.model.asEntity
 import com.rudnam.wallet.core.database.model.asModel
 import com.rudnam.wallet.core.database.model.settings
+import com.rudnam.wallet.core.model.Transaction
 import com.rudnam.wallet.core.model.Wallet
+import com.rudnam.wallet.core.network.ApiException
 import com.rudnam.wallet.core.network.SignedOutException
 import com.rudnam.wallet.core.network.WalletNetworkDataSource
 import com.rudnam.wallet.core.network.model.asModel
@@ -23,7 +27,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
-import retrofit2.HttpException
 import java.io.IOException
 import java.time.Instant
 import javax.inject.Inject
@@ -33,21 +36,33 @@ internal class OfflineFirstWalletRepository @Inject constructor(
     private val walletDao: WalletDao,
     private val transactionDao: TransactionDao,
     private val budgetDao: BudgetDao,
+    private val outboxDao: OutboxDao,
     private val cache: WalletCache,
     @Dispatcher(WalletDispatchers.IO) private val io: CoroutineDispatcher,
 ) : WalletRepository {
+    /** Records not on the server yet, as they're shown meanwhile. */
+    private val pending = outboxDao.observeAll().map { list -> list.map { it.asTransaction() } }
+
     override val wallet: Flow<Wallet?> = combine(
         walletDao.observeWallet(),
         walletDao.observeAccounts(),
         walletDao.observeCategories(),
-    ) { w, accounts, categories ->
-        w?.let { Wallet(it.settings(), accounts.map { a -> a.asModel() }, categories.map { c -> c.asModel() }, it.reviewCount) }
+        pending,
+    ) { w, accounts, categories, waiting ->
+        w?.let {
+            Wallet(it.settings(), accounts.map { a -> a.asModel() }, categories.map { c -> c.asModel() }, it.reviewCount)
+                .withPending(waiting.filter { t -> t.pending == com.rudnam.wallet.core.model.Pending.Waiting })
+        }
     }
 
     override val budgets = budgetDao.observeBudgets().map { list -> list.map { it.asModel() } }
 
-    override fun transactions(from: Instant, to: Instant) =
-        transactionDao.observeRange(from, to).map { list -> list.map { it.asModel() } }
+    /** The server's records and, among them by date, those still on their way to it. */
+    override fun transactions(from: Instant, to: Instant): Flow<List<Transaction>> =
+        combine(transactionDao.observeRange(from, to), pending) { saved, waiting ->
+            val here = waiting.filter { it.occurredAt >= from && it.occurredAt < to }
+            (saved.map { it.asModel() } + here).sortedWith(compareByDescending<Transaction> { it.occurredAt }.thenByDescending { it.id })
+        }
 
     override suspend fun refresh(from: Instant, to: Instant): SyncResult = sync {
         coroutineScope {
@@ -93,7 +108,7 @@ internal class OfflineFirstWalletRepository @Inject constructor(
             SyncResult.SignedOut
         } catch (e: IOException) {
             SyncResult.Offline
-        } catch (e: HttpException) {
+        } catch (e: ApiException) {
             SyncResult.Failed
         } catch (e: SerializationException) {
             SyncResult.Failed

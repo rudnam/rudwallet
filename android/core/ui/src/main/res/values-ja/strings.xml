@@ -9,4 +9,6 @@
     <string name="core_ui_no_category">カテゴリなし</string>
     <string name="core_ui_choose_category">カテゴリを選んでください</string>
     <string name="core_ui_amount_unknown">金額不明</string>
+    <string name="core_ui_not_sent">未送信</string>
+    <string name="core_ui_refused">送信できませんでした</string>
 </resources>

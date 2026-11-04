@@ -34,6 +34,7 @@ import com.rudnam.wallet.core.designsystem.icon.LineIcon
 import com.rudnam.wallet.core.designsystem.icon.WalletIcons
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
 import com.rudnam.wallet.core.designsystem.theme.figures
+import com.rudnam.wallet.core.model.Pending
 import com.rudnam.wallet.core.model.Transaction
 import com.rudnam.wallet.core.model.TransactionKind
 import com.rudnam.wallet.core.model.Wallet
@@ -119,7 +120,12 @@ fun RecordRow(t: Transaction, wallet: Wallet, format: MoneyFormat, onClick: () -
         t.kind == TransactionKind.Income -> format.money(t.amount, signed = true)
         else -> format.money(-t.amount, signed = true)
     }
-    val spoken = listOfNotNull(title, subtitle, amount, account?.name).joinToString(", ")
+    val status = when (t.pending) {
+        is Pending.Refused -> stringResource(R.string.core_ui_refused)
+        Pending.Waiting -> stringResource(R.string.core_ui_not_sent)
+        null -> null
+    }
+    val spoken = listOfNotNull(title, status, subtitle, amount, account?.name).joinToString(", ")
     ListItem(
         modifier = Modifier.clickable(onClick = onClick).clearAndSetSemantics { contentDescription = spoken },
         colors = ListItemDefaults.colors(containerColor = colors.surface),
@@ -132,7 +138,17 @@ fun RecordRow(t: Transaction, wallet: Wallet, format: MoneyFormat, onClick: () -
                 CategoryIcon(category, waiting = waiting)
             }
         },
-        headlineContent = { Text(title, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+        headlineContent = {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(title, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                // Added on this phone and not on the server yet (or refused by it).
+                when (t.pending) {
+                    is Pending.Refused -> Badge(stringResource(R.string.core_ui_refused), colors.attentionSoft, colors.attention)
+                    Pending.Waiting -> Badge(stringResource(R.string.core_ui_not_sent), colors.sunken, colors.muted)
+                    null -> Unit
+                }
+            }
+        },
         supportingContent = {
             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = if (waiting) colors.attention else colors.muted)
@@ -163,4 +179,11 @@ fun RecordRow(t: Transaction, wallet: Wallet, format: MoneyFormat, onClick: () -
             }
         },
     )
+}
+
+@Composable
+private fun Badge(text: String, background: androidx.compose.ui.graphics.Color, ink: androidx.compose.ui.graphics.Color) {
+    Surface(shape = CircleShape, color = background) {
+        Text(text, Modifier.padding(horizontal = 8.dp, vertical = 1.dp), style = MaterialTheme.typography.labelSmall, color = ink, maxLines = 1)
+    }
 }

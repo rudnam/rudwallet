@@ -16,7 +16,9 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -24,6 +26,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -36,7 +40,13 @@ import androidx.navigation.compose.composable
 import com.rudnam.wallet.R
 import com.rudnam.wallet.core.designsystem.icon.LineIcon
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
+import com.rudnam.wallet.core.data.repository.RecordEvent
+import com.rudnam.wallet.core.data.repository.SaveResult
 import com.rudnam.wallet.core.model.Transaction
+import com.rudnam.wallet.core.model.WalletSettings
+import com.rudnam.wallet.core.ui.MoneyFormat
+import com.rudnam.wallet.feature.record.navigation.RecordRoute
+import com.rudnam.wallet.feature.record.navigation.recordSheet
 import com.rudnam.wallet.feature.wallet.WalletNavigation
 import com.rudnam.wallet.feature.wallet.navigation.WalletRoute
 import com.rudnam.wallet.feature.wallet.navigation.walletScreen
@@ -48,8 +58,6 @@ import com.rudnam.wallet.navigation.WebRoute
 import com.rudnam.wallet.web.WebPageFragment
 import com.rudnam.wallet.web.WebRequest
 import kotlinx.coroutines.flow.Flow
-import java.time.Instant
-import java.time.ZoneId
 
 /**
  * The app: the four tabs along the bottom, and the pages above them. Native
@@ -61,9 +69,13 @@ fun RudWalletApp(
     signedIn: Boolean,
     reviewCount: Int,
     links: Flow<String>,
+    recordEvents: Flow<RecordEvent>,
+    settings: WalletSettings?,
+    onUndo: suspend (RecordEvent) -> SaveResult,
     appState: RudWalletAppState = rememberRudWalletAppState(),
 ) {
     val snackbar = remember { SnackbarHostState() }
+    RecordMessages(recordEvents, settings, snackbar, onUndo)
     val tab = appState.currentTab
     val webPath = appState.webPath
 
@@ -86,11 +98,12 @@ fun RudWalletApp(
                 walletScreen(
                     navigation = object : WalletNavigation {
                         override fun openPage(path: String) = appState.openPath(path)
-                        override fun openRecord(record: Transaction) = appState.openPath(recordPath(record))
-                        override fun addRecord() = appState.openPath("add")
+                        override fun openRecord(record: Transaction) = appState.navController.navigate(RecordRoute(record.id))
+                        override fun addRecord() = appState.navController.navigate(RecordRoute())
                     },
                     snackbar = snackbar,
                 )
+                recordSheet(onDone = { appState.navController.popBackStack() })
                 // Web pages and the tabs still on the web: the web view underneath shows them (WebHost).
                 composable<WebRoute> { }
                 composable<ActivityTabRoute> { }
@@ -104,13 +117,6 @@ fun RudWalletApp(
     BackHandler(enabled = webPath != null && appState.webOverlayOpen) { appState.web?.back() }
 }
 
-/** The page that opens a record in the web app's form, until records are native (web/src/App.tsx, #/record). */
-private fun recordPath(record: Transaction): String {
-    val day = record.occurredAt.atZone(ZoneId.systemDefault()).toLocalDate()
-    val from = day.atStartOfDay(ZoneId.systemDefault()).toInstant()
-    val to = day.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant()
-    return "record?id=${record.id}&from=${Instant.from(from)}&to=${Instant.from(to)}"
-}
 
 @Composable
 private fun TabBar(current: TopLevelDestination, reviewCount: Int, onSelect: (TopLevelDestination) -> Unit) {
@@ -155,7 +161,6 @@ private fun WebHost(appState: RudWalletAppState, signedIn: Boolean, visible: Boo
             fragment.onRequest = { request ->
                 when (request) {
                     is WebRequest.Go -> if (session) appState.openPath(request.path, request.replace)
-                    WebRequest.Back -> appState.navController.popBackStack()
                     is WebRequest.Overlay -> appState.webOverlayOpen = request.open
                 }
             }
@@ -164,4 +169,38 @@ private fun WebHost(appState: RudWalletAppState, signedIn: Boolean, visible: Boo
     val web = appState.web
     LaunchedEffect(web, visible) { web?.view?.isInvisible = !visible }
     LaunchedEffect(web, path) { if (web != null && path != null) web.show(path) }
+}
+
+/**
+ * What the record sheet did, said once it has closed: in the snackbar, with
+ * Undo for a change or a delete (as on the website).
+ */
+@Composable
+private fun RecordMessages(events: Flow<RecordEvent>, settings: WalletSettings?, snackbar: SnackbarHostState, onUndo: suspend (RecordEvent) -> SaveResult) {
+    val context = LocalContext.current
+    val locale = LocalConfiguration.current.locales[0]
+    val current by rememberUpdatedState(settings)
+    LaunchedEffect(events) {
+        events.collect { event ->
+            val money = current?.let { MoneyFormat(locale, it) }
+            val text = when (event) {
+                is RecordEvent.Added -> context.getString(R.string.message_added, money?.money(event.amount) ?: event.amount.toString())
+                RecordEvent.Queued -> context.getString(R.string.message_queued)
+                RecordEvent.Confirmed -> context.getString(R.string.message_confirmed)
+                is RecordEvent.Changed -> context.getString(R.string.message_saved)
+                is RecordEvent.Deleted -> context.getString(R.string.message_deleted)
+            }
+            val undoable = event is RecordEvent.Changed || (event is RecordEvent.Deleted && event.restorable)
+            val result = snackbar.showSnackbar(text, actionLabel = if (undoable) context.getString(R.string.message_undo) else null, duration = SnackbarDuration.Short)
+            if (result == SnackbarResult.ActionPerformed) {
+                val after = when (val r = onUndo(event)) {
+                    is SaveResult.Saved, SaveResult.Done, SaveResult.Queued ->
+                        context.getString(if (event is RecordEvent.Deleted) R.string.message_restored else R.string.message_change_undone)
+                    is SaveResult.Refused -> context.getString(R.string.message_undo_failed, r.message)
+                    else -> context.getString(R.string.message_undo_failed, context.getString(R.string.message_offline))
+                }
+                snackbar.showSnackbar(after)
+            }
+        }
+    }
 }

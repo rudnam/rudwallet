@@ -10,4 +10,6 @@
     <string name="core_ui_no_category">No category</string>
     <string name="core_ui_choose_category">Choose a category</string>
     <string name="core_ui_amount_unknown">Amount?</string>
+    <string name="core_ui_not_sent">Not sent yet</string>
+    <string name="core_ui_refused">Couldn’t send</string>
 </resources>

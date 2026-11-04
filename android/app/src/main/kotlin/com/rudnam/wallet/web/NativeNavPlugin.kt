@@ -66,12 +66,6 @@ class NativeNavPlugin : Plugin() {
         call.resolve()
     }
 
-    @PluginMethod
-    fun back(call: PluginCall) {
-        activity.runOnUiThread { host?.onRequest?.invoke(WebRequest.Back) }
-        call.resolve()
-    }
-
     /** { open }: a sheet or dialog opened or closed. */
     @PluginMethod
     fun overlay(call: PluginCall) {

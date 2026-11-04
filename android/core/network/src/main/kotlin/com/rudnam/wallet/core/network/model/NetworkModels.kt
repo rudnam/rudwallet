@@ -4,6 +4,7 @@ import com.rudnam.wallet.core.model.Account
 import com.rudnam.wallet.core.model.AccountKind
 import com.rudnam.wallet.core.model.Budget
 import com.rudnam.wallet.core.model.Category
+import com.rudnam.wallet.core.model.RecordInput
 import com.rudnam.wallet.core.model.CategoryKind
 import com.rudnam.wallet.core.model.Transaction
 import com.rudnam.wallet.core.model.TransactionKind
@@ -75,6 +76,34 @@ data class NetworkTransaction(
     val tags: List<String> = emptyList(),
 )
 
+/** A record as sent to add or change one. */
+@Serializable
+data class NetworkRecordInput(
+    val kind: String,
+    val amount: Long,
+    @SerialName("account_id") val accountId: Long,
+    @SerialName("to_account_id") val toAccountId: Long?,
+    @SerialName("category_id") val categoryId: Long?,
+    @SerialName("occurred_at") val occurredAt: String,
+    val payee: String,
+    val note: String,
+    val status: String,
+    val tags: List<String>,
+    val remember: Boolean? = null,
+    /** The app's own name for a new record: sending it again answers with the record saved the first time. */
+    @SerialName("client_id") val clientId: String? = null,
+)
+
+@Serializable
+data class NetworkIds(val ids: List<Long>)
+
+@Serializable
+data class NetworkTag(val name: String, val count: Int = 0)
+
+/** What the API says when it refuses something: a message for the user. */
+@Serializable
+data class NetworkError(val error: String = "")
+
 @Serializable
 data class NetworkBudget(
     val id: Long,
@@ -127,5 +156,20 @@ fun NetworkTransaction.asModel(): Transaction {
         tags = tags,
     )
 }
+
+fun RecordInput.asNetwork(clientId: String? = null) = NetworkRecordInput(
+    kind = kind.apiName,
+    amount = amount,
+    accountId = accountId,
+    toAccountId = toAccountId,
+    categoryId = categoryId,
+    occurredAt = occurredAt.toString(),
+    payee = payee,
+    note = note,
+    status = status.apiName,
+    tags = tags,
+    remember = remember,
+    clientId = clientId,
+)
 
 fun NetworkBudget.asModel() = Budget(id, name, categoryId, amount)
