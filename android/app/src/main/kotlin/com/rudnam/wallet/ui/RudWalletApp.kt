@@ -27,7 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -177,27 +177,27 @@ private fun WebHost(appState: RudWalletAppState, signedIn: Boolean, visible: Boo
  */
 @Composable
 private fun RecordMessages(events: Flow<RecordEvent>, settings: WalletSettings?, snackbar: SnackbarHostState, onUndo: suspend (RecordEvent) -> SaveResult) {
-    val context = LocalContext.current
+    val resources = LocalResources.current
     val locale = LocalConfiguration.current.locales[0]
     val current by rememberUpdatedState(settings)
     LaunchedEffect(events) {
         events.collect { event ->
             val money = current?.let { MoneyFormat(locale, it) }
             val text = when (event) {
-                is RecordEvent.Added -> context.getString(R.string.message_added, money?.money(event.amount) ?: event.amount.toString())
-                RecordEvent.Queued -> context.getString(R.string.message_queued)
-                RecordEvent.Confirmed -> context.getString(R.string.message_confirmed)
-                is RecordEvent.Changed -> context.getString(R.string.message_saved)
-                is RecordEvent.Deleted -> context.getString(R.string.message_deleted)
+                is RecordEvent.Added -> resources.getString(R.string.message_added, money?.money(event.amount) ?: event.amount.toString())
+                RecordEvent.Queued -> resources.getString(R.string.message_queued)
+                RecordEvent.Confirmed -> resources.getString(R.string.message_confirmed)
+                is RecordEvent.Changed -> resources.getString(R.string.message_saved)
+                is RecordEvent.Deleted -> resources.getString(R.string.message_deleted)
             }
             val undoable = event is RecordEvent.Changed || (event is RecordEvent.Deleted && event.restorable)
-            val result = snackbar.showSnackbar(text, actionLabel = if (undoable) context.getString(R.string.message_undo) else null, duration = SnackbarDuration.Short)
+            val result = snackbar.showSnackbar(text, actionLabel = if (undoable) resources.getString(R.string.message_undo) else null, duration = SnackbarDuration.Short)
             if (result == SnackbarResult.ActionPerformed) {
                 val after = when (val r = onUndo(event)) {
                     is SaveResult.Saved, SaveResult.Done, SaveResult.Queued ->
-                        context.getString(if (event is RecordEvent.Deleted) R.string.message_restored else R.string.message_change_undone)
-                    is SaveResult.Refused -> context.getString(R.string.message_undo_failed, r.message)
-                    else -> context.getString(R.string.message_undo_failed, context.getString(R.string.message_offline))
+                        resources.getString(if (event is RecordEvent.Deleted) R.string.message_restored else R.string.message_change_undone)
+                    is SaveResult.Refused -> resources.getString(R.string.message_undo_failed, r.message)
+                    else -> resources.getString(R.string.message_undo_failed, resources.getString(R.string.message_offline))
                 }
                 snackbar.showSnackbar(after)
             }
