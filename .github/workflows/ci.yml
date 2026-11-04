@@ -55,6 +55,9 @@ jobs:
   android:
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # the pull request's preview APK, as a pre-release
+      pull-requests: write # the comment linking to it
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -72,6 +75,27 @@ jobs:
         working-directory: web
       - run: ./gradlew assembleDebug
         working-directory: android
+      # On a pull request, the debug build ("RudWallet Preview", installs beside the real app) as a
+      # pre-release asset: a plain download link a phone can open, which artifacts aren't.
+      # Updated on every push; android-preview-cleanup.yml deletes it when the pull request closes.
+      - name: Publish the preview APK
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          tag="android-pr-$PR"
+          cp android/app/build/outputs/apk/debug/app-debug.apk rudwallet-preview.apk
+          url="https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/rudwallet-preview.apk"
+          notes="RudWallet Preview: the Android app as built from #$PR (debug build, installs beside RudWallet). Updated on every push to the pull request; deleted when it closes."
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" rudwallet-preview.apk --clobber
+            gh release edit "$tag" --notes "$notes Last built from $SHA."
+          else
+            gh release create "$tag" rudwallet-preview.apk --prerelease --latest=false --target "$SHA" --title "Android preview for #$PR" --notes "$notes Last built from $SHA."
+            gh pr comment "$PR" --body "📱 **Android preview:** [rudwallet-preview.apk]($url). Open it on the phone to install \"RudWallet Preview\" beside the real app; it's rebuilt on every push. Google sign-in returns to the real app, so sign in with email and password."
+          fi
       # Every module's tests (android/*/src/test), which also draw the native screens.
       - run: ./gradlew testDebugUnitTest -Proborazzi.test.record=true
         working-directory: android

@@ -22,6 +22,8 @@ It builds the web app for the app (`npm run android` in `web/`, which also copie
 
 CI builds a debug APK on every push and pull request (the `android` job in `.github/workflows/ci.yml`, kept for a week as the `android-debug-apk` artifact), so a change that breaks the native code fails there. It needs no signing key.
 
+A debug build is **RudWallet Preview** (`com.rudnam.wallet.preview`, `app/src/debug`): it installs beside the real app and talks to the same server. On a pull request, CI also publishes it as a pre-release, `android-pr-<number>`, and comments the download link, which opens on a phone (GitHub Mobile can't download artifacts). It's rebuilt on every push, and deleted when the pull request closes (`android-preview-cleanup.yml`). Google sign-in returns to the real app (the server names its package), so sign in to the preview with email and password.
+
 The version is chosen for you: `version.sh` gives one above the `versionCode` the site offers (`app/build.gradle.kts` holds only the floor), and the name is its `versionName` plus it, e.g. `2.1.5`. Set `WALLET_VERSION_CODE` or `WALLET_VERSION_NAME` to choose your own. For a Play Store release, upload `wallet.aab` in the Play Console. Versions 1 and 2 were the earlier Trusted Web Activity app, which this replaces under the same package and key, so it installs as an update.
 
 ### Releasing

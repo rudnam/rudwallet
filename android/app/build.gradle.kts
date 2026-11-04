@@ -39,6 +39,12 @@ android {
     }
 
     buildTypes {
+        // A debug build installs beside the real app, as "RudWallet Preview" (src/debug), so a
+        // pull request's build (CI publishes it, android/README.md) can be tried without
+        // uninstalling anything. It talks to the same server.
+        debug {
+            applicationIdSuffix = ".preview"
+        }
         release {
             if (System.getenv("WALLET_KEYSTORE_PASSWORD") != null) signingConfig = signingConfigs.getByName("release")
             // R8: shrinks, optimizes and obfuscates. Capacitor and the libraries bring their own keep rules.

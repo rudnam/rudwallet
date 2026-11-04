@@ -1,0 +1,19 @@
+# Deletes a pull request's Android preview (ci.yml, "Publish the preview APK")
+# once the pull request is merged or closed: the pre-release and its tag.
+name: Android preview cleanup
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  cleanup:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: android-pr-${{ github.event.pull_request.number }}
+        run: gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || echo "no preview for this pull request"
