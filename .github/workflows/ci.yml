@@ -94,7 +94,7 @@ jobs:
             gh release edit "$tag" --notes "$notes Last built from $SHA."
           else
             gh release create "$tag" rudwallet-preview.apk --prerelease --latest=false --target "$SHA" --title "Android preview for #$PR" --notes "$notes Last built from $SHA."
-            gh pr comment "$PR" --body "📱 **Android preview:** [rudwallet-preview.apk]($url). Open it on the phone to install \"RudWallet Preview\" beside the real app; it's rebuilt on every push. Google sign-in returns to the real app, so sign in with email and password."
+            gh pr comment "$PR" --body "📱 **Android preview:** [rudwallet-preview.apk]($url). Open it on the phone to install \"RudWallet Preview\" beside the real app; it's rebuilt on every push. Google sign-in returns to the real app, so sign in with email and password. (The repository is private: the link needs the browser signed in to GitHub, or it answers 404.)"
           fi
       # Every module's tests (android/*/src/test), which also draw the native screens.
       - run: ./gradlew testDebugUnitTest -Proborazzi.test.record=true
