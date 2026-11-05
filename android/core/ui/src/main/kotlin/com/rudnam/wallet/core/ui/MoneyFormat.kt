@@ -41,6 +41,9 @@ class MoneyFormat(
     /** The currency's sign, as [money] writes it: "¥", "$". */
     val symbol: String get() = tidy(currency.currency?.getSymbol(locale) ?: settings.currency)
 
+    /** The time of day, in the phone's 12 or 24 hours: "9:30 AM", "18:05". */
+    fun time(at: Instant): String = at.atZone(zone).toLocalTime().format(DateTimeFormatter.ofPattern(pattern("jmm"), locale))
+
     /** A day and time: "Today, 9:30", or e.g. "Thu, Nov 12, 18:05". */
     fun dateTime(at: Instant, today: String? = null, yesterday: String? = null, now: Instant = Instant.now()): String {
         val day = if (today != null && yesterday != null) {

@@ -9,6 +9,8 @@ import com.rudnam.wallet.core.network.model.NetworkDownloads
 import com.rudnam.wallet.core.network.model.NetworkError
 import com.rudnam.wallet.core.network.model.NetworkIds
 import com.rudnam.wallet.core.network.model.NetworkNotifications
+import com.rudnam.wallet.core.network.model.NetworkReconcile
+import com.rudnam.wallet.core.network.model.NetworkReconcileResult
 import com.rudnam.wallet.core.network.model.NetworkRecordInput
 import com.rudnam.wallet.core.network.model.NetworkTag
 import com.rudnam.wallet.core.network.model.NetworkTransaction
@@ -49,6 +51,12 @@ internal interface WalletApi {
 
     @POST("api/transactions/bulk")
     suspend fun bulk(@Body change: NetworkBulkChange): NetworkBulkResult
+
+    @POST("api/accounts/{id}/reconcile")
+    suspend fun reconcile(@Path("id") id: Long, @Body body: NetworkReconcile): NetworkReconcileResult
+
+    @PUT("api/accounts/order")
+    suspend fun setAccountOrder(@Body ids: NetworkIds): Response<Unit>
 
     @POST("api/transactions")
     suspend fun createTransaction(@Body input: NetworkRecordInput): NetworkTransaction
@@ -100,6 +108,10 @@ internal class RetrofitWalletNetwork @Inject constructor(retrofit: Retrofit, pri
     ) = call { api.transactions(from?.let(::rfc3339), to?.let(::rfc3339), status, accountId, categoryId, query, tag) }
 
     override suspend fun bulk(change: NetworkBulkChange) = call { api.bulk(change) }
+
+    override suspend fun reconcile(accountId: Long, balance: Long) = call { api.reconcile(accountId, NetworkReconcile(balance)) }
+
+    override suspend fun setAccountOrder(ids: List<Long>) = call { api.setAccountOrder(NetworkIds(ids)).orThrow() }
 
     override suspend fun budgets() = call { api.budgets() }
 

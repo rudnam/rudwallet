@@ -36,6 +36,15 @@ interface WalletDao {
     @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
     suspend fun upsertWallet(wallet: WalletEntity)
 
+    /** Puts the accounts in this order, the first first, at once (Wallet's card stack). */
+    @Transaction
+    suspend fun reorderAccounts(ids: List<Long>) {
+        ids.forEachIndexed { i, id -> setPosition(id, i) }
+    }
+
+    @Query("UPDATE accounts SET position = :position WHERE id = :id")
+    suspend fun setPosition(id: Long, position: Int)
+
     @Query("DELETE FROM accounts")
     suspend fun deleteAccounts()
 

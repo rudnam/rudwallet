@@ -71,6 +71,8 @@ class OfflineFirstRecordRepositoryTest {
         ) = emptyList<NetworkTransaction>()
         override suspend fun bulk(change: com.rudnam.wallet.core.network.model.NetworkBulkChange) =
             com.rudnam.wallet.core.network.model.NetworkBulkResult(change.ids.size, 0)
+        override suspend fun reconcile(accountId: Long, balance: Long) = com.rudnam.wallet.core.network.model.NetworkReconcileResult()
+        override suspend fun setAccountOrder(ids: List<Long>) = Unit
         override suspend fun tags() = listOf(NetworkTag("trip", 3))
         override suspend fun deleteRecord(id: Long) = check()
         override suspend fun restoreRecords(ids: List<Long>) = check()

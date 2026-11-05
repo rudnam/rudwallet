@@ -10,6 +10,7 @@ import androidx.navigation.testing.TestNavHostController
 import androidx.navigation.toRoute
 import com.rudnam.wallet.feature.wallet.navigation.WalletRoute
 import com.rudnam.wallet.navigation.TopLevelDestination
+import com.rudnam.wallet.feature.account.navigation.AccountRoute
 import com.rudnam.wallet.feature.activity.navigation.ActivityRoute
 import com.rudnam.wallet.navigation.InsightsTabRoute
 import com.rudnam.wallet.navigation.SettingsTabRoute
@@ -46,6 +47,7 @@ class RudWalletAppStateTest {
                 composable<WalletRoute> {}
                 composable<WebRoute> {}
                 composable<ActivityRoute> {}
+                composable<AccountRoute> {}
                 composable<InsightsTabRoute> {}
                 composable<SettingsTabRoute> {}
             }
@@ -60,8 +62,10 @@ class RudWalletAppStateTest {
     fun `a web page opens over Wallet, and home goes back to it`() {
         compose.runOnIdle { state.openPath("account?id=3") }
         compose.runOnIdle {
-            assertEquals("account?id=3", webPath)
-            assertNull(tab) // a page under a tab has its own way back
+            // Native: the account's own page, without the tabs (it has its own way back).
+            assertNull(webPath)
+            assertNull(tab)
+            assertEquals(3L, state.navController.currentBackStackEntry!!.toRoute<AccountRoute>().id)
             state.openPath("home")
         }
         compose.runOnIdle {
@@ -94,7 +98,7 @@ class RudWalletAppStateTest {
 
     @Test
     fun `pages open one after another, each its own`() {
-        compose.runOnIdle { state.openPath("account?id=3") }
+        compose.runOnIdle { state.openPath("card") }
         compose.runOnIdle { state.openPath("budgets") }
         compose.runOnIdle { state.openPath("settings?section=rules") }
         compose.runOnIdle {

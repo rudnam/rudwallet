@@ -100,3 +100,13 @@ class TestActivityRepository : com.rudnam.wallet.core.data.repository.ActivityRe
     override suspend fun tags() = tagList
     override suspend fun match(id: Long, near: java.time.Instant) = matches[id]
 }
+
+/** An [AccountRepository] that keeps what it's asked. */
+class TestAccountRepository : com.rudnam.wallet.core.data.repository.AccountRepository {
+    val counted = mutableListOf<Pair<Long, Long>>()
+    val orders = mutableListOf<List<Long>>()
+    var countResult: com.rudnam.wallet.core.data.repository.CountResult = com.rudnam.wallet.core.data.repository.CountResult.AlreadyRight
+
+    override suspend fun count(accountId: Long, balance: Long) = countResult.also { counted += accountId to balance }
+    override suspend fun setOrder(ids: List<Long>) = true.also { orders += ids }
+}

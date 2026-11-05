@@ -6,13 +6,6 @@
     <string name="feature_wallet_add_record">Add record</string>
     <string name="feature_wallet_total_balance">Total balance</string>
     <string name="feature_wallet_accounts">Accounts</string>
-    <string name="feature_wallet_card">%1$s, %2$s</string>
-    <string name="feature_wallet_kind_bank">Bank account</string>
-    <string name="feature_wallet_kind_credit_card">Credit card</string>
-    <string name="feature_wallet_kind_e_money">E-money</string>
-    <string name="feature_wallet_kind_cash">Cash</string>
-    <string name="feature_wallet_kind_savings">Savings</string>
-    <string name="feature_wallet_kind_other">Other</string>
     <string name="feature_wallet_spent_this_month">Spent this month</string>
     <string name="feature_wallet_no_spending">No spending recorded this month yet.</string>
     <string name="feature_wallet_per_day">%s a day keeps you within budget</string>

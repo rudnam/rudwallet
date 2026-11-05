@@ -5,13 +5,6 @@
     <string name="feature_wallet_add_record">記録を追加</string>
     <string name="feature_wallet_total_balance">総残高</string>
     <string name="feature_wallet_accounts">口座</string>
-    <string name="feature_wallet_card">%1$s、%2$s</string>
-    <string name="feature_wallet_kind_bank">銀行口座</string>
-    <string name="feature_wallet_kind_credit_card">クレジットカード</string>
-    <string name="feature_wallet_kind_e_money">電子マネー</string>
-    <string name="feature_wallet_kind_cash">現金</string>
-    <string name="feature_wallet_kind_savings">貯金</string>
-    <string name="feature_wallet_kind_other">その他</string>
     <string name="feature_wallet_spent_this_month">今月の支出</string>
     <string name="feature_wallet_no_spending">今月の支出はまだありません。</string>
     <string name="feature_wallet_per_day">1日%sまでなら予算内</string>

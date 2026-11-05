@@ -2,6 +2,7 @@ package com.rudnam.wallet.feature.wallet
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rudnam.wallet.core.data.repository.AccountRepository
 import com.rudnam.wallet.core.data.repository.SyncResult
 import com.rudnam.wallet.core.data.repository.UpdateRepository
 import com.rudnam.wallet.core.data.repository.WalletRepository
@@ -28,6 +29,7 @@ class WalletViewModel @Inject constructor(
     private val wallet: WalletRepository,
     private val updates: UpdateRepository,
     private val preferences: UserPreferencesRepository,
+    private val accounts: AccountRepository,
     private val clock: Clock,
 ) : ViewModel() {
     private val month: YearMonth = YearMonth.now(clock)
@@ -99,6 +101,11 @@ class WalletViewModel @Inject constructor(
                 else -> Unit
             }
         }
+    }
+
+    /** The card stack's new order, the front card first. If the server doesn't take it, the old order comes back. */
+    fun reorder(ids: List<Long>) {
+        viewModelScope.launch { if (!accounts.setOrder(ids)) refresh(userAsked = false) }
     }
 
     fun dismissSetup() {

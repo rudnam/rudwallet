@@ -5,6 +5,7 @@ import com.rudnam.wallet.core.network.model.NetworkBulkChange
 import com.rudnam.wallet.core.network.model.NetworkBulkResult
 import com.rudnam.wallet.core.network.model.NetworkDownloads
 import com.rudnam.wallet.core.network.model.NetworkNotifications
+import com.rudnam.wallet.core.network.model.NetworkReconcileResult
 import com.rudnam.wallet.core.network.model.NetworkRecordInput
 import com.rudnam.wallet.core.network.model.NetworkTag
 import com.rudnam.wallet.core.network.model.NetworkTransaction
@@ -58,6 +59,12 @@ interface WalletNetworkDataSource {
     ): List<NetworkTransaction>
 
     suspend fun bulk(change: NetworkBulkChange): NetworkBulkResult
+
+    /** What an account really holds (cash counted): the difference becomes one record, or none if it matches. */
+    suspend fun reconcile(accountId: Long, balance: Long): NetworkReconcileResult
+
+    /** The accounts in a new order, the first first. */
+    suspend fun setAccountOrder(ids: List<Long>)
 }
 
 /** The server ended the session (401), or nobody is signed in. */

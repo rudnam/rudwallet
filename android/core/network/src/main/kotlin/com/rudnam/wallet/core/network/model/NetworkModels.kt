@@ -110,6 +110,13 @@ data class NetworkBulkChange(
 )
 
 @Serializable
+data class NetworkReconcile(val balance: Long)
+
+/** The record a reconcile made, or null when the balance already matched. */
+@Serializable
+data class NetworkReconcileResult(val transaction: NetworkTransaction? = null)
+
+@Serializable
 data class NetworkBulkResult(val changed: Int = 0, val skipped: Int = 0)
 
 /** What the API says when it refuses something: a message for the user. */

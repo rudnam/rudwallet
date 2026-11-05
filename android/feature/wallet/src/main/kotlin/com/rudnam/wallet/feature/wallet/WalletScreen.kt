@@ -96,6 +96,7 @@ internal fun WalletDestination(
         onRefresh = { viewModel.refresh(userAsked = true) },
         onDismissSetup = viewModel::dismissSetup,
         onUpdateLater = viewModel::updateLater,
+        onReorder = viewModel::reorder,
     )
 }
 
@@ -107,6 +108,7 @@ internal fun WalletScreen(
     onRefresh: () -> Unit,
     onDismissSetup: () -> Unit,
     onUpdateLater: () -> Unit,
+    onReorder: (List<Long>) -> Unit = {},
     now: Instant = Instant.now(),
 ) {
     val scroll = TopAppBarDefaults.pinnedScrollBehavior()
@@ -147,7 +149,7 @@ internal fun WalletScreen(
             when (state) {
                 WalletUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                 WalletUiState.Unavailable -> Unavailable(onRefresh)
-                is WalletUiState.Ready -> Wallet(state, navigation, onDismissSetup, onUpdateLater, now)
+                is WalletUiState.Ready -> Wallet(state, navigation, onDismissSetup, onUpdateLater, onReorder, now)
             }
         }
     }
@@ -172,6 +174,7 @@ private fun Wallet(
     navigation: WalletNavigation,
     onDismissSetup: () -> Unit,
     onUpdateLater: () -> Unit,
+    onReorder: (List<Long>) -> Unit,
     now: Instant,
 ) {
     val format = rememberMoneyFormat(state.wallet.settings)
@@ -198,7 +201,7 @@ private fun Wallet(
                 Text(stringResource(R.string.feature_wallet_total_balance), style = MaterialTheme.typography.bodyMedium, color = colors.muted)
                 Text(format.money(state.wallet.totalBalance), style = MaterialTheme.typography.displayMedium.figures())
                 Spacer(Modifier.height(12.dp))
-                CardStack(state.accounts, format) { navigation.openPage("account?id=${it.id}") }
+                CardStack(state.accounts, format, onOpen = { navigation.openPage("account?id=${it.id}") }, onReorder = onReorder)
             }
         }
         item(key = "month", contentType = "month") {

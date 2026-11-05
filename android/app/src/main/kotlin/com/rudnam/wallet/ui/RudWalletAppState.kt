@@ -13,6 +13,7 @@ import androidx.navigation.NavHostController
 import androidx.compose.runtime.collectAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.rudnam.wallet.feature.account.navigation.AccountRoute
 import com.rudnam.wallet.feature.activity.navigation.ActivityRoute
 import com.rudnam.wallet.feature.record.navigation.RecordRoute
 import com.rudnam.wallet.feature.wallet.navigation.WalletRoute
@@ -69,6 +70,11 @@ class RudWalletAppState(val navController: NavHostController) {
             if (!navController.popBackStack(WalletRoute, inclusive = false)) showWallet()
             return
         }
+        // An account, opened from its card.
+        if (page == "account") {
+            PathParams.id(path)?.let { navController.navigate(AccountRoute(it)) }
+            return
+        }
         // Activity (records, and review, which opens the same page), with its filters.
         if (page == "records" || page == "review") {
             if (path == page) navigateToTab(TopLevelDestination.Activity) else navController.navigate(ActivityRoute.fromPath(path))
@@ -97,6 +103,11 @@ class RudWalletAppState(val navController: NavHostController) {
     fun showWallet() {
         navController.navigate(WalletRoute) { popUpTo(0) { inclusive = true } }
     }
+}
+
+/** Reading a website path's parameters. */
+internal object PathParams {
+    fun id(path: String): Long? = path.substringAfter('?', "").split('&').firstOrNull { it.startsWith("id=") }?.substringAfter('=')?.toLongOrNull()
 }
 
 /** The web path a back stack entry shows: a web page's, or a web tab's page; null for a native screen. */

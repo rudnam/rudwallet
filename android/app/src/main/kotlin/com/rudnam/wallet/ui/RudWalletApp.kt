@@ -45,6 +45,8 @@ import com.rudnam.wallet.core.data.repository.SaveResult
 import com.rudnam.wallet.core.model.Transaction
 import com.rudnam.wallet.core.model.WalletSettings
 import com.rudnam.wallet.core.ui.MoneyFormat
+import com.rudnam.wallet.feature.account.AccountNavigation
+import com.rudnam.wallet.feature.account.navigation.accountScreen
 import com.rudnam.wallet.feature.activity.ActivityNavigation
 import com.rudnam.wallet.feature.activity.navigation.activityScreen
 import com.rudnam.wallet.feature.record.navigation.RecordRoute
@@ -108,6 +110,16 @@ fun RudWalletApp(
                     navigation = object : ActivityNavigation {
                         override fun openRecord(record: Transaction) = appState.navController.navigate(RecordRoute(record.id))
                         override fun addRecord() = appState.navController.navigate(RecordRoute())
+                    },
+                    snackbar = snackbar,
+                )
+                accountScreen(
+                    navigation = object : AccountNavigation {
+                        override fun back() {
+                            appState.navController.popBackStack()
+                        }
+                        override fun editAccounts() = appState.openPath("settings?section=accounts")
+                        override fun openRecord(record: Transaction) = appState.navController.navigate(RecordRoute(record.id))
                     },
                     snackbar = snackbar,
                 )

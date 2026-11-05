@@ -70,6 +70,7 @@ dependencies {
     implementation(project(":feature:wallet"))
     implementation(project(":feature:record"))
     implementation(project(":feature:activity"))
+    implementation(project(":feature:account"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.material3)

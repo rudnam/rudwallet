@@ -71,6 +71,8 @@ fun LazyListScope.recordDays(
     /** While choosing records: the chosen ids. Rows then choose rather than open. */
     selected: Set<Long>? = null,
     onToggle: (Transaction) -> Unit = {},
+    /** Under each amount: the account it was paid from, or (on an account's own page) the time. */
+    detail: RecordDetail = RecordDetail.Account,
 ) {
     for (day in records.byDay()) {
         item(key = "day-${day.first().id}", contentType = "day") {
@@ -79,7 +81,7 @@ fun LazyListScope.recordDays(
                 WalletPanel(Modifier.fillMaxWidth()) {
                     day.forEachIndexed { i, t ->
                         if (i > 0) HorizontalDivider(color = WalletTheme.colors.border)
-                        RecordRow(t, wallet, format, chosen = selected?.let { t.id in it }) { if (selected != null) onToggle(t) else onOpen(t) }
+                        RecordRow(t, wallet, format, chosen = selected?.let { t.id in it }, detail = detail) { if (selected != null) onToggle(t) else onOpen(t) }
                     }
                 }
             }
@@ -105,7 +107,14 @@ private fun DayHeading(day: List<Transaction>, format: MoneyFormat, now: Instant
 /** One record: its category, what it was, and the amount with the account it was paid from. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun RecordRow(t: Transaction, wallet: Wallet, format: MoneyFormat, chosen: Boolean? = null, onClick: () -> Unit) {
+fun RecordRow(
+    t: Transaction,
+    wallet: Wallet,
+    format: MoneyFormat,
+    chosen: Boolean? = null,
+    detail: RecordDetail = RecordDetail.Account,
+    onClick: () -> Unit,
+) {
     val colors = WalletTheme.colors
     val category = wallet.category(t.categoryId)
     val account = wallet.account(t.accountId)
@@ -154,7 +163,8 @@ fun RecordRow(t: Transaction, wallet: Wallet, format: MoneyFormat, chosen: Boole
                     LineIcon(WalletIcons.transfer, contentDescription = null, tint = colors.muted, size = 20.dp)
                 }
             } else {
-                CategoryIcon(category, waiting = waiting)
+                // Without a category (to review or not), the dashed tile, so it stands out (web: CategoryIcon).
+                CategoryIcon(category, waiting = category == null)
             }
         },
         headlineContent = {
@@ -194,7 +204,8 @@ fun RecordRow(t: Transaction, wallet: Wallet, format: MoneyFormat, chosen: Boole
                     },
                     maxLines = 1,
                 )
-                account?.let { Text(it.name, style = MaterialTheme.typography.bodySmall, color = colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                val side = if (detail == RecordDetail.Time) format.time(t.occurredAt) else account?.name
+                side?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis) }
             }
         },
     )
@@ -206,3 +217,6 @@ private fun Badge(text: String, background: androidx.compose.ui.graphics.Color, 
         Text(text, Modifier.padding(horizontal = 8.dp, vertical = 1.dp), style = MaterialTheme.typography.labelSmall, color = ink, maxLines = 1)
     }
 }
+
+/** What a record's row shows under its amount. */
+enum class RecordDetail { Account, Time }

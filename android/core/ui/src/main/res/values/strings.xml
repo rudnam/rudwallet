@@ -12,4 +12,11 @@
     <string name="core_ui_amount_unknown">Amount?</string>
     <string name="core_ui_not_sent">Not sent yet</string>
     <string name="core_ui_refused">Couldn’t send</string>
+    <string name="core_ui_account_card">%1$s, %2$s</string>
+    <string name="core_ui_kind_bank">Bank account</string>
+    <string name="core_ui_kind_credit_card">Credit card</string>
+    <string name="core_ui_kind_e_money">E-money</string>
+    <string name="core_ui_kind_cash">Cash</string>
+    <string name="core_ui_kind_savings">Savings</string>
+    <string name="core_ui_kind_other">Other</string>
 </resources>

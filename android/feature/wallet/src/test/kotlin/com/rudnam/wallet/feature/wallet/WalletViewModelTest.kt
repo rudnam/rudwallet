@@ -6,6 +6,7 @@ import com.rudnam.wallet.core.data.repository.SyncResult
 import com.rudnam.wallet.core.model.AppUpdate
 import com.rudnam.wallet.core.testing.MainDispatcherRule
 import com.rudnam.wallet.core.testing.SampleWallet
+import com.rudnam.wallet.core.testing.TestAccountRepository
 import com.rudnam.wallet.core.testing.TestUpdateRepository
 import com.rudnam.wallet.core.testing.TestUserPreferences
 import com.rudnam.wallet.core.testing.TestWalletRepository
@@ -26,7 +27,7 @@ class WalletViewModelTest {
     private val preferences = TestUserPreferences()
     private val clock = Clock.fixed(SampleWallet.now, SampleWallet.zone)
 
-    private fun viewModel() = WalletViewModel(wallet, updates, preferences.repository, clock)
+    private fun viewModel() = WalletViewModel(wallet, updates, preferences.repository, TestAccountRepository(), clock)
 
     @Test
     fun `shows what's on the phone, this month's latest five, and refreshes once`() = runTest {

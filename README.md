@@ -17,7 +17,7 @@ A Go API, a React frontend, and PostgreSQL, shipped as one Docker image.
 - **Frontend:** React + TypeScript, bundled by Vite and embedded in the Go binary. Installable as a PWA.
 - **Database:** PostgreSQL. Migrations are embedded SQL files, applied on startup.
 - **Packaging:** one small, non-root Docker image (under 20 MB) with no shell.
-- **Android:** a native app (Kotlin, Jetpack Compose) taking over from the web app a page at a time: the shell, Wallet, Activity and the record sheet are native, the other pages still the web app in a web view (Capacitor). Plus native home screen widgets (this month, budgets, and a New record button) and a reader for PayPay's and Google Wallet's payment notifications (see [android/README.md](android/README.md)).
+- **Android:** a native app (Kotlin, Jetpack Compose) taking over from the web app a page at a time: the shell, Wallet, Activity, the account page and the record sheet are native, the other pages still the web app in a web view (Capacitor). Plus native home screen widgets (this month, budgets, and a New record button) and a reader for PayPay's and Google Wallet's payment notifications (see [android/README.md](android/README.md)).
 
 ## Quick start
 
