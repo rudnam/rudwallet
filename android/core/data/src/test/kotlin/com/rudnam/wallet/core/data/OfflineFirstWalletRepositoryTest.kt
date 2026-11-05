@@ -2,8 +2,13 @@ package com.rudnam.wallet.core.data
 
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
-import com.rudnam.wallet.core.data.repository.BudgetResult
+import com.rudnam.wallet.core.data.repository.ChangeResult
 import com.rudnam.wallet.core.data.repository.OfflineFirstWalletRepository
+import com.rudnam.wallet.core.data.repository.ServerSettingsRepository
+import com.rudnam.wallet.core.model.AccountInput
+import com.rudnam.wallet.core.model.AccountKind
+import com.rudnam.wallet.core.model.CategoryInput
+import com.rudnam.wallet.core.model.CategoryKind
 import com.rudnam.wallet.core.data.repository.ServerInsightsRepository
 import com.rudnam.wallet.core.data.repository.StatsQuery
 import com.rudnam.wallet.core.data.repository.StatsResult
@@ -57,7 +62,7 @@ class OfflineFirstWalletRepositoryTest {
 
         override suspend fun wallet(): NetworkWallet {
             check()
-            return NetworkWallet(NetworkSettings("JPY"), listOf(NetworkAccount(1, "Cash", "cash", balance = 26450)), emptyList(), reviewCount = 1)
+            return NetworkWallet(NetworkSettings(currency), accounts.toList(), categories.toList(), reviewCount = 1)
         }
 
         override suspend fun transactions(from: Instant, to: Instant): List<NetworkTransaction> {
@@ -87,6 +92,52 @@ class OfflineFirstWalletRepositoryTest {
         override suspend fun reconcile(accountId: Long, balance: Long) = com.rudnam.wallet.core.network.model.NetworkReconcileResult()
         override suspend fun setAccountOrder(ids: List<Long>) = Unit
         override suspend fun tags() = emptyList<com.rudnam.wallet.core.network.model.NetworkTag>()
+        var currency = "JPY"
+        val accounts = mutableListOf(NetworkAccount(1, "Cash", "cash", balance = 26450))
+        val categories = mutableListOf(com.rudnam.wallet.core.network.model.NetworkCategory(10, "Food", "expense", "food", "#d9534f"))
+        var loggedOut = false
+        override suspend fun me(): com.rudnam.wallet.core.network.model.NetworkMe {
+            check()
+            return com.rudnam.wallet.core.network.model.NetworkMe("francis@example.com")
+        }
+        override suspend fun logout() {
+            check()
+            loggedOut = true
+        }
+        override suspend fun deleteMe(confirm: com.rudnam.wallet.core.network.model.NetworkDeleteMe) {
+            check()
+            if (confirm.password != "secret") throw com.rudnam.wallet.core.network.ApiException(403, "the password is incorrect")
+        }
+        override suspend fun updateSettings(input: com.rudnam.wallet.core.network.model.NetworkSettingsInput) {
+            check()
+            currency = input.currency
+        }
+        override suspend fun createAccount(input: com.rudnam.wallet.core.network.model.NetworkAccountInput) {
+            check()
+            accounts += NetworkAccount(accounts.maxOf { it.id } + 1, input.name, input.kind, input.initialBalance, input.initialBalance, input.color, input.archived)
+        }
+        override suspend fun updateAccount(id: Long, input: com.rudnam.wallet.core.network.model.NetworkAccountInput) {
+            check()
+            accounts.replaceAll { if (it.id == id) it.copy(name = input.name, archived = input.archived) else it }
+        }
+        override suspend fun deleteAccount(id: Long) {
+            check()
+            accounts.removeAll { it.id == id }
+            records = records.filter { it.accountId != id }
+        }
+        override suspend fun missingCategories() = listOf(com.rudnam.wallet.core.network.model.NetworkCategory(0, "Pets", "expense", "pet", "#8a6d3b"))
+        override suspend fun createCategory(input: com.rudnam.wallet.core.network.model.NetworkCategoryInput) {
+            check()
+            categories += com.rudnam.wallet.core.network.model.NetworkCategory(categories.maxOf { it.id } + 1, input.name, input.kind, input.icon, input.color)
+        }
+        override suspend fun updateCategory(id: Long, input: com.rudnam.wallet.core.network.model.NetworkCategoryInput) {
+            check()
+            categories.replaceAll { if (it.id == id) it.copy(name = input.name) else it }
+        }
+        override suspend fun deleteCategory(id: Long) {
+            check()
+            categories.removeAll { it.id == id }
+        }
         var budgetList = mutableListOf(NetworkBudget(1, "Everything", null, 60000))
         var asked = 0
         override suspend fun createBudget(input: com.rudnam.wallet.core.network.model.NetworkBudgetInput): NetworkBudget {
@@ -168,17 +219,46 @@ class OfflineFirstWalletRepositoryTest {
         network.failure = null
 
         wallet.refresh(from, to)
-        assertEquals(BudgetResult.Saved, insights.createBudget(BudgetInput("Eating out", 10, 8000)))
+        assertEquals(ChangeResult.Saved, insights.createBudget(BudgetInput("Eating out", 10, 8000)))
         assertEquals(listOf("Everything", "Eating out"), wallet.budgets.first().map { it.name })
-        assertEquals(BudgetResult.Refused("enter a monthly limit above zero"), insights.createBudget(BudgetInput("Nothing", null, 0)))
-        assertEquals(BudgetResult.Saved, insights.updateBudget(1, BudgetInput("All of it", null, 70000)))
+        assertEquals(ChangeResult.Refused("enter a monthly limit above zero"), insights.createBudget(BudgetInput("Nothing", null, 0)))
+        assertEquals(ChangeResult.Saved, insights.updateBudget(1, BudgetInput("All of it", null, 70000)))
         assertEquals(70000L, wallet.budgets.first().first { it.id == 1L }.amount)
-        assertEquals(BudgetResult.Saved, insights.deleteBudget(2))
+        assertEquals(ChangeResult.Saved, insights.deleteBudget(2))
         // Deleted on the website meanwhile: gone, as the user wanted.
-        assertEquals(BudgetResult.Saved, insights.deleteBudget(2))
+        assertEquals(ChangeResult.Saved, insights.deleteBudget(2))
         assertEquals(listOf(1L), wallet.budgets.first().map { it.id })
 
         wallet.forget()
         assertNull(insights.seen(query))
+    }
+
+    @Test
+    fun `accounts, categories and the currency change on the server, then on the phone`() = runTest {
+        val network = FakeNetwork()
+        val io = StandardTestDispatcher(testScheduler)
+        val wallet = OfflineFirstWalletRepository(network, db.walletDao(), db.transactionDao(), db.budgetDao(), db.outboxDao(), WalletCache(db), StatsCache(), io)
+        val settings = ServerSettingsRepository(network, db.walletDao(), db.transactionDao(), db.budgetDao(), io)
+        wallet.refresh(from, to)
+
+        assertEquals(ChangeResult.Saved, settings.saveAccount(null, AccountInput("PayPay", AccountKind.EMoney, 5000, "#d4553f", false)))
+        assertEquals(listOf("Cash", "PayPay"), wallet.wallet.first()!!.accounts.map { it.name })
+        assertEquals(ChangeResult.Saved, settings.saveAccount(2, AccountInput("PayPay", AccountKind.EMoney, 5000, "#d4553f", archived = true)))
+        assertEquals(listOf("Cash"), wallet.wallet.first()!!.activeAccounts.map { it.name })
+        // Its records go with it.
+        assertEquals(ChangeResult.Saved, settings.deleteAccount(1))
+        assertEquals(emptyList<Long>(), wallet.transactions(from, to).first().map { it.id })
+
+        assertEquals(listOf("Pets"), settings.missingCategories().map { it.name })
+        assertEquals(ChangeResult.Saved, settings.saveCategory(null, CategoryInput("Pets", CategoryKind.Expense, "pet", "#8a6d3b")))
+        assertEquals(listOf("Food", "Pets"), wallet.wallet.first()!!.categories.map { it.name })
+        assertEquals(ChangeResult.Saved, settings.deleteCategory(10))
+        assertEquals(listOf("Pets"), wallet.wallet.first()!!.categories.map { it.name })
+
+        assertEquals(ChangeResult.Saved, settings.setCurrency("USD"))
+        assertEquals("USD", wallet.wallet.first()!!.settings.currency)
+
+        network.failure = IOException("offline")
+        assertEquals(ChangeResult.Offline, settings.deleteCategory(11))
     }
 }

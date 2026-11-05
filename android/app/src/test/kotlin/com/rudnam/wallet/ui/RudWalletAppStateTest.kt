@@ -15,7 +15,8 @@ import com.rudnam.wallet.feature.account.navigation.AccountRoute
 import com.rudnam.wallet.feature.activity.navigation.ActivityRoute
 import com.rudnam.wallet.feature.insights.navigation.BudgetsRoute
 import com.rudnam.wallet.feature.insights.navigation.InsightsRoute
-import com.rudnam.wallet.navigation.SettingsTabRoute
+import com.rudnam.wallet.feature.settings.navigation.SettingsRoute
+import com.rudnam.wallet.feature.settings.navigation.SettingsSectionRoute
 import com.rudnam.wallet.navigation.WebRoute
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -52,7 +53,8 @@ class RudWalletAppStateTest {
                 composable<AccountRoute> {}
                 composable<InsightsRoute> {}
                 composable<BudgetsRoute> {}
-                composable<SettingsTabRoute> {}
+                composable<SettingsRoute> {}
+                composable<SettingsSectionRoute> {}
             }
             tab = state.currentTab
             webPath = state.webPath
@@ -86,17 +88,17 @@ class RudWalletAppStateTest {
             state.navigateToTab(TopLevelDestination.Settings)
         }
         compose.runOnIdle {
-            assertEquals("settings", currentWebPath())
-            state.openPath("settings?section=accounts")
+            assertEquals(TopLevelDestination.Settings, tab)
+            assertNull(currentWebPath())
+            state.openPath("settings?section=rules")
         }
         compose.runOnIdle {
             assertNull(tab)
+            assertEquals("settings?section=rules", currentWebPath())
             state.openPath("settings?section=import", replace = true)
         }
-        compose.runOnIdle {
-            assertTrue(state.navController.popBackStack())
-            assertEquals("settings", currentWebPath()) // the replaced page isn't in between
-        }
+        compose.runOnIdle { assertTrue(state.navController.popBackStack()) }
+        compose.runOnIdle { assertEquals(TopLevelDestination.Settings, tab) } // the replaced page isn't in between
     }
 
     @Test
@@ -153,5 +155,16 @@ class RudWalletAppStateTest {
             assertNull(tab)
             assertFalse(state.navController.popBackStack())
         }
+    }
+
+    @Test
+    fun `settings pages that are native open natively, the rest on the web`() {
+        compose.runOnIdle { state.openPath("settings?section=accounts") }
+        compose.runOnIdle {
+            assertNull(webPath)
+            assertEquals(SettingsSectionRoute("accounts"), state.navController.currentBackStackEntry!!.toRoute<SettingsSectionRoute>())
+            state.openPath("settings?section=notifications")
+        }
+        compose.runOnIdle { assertEquals("settings?section=notifications", currentWebPath()) }
     }
 }

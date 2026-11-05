@@ -2,7 +2,13 @@ package com.rudnam.wallet.core.network.retrofit
 
 import com.rudnam.wallet.core.network.ApiException
 import com.rudnam.wallet.core.network.WalletNetworkDataSource
+import com.rudnam.wallet.core.network.model.NetworkAccountInput
 import com.rudnam.wallet.core.network.model.NetworkBudget
+import com.rudnam.wallet.core.network.model.NetworkCategory
+import com.rudnam.wallet.core.network.model.NetworkCategoryInput
+import com.rudnam.wallet.core.network.model.NetworkDeleteMe
+import com.rudnam.wallet.core.network.model.NetworkMe
+import com.rudnam.wallet.core.network.model.NetworkSettingsInput
 import com.rudnam.wallet.core.network.model.NetworkBudgetInput
 import com.rudnam.wallet.core.network.model.NetworkBulkChange
 import com.rudnam.wallet.core.network.model.NetworkBulkResult
@@ -24,6 +30,7 @@ import retrofit2.Retrofit
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.HTTP
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
@@ -100,6 +107,39 @@ internal interface WalletApi {
 
     @GET("api/downloads")
     suspend fun downloads(): NetworkDownloads
+
+    @GET("api/me")
+    suspend fun me(): NetworkMe
+
+    @POST("api/logout")
+    suspend fun logout(): Response<Unit>
+
+    @HTTP(method = "DELETE", path = "api/me", hasBody = true)
+    suspend fun deleteMe(@Body confirm: NetworkDeleteMe): Response<Unit>
+
+    @PUT("api/settings")
+    suspend fun updateSettings(@Body input: NetworkSettingsInput): Response<Unit>
+
+    @POST("api/accounts")
+    suspend fun createAccount(@Body input: NetworkAccountInput): Response<Unit>
+
+    @PUT("api/accounts/{id}")
+    suspend fun updateAccount(@Path("id") id: Long, @Body input: NetworkAccountInput): Response<Unit>
+
+    @DELETE("api/accounts/{id}")
+    suspend fun deleteAccount(@Path("id") id: Long): Response<Unit>
+
+    @GET("api/categories/missing")
+    suspend fun missingCategories(): List<NetworkCategory>
+
+    @POST("api/categories")
+    suspend fun createCategory(@Body input: NetworkCategoryInput): Response<Unit>
+
+    @PUT("api/categories/{id}")
+    suspend fun updateCategory(@Path("id") id: Long, @Body input: NetworkCategoryInput): Response<Unit>
+
+    @DELETE("api/categories/{id}")
+    suspend fun deleteCategory(@Path("id") id: Long): Response<Unit>
 }
 
 @Singleton
@@ -144,6 +184,28 @@ internal class RetrofitWalletNetwork @Inject constructor(retrofit: Retrofit, pri
         call { api.stats(rfc3339(from), rfc3339(to), zone, accountId) }
 
     override suspend fun notifications() = call { api.notifications() }
+
+    override suspend fun me() = call { api.me() }
+
+    override suspend fun logout() = call { api.logout().orThrow() }
+
+    override suspend fun deleteMe(confirm: NetworkDeleteMe) = call { api.deleteMe(confirm).orThrow() }
+
+    override suspend fun updateSettings(input: NetworkSettingsInput) = call { api.updateSettings(input).orThrow() }
+
+    override suspend fun createAccount(input: NetworkAccountInput) = call { api.createAccount(input).orThrow() }
+
+    override suspend fun updateAccount(id: Long, input: NetworkAccountInput) = call { api.updateAccount(id, input).orThrow() }
+
+    override suspend fun deleteAccount(id: Long) = call { api.deleteAccount(id).orThrow() }
+
+    override suspend fun missingCategories() = call { api.missingCategories() }
+
+    override suspend fun createCategory(input: NetworkCategoryInput) = call { api.createCategory(input).orThrow() }
+
+    override suspend fun updateCategory(id: Long, input: NetworkCategoryInput) = call { api.updateCategory(id, input).orThrow() }
+
+    override suspend fun deleteCategory(id: Long) = call { api.deleteCategory(id).orThrow() }
 
     override suspend fun downloads() = call { api.downloads() }
 

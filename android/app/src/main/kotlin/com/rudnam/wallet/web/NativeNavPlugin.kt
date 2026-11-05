@@ -74,7 +74,7 @@ class NativeNavPlugin : Plugin() {
         call.resolve()
     }
 
-    /** { appearance: auto | light | dark }, chosen in the web app's Settings. */
+    /** { appearance: auto | light | dark }, chosen in the web app's Settings (before Settings was native). */
     @PluginMethod
     fun setAppearance(call: PluginCall) {
         val appearance = Appearance.fromKey(call.getString("appearance"))
@@ -101,6 +101,6 @@ class NativeNavPlugin : Plugin() {
 
     companion object {
         /** The website's pages the app draws natively. The web app hands these to native code. */
-        val NATIVE_PAGES = listOf("home", "records", "review", "account", "stats", "budgets")
+        val NATIVE_PAGES = listOf("home", "records", "review", "account", "stats", "budgets", "settings")
     }
 }

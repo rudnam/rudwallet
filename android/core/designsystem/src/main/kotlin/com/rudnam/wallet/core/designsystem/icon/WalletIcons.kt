@@ -56,6 +56,9 @@ object WalletIcons {
     const val up = "M4 17l6-6 4 4 6-7M15 8h5v5"
     const val down = "M4 7l6 6 4-4 6 7M15 16h5v-5"
     const val budgets = "M12 3a9 9 0 1 0 9 9h-9zM15 3.5A9 9 0 0 1 20.5 9H15z"
+    const val appearance = "M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 1 0 0-17M12 3.5v17"
+    const val globe = "M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M3.5 9h17M3.5 15h17M12 3c-2.4 2.6-3.6 5.6-3.6 9s1.2 6.4 3.6 9M12 3c2.4 2.6 3.6 5.6 3.6 9s-1.2 6.4-3.6 9"
+    const val spark = "M12 3l1.8 5.7L19.5 10.5l-5.7 1.8L12 18l-1.8-5.7L4.5 10.5l5.7-1.8zM18.5 15.5l.7 2.1 2.1.7-2.1.7-.7 2.1-.7-2.1-2.1-.7 2.1-.7z"
     const val stop = "M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M12 7.5v5.5M12 16.5h.01"
 
     /** Icons a category can wear, by the key stored in its icon field. */
@@ -99,9 +102,12 @@ object WalletIcons {
     )
 
     /** The glyph's path for a category's stored icon, or null if it has none. */
-    fun glyph(icon: String?): String? {
+    fun glyph(icon: String?): String? = glyphKey(icon)?.let(glyphs::get)
+
+    /** The glyph key for a category's stored icon (an emoji from before line icons maps to its closest), or null. */
+    fun glyphKey(icon: String?): String? {
         if (icon.isNullOrEmpty()) return null
-        glyphs[icon]?.let { return it }
-        return fromEmoji[icon.replace("️", "").replace("‍", "")]?.let { glyphs[it] }
+        if (icon in glyphs) return icon
+        return fromEmoji[icon.replace("️", "").replace("‍", "")]
     }
 }

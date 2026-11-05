@@ -694,6 +694,11 @@ export const api = {
     outbox.forget(email);
     await saveSession('');
   },
+  /** Signed out by the Android app's own Settings, which has told the server: forgets the session here too. */
+  forgetSession: async () => {
+    outbox.forget(owner());
+    await saveSession('');
+  },
   authOptions: () => request<AuthOptions>('GET', '/api/auth/options'),
   /** Signs in to a new demo account with sample data, named in the app's language and dated in this time zone. */
   startDemo: () => signedIn(request<Me>('POST', '/api/demo', { tz: Intl.DateTimeFormat().resolvedOptions().timeZone })),

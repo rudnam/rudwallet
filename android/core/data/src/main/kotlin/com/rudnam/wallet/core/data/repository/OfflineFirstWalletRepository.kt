@@ -8,7 +8,6 @@ import com.rudnam.wallet.core.database.dao.OutboxDao
 import com.rudnam.wallet.core.database.model.asTransaction
 import com.rudnam.wallet.core.database.dao.TransactionDao
 import com.rudnam.wallet.core.database.dao.WalletDao
-import com.rudnam.wallet.core.database.model.WalletEntity
 import com.rudnam.wallet.core.database.model.asEntity
 import com.rudnam.wallet.core.database.model.asModel
 import com.rudnam.wallet.core.database.model.settings
@@ -70,18 +69,7 @@ internal class OfflineFirstWalletRepository @Inject constructor(
             val wallet = async { network.wallet().asModel() }
             val records = async { network.transactions(from, to).map { it.asModel() } }
             val budgets = async { network.budgets().map { it.asModel() } }
-            val w = wallet.await()
-            walletDao.replaceWallet(
-                WalletEntity(
-                    currency = w.settings.currency,
-                    currencyExponent = w.settings.currencyExponent,
-                    autoConfirm = w.settings.autoConfirm,
-                    defaultAccountId = w.settings.defaultAccountId,
-                    reviewCount = w.reviewCount,
-                ),
-                w.accounts.mapIndexed { i, a -> a.asEntity(i) },
-                w.categories.mapIndexed { i, c -> c.asEntity(i) },
-            )
+            walletDao.save(wallet.await())
             transactionDao.replaceRange(from, to, records.await().map { it.asEntity() })
             budgetDao.replaceAll(budgets.await().mapIndexed { i, b -> b.asEntity(i) })
         }

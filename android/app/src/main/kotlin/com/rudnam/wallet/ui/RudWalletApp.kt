@@ -53,17 +53,20 @@ import com.rudnam.wallet.feature.activity.navigation.activityScreen
 import com.rudnam.wallet.feature.insights.InsightsNavigation
 import com.rudnam.wallet.feature.insights.navigation.BudgetsRoute
 import com.rudnam.wallet.feature.insights.navigation.insightsScreen
+import com.rudnam.wallet.feature.settings.SettingsNavigation
+import com.rudnam.wallet.feature.settings.navigation.settingsScreen
+import com.rudnam.wallet.core.data.repository.SignOutReason
 import com.rudnam.wallet.feature.record.navigation.RecordRoute
 import com.rudnam.wallet.feature.record.navigation.recordSheet
 import com.rudnam.wallet.feature.wallet.WalletNavigation
 import com.rudnam.wallet.feature.wallet.navigation.WalletRoute
 import com.rudnam.wallet.feature.wallet.navigation.walletScreen
 import com.rudnam.wallet.navigation.TopLevelDestination
-import com.rudnam.wallet.navigation.SettingsTabRoute
 import com.rudnam.wallet.navigation.WebRoute
 import com.rudnam.wallet.web.WebPageFragment
 import com.rudnam.wallet.web.WebRequest
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import java.time.YearMonth
 
 /**
@@ -79,6 +82,8 @@ fun RudWalletApp(
     recordEvents: Flow<RecordEvent>,
     settings: WalletSettings?,
     onUndo: suspend (RecordEvent) -> SaveResult,
+    appearance: String = "auto",
+    signOuts: Flow<SignOutReason> = emptyFlow(),
     appState: RudWalletAppState = rememberRudWalletAppState(),
 ) {
     val snackbar = remember { SnackbarHostState() }
@@ -86,10 +91,12 @@ fun RudWalletApp(
     val tab = appState.currentTab
     val webPath = appState.webPath
 
-    // Signing in and out happens in the web view for now; the app follows the session.
+    // Signing in happens in the web view for now; the app follows the session.
     LaunchedEffect(signedIn) {
         if (!signedIn) appState.showSignIn() else if (appState.onSignIn) appState.showWallet()
     }
+    // Signing out in the app's Settings: the web view, which keeps its own idea of who's in, follows.
+    LaunchedEffect(signOuts) { signOuts.collect { appState.web?.signedOut(deleted = it == SignOutReason.Deleted) } }
     // Links into the app (the widgets: <package>://open/<page>).
     LaunchedEffect(links) { links.collect { appState.openPath(it) } }
 
@@ -100,7 +107,7 @@ fun RudWalletApp(
         bottomBar = { if (tab != null) TabBar(tab, reviewCount, appState::navigateToTab) },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
-            WebHost(appState, signedIn, visible = webPath != null, path = webPath)
+            WebHost(appState, signedIn, visible = webPath != null, path = webPath, appearance = appearance)
             NavHost(appState.navController, startDestination = WalletRoute) {
                 walletScreen(
                     navigation = object : WalletNavigation {
@@ -138,10 +145,18 @@ fun RudWalletApp(
                     },
                     snackbar = snackbar,
                 )
+                settingsScreen(
+                    navigation = object : SettingsNavigation {
+                        override fun open(path: String) = appState.openPath(path)
+                        override fun back() {
+                            appState.navController.popBackStack()
+                        }
+                    },
+                    snackbar = snackbar,
+                )
                 recordSheet(onDone = { appState.navController.popBackStack() })
                 // Web pages and the tabs still on the web: the web view underneath shows them (WebHost).
                 composable<WebRoute> { }
-                composable<SettingsTabRoute> { }
             }
         }
     }
@@ -184,7 +199,7 @@ private fun TabBar(current: TopLevelDestination, reviewCount: Int, onSelect: (To
  * app's layout leaves it, clear of the system bars and the keyboard.
  */
 @Composable
-private fun WebHost(appState: RudWalletAppState, signedIn: Boolean, visible: Boolean, path: String?) {
+private fun WebHost(appState: RudWalletAppState, signedIn: Boolean, visible: Boolean, path: String?, appearance: String) {
     // Signed out, the web app may still ask for pages as it leaves them (Wallet, after signing out): the sign-in page stays.
     val session by rememberUpdatedState(signedIn)
     AndroidFragment<WebPageFragment>(
@@ -202,6 +217,8 @@ private fun WebHost(appState: RudWalletAppState, signedIn: Boolean, visible: Boo
     val web = appState.web
     LaunchedEffect(web, visible) { web?.view?.isInvisible = !visible }
     LaunchedEffect(web, path) { if (web != null && path != null) web.show(path) }
+    // Chosen in the app's Settings: the web pages follow. (A new language remakes the activity, and the web view with it.)
+    LaunchedEffect(web, appearance) { web?.setAppearance(appearance) }
 }
 
 /**

@@ -60,6 +60,12 @@ class WebPageFragment : Fragment(com.getcapacitor.android.R.layout.capacitor_bri
     /** Shows a page: the web app replaces its route with [path] (e.g. "records?account=3"). */
     fun show(path: String) = emit("show", JSObject().put("path", path))
 
+    /** Signed out in the app's Settings (or the account deleted): the web app forgets the session too. */
+    fun signedOut(deleted: Boolean) = emit("signedOut", JSObject().put("deleted", deleted))
+
+    /** Appearance chosen in the app's Settings: auto, light or dark. */
+    fun setAppearance(appearance: String) = emit("appearance", JSObject().put("appearance", appearance))
+
     /** Android's back gesture, while the web app has a sheet or dialog open: it closes that. */
     fun back() = emit("back", JSObject())
 

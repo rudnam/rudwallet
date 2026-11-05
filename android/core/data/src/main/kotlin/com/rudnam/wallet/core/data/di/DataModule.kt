@@ -3,6 +3,10 @@ package com.rudnam.wallet.core.data.di
 import com.rudnam.wallet.core.data.repository.AccountRepository
 import com.rudnam.wallet.core.data.repository.ActivityRepository
 import com.rudnam.wallet.core.data.repository.InsightsRepository
+import com.rudnam.wallet.core.data.repository.ServerSettingsRepository
+import com.rudnam.wallet.core.data.repository.ServerUserRepository
+import com.rudnam.wallet.core.data.repository.SettingsRepository
+import com.rudnam.wallet.core.data.repository.UserRepository
 import com.rudnam.wallet.core.data.repository.ServerInsightsRepository
 import com.rudnam.wallet.core.data.repository.ServerAccountRepository
 import com.rudnam.wallet.core.data.repository.OfflineFirstActivityRepository
@@ -39,6 +43,12 @@ internal interface DataModule {
 
     @Binds
     fun insightsRepository(impl: ServerInsightsRepository): InsightsRepository
+
+    @Binds
+    fun settingsRepository(impl: ServerSettingsRepository): SettingsRepository
+
+    @Binds
+    fun userRepository(impl: ServerUserRepository): UserRepository
 
     @Binds
     fun outboxScheduler(impl: WorkManagerOutboxScheduler): OutboxScheduler

@@ -75,6 +75,8 @@ class MainActivity : AppCompatActivity() {
                     recordEvents = viewModel.recordEvents,
                     settings = settings,
                     onUndo = viewModel::undo,
+                    appearance = ready.appearance.key,
+                    signOuts = viewModel.signOuts,
                 )
             }
         }

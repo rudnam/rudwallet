@@ -2,7 +2,7 @@
 // (web/src/native.ts, "embedded"): the app draws the tabs and the plus and
 // runs navigation; this shows the pages that aren't native yet, as the app
 // says. The app's side is tested natively (android/, ./gradlew testDebugUnitTest).
-const { test, expect, signUp, asAndroidApp, nativeShow, nativeBack, nativeAsked } = require('./fixtures');
+const { test, expect, signUp, asAndroidApp, nativeShow, nativeBack, nativeAsked, nativeEmit } = require('./fixtures');
 
 const app = { nativePages: ['home'], appearance: 'auto', language: '' };
 
@@ -65,4 +65,23 @@ test('an app build without native navigation runs the web app as before', async 
   await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible();
   await page.getByRole('link', { name: 'All records' }).click();
   await expect(page).toHaveURL(/#\/records$/);
+});
+
+test('signing out and Appearance in the app’s own Settings: this follows', async ({ page }) => {
+  await asAndroidApp(page, { build: 9999, nativeNav: app });
+  await signUp(page);
+  await nativeEmit(page, 'appearance', { appearance: 'dark' });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  // Told by the app, it isn't told back.
+  expect(await nativeAsked(page)).not.toContainEqual(['setAppearance', { appearance: 'dark' }]);
+
+  await nativeEmit(page, 'signedOut', { deleted: false });
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+});
+
+test('an account deleted in the app’s Settings says so on the sign-in page', async ({ page }) => {
+  await asAndroidApp(page, { build: 9999, nativeNav: app });
+  await signUp(page);
+  await nativeEmit(page, 'signedOut', { deleted: true });
+  await expect(page.getByText('Your account and everything in it were deleted.')).toBeVisible();
 });

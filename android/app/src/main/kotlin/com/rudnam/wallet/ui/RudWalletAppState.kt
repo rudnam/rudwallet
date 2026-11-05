@@ -17,6 +17,7 @@ import com.rudnam.wallet.feature.account.navigation.AccountRoute
 import com.rudnam.wallet.feature.activity.navigation.ActivityRoute
 import com.rudnam.wallet.feature.insights.navigation.BudgetsRoute
 import com.rudnam.wallet.feature.insights.navigation.InsightsRoute
+import com.rudnam.wallet.feature.settings.navigation.SettingsSectionRoute
 import com.rudnam.wallet.feature.record.navigation.RecordRoute
 import com.rudnam.wallet.feature.wallet.navigation.WalletRoute
 import com.rudnam.wallet.navigation.TopLevelDestination
@@ -91,6 +92,14 @@ class RudWalletAppState(val navController: NavHostController) {
             navController.navigate(BudgetsRoute)
             return
         }
+        // A settings page drawn natively; the others are still web pages.
+        if (page == "settings") {
+            val section = PathParams.get(path, "section")
+            if (section in SettingsSectionRoute.NATIVE) {
+                navController.navigate(SettingsSectionRoute(section!!))
+                return
+            }
+        }
         // Another tab's own page, as the tab itself shows it.
         TopLevelDestination.entries.firstOrNull { it.page == path }?.let {
             navigateToTab(it)
@@ -118,16 +127,15 @@ class RudWalletAppState(val navController: NavHostController) {
 
 /** Reading a website path's parameters. */
 internal object PathParams {
-    fun id(path: String): Long? = path.substringAfter('?', "").split('&').firstOrNull { it.startsWith("id=") }?.substringAfter('=')?.toLongOrNull()
+    fun id(path: String): Long? = get(path, "id")?.toLongOrNull()
+
+    fun get(path: String, name: String): String? =
+        path.substringAfter('?', "").split('&').firstOrNull { it.startsWith("$name=") }?.substringAfter('=')
 }
 
-/** The web path a back stack entry shows: a web page's, or a web tab's page; null for a native screen. */
-internal fun webPathOf(entry: NavBackStackEntry): String? {
-    val destination = entry.destination
-    if (destination.hasRoute<WebRoute>()) return entry.toRoute<WebRoute>().path
-    // The tabs still on the web.
-    return TopLevelDestination.entries.firstOrNull { it.web && destination.hasRoute(it.route::class) }?.page
-}
+/** The web path a back stack entry shows, or null for a native screen. */
+internal fun webPathOf(entry: NavBackStackEntry): String? =
+    if (entry.destination.hasRoute<WebRoute>()) entry.toRoute<WebRoute>().path else null
 
 @Composable
 fun rememberRudWalletAppState(navController: NavHostController = rememberNavController()) =

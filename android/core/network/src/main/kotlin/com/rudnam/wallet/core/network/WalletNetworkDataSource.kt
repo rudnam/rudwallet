@@ -1,6 +1,12 @@
 package com.rudnam.wallet.core.network
 
+import com.rudnam.wallet.core.network.model.NetworkAccountInput
 import com.rudnam.wallet.core.network.model.NetworkBudget
+import com.rudnam.wallet.core.network.model.NetworkCategory
+import com.rudnam.wallet.core.network.model.NetworkCategoryInput
+import com.rudnam.wallet.core.network.model.NetworkDeleteMe
+import com.rudnam.wallet.core.network.model.NetworkMe
+import com.rudnam.wallet.core.network.model.NetworkSettingsInput
 import com.rudnam.wallet.core.network.model.NetworkBudgetInput
 import com.rudnam.wallet.core.network.model.NetworkBulkChange
 import com.rudnam.wallet.core.network.model.NetworkBulkResult
@@ -79,6 +85,34 @@ interface WalletNetworkDataSource {
 
     /** The accounts in a new order, the first first. */
     suspend fun setAccountOrder(ids: List<Long>)
+
+    /** Who is signed in. */
+    suspend fun me(): NetworkMe
+
+    /** Ends the session on the server. */
+    suspend fun logout()
+
+    /** Deletes the account and everything in it, confirmed with the password or (Google-only) the email. */
+    suspend fun deleteMe(confirm: NetworkDeleteMe)
+
+    suspend fun updateSettings(input: NetworkSettingsInput)
+
+    suspend fun createAccount(input: NetworkAccountInput)
+
+    suspend fun updateAccount(id: Long, input: NetworkAccountInput)
+
+    /** Deletes an account and every record in it. */
+    suspend fun deleteAccount(id: Long)
+
+    /** The default categories the user doesn't have (yet, or any more). */
+    suspend fun missingCategories(): List<NetworkCategory>
+
+    suspend fun createCategory(input: NetworkCategoryInput)
+
+    suspend fun updateCategory(id: Long, input: NetworkCategoryInput)
+
+    /** Deletes a category: its records become uncategorised, and its budgets go. */
+    suspend fun deleteCategory(id: Long)
 }
 
 /** The server ended the session (401), or nobody is signed in. */

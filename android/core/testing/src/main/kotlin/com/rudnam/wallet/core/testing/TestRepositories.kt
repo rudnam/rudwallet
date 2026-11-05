@@ -118,7 +118,7 @@ class TestAccountRepository : com.rudnam.wallet.core.data.repository.AccountRepo
 class TestInsightsRepository(private val wallet: TestWalletRepository? = null) : com.rudnam.wallet.core.data.repository.InsightsRepository {
     var answer: (com.rudnam.wallet.core.data.repository.StatsQuery) -> com.rudnam.wallet.core.model.Stats = { com.rudnam.wallet.core.model.Stats.Empty }
     var failure: com.rudnam.wallet.core.data.repository.StatsResult? = null
-    var budgetResult: com.rudnam.wallet.core.data.repository.BudgetResult = com.rudnam.wallet.core.data.repository.BudgetResult.Saved
+    var budgetResult: com.rudnam.wallet.core.data.repository.ChangeResult = com.rudnam.wallet.core.data.repository.ChangeResult.Saved
     val asked = mutableListOf<com.rudnam.wallet.core.data.repository.StatsQuery>()
     val seen = HashMap<com.rudnam.wallet.core.data.repository.StatsQuery, com.rudnam.wallet.core.model.Stats>()
     val created = mutableListOf<com.rudnam.wallet.core.model.BudgetInput>()
@@ -138,4 +138,43 @@ class TestInsightsRepository(private val wallet: TestWalletRepository? = null) :
     override suspend fun updateBudget(id: Long, input: com.rudnam.wallet.core.model.BudgetInput) = budgetResult.also { updated += id to input }
 
     override suspend fun deleteBudget(id: Long) = budgetResult.also { deleted += id }
+}
+
+/** A [SettingsRepository] that keeps what it's asked, and answers [result]. */
+class TestSettingsRepository : com.rudnam.wallet.core.data.repository.SettingsRepository {
+    var result: com.rudnam.wallet.core.data.repository.ChangeResult = com.rudnam.wallet.core.data.repository.ChangeResult.Saved
+    var missing = listOf(com.rudnam.wallet.core.model.Category(0, "Pets", com.rudnam.wallet.core.model.CategoryKind.Expense, "pet", "#8a6d3b"))
+    val currencies = mutableListOf<String>()
+    val accounts = mutableListOf<Pair<Long?, com.rudnam.wallet.core.model.AccountInput>>()
+    val deletedAccounts = mutableListOf<Long>()
+    val categories = mutableListOf<Pair<Long?, com.rudnam.wallet.core.model.CategoryInput>>()
+    val deletedCategories = mutableListOf<Long>()
+
+    override suspend fun setCurrency(currency: String) = result.also { currencies += currency }
+    override suspend fun saveAccount(id: Long?, input: com.rudnam.wallet.core.model.AccountInput) = result.also { accounts += id to input }
+    override suspend fun deleteAccount(id: Long) = result.also { deletedAccounts += id }
+    override suspend fun missingCategories() = missing
+    override suspend fun saveCategory(id: Long?, input: com.rudnam.wallet.core.model.CategoryInput) = result.also { categories += id to input }
+    override suspend fun deleteCategory(id: Long) = result.also { deletedCategories += id }
+}
+
+/** A [UserRepository] with [me] signed in; it keeps what it's asked. */
+class TestUserRepository(me: com.rudnam.wallet.core.model.Me? = com.rudnam.wallet.core.model.Me("francis@example.com", hasPassword = true, demo = false)) :
+    com.rudnam.wallet.core.data.repository.UserRepository {
+    private val meFlow = MutableStateFlow(me)
+    var signedOut = false
+        private set
+    val deletions = mutableListOf<Pair<String, Boolean>>()
+    var deleteResult: com.rudnam.wallet.core.data.repository.ChangeResult = com.rudnam.wallet.core.data.repository.ChangeResult.Saved
+
+    override val me: Flow<com.rudnam.wallet.core.model.Me?> = meFlow
+    override suspend fun refreshMe() = Unit
+    override suspend fun signOut() {
+        signedOut = true
+        meFlow.value = null
+    }
+    override suspend fun deleteAccount(confirm: String, withPassword: Boolean) = deleteResult.also {
+        deletions += confirm to withPassword
+        if (it == com.rudnam.wallet.core.data.repository.ChangeResult.Saved) meFlow.value = null
+    }
 }

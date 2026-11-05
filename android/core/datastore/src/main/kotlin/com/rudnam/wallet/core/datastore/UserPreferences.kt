@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import com.rudnam.wallet.core.model.Me
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -64,8 +65,30 @@ class UserPreferencesRepository @Inject constructor(
         dataStore.edit { it[LAST_ACCOUNT] = id }
     }
 
+    /** Who was signed in when the server last said, so Settings can show it offline; null once they sign out. */
+    val me: Flow<Me?> = dataStore.data.map { p ->
+        p[ME_EMAIL]?.let { Me(it, hasPassword = p[ME_PASSWORD] ?: true, demo = p[ME_DEMO] ?: false) }
+    }
+
+    suspend fun setMe(me: Me?) {
+        dataStore.edit {
+            if (me == null) {
+                it.remove(ME_EMAIL)
+                it.remove(ME_PASSWORD)
+                it.remove(ME_DEMO)
+            } else {
+                it[ME_EMAIL] = me.email
+                it[ME_PASSWORD] = me.hasPassword
+                it[ME_DEMO] = me.demo
+            }
+        }
+    }
+
     private companion object {
         val LAST_ACCOUNT = longPreferencesKey("last_account")
+        val ME_EMAIL = stringPreferencesKey("me_email")
+        val ME_PASSWORD = booleanPreferencesKey("me_has_password")
+        val ME_DEMO = booleanPreferencesKey("me_demo")
         val APPEARANCE = stringPreferencesKey("appearance")
         val SETUP_DISMISSED = booleanPreferencesKey("setup_dismissed")
         val UPDATE_LATER = intPreferencesKey("update_later")

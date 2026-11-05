@@ -2,7 +2,7 @@ package com.rudnam.wallet.feature.insights
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.navigation.testing.invoke
-import com.rudnam.wallet.core.data.repository.BudgetResult
+import com.rudnam.wallet.core.data.repository.ChangeResult
 import com.rudnam.wallet.core.data.repository.RecordEvent
 import com.rudnam.wallet.core.data.repository.RecordEvents
 import com.rudnam.wallet.core.data.repository.StatsResult
@@ -132,11 +132,11 @@ class InsightsViewModelTest {
 
         vm.edit(Budget(2, "Eating out", 10, 8_000))
         assertEquals("8000", vm.editor.value!!.amount)
-        insights.budgetResult = BudgetResult.Refused("choose a spending category")
+        insights.budgetResult = ChangeResult.Refused("choose a spending category")
         vm.save("Food & Drinks")
         assertEquals("choose a spending category", vm.editor.value!!.refused)
 
-        insights.budgetResult = BudgetResult.Saved
+        insights.budgetResult = ChangeResult.Saved
         vm.askDelete(true)
         vm.delete()
         assertEquals(listOf(2L), insights.deleted)

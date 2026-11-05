@@ -152,6 +152,16 @@ async function asAndroidApp(page, { build = 3, installer = 'com.google.android.p
 }
 
 /** Taps a transit IC card to the phone, as the Android app reports it (a page set up with asAndroidApp). */
+/** The app sends the web app an event, e.g. ('signedOut', { deleted: false }) (asAndroidApp with nativeNav). */
+async function nativeEmit(page, event, data) {
+  await page.evaluate(
+    ({ event, data }) => {
+      for (const l of Object.values(window.listeners)) if (l.event === `NativeNav.${event}`) l.callback(data);
+    },
+    { event, data },
+  );
+}
+
 /** The app shows a page in the web view (asAndroidApp with nativeNav). */
 async function nativeShow(page, path) {
   await page.evaluate((path) => {
@@ -238,4 +248,4 @@ async function sendNotifications(request, ...notifications) {
   return (await res.json()).notifications;
 }
 
-module.exports = { test, expect: base.expect, signUp, asAndroidApp, uniqueEmail, PASSWORD, confirmationLink, resetLink, PAYPAY, payPayCard, sendNotifications, icCardRead, icEntry, tapICCard, nativeShow, nativeBack, nativeAsked };
+module.exports = { test, expect: base.expect, signUp, asAndroidApp, uniqueEmail, PASSWORD, confirmationLink, resetLink, PAYPAY, payPayCard, sendNotifications, icCardRead, icEntry, tapICCard, nativeShow, nativeBack, nativeAsked, nativeEmit };

@@ -104,6 +104,14 @@ interface TransactionDao {
     @Query("DELETE FROM transactions WHERE id IN (:ids)")
     suspend fun deleteAll(ids: List<Long>)
 
+    /** An account was deleted, and every record in it with it. */
+    @Query("DELETE FROM transactions WHERE accountId = :accountId OR toAccountId = :accountId")
+    suspend fun deleteForAccount(accountId: Long)
+
+    /** A category was deleted: its records have none now. */
+    @Query("UPDATE transactions SET categoryId = NULL WHERE categoryId = :categoryId")
+    suspend fun uncategorize(categoryId: Long)
+
     /** Records since [from] the phone has, newest first. */
     @Query("SELECT * FROM transactions WHERE occurredAt >= :from ORDER BY occurredAt DESC, id DESC")
     suspend fun since(from: Instant): List<TransactionEntity>
@@ -121,6 +129,10 @@ interface BudgetDao {
 
     @Query("DELETE FROM budgets WHERE id = :id")
     suspend fun delete(id: Long)
+
+    /** A category was deleted, and its budgets with it. */
+    @Query("DELETE FROM budgets WHERE categoryId = :categoryId")
+    suspend fun deleteForCategory(categoryId: Long)
 
     @Transaction
     suspend fun replaceAll(budgets: List<BudgetEntity>) {

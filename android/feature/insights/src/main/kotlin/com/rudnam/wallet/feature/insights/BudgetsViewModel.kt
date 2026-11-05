@@ -2,7 +2,7 @@ package com.rudnam.wallet.feature.insights
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.rudnam.wallet.core.data.repository.BudgetResult
+import com.rudnam.wallet.core.data.repository.ChangeResult
 import com.rudnam.wallet.core.data.repository.InsightsRepository
 import com.rudnam.wallet.core.data.repository.WalletRepository
 import com.rudnam.wallet.core.model.Budget
@@ -139,19 +139,19 @@ class BudgetsViewModel @Inject constructor(
         viewModelScope.launch {
             val result = insights.deleteBudget(id)
             finish(result)
-            if (result == BudgetResult.Saved) post(BudgetsMessage.Deleted(name))
+            if (result == ChangeResult.Saved) post(BudgetsMessage.Deleted(name))
         }
     }
 
-    private fun finish(result: BudgetResult) {
+    private fun finish(result: ChangeResult) {
         when (result) {
-            BudgetResult.Saved -> _editor.value = null
-            BudgetResult.Offline -> {
+            ChangeResult.Saved -> _editor.value = null
+            ChangeResult.Offline -> {
                 _editor.update { it?.copy(busy = false) }
                 post(BudgetsMessage.Offline)
             }
-            BudgetResult.SignedOut -> _editor.value = null
-            is BudgetResult.Refused -> _editor.update { it?.copy(busy = false, refused = result.message) }
+            ChangeResult.SignedOut -> _editor.value = null
+            is ChangeResult.Refused -> _editor.update { it?.copy(busy = false, refused = result.message) }
         }
     }
 

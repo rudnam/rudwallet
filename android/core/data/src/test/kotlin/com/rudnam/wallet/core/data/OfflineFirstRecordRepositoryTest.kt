@@ -75,6 +75,17 @@ class OfflineFirstRecordRepositoryTest {
         override suspend fun reconcile(accountId: Long, balance: Long) = com.rudnam.wallet.core.network.model.NetworkReconcileResult()
         override suspend fun setAccountOrder(ids: List<Long>) = Unit
         override suspend fun tags() = listOf(NetworkTag("trip", 3))
+        override suspend fun me() = com.rudnam.wallet.core.network.model.NetworkMe("francis@example.com")
+        override suspend fun logout() = Unit
+        override suspend fun deleteMe(confirm: com.rudnam.wallet.core.network.model.NetworkDeleteMe) = Unit
+        override suspend fun updateSettings(input: com.rudnam.wallet.core.network.model.NetworkSettingsInput) = Unit
+        override suspend fun createAccount(input: com.rudnam.wallet.core.network.model.NetworkAccountInput) = Unit
+        override suspend fun updateAccount(id: Long, input: com.rudnam.wallet.core.network.model.NetworkAccountInput) = Unit
+        override suspend fun deleteAccount(id: Long) = Unit
+        override suspend fun missingCategories() = emptyList<com.rudnam.wallet.core.network.model.NetworkCategory>()
+        override suspend fun createCategory(input: com.rudnam.wallet.core.network.model.NetworkCategoryInput) = Unit
+        override suspend fun updateCategory(id: Long, input: com.rudnam.wallet.core.network.model.NetworkCategoryInput) = Unit
+        override suspend fun deleteCategory(id: Long) = Unit
         override suspend fun createBudget(input: com.rudnam.wallet.core.network.model.NetworkBudgetInput) = error("not used")
         override suspend fun updateBudget(id: Long, input: com.rudnam.wallet.core.network.model.NetworkBudgetInput) = error("not used")
         override suspend fun deleteBudget(id: Long) = Unit

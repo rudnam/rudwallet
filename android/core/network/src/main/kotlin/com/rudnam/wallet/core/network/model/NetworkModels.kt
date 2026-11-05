@@ -2,7 +2,10 @@ package com.rudnam.wallet.core.network.model
 
 import com.rudnam.wallet.core.model.Account
 import com.rudnam.wallet.core.model.AccountKind
+import com.rudnam.wallet.core.model.AccountInput
 import com.rudnam.wallet.core.model.Budget
+import com.rudnam.wallet.core.model.CategoryInput
+import com.rudnam.wallet.core.model.Me
 import com.rudnam.wallet.core.model.BudgetInput
 import com.rudnam.wallet.core.model.CategoryTotal
 import com.rudnam.wallet.core.model.DayTotal
@@ -136,6 +139,37 @@ data class NetworkBudget(
     val amount: Long,
 )
 
+@Serializable
+data class NetworkMe(
+    val email: String,
+    @SerialName("has_password") val hasPassword: Boolean = true,
+    val demo: Boolean = false,
+)
+
+/** What deleting the account is confirmed with: the password, or for a Google-only account, the email. */
+@Serializable
+data class NetworkDeleteMe(val password: String? = null, val email: String? = null)
+
+@Serializable
+data class NetworkSettingsInput(
+    val currency: String,
+    @SerialName("auto_confirm") val autoConfirm: Boolean,
+    // All three are saved: send the ones not being changed as they are. Null (left out) is no default account.
+    @SerialName("default_account_id") val defaultAccountId: Long?,
+)
+
+@Serializable
+data class NetworkAccountInput(
+    val name: String,
+    val kind: String,
+    @SerialName("initial_balance") val initialBalance: Long,
+    val color: String,
+    val archived: Boolean,
+)
+
+@Serializable
+data class NetworkCategoryInput(val name: String, val kind: String, val icon: String, val color: String)
+
 /** A new budget, or a budget's new name, category or limit. */
 @Serializable
 data class NetworkBudgetInput(
@@ -228,6 +262,14 @@ fun RecordInput.asNetwork(clientId: String? = null) = NetworkRecordInput(
 fun NetworkBudget.asModel() = Budget(id, name, categoryId, amount)
 
 fun BudgetInput.asNetwork() = NetworkBudgetInput(name, categoryId, amount)
+
+fun NetworkMe.asModel() = Me(email, hasPassword, demo)
+
+fun AccountInput.asNetwork() = NetworkAccountInput(name, kind.apiName, initialBalance, color, archived)
+
+fun CategoryInput.asNetwork() = NetworkCategoryInput(name, kind.apiName, icon, color)
+
+fun NetworkCategory.asModel() = Category(id, name, CategoryKind.fromApi(kind), icon, color)
 
 fun NetworkStats.asModel() = Stats(
     spent = spent,

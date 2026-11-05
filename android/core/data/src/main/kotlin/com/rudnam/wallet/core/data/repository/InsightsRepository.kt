@@ -37,18 +37,6 @@ sealed interface StatsResult {
     data class Failed(val message: String) : StatsResult
 }
 
-/** How saving or deleting a budget went. */
-sealed interface BudgetResult {
-    data object Saved : BudgetResult
-
-    data object Offline : BudgetResult
-
-    data object SignedOut : BudgetResult
-
-    /** The server said no: [message] says why, for the user. */
-    data class Refused(val message: String) : BudgetResult
-}
-
 /**
  * Insights' figures and the budgets. Stats are totals the server works out
  * over any period, so they aren't kept in the database: the answers seen
@@ -61,11 +49,11 @@ interface InsightsRepository {
 
     suspend fun stats(query: StatsQuery): StatsResult
 
-    suspend fun createBudget(input: BudgetInput): BudgetResult
+    suspend fun createBudget(input: BudgetInput): ChangeResult
 
-    suspend fun updateBudget(id: Long, input: BudgetInput): BudgetResult
+    suspend fun updateBudget(id: Long, input: BudgetInput): ChangeResult
 
-    suspend fun deleteBudget(id: Long): BudgetResult
+    suspend fun deleteBudget(id: Long): ChangeResult
 }
 
 /** Stats seen since the app started, the most recent few; emptied when someone signs out. */
@@ -130,19 +118,5 @@ internal class ServerInsightsRepository @Inject constructor(
         budgetDao.delete(id)
     }
 
-    private suspend fun save(block: suspend () -> Unit): BudgetResult = withContext(io) {
-        try {
-            block()
-            BudgetResult.Saved
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: SignedOutException) {
-            BudgetResult.SignedOut
-        } catch (e: IOException) {
-            BudgetResult.Offline
-        } catch (e: ApiException) {
-            if (e.status in 400..499) BudgetResult.Refused(e.message) else BudgetResult.Offline
-        }
-    }
+    private suspend fun save(block: suspend () -> Unit): ChangeResult = change(io, block)
 }
-

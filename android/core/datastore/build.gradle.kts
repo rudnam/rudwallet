@@ -8,6 +8,7 @@ android { namespace = "com.rudnam.wallet.core.datastore" }
 
 dependencies {
     implementation(project(":core:common"))
+    api(project(":core:model"))
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)

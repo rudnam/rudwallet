@@ -29,6 +29,8 @@ const nativeNav = registerPlugin<{
   setLanguage(o: { language: string }): Promise<void>;
   addListener(event: 'show', f: (e: { path: string }) => void): Promise<PluginListenerHandle>;
   addListener(event: 'back', f: () => void): Promise<PluginListenerHandle>;
+  addListener(event: 'signedOut', f: (e: { deleted: boolean }) => void): Promise<PluginListenerHandle>;
+  addListener(event: 'appearance', f: (e: { appearance: 'auto' | 'light' | 'dark' }) => void): Promise<PluginListenerHandle>;
 }>('NativeNav');
 
 export interface NativeConfig {
@@ -74,6 +76,20 @@ export function onNativeShow(f: (path: string) => void): void {
 /** The app's back gesture while a sheet or dialog is open. */
 export function onNativeBack(f: () => void): void {
   if (embedded) nativeNav.addListener('back', f).catch(() => {});
+}
+
+/**
+ * Signed out in the app's own Settings, which has already told the server
+ * and forgotten the token: this web app forgets the session too. [deleted]:
+ * the account was deleted.
+ */
+export function onNativeSignedOut(f: (deleted: boolean) => void): void {
+  if (embedded) nativeNav.addListener('signedOut', (e) => f(e.deleted)).catch(() => {});
+}
+
+/** Appearance chosen in the app's own Settings. */
+export function onNativeAppearance(f: (appearance: 'auto' | 'light' | 'dark') => void): void {
+  if (embedded) nativeNav.addListener('appearance', (e) => f(e.appearance)).catch(() => {});
 }
 
 /** Where the API is: '' (this site) on the web, the server in the app. */

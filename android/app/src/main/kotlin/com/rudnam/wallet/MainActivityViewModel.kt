@@ -6,6 +6,8 @@ import com.rudnam.wallet.core.data.repository.RecordEvent
 import com.rudnam.wallet.core.data.repository.RecordEvents
 import com.rudnam.wallet.core.data.repository.RecordRepository
 import com.rudnam.wallet.core.data.repository.SaveResult
+import com.rudnam.wallet.core.data.repository.SessionEvents
+import com.rudnam.wallet.core.data.repository.SignOutReason
 import com.rudnam.wallet.core.data.repository.WalletRepository
 import com.rudnam.wallet.core.datastore.Appearance
 import com.rudnam.wallet.core.datastore.SessionStore
@@ -30,7 +32,8 @@ import javax.inject.Inject
 @HiltViewModel
 class MainActivityViewModel @Inject constructor(
     session: SessionStore,
-    preferences: UserPreferencesRepository,
+    private val preferences: UserPreferencesRepository,
+    sessionEvents: SessionEvents,
     private val wallet: WalletRepository,
     recordEvents: RecordEvents,
     private val records: RecordRepository,
@@ -47,6 +50,9 @@ class MainActivityViewModel @Inject constructor(
     /** What happened to records (the record sheet), for the snackbar. */
     val recordEvents: SharedFlow<RecordEvent> = recordEvents.all
 
+    /** Sign-outs made in the app's own Settings, for the web view to follow. */
+    val signOuts: SharedFlow<SignOutReason> = sessionEvents.signedOut
+
     /** The wallet's currency, for writing amounts in the snackbar. */
     val settings: StateFlow<WalletSettings?> = wallet.wallet.map { it?.settings }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -54,7 +60,10 @@ class MainActivityViewModel @Inject constructor(
     init {
         // Signed out (here, in the web view, or by the server): the next person starts from nothing.
         viewModelScope.launch {
-            session.token.map { it != null }.distinctUntilChanged().drop(1).filter { !it }.collect { wallet.forget() }
+            session.token.map { it != null }.distinctUntilChanged().drop(1).filter { !it }.collect {
+                wallet.forget()
+                preferences.setMe(null)
+            }
         }
     }
 
