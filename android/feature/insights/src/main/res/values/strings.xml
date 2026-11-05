@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Worded as the website words them; web/src/locales/ja.ts has the Japanese. -->
+<resources>
+    <string name="feature_insights_title">Insights</string>
+    <string name="feature_insights_period">Period</string>
+    <string name="feature_insights_week">Week</string>
+    <string name="feature_insights_month">Month</string>
+    <string name="feature_insights_year">Year</string>
+    <string name="feature_insights_range">Range</string>
+    <string name="feature_insights_previous_week">Previous week</string>
+    <string name="feature_insights_previous_month">Previous month</string>
+    <string name="feature_insights_previous_year">Previous year</string>
+    <string name="feature_insights_previous_range">Previous period</string>
+    <string name="feature_insights_next_week">Next week</string>
+    <string name="feature_insights_next_month">Next month</string>
+    <string name="feature_insights_next_year">Next year</string>
+    <string name="feature_insights_next_range">Next period</string>
+    <string name="feature_insights_choose_range">Choose dates</string>
+    <string name="feature_insights_ok">OK</string>
+    <string name="feature_insights_cancel">Cancel</string>
+    <string name="feature_insights_account">Account</string>
+    <string name="feature_insights_all_accounts">All accounts</string>
+    <string name="feature_insights_spent">Spent</string>
+    <string name="feature_insights_per_day">Per day</string>
+    <string name="feature_insights_income">Income</string>
+    <string name="feature_insights_net">Net</string>
+    <string name="feature_insights_where_it_went">Where it went</string>
+    <string name="feature_insights_no_spending">No spending recorded in this period.</string>
+    <string name="feature_insights_where_it_came_from">Where it came from</string>
+    <string name="feature_insights_share">%1$s, %2$d%% of the total</string>
+    <string name="feature_insights_no_category">No category</string>
+    <string name="feature_insights_over_time">Spending over time</string>
+    <string name="feature_insights_per_day_chart">Spending per day</string>
+    <string name="feature_insights_per_month_chart">Spending per month</string>
+    <string name="feature_insights_per_year_chart">Spending per year</string>
+    <string name="feature_insights_day_hint">Tap a day to see its spending.</string>
+    <string name="feature_insights_month_hint">Tap a month to see its spending.</string>
+    <string name="feature_insights_year_hint">Tap a year to see its spending.</string>
+    <string name="feature_insights_trends">Trends</string>
+    <string name="feature_insights_not_enough_week">Not enough history yet. Once you have records from the weeks before this one, you’ll see how this week compares.</string>
+    <string name="feature_insights_not_enough_month">Not enough history yet. Once you have records from the months before this one, you’ll see how this month compares.</string>
+    <string name="feature_insights_not_enough_year">Not enough history yet. Once you have records from the years before this one, you’ll see how this year compares.</string>
+    <plurals name="feature_insights_not_enough_range">
+        <item quantity="one">Not enough history yet. Once you have records from the %d day before this range, you’ll see how it compares.</item>
+        <item quantity="other">Not enough history yet. Once you have records from the %d days before this range, you’ll see how it compares.</item>
+    </plurals>
+    <plurals name="feature_insights_last_weeks">
+        <item quantity="one">the last week</item>
+        <item quantity="other">the last %d weeks</item>
+    </plurals>
+    <plurals name="feature_insights_last_months">
+        <item quantity="one">the last month</item>
+        <item quantity="other">the last %d months</item>
+    </plurals>
+    <plurals name="feature_insights_last_years">
+        <item quantity="one">the last year</item>
+        <item quantity="other">the last %d years</item>
+    </plurals>
+    <!-- One range before: Japanese says it differently from several, so it's a string of its own. -->
+    <string name="feature_insights_last_range">the last %d-day period</string>
+    <plurals name="feature_insights_last_ranges">
+        <item quantity="one">the last %1$d %2$d-day period</item>
+        <item quantity="other">the last %1$d %2$d-day periods</item>
+    </plurals>
+    <string name="feature_insights_by_day">by day %d</string>
+    <string name="feature_insights_by_this_point">by this point</string>
+    <string name="feature_insights_average_same_point">the average of %s at the same point</string>
+    <string name="feature_insights_average">the average of %s</string>
+    <!-- %2$s (and in Usual, %s) is "by this point" or nothing. -->
+    <string name="feature_insights_usual">About your usual spending %s</string>
+    <string name="feature_insights_more">%1$d%% more than usual %2$s</string>
+    <string name="feature_insights_less">%1$d%% less than usual %2$s</string>
+    <string name="feature_insights_against">%1$s against %2$s, %3$s.</string>
+    <string name="feature_insights_kept_so_far">You spent %1$s of what came in %2$s, keeping %3$s.</string>
+    <string name="feature_insights_kept">You spent %1$s of what came in, keeping %2$s.</string>
+    <string name="feature_insights_over_income_so_far">You spent %1$s more than came in %2$s.</string>
+    <string name="feature_insights_over_income">You spent %s more than came in.</string>
+    <string name="feature_insights_higher">Higher than usual</string>
+    <string name="feature_insights_lower">Lower than usual</string>
+    <string name="feature_insights_usually">%1$s, usually %2$s</string>
+    <string name="feature_insights_rest_of">Rest of %s</string>
+    <string name="feature_insights_edit_budgets">Edit budgets</string>
+    <string name="feature_insights_set_budget">Set a budget</string>
+    <string name="feature_insights_heading">Heading for about %s</string>
+    <plurals name="feature_insights_stay_within">
+        <item quantity="one">To stay within budget, %d day left</item>
+        <item quantity="other">To stay within budget, %d days left</item>
+    </plurals>
+    <string name="feature_insights_up_to">Up to %s a day</string>
+    <string name="feature_insights_now_rate">Now %s a day</string>
+    <string name="feature_insights_over_by">Over by %s</string>
+    <string name="feature_insights_offline">Can’t reach the server. Showing what was seen last.</string>
+    <string name="feature_insights_offline_nothing">Can’t reach the server. Insights needs a connection.</string>
+    <string name="feature_insights_failed">Couldn’t load your insights.</string>
+
+    <string name="feature_insights_budgets">Budgets</string>
+    <string name="feature_insights_back">Insights</string>
+    <string name="feature_insights_new_budget">New budget</string>
+    <string name="feature_insights_no_budgets">No budgets yet</string>
+    <string name="feature_insights_no_budgets_detail">Set a monthly limit for a category, or for all your spending, and watch it fill up.</string>
+    <string name="feature_insights_create_budget">Create a budget</string>
+    <string name="feature_insights_all_spending">All spending</string>
+    <string name="feature_insights_edit_budget">Edit budget</string>
+    <string name="feature_insights_edit_budget_named">Edit budget %s</string>
+    <string name="feature_insights_category">Category</string>
+    <string name="feature_insights_monthly_limit">Monthly limit (%s)</string>
+    <string name="feature_insights_enter_limit">Enter a monthly limit.</string>
+    <string name="feature_insights_name_optional">Name (optional)</string>
+    <string name="feature_insights_save">Save</string>
+    <string name="feature_insights_delete">Delete</string>
+    <string name="feature_insights_delete_question">Delete the budget “%s”?</string>
+    <string name="feature_insights_deleted">Deleted “%s”.</string>
+    <string name="feature_insights_budget_offline">Can’t reach the server. Budgets need a connection.</string>
+    <string name="feature_insights_left">%s left</string>
+    <string name="feature_insights_of">%1$s of %2$s</string>
+</resources>

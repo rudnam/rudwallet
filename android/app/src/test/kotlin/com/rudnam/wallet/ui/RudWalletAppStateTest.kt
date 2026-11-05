@@ -7,12 +7,14 @@ import androidx.navigation.compose.ComposeNavigator
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.testing.TestNavHostController
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.toRoute
 import com.rudnam.wallet.feature.wallet.navigation.WalletRoute
 import com.rudnam.wallet.navigation.TopLevelDestination
 import com.rudnam.wallet.feature.account.navigation.AccountRoute
 import com.rudnam.wallet.feature.activity.navigation.ActivityRoute
-import com.rudnam.wallet.navigation.InsightsTabRoute
+import com.rudnam.wallet.feature.insights.navigation.BudgetsRoute
+import com.rudnam.wallet.feature.insights.navigation.InsightsRoute
 import com.rudnam.wallet.navigation.SettingsTabRoute
 import com.rudnam.wallet.navigation.WebRoute
 import org.junit.Assert.assertEquals
@@ -48,7 +50,8 @@ class RudWalletAppStateTest {
                 composable<WebRoute> {}
                 composable<ActivityRoute> {}
                 composable<AccountRoute> {}
-                composable<InsightsTabRoute> {}
+                composable<InsightsRoute> {}
+                composable<BudgetsRoute> {}
                 composable<SettingsTabRoute> {}
             }
             tab = state.currentTab
@@ -104,7 +107,26 @@ class RudWalletAppStateTest {
         compose.runOnIdle {
             assertEquals("settings?section=rules", currentWebPath())
             assertTrue(state.navController.popBackStack())
-            assertEquals("budgets", currentWebPath())
+            // The budgets are native, without the tabs.
+            assertNull(currentWebPath())
+            assertTrue(state.navController.currentBackStackEntry!!.destination.hasRoute<BudgetsRoute>())
+            assertTrue(state.navController.popBackStack())
+            assertEquals("card", currentWebPath())
+        }
+    }
+
+    @Test
+    fun `insights is native, with its period and account`() {
+        compose.runOnIdle { state.navigateToTab(TopLevelDestination.Insights) }
+        compose.runOnIdle {
+            assertNull(webPath)
+            assertEquals(TopLevelDestination.Insights, tab)
+            state.openPath("stats?span=custom&start=2026-10-01&end=2026-10-15&account=3")
+        }
+        compose.runOnIdle {
+            assertEquals(TopLevelDestination.Insights, tab)
+            val route = state.navController.currentBackStackEntry!!.toRoute<InsightsRoute>()
+            assertEquals(InsightsRoute("custom", "2026-10-01", "2026-10-15", 3), route)
         }
     }
 

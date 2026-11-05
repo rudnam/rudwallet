@@ -3,6 +3,10 @@ package com.rudnam.wallet.core.network.model
 import com.rudnam.wallet.core.model.Account
 import com.rudnam.wallet.core.model.AccountKind
 import com.rudnam.wallet.core.model.Budget
+import com.rudnam.wallet.core.model.BudgetInput
+import com.rudnam.wallet.core.model.CategoryTotal
+import com.rudnam.wallet.core.model.DayTotal
+import com.rudnam.wallet.core.model.Stats
 import com.rudnam.wallet.core.model.Category
 import com.rudnam.wallet.core.model.RecordInput
 import com.rudnam.wallet.core.model.CategoryKind
@@ -14,6 +18,7 @@ import com.rudnam.wallet.core.model.Wallet
 import com.rudnam.wallet.core.model.WalletSettings
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.time.LocalDate
 import java.time.OffsetDateTime
 
 // The API's JSON, as internal/wallet writes it (wallet.go). Fields the app
@@ -131,6 +136,35 @@ data class NetworkBudget(
     val amount: Long,
 )
 
+/** A new budget, or a budget's new name, category or limit. */
+@Serializable
+data class NetworkBudgetInput(
+    val name: String,
+    // Null (left out, which the server reads the same): all spending.
+    @SerialName("category_id") val categoryId: Long?,
+    val amount: Long,
+)
+
+@Serializable
+data class NetworkStats(
+    val spent: Long = 0,
+    val income: Long = 0,
+    val categories: List<NetworkCategoryTotal> = emptyList(),
+    val days: List<NetworkDayTotal> = emptyList(),
+)
+
+@Serializable
+data class NetworkCategoryTotal(
+    @SerialName("category_id") val categoryId: Long? = null,
+    val kind: String,
+    val amount: Long,
+    val count: Int = 0,
+)
+
+/** [day] is YYYY-MM-DD in the time zone asked for. */
+@Serializable
+data class NetworkDayTotal(val day: String, val spent: Long = 0, val income: Long = 0)
+
 @Serializable
 data class NetworkNotifications(val notifications: List<NetworkNotification> = emptyList())
 
@@ -192,3 +226,12 @@ fun RecordInput.asNetwork(clientId: String? = null) = NetworkRecordInput(
 )
 
 fun NetworkBudget.asModel() = Budget(id, name, categoryId, amount)
+
+fun BudgetInput.asNetwork() = NetworkBudgetInput(name, categoryId, amount)
+
+fun NetworkStats.asModel() = Stats(
+    spent = spent,
+    income = income,
+    categories = categories.map { CategoryTotal(it.categoryId, CategoryKind.fromApi(it.kind), it.amount, it.count) },
+    days = days.map { DayTotal(LocalDate.parse(it.day), it.spent, it.income) },
+)

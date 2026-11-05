@@ -3,6 +3,7 @@ package com.rudnam.wallet.core.database.dao
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Upsert
 import androidx.room.Transaction
 import com.rudnam.wallet.core.database.model.AccountEntity
 import com.rudnam.wallet.core.database.model.BudgetEntity
@@ -110,8 +111,16 @@ interface TransactionDao {
 
 @Dao
 interface BudgetDao {
-    @Query("SELECT * FROM budgets ORDER BY position")
+    // The server lists budgets by id, so a budget made here goes last without renumbering the rest.
+    @Query("SELECT * FROM budgets ORDER BY id")
     fun observeBudgets(): Flow<List<BudgetEntity>>
+
+    /** A budget made or changed here. */
+    @Upsert
+    suspend fun upsert(budget: BudgetEntity)
+
+    @Query("DELETE FROM budgets WHERE id = :id")
+    suspend fun delete(id: Long)
 
     @Transaction
     suspend fun replaceAll(budgets: List<BudgetEntity>) {

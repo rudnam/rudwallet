@@ -38,6 +38,7 @@ internal class OfflineFirstWalletRepository @Inject constructor(
     private val budgetDao: BudgetDao,
     private val outboxDao: OutboxDao,
     private val cache: WalletCache,
+    private val stats: StatsCache,
     @Dispatcher(WalletDispatchers.IO) private val io: CoroutineDispatcher,
 ) : WalletRepository {
     /** Records not on the server yet, as they're shown meanwhile. */
@@ -96,7 +97,10 @@ internal class OfflineFirstWalletRepository @Inject constructor(
         }
     }
 
-    override suspend fun forget() = withContext(io) { cache.clear() }
+    override suspend fun forget() = withContext(io) {
+        stats.clear()
+        cache.clear()
+    }
 
     private suspend fun sync(block: suspend () -> Unit): SyncResult = withContext(io) {
         try {

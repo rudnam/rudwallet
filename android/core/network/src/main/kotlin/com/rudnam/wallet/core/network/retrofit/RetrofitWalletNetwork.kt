@@ -3,6 +3,7 @@ package com.rudnam.wallet.core.network.retrofit
 import com.rudnam.wallet.core.network.ApiException
 import com.rudnam.wallet.core.network.WalletNetworkDataSource
 import com.rudnam.wallet.core.network.model.NetworkBudget
+import com.rudnam.wallet.core.network.model.NetworkBudgetInput
 import com.rudnam.wallet.core.network.model.NetworkBulkChange
 import com.rudnam.wallet.core.network.model.NetworkBulkResult
 import com.rudnam.wallet.core.network.model.NetworkDownloads
@@ -12,6 +13,7 @@ import com.rudnam.wallet.core.network.model.NetworkNotifications
 import com.rudnam.wallet.core.network.model.NetworkReconcile
 import com.rudnam.wallet.core.network.model.NetworkReconcileResult
 import com.rudnam.wallet.core.network.model.NetworkRecordInput
+import com.rudnam.wallet.core.network.model.NetworkStats
 import com.rudnam.wallet.core.network.model.NetworkTag
 import com.rudnam.wallet.core.network.model.NetworkTransaction
 import com.rudnam.wallet.core.network.model.NetworkWallet
@@ -76,6 +78,23 @@ internal interface WalletApi {
     @GET("api/budgets")
     suspend fun budgets(): List<NetworkBudget>
 
+    @POST("api/budgets")
+    suspend fun createBudget(@Body input: NetworkBudgetInput): NetworkBudget
+
+    @PUT("api/budgets/{id}")
+    suspend fun updateBudget(@Path("id") id: Long, @Body input: NetworkBudgetInput): NetworkBudget
+
+    @DELETE("api/budgets/{id}")
+    suspend fun deleteBudget(@Path("id") id: Long): Response<Unit>
+
+    @GET("api/stats")
+    suspend fun stats(
+        @Query("from") from: String,
+        @Query("to") to: String,
+        @Query("tz") zone: String,
+        @Query("account_id") accountId: Long? = null,
+    ): NetworkStats
+
     @GET("api/notifications")
     suspend fun notifications(): NetworkNotifications
 
@@ -114,6 +133,15 @@ internal class RetrofitWalletNetwork @Inject constructor(retrofit: Retrofit, pri
     override suspend fun setAccountOrder(ids: List<Long>) = call { api.setAccountOrder(NetworkIds(ids)).orThrow() }
 
     override suspend fun budgets() = call { api.budgets() }
+
+    override suspend fun createBudget(input: NetworkBudgetInput) = call { api.createBudget(input) }
+
+    override suspend fun updateBudget(id: Long, input: NetworkBudgetInput) = call { api.updateBudget(id, input) }
+
+    override suspend fun deleteBudget(id: Long) = call { api.deleteBudget(id).orThrow() }
+
+    override suspend fun stats(from: Instant, to: Instant, zone: String, accountId: Long?) =
+        call { api.stats(rfc3339(from), rfc3339(to), zone, accountId) }
 
     override suspend fun notifications() = call { api.notifications() }
 

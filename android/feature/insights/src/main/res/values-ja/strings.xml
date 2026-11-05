@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feature_insights_title">分析</string>
+    <string name="feature_insights_period">期間</string>
+    <string name="feature_insights_week">週</string>
+    <string name="feature_insights_month">月</string>
+    <string name="feature_insights_year">年</string>
+    <string name="feature_insights_range">期間</string>
+    <string name="feature_insights_previous_week">前の週</string>
+    <string name="feature_insights_previous_month">前の月</string>
+    <string name="feature_insights_previous_year">前の年</string>
+    <string name="feature_insights_previous_range">前の期間</string>
+    <string name="feature_insights_next_week">次の週</string>
+    <string name="feature_insights_next_month">次の月</string>
+    <string name="feature_insights_next_year">次の年</string>
+    <string name="feature_insights_next_range">次の期間</string>
+    <string name="feature_insights_choose_range">日付を選択</string>
+    <string name="feature_insights_ok">OK</string>
+    <string name="feature_insights_cancel">キャンセル</string>
+    <string name="feature_insights_account">口座</string>
+    <string name="feature_insights_all_accounts">すべての口座</string>
+    <string name="feature_insights_spent">支出</string>
+    <string name="feature_insights_per_day">1日あたり</string>
+    <string name="feature_insights_income">収入</string>
+    <string name="feature_insights_net">収支</string>
+    <string name="feature_insights_where_it_went">支出の内訳</string>
+    <string name="feature_insights_no_spending">この期間の支出はありません。</string>
+    <string name="feature_insights_where_it_came_from">収入の内訳</string>
+    <string name="feature_insights_share">%1$s、全体の%2$d%%</string>
+    <string name="feature_insights_no_category">カテゴリなし</string>
+    <string name="feature_insights_over_time">支出の推移</string>
+    <string name="feature_insights_per_day_chart">日別の支出</string>
+    <string name="feature_insights_per_month_chart">月別の支出</string>
+    <string name="feature_insights_per_year_chart">年別の支出</string>
+    <string name="feature_insights_day_hint">日付をタップすると、その日の支出が表示されます。</string>
+    <string name="feature_insights_month_hint">月をタップすると、その月の支出が表示されます。</string>
+    <string name="feature_insights_year_hint">年をタップすると、その年の支出が表示されます。</string>
+    <string name="feature_insights_trends">傾向</string>
+    <string name="feature_insights_not_enough_week">まだ比べられる記録がありません。前の週の記録がたまると、今週との比較が表示されます。</string>
+    <string name="feature_insights_not_enough_month">まだ比べられる記録がありません。前の月の記録がたまると、今月との比較が表示されます。</string>
+    <string name="feature_insights_not_enough_year">まだ比べられる記録がありません。前の年の記録がたまると、今年との比較が表示されます。</string>
+    <plurals name="feature_insights_not_enough_range">
+        <item quantity="other">まだ比べられる記録がありません。この期間の前の%d日間の記録がたまると、比較が表示されます。</item>
+    </plurals>
+    <plurals name="feature_insights_last_weeks">
+        <item quantity="other">直近%d週間</item>
+    </plurals>
+    <plurals name="feature_insights_last_months">
+        <item quantity="other">直近%dか月</item>
+    </plurals>
+    <plurals name="feature_insights_last_years">
+        <item quantity="other">直近%d年</item>
+    </plurals>
+    <string name="feature_insights_last_range">直前の%d日間</string>
+    <plurals name="feature_insights_last_ranges">
+        <item quantity="other">直前の%2$d日間×%1$d回</item>
+    </plurals>
+    <string name="feature_insights_by_day">%d日目の時点で、</string>
+    <string name="feature_insights_by_this_point">この時点で、</string>
+    <string name="feature_insights_average_same_point">%sの同じ時点までの平均</string>
+    <string name="feature_insights_average">%sの平均</string>
+    <string name="feature_insights_usual">%sほぼいつも通りの支出です</string>
+    <string name="feature_insights_more">%2$sいつもより%1$d%%多い支出です</string>
+    <string name="feature_insights_less">%2$sいつもより%1$d%%少ない支出です</string>
+    <string name="feature_insights_against">%1$s（%3$sは%2$s）</string>
+    <string name="feature_insights_kept_so_far">%2$s収入の%1$sを使い、%3$sが残っています。</string>
+    <string name="feature_insights_kept">収入の%1$sを使い、%2$sが残りました。</string>
+    <string name="feature_insights_over_income_so_far">%2$s収入より%1$s多く使っています。</string>
+    <string name="feature_insights_over_income">収入より%s多く使いました。</string>
+    <string name="feature_insights_higher">いつもより多い</string>
+    <string name="feature_insights_lower">いつもより少ない</string>
+    <string name="feature_insights_usually">%1$s（いつもは%2$s）</string>
+    <string name="feature_insights_rest_of">%sの残り</string>
+    <string name="feature_insights_edit_budgets">予算を編集</string>
+    <string name="feature_insights_set_budget">予算を設定</string>
+    <string name="feature_insights_heading">月末には約%sの見込み</string>
+    <plurals name="feature_insights_stay_within">
+        <item quantity="other">予算内に収めるには（残り%d日）</item>
+    </plurals>
+    <string name="feature_insights_up_to">1日%sまで</string>
+    <string name="feature_insights_now_rate">今は1日%s</string>
+    <string name="feature_insights_over_by">%s超過</string>
+    <string name="feature_insights_offline">サーバーに接続できません。前回の内容を表示しています。</string>
+    <string name="feature_insights_offline_nothing">サーバーに接続できません。分析には接続が必要です。</string>
+    <string name="feature_insights_failed">分析を読み込めませんでした。</string>
+
+    <string name="feature_insights_budgets">予算</string>
+    <string name="feature_insights_back">分析</string>
+    <string name="feature_insights_new_budget">新しい予算</string>
+    <string name="feature_insights_no_budgets">予算はまだありません</string>
+    <string name="feature_insights_no_budgets_detail">カテゴリごと、または支出全体に月の上限を決めて、使った分を見守りましょう。</string>
+    <string name="feature_insights_create_budget">予算を作成</string>
+    <string name="feature_insights_all_spending">すべての支出</string>
+    <string name="feature_insights_edit_budget">予算を編集</string>
+    <string name="feature_insights_edit_budget_named">予算「%s」を編集</string>
+    <string name="feature_insights_category">カテゴリ</string>
+    <string name="feature_insights_monthly_limit">月の上限（%s）</string>
+    <string name="feature_insights_enter_limit">月の上限を入力してください。</string>
+    <string name="feature_insights_name_optional">名前（任意）</string>
+    <string name="feature_insights_save">保存</string>
+    <string name="feature_insights_delete">削除</string>
+    <string name="feature_insights_delete_question">予算「%s」を削除しますか？</string>
+    <string name="feature_insights_deleted">「%s」を削除しました。</string>
+    <string name="feature_insights_budget_offline">サーバーに接続できません。予算の変更には接続が必要です。</string>
+    <string name="feature_insights_left">残り%s</string>
+    <string name="feature_insights_of">%1$s / %2$s</string>
+</resources>

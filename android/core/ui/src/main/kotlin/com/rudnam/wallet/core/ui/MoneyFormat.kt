@@ -1,5 +1,9 @@
 package com.rudnam.wallet.core.ui
 
+import android.icu.text.CompactDecimalFormat
+import android.icu.text.DateIntervalFormat
+import android.icu.util.DateInterval
+import android.icu.util.TimeZone
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
@@ -38,6 +42,13 @@ class MoneyFormat(
         return if (signed && amount > 0) "+$text" else text
     }
 
+    /** A short amount for a chart's axis, at most one decimal: "¥12K", "¥1.2万", "$0". */
+    fun compact(amount: Long): String {
+        val number = CompactDecimalFormat.getInstance(locale, CompactDecimalFormat.CompactStyle.SHORT).apply { maximumFractionDigits = 1 }
+        val value = BigDecimal.valueOf(amount, settings.currencyExponent)
+        return tidy((if (amount < 0) "-" else "") + symbol + number.format(value.abs()))
+    }
+
     /** The currency's sign, as [money] writes it: "¥", "$". */
     val symbol: String get() = tidy(currency.currency?.getSymbol(locale) ?: settings.currency)
 
@@ -69,6 +80,16 @@ class MoneyFormat(
             current.minusDays(1) -> yesterday
             else -> date.format(DateTimeFormatter.ofPattern(pattern(if (date.year == current.year) "EEEMMMd" else "EEEyMMMd"), locale))
         }
+    }
+
+    /** A day in the language's way of writing what [skeleton] asks for: "EEEMMMd" is "Thu, Nov 12". */
+    fun date(date: LocalDate, skeleton: String): String = date.format(DateTimeFormatter.ofPattern(pattern(skeleton), locale))
+
+    /** Two days as one span, as the language writes it: "Nov 1 – 30, 2026", "2026年11月1日～30日". */
+    fun dateRange(first: LocalDate, last: LocalDate): String {
+        val format = DateIntervalFormat.getInstance("yMMMd", locale).apply { timeZone = TimeZone.GMT_ZONE }
+        val millis = { d: LocalDate -> d.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli() }
+        return format.format(DateInterval(millis(first), millis(last)))
     }
 
     fun date(date: LocalDate): String = date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale))

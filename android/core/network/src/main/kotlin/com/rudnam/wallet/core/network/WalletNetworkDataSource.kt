@@ -1,12 +1,14 @@
 package com.rudnam.wallet.core.network
 
 import com.rudnam.wallet.core.network.model.NetworkBudget
+import com.rudnam.wallet.core.network.model.NetworkBudgetInput
 import com.rudnam.wallet.core.network.model.NetworkBulkChange
 import com.rudnam.wallet.core.network.model.NetworkBulkResult
 import com.rudnam.wallet.core.network.model.NetworkDownloads
 import com.rudnam.wallet.core.network.model.NetworkNotifications
 import com.rudnam.wallet.core.network.model.NetworkReconcileResult
 import com.rudnam.wallet.core.network.model.NetworkRecordInput
+import com.rudnam.wallet.core.network.model.NetworkStats
 import com.rudnam.wallet.core.network.model.NetworkTag
 import com.rudnam.wallet.core.network.model.NetworkTransaction
 import com.rudnam.wallet.core.network.model.NetworkWallet
@@ -25,6 +27,18 @@ interface WalletNetworkDataSource {
     suspend fun transactions(from: Instant, to: Instant): List<NetworkTransaction>
 
     suspend fun budgets(): List<NetworkBudget>
+
+    suspend fun createBudget(input: NetworkBudgetInput): NetworkBudget
+
+    suspend fun updateBudget(id: Long, input: NetworkBudgetInput): NetworkBudget
+
+    suspend fun deleteBudget(id: Long)
+
+    /**
+     * Confirmed income and expenses in [from, to), days counted in the IANA
+     * time zone [zone]; with [accountId], that account's only.
+     */
+    suspend fun stats(from: Instant, to: Instant, zone: String, accountId: Long? = null): NetworkStats
 
     /** Payment notifications the phone has sent (for the first-run checklist). */
     suspend fun notifications(): NetworkNotifications

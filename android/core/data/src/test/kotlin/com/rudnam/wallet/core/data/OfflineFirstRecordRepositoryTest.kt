@@ -7,6 +7,7 @@ import com.rudnam.wallet.core.data.repository.OfflineFirstWalletRepository
 import com.rudnam.wallet.core.data.repository.SaveResult
 import com.rudnam.wallet.core.data.repository.SyncResult
 import com.rudnam.wallet.core.data.sync.OutboxScheduler
+import com.rudnam.wallet.core.data.repository.StatsCache
 import com.rudnam.wallet.core.database.WalletCache
 import com.rudnam.wallet.core.database.WalletDatabase
 import com.rudnam.wallet.core.model.Pending
@@ -74,6 +75,10 @@ class OfflineFirstRecordRepositoryTest {
         override suspend fun reconcile(accountId: Long, balance: Long) = com.rudnam.wallet.core.network.model.NetworkReconcileResult()
         override suspend fun setAccountOrder(ids: List<Long>) = Unit
         override suspend fun tags() = listOf(NetworkTag("trip", 3))
+        override suspend fun createBudget(input: com.rudnam.wallet.core.network.model.NetworkBudgetInput) = error("not used")
+        override suspend fun updateBudget(id: Long, input: com.rudnam.wallet.core.network.model.NetworkBudgetInput) = error("not used")
+        override suspend fun deleteBudget(id: Long) = Unit
+        override suspend fun stats(from: Instant, to: Instant, zone: String, accountId: Long?) = com.rudnam.wallet.core.network.model.NetworkStats()
         override suspend fun deleteRecord(id: Long) = check()
         override suspend fun restoreRecords(ids: List<Long>) = check()
 
@@ -106,7 +111,7 @@ class OfflineFirstRecordRepositoryTest {
             network, db.transactionDao(), db.outboxDao(), TestUserPreferences().repository,
             object : OutboxScheduler { override fun schedule() { scheduled++ } }, Clock.fixed(at, ZoneOffset.UTC), io,
         )
-        val wallet = OfflineFirstWalletRepository(network, db.walletDao(), db.transactionDao(), db.budgetDao(), db.outboxDao(), WalletCache(db), io)
+        val wallet = OfflineFirstWalletRepository(network, db.walletDao(), db.transactionDao(), db.budgetDao(), db.outboxDao(), WalletCache(db), StatsCache(), io)
         val month = Instant.parse("2026-11-01T00:00:00Z") to Instant.parse("2026-12-01T00:00:00Z")
         wallet.refresh(month.first, month.second)
 

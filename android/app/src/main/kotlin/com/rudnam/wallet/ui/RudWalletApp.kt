@@ -48,19 +48,23 @@ import com.rudnam.wallet.core.ui.MoneyFormat
 import com.rudnam.wallet.feature.account.AccountNavigation
 import com.rudnam.wallet.feature.account.navigation.accountScreen
 import com.rudnam.wallet.feature.activity.ActivityNavigation
+import com.rudnam.wallet.feature.activity.navigation.ActivityRoute
 import com.rudnam.wallet.feature.activity.navigation.activityScreen
+import com.rudnam.wallet.feature.insights.InsightsNavigation
+import com.rudnam.wallet.feature.insights.navigation.BudgetsRoute
+import com.rudnam.wallet.feature.insights.navigation.insightsScreen
 import com.rudnam.wallet.feature.record.navigation.RecordRoute
 import com.rudnam.wallet.feature.record.navigation.recordSheet
 import com.rudnam.wallet.feature.wallet.WalletNavigation
 import com.rudnam.wallet.feature.wallet.navigation.WalletRoute
 import com.rudnam.wallet.feature.wallet.navigation.walletScreen
 import com.rudnam.wallet.navigation.TopLevelDestination
-import com.rudnam.wallet.navigation.InsightsTabRoute
 import com.rudnam.wallet.navigation.SettingsTabRoute
 import com.rudnam.wallet.navigation.WebRoute
 import com.rudnam.wallet.web.WebPageFragment
 import com.rudnam.wallet.web.WebRequest
 import kotlinx.coroutines.flow.Flow
+import java.time.YearMonth
 
 /**
  * The app: the four tabs along the bottom, and the pages above them. Native
@@ -123,10 +127,20 @@ fun RudWalletApp(
                     },
                     snackbar = snackbar,
                 )
+                insightsScreen(
+                    navigation = object : InsightsNavigation {
+                        override fun openBudgets() = appState.navController.navigate(BudgetsRoute)
+                        override fun openRecords(month: YearMonth, categoryId: Long, accountId: Long?) =
+                            appState.navController.navigate(ActivityRoute(month = month.toString(), account = accountId, category = categoryId))
+                        override fun back() {
+                            appState.navController.popBackStack()
+                        }
+                    },
+                    snackbar = snackbar,
+                )
                 recordSheet(onDone = { appState.navController.popBackStack() })
                 // Web pages and the tabs still on the web: the web view underneath shows them (WebHost).
                 composable<WebRoute> { }
-                composable<InsightsTabRoute> { }
                 composable<SettingsTabRoute> { }
             }
         }

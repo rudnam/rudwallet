@@ -15,6 +15,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.rudnam.wallet.feature.account.navigation.AccountRoute
 import com.rudnam.wallet.feature.activity.navigation.ActivityRoute
+import com.rudnam.wallet.feature.insights.navigation.BudgetsRoute
+import com.rudnam.wallet.feature.insights.navigation.InsightsRoute
 import com.rudnam.wallet.feature.record.navigation.RecordRoute
 import com.rudnam.wallet.feature.wallet.navigation.WalletRoute
 import com.rudnam.wallet.navigation.TopLevelDestination
@@ -78,6 +80,15 @@ class RudWalletAppState(val navController: NavHostController) {
         // Activity (records, and review, which opens the same page), with its filters.
         if (page == "records" || page == "review") {
             if (path == page) navigateToTab(TopLevelDestination.Activity) else navController.navigate(ActivityRoute.fromPath(path))
+            return
+        }
+        // Insights with a period or an account chosen, and the budgets, opened from it.
+        if (page == "stats" && path != page) {
+            navController.navigate(InsightsRoute.fromPath(path))
+            return
+        }
+        if (page == "budgets") {
+            navController.navigate(BudgetsRoute)
             return
         }
         // Another tab's own page, as the tab itself shows it.

@@ -53,6 +53,10 @@ object WalletIcons {
     const val calendar = "M4 6.5h16V20H4zM4 10.5h16M8.5 4v4M15.5 4v4"
     const val dot = "M12 12h.01"
     const val plus = "M12 5v14M5 12h14"
+    const val up = "M4 17l6-6 4 4 6-7M15 8h5v5"
+    const val down = "M4 7l6 6 4-4 6 7M15 16h5v-5"
+    const val budgets = "M12 3a9 9 0 1 0 9 9h-9zM15 3.5A9 9 0 0 1 20.5 9H15z"
+    const val stop = "M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M12 7.5v5.5M12 16.5h.01"
 
     /** Icons a category can wear, by the key stored in its icon field. */
     val glyphs: Map<String, String> = mapOf(

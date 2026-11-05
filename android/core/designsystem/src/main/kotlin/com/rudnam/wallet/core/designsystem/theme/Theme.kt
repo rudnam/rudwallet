@@ -41,6 +41,8 @@ data class WalletColors(
     val attentionSoft: Color,
     val danger: Color,
     val positive: Color,
+    /** Bars and columns in charts: one series each, so one colour (the website's --chart). */
+    val chart: Color,
     /** How much of an account's colour its card keeps, mixed with black. */
     val cardMix: Float,
 )
@@ -59,6 +61,7 @@ val LightWalletColors = WalletColors(
     attentionSoft = Color(0xFFF6E9DE),
     danger = Color(0xFFC0362C),
     positive = Color(0xFF1C7F4C),
+    chart = Color(0xFF33363C),
     cardMix = 1f,
 )
 
@@ -76,6 +79,7 @@ val DarkWalletColors = WalletColors(
     attentionSoft = Color(0xFF2E2117),
     danger = Color(0xFFF2867C),
     positive = Color(0xFF5FC08A),
+    chart = Color(0xFFC9CBD0),
     cardMix = 0.84f,
 )
 

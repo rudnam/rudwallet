@@ -110,3 +110,32 @@ class TestAccountRepository : com.rudnam.wallet.core.data.repository.AccountRepo
     override suspend fun count(accountId: Long, balance: Long) = countResult.also { counted += accountId to balance }
     override suspend fun setOrder(ids: List<Long>) = true.also { orders += ids }
 }
+
+/**
+ * An [InsightsRepository] that answers each period with [answer], or with [failure]; budgets saved go to [wallet] as the real one's
+ * go to the database.
+ */
+class TestInsightsRepository(private val wallet: TestWalletRepository? = null) : com.rudnam.wallet.core.data.repository.InsightsRepository {
+    var answer: (com.rudnam.wallet.core.data.repository.StatsQuery) -> com.rudnam.wallet.core.model.Stats = { com.rudnam.wallet.core.model.Stats.Empty }
+    var failure: com.rudnam.wallet.core.data.repository.StatsResult? = null
+    var budgetResult: com.rudnam.wallet.core.data.repository.BudgetResult = com.rudnam.wallet.core.data.repository.BudgetResult.Saved
+    val asked = mutableListOf<com.rudnam.wallet.core.data.repository.StatsQuery>()
+    val seen = HashMap<com.rudnam.wallet.core.data.repository.StatsQuery, com.rudnam.wallet.core.model.Stats>()
+    val created = mutableListOf<com.rudnam.wallet.core.model.BudgetInput>()
+    val updated = mutableListOf<Pair<Long, com.rudnam.wallet.core.model.BudgetInput>>()
+    val deleted = mutableListOf<Long>()
+
+    override fun seen(query: com.rudnam.wallet.core.data.repository.StatsQuery) = seen[query]
+
+    override suspend fun stats(query: com.rudnam.wallet.core.data.repository.StatsQuery): com.rudnam.wallet.core.data.repository.StatsResult {
+        asked += query
+        failure?.let { return it }
+        return com.rudnam.wallet.core.data.repository.StatsResult.Done(answer(query).also { seen[query] = it })
+    }
+
+    override suspend fun createBudget(input: com.rudnam.wallet.core.model.BudgetInput) = budgetResult.also { created += input }
+
+    override suspend fun updateBudget(id: Long, input: com.rudnam.wallet.core.model.BudgetInput) = budgetResult.also { updated += id to input }
+
+    override suspend fun deleteBudget(id: Long) = budgetResult.also { deleted += id }
+}

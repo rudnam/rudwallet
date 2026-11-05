@@ -11,6 +11,8 @@ import com.rudnam.wallet.core.model.Account
 import com.rudnam.wallet.core.model.Transaction
 import com.rudnam.wallet.core.model.TransactionKind
 import com.rudnam.wallet.core.model.Wallet
+import com.rudnam.wallet.core.model.amountInput
+import com.rudnam.wallet.core.model.parseAmount
 import com.rudnam.wallet.feature.account.navigation.AccountRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,7 +23,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.math.BigDecimal
 import java.time.Clock
 import java.time.YearMonth
 import javax.inject.Inject
@@ -98,7 +99,7 @@ class AccountViewModel @Inject constructor(
 
     fun startCounting() {
         val ready = uiState.value as? AccountUiState.Ready ?: return
-        _counting.value = CountState(BigDecimal.valueOf(ready.account.balance, ready.wallet.settings.currencyExponent).toPlainString())
+        _counting.value = CountState(amountInput(ready.account.balance, ready.wallet.settings.currencyExponent))
     }
 
     fun typeCount(text: String) = _counting.update { it?.copy(text = text, invalid = false) }
@@ -143,13 +144,4 @@ class AccountViewModel @Inject constructor(
     fun messageShown(message: AccountMessage) = _messages.update { it - message }
 
     private fun post(message: AccountMessage) = _messages.update { it + message }
-}
-
-/** What the user typed ("26,450", "12.50", full-width "２６４５０円") in minor units, or null. */
-internal fun parseAmount(text: String, exponent: Int): Long? {
-    val cleaned = java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFKC).replace(Regex("[,\\s¥$€£円]"), "")
-    if (!Regex("^\\d+(\\.\\d+)?$").matches(cleaned)) return null
-    val value = cleaned.toBigDecimal()
-    if (value.scale() > exponent) return null
-    return value.movePointRight(exponent).toLong()
 }
