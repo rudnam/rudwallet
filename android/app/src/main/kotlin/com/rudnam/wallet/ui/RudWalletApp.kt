@@ -68,6 +68,7 @@ import com.rudnam.wallet.web.WebRequest
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import java.time.YearMonth
+import com.rudnam.wallet.core.ui.ServerText
 
 /**
  * The app: the four tabs along the bottom, and the pages above them. Native
@@ -246,7 +247,7 @@ private fun RecordMessages(events: Flow<RecordEvent>, settings: WalletSettings?,
                 val after = when (val r = onUndo(event)) {
                     is SaveResult.Saved, SaveResult.Done, SaveResult.Queued ->
                         resources.getString(if (event is RecordEvent.Deleted) R.string.message_restored else R.string.message_change_undone)
-                    is SaveResult.Refused -> resources.getString(R.string.message_undo_failed, r.message)
+                    is SaveResult.Refused -> resources.getString(R.string.message_undo_failed, ServerText.translate(r.message, resources.configuration.locales[0]))
                     else -> resources.getString(R.string.message_undo_failed, resources.getString(R.string.message_offline))
                 }
                 snackbar.showSnackbar(after)

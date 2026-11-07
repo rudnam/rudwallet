@@ -55,6 +55,7 @@ import com.rudnam.wallet.core.model.Category
 import com.rudnam.wallet.core.model.CategoryKind
 import com.rudnam.wallet.core.model.Wallet
 import com.rudnam.wallet.core.ui.CategoryIcon
+import com.rudnam.wallet.core.ui.serverText
 
 /** Each glyph a category can wear, and its name for TalkBack. */
 private val glyphNames = mapOf(
@@ -209,7 +210,7 @@ private fun CategorySheet(editor: CategoryEditor, actions: CategoriesActions) {
                     }
                 }
             }
-            editor.refused?.let { Text(it, color = WalletTheme.colors.danger, style = MaterialTheme.typography.bodySmall) }
+            editor.refused?.let { Text(serverText(it), color = WalletTheme.colors.danger, style = MaterialTheme.typography.bodySmall) }
             SheetButtons(
                 deletable = editor.id != null,
                 busy = editor.busy,

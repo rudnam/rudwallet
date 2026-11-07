@@ -62,6 +62,8 @@ import com.rudnam.wallet.core.designsystem.icon.WalletIcons
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
 import com.rudnam.wallet.core.datastore.Appearance
 import java.util.Locale
+import com.rudnam.wallet.core.ui.ServerText
+import com.rudnam.wallet.core.ui.serverText
 
 /** Where Settings' rows lead. */
 interface SettingsNavigation {
@@ -108,7 +110,7 @@ internal fun SettingsMessages(viewModel: SettingsViewModel, snackbar: SnackbarHo
         snackbar.showSnackbar(
             when (message) {
                 SettingsMessage.Offline -> resources.getString(R.string.feature_settings_offline)
-                is SettingsMessage.Refused -> message.message
+                is SettingsMessage.Refused -> ServerText.translate(message.message, resources.configuration.locales[0])
             },
         )
     }
@@ -243,7 +245,7 @@ private fun DeleteAccountDialog(email: String, hasPassword: Boolean, state: Dele
                     placeholder = if (hasPassword) null else ({ Text(email) }),
                     singleLine = true,
                     isError = state.refused != null,
-                    supportingText = state.refused?.let { { Text(it) } },
+                    supportingText = state.refused?.let { { Text(serverText(it)) } },
                     visualTransformation = if (hasPassword) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
                     keyboardOptions = KeyboardOptions(keyboardType = if (hasPassword) KeyboardType.Password else KeyboardType.Email, imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { actions.deleteAccount() }),

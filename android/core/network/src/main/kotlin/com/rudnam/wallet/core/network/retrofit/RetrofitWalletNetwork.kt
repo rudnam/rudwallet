@@ -7,7 +7,12 @@ import com.rudnam.wallet.core.network.model.NetworkBudget
 import com.rudnam.wallet.core.network.model.NetworkCategory
 import com.rudnam.wallet.core.network.model.NetworkCategoryInput
 import com.rudnam.wallet.core.network.model.NetworkDeleteMe
+import com.rudnam.wallet.core.network.model.NetworkCardRuleInput
+import com.rudnam.wallet.core.network.model.NetworkMcpToken
 import com.rudnam.wallet.core.network.model.NetworkMe
+import com.rudnam.wallet.core.network.model.NetworkName
+import com.rudnam.wallet.core.network.model.NetworkPayeeRuleInput
+import com.rudnam.wallet.core.network.model.NetworkRules
 import com.rudnam.wallet.core.network.model.NetworkSettingsInput
 import com.rudnam.wallet.core.network.model.NetworkBudgetInput
 import com.rudnam.wallet.core.network.model.NetworkBulkChange
@@ -140,6 +145,30 @@ internal interface WalletApi {
 
     @DELETE("api/categories/{id}")
     suspend fun deleteCategory(@Path("id") id: Long): Response<Unit>
+
+    @GET("api/rules")
+    suspend fun rules(): NetworkRules
+
+    @PUT("api/rules/payees")
+    suspend fun setPayeeRule(@Body input: NetworkPayeeRuleInput): Response<Unit>
+
+    @DELETE("api/rules/payees")
+    suspend fun deletePayeeRule(@Query("payee") payee: String): Response<Unit>
+
+    @PUT("api/rules/cards")
+    suspend fun setCardRule(@Body input: NetworkCardRuleInput): Response<Unit>
+
+    @DELETE("api/rules/cards")
+    suspend fun deleteCardRule(@Query("source") source: String): Response<Unit>
+
+    @GET("api/mcp/tokens")
+    suspend fun mcpTokens(): List<NetworkMcpToken>
+
+    @POST("api/mcp/tokens")
+    suspend fun createMcpToken(@Body name: NetworkName): NetworkMcpToken
+
+    @DELETE("api/mcp/tokens/{id}")
+    suspend fun deleteMcpToken(@Path("id") id: Long): Response<Unit>
 }
 
 @Singleton
@@ -206,6 +235,22 @@ internal class RetrofitWalletNetwork @Inject constructor(retrofit: Retrofit, pri
     override suspend fun updateCategory(id: Long, input: NetworkCategoryInput) = call { api.updateCategory(id, input).orThrow() }
 
     override suspend fun deleteCategory(id: Long) = call { api.deleteCategory(id).orThrow() }
+
+    override suspend fun rules() = call { api.rules() }
+
+    override suspend fun setPayeeRule(payee: String, categoryId: Long) = call { api.setPayeeRule(NetworkPayeeRuleInput(payee, categoryId)).orThrow() }
+
+    override suspend fun deletePayeeRule(payee: String) = call { api.deletePayeeRule(payee).orThrow() }
+
+    override suspend fun setCardRule(source: String, accountId: Long) = call { api.setCardRule(NetworkCardRuleInput(source, accountId)).orThrow() }
+
+    override suspend fun deleteCardRule(source: String) = call { api.deleteCardRule(source).orThrow() }
+
+    override suspend fun mcpTokens() = call { api.mcpTokens() }
+
+    override suspend fun createMcpToken(name: String) = call { api.createMcpToken(NetworkName(name)) }
+
+    override suspend fun deleteMcpToken(id: Long) = call { api.deleteMcpToken(id).orThrow() }
 
     override suspend fun downloads() = call { api.downloads() }
 

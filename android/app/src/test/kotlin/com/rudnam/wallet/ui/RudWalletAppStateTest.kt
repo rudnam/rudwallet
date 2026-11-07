@@ -90,12 +90,12 @@ class RudWalletAppStateTest {
         compose.runOnIdle {
             assertEquals(TopLevelDestination.Settings, tab)
             assertNull(currentWebPath())
-            state.openPath("settings?section=rules")
+            state.openPath("settings?section=import")
         }
         compose.runOnIdle {
             assertNull(tab)
-            assertEquals("settings?section=rules", currentWebPath())
-            state.openPath("settings?section=import", replace = true)
+            assertEquals("settings?section=import", currentWebPath())
+            state.openPath("card", replace = true)
         }
         compose.runOnIdle { assertTrue(state.navController.popBackStack()) }
         compose.runOnIdle { assertEquals(TopLevelDestination.Settings, tab) } // the replaced page isn't in between
@@ -105,9 +105,9 @@ class RudWalletAppStateTest {
     fun `pages open one after another, each its own`() {
         compose.runOnIdle { state.openPath("card") }
         compose.runOnIdle { state.openPath("budgets") }
-        compose.runOnIdle { state.openPath("settings?section=rules") }
+        compose.runOnIdle { state.openPath("settings?section=import") }
         compose.runOnIdle {
-            assertEquals("settings?section=rules", currentWebPath())
+            assertEquals("settings?section=import", currentWebPath())
             assertTrue(state.navController.popBackStack())
             // The budgets are native, without the tabs.
             assertNull(currentWebPath())
@@ -163,8 +163,8 @@ class RudWalletAppStateTest {
         compose.runOnIdle {
             assertNull(webPath)
             assertEquals(SettingsSectionRoute("accounts"), state.navController.currentBackStackEntry!!.toRoute<SettingsSectionRoute>())
-            state.openPath("settings?section=notifications")
+            state.openPath("settings?section=import")
         }
-        compose.runOnIdle { assertEquals("settings?section=notifications", currentWebPath()) }
+        compose.runOnIdle { assertEquals("settings?section=import", currentWebPath()) }
     }
 }

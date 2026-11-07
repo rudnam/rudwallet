@@ -69,6 +69,7 @@ import com.rudnam.wallet.core.model.CategoryKind
 import com.rudnam.wallet.core.model.Wallet
 import com.rudnam.wallet.core.ui.MoneyFormat
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
+import com.rudnam.wallet.core.ui.serverText
 
 @Composable
 internal fun BudgetsDestination(navigation: InsightsNavigation, snackbar: SnackbarHostState, viewModel: BudgetsViewModel = hiltViewModel()) {
@@ -280,7 +281,7 @@ private fun BudgetSheet(wallet: Wallet, editor: BudgetEditor, actions: BudgetsAc
                 keyboardActions = KeyboardActions(onDone = { actions.save(defaultName) }),
                 modifier = Modifier.fillMaxWidth(),
             )
-            editor.refused?.let { Text(it, color = WalletTheme.colors.danger, style = MaterialTheme.typography.bodySmall) }
+            editor.refused?.let { Text(serverText(it), color = WalletTheme.colors.danger, style = MaterialTheme.typography.bodySmall) }
 
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (editor.id != null) {

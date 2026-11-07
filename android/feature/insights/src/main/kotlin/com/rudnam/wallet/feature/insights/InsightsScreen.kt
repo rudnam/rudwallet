@@ -69,6 +69,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneOffset
+import com.rudnam.wallet.core.ui.serverText
 
 /** Where Insights' and the budgets' taps lead. */
 interface InsightsNavigation {
@@ -267,7 +268,7 @@ private fun RangePicker(period: Period, onDismiss: () -> Unit, onPick: (LocalDat
 private fun Problem(problem: InsightsProblem, hasFigures: Boolean) {
     val text = when (problem) {
         InsightsProblem.Offline -> stringResource(if (hasFigures) R.string.feature_insights_offline else R.string.feature_insights_offline_nothing)
-        is InsightsProblem.Failed -> problem.message.ifEmpty { stringResource(R.string.feature_insights_failed) }
+        is InsightsProblem.Failed -> problem.message.ifEmpty { null }?.let { serverText(it) } ?: stringResource(R.string.feature_insights_failed)
     }
     Text(text, style = MaterialTheme.typography.bodySmall, color = WalletTheme.colors.attention)
 }

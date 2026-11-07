@@ -3,6 +3,7 @@ package com.rudnam.wallet.core.data
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.rudnam.wallet.core.data.repository.ChangeResult
+import com.rudnam.wallet.core.data.repository.Fetched
 import com.rudnam.wallet.core.data.repository.OfflineFirstWalletRepository
 import com.rudnam.wallet.core.data.repository.ServerSettingsRepository
 import com.rudnam.wallet.core.model.AccountInput
@@ -33,6 +34,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -92,6 +94,37 @@ class OfflineFirstWalletRepositoryTest {
         override suspend fun reconcile(accountId: Long, balance: Long) = com.rudnam.wallet.core.network.model.NetworkReconcileResult()
         override suspend fun setAccountOrder(ids: List<Long>) = Unit
         override suspend fun tags() = emptyList<com.rudnam.wallet.core.network.model.NetworkTag>()
+        val payees = mutableListOf(com.rudnam.wallet.core.network.model.NetworkPayeeRule("doutor", "Doutor", 10, 3))
+        val cards = mutableListOf(com.rudnam.wallet.core.network.model.NetworkCardRule("PayPay Card", 1, 2))
+        val tokens = mutableListOf<com.rudnam.wallet.core.network.model.NetworkMcpToken>()
+        override suspend fun rules(): com.rudnam.wallet.core.network.model.NetworkRules {
+            check()
+            return com.rudnam.wallet.core.network.model.NetworkRules(payees.toList(), cards.toList())
+        }
+        override suspend fun setPayeeRule(payee: String, categoryId: Long) {
+            check()
+            val key = payee.lowercase()
+            payees.removeAll { it.key == key }
+            payees += com.rudnam.wallet.core.network.model.NetworkPayeeRule(key, payee, categoryId, 0)
+        }
+        override suspend fun deletePayeeRule(payee: String) {
+            check()
+            payees.removeAll { it.key == payee }
+        }
+        override suspend fun setCardRule(source: String, accountId: Long) {
+            check()
+            cards.replaceAll { if (it.source == source) it.copy(accountId = accountId) else it }
+        }
+        override suspend fun deleteCardRule(source: String) {
+            check()
+            cards.removeAll { it.source == source }
+        }
+        override suspend fun mcpTokens() = tokens.map { it.copy(token = null) }
+        override suspend fun createMcpToken(name: String) =
+            com.rudnam.wallet.core.network.model.NetworkMcpToken(tokens.size + 1L, name, "2026-11-14T09:30:00+09:00", token = "wallet_secret").also { tokens += it }
+        override suspend fun deleteMcpToken(id: Long) {
+            tokens.removeAll { it.id == id }
+        }
         var currency = "JPY"
         val accounts = mutableListOf(NetworkAccount(1, "Cash", "cash", balance = 26450))
         val categories = mutableListOf(com.rudnam.wallet.core.network.model.NetworkCategory(10, "Food", "expense", "food", "#d9534f"))
@@ -238,7 +271,7 @@ class OfflineFirstWalletRepositoryTest {
         val network = FakeNetwork()
         val io = StandardTestDispatcher(testScheduler)
         val wallet = OfflineFirstWalletRepository(network, db.walletDao(), db.transactionDao(), db.budgetDao(), db.outboxDao(), WalletCache(db), StatsCache(), io)
-        val settings = ServerSettingsRepository(network, db.walletDao(), db.transactionDao(), db.budgetDao(), io)
+        val settings = ServerSettingsRepository(network, com.rudnam.wallet.core.network.Server(), db.walletDao(), db.transactionDao(), db.budgetDao(), io)
         wallet.refresh(from, to)
 
         assertEquals(ChangeResult.Saved, settings.saveAccount(null, AccountInput("PayPay", AccountKind.EMoney, 5000, "#d4553f", false)))
@@ -258,7 +291,22 @@ class OfflineFirstWalletRepositoryTest {
         assertEquals(ChangeResult.Saved, settings.setCurrency("USD"))
         assertEquals("USD", wallet.wallet.first()!!.settings.currency)
 
+        // Shops and cards.
+        assertEquals(listOf("Doutor"), (settings.rules() as Fetched.Done).value.payees.map { it.payee })
+        assertEquals(ChangeResult.Saved, settings.setShop("Lawson", 10))
+        assertEquals(ChangeResult.Saved, settings.forgetShop("doutor"))
+        assertEquals(ChangeResult.Saved, settings.setCard("PayPay Card", 2))
+        val rules = (settings.rules() as Fetched.Done).value
+        assertEquals(listOf("Lawson"), rules.payees.map { it.payee })
+        assertEquals(2L, rules.cards.single().accountId)
+
+        // Claude: the token is in the answer that made it, and never again.
+        assertEquals("wallet_secret", (settings.createMcpToken("Claude Desktop") as Fetched.Done).value.token)
+        assertEquals(listOf(null), (settings.mcpTokens() as Fetched.Done).value.map { it.token })
+        assertTrue(settings.mcpAddress.endsWith("/mcp"))
+
         network.failure = IOException("offline")
         assertEquals(ChangeResult.Offline, settings.deleteCategory(11))
+        assertEquals(Fetched.Offline, settings.rules())
     }
 }

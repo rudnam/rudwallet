@@ -75,6 +75,14 @@ class OfflineFirstRecordRepositoryTest {
         override suspend fun reconcile(accountId: Long, balance: Long) = com.rudnam.wallet.core.network.model.NetworkReconcileResult()
         override suspend fun setAccountOrder(ids: List<Long>) = Unit
         override suspend fun tags() = listOf(NetworkTag("trip", 3))
+        override suspend fun rules() = com.rudnam.wallet.core.network.model.NetworkRules()
+        override suspend fun setPayeeRule(payee: String, categoryId: Long) = Unit
+        override suspend fun deletePayeeRule(payee: String) = Unit
+        override suspend fun setCardRule(source: String, accountId: Long) = Unit
+        override suspend fun deleteCardRule(source: String) = Unit
+        override suspend fun mcpTokens() = emptyList<com.rudnam.wallet.core.network.model.NetworkMcpToken>()
+        override suspend fun createMcpToken(name: String) = error("not used")
+        override suspend fun deleteMcpToken(id: Long) = Unit
         override suspend fun me() = com.rudnam.wallet.core.network.model.NetworkMe("francis@example.com")
         override suspend fun logout() = Unit
         override suspend fun deleteMe(confirm: com.rudnam.wallet.core.network.model.NetworkDeleteMe) = Unit

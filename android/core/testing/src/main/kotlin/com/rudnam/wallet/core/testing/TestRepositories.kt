@@ -156,6 +156,36 @@ class TestSettingsRepository : com.rudnam.wallet.core.data.repository.SettingsRe
     override suspend fun missingCategories() = missing
     override suspend fun saveCategory(id: Long?, input: com.rudnam.wallet.core.model.CategoryInput) = result.also { categories += id to input }
     override suspend fun deleteCategory(id: Long) = result.also { deletedCategories += id }
+
+    var notificationSettings = mutableListOf<Pair<Boolean, Long?>>()
+    var notificationList: com.rudnam.wallet.core.data.repository.Fetched<List<com.rudnam.wallet.core.model.PaymentNotification>> =
+        com.rudnam.wallet.core.data.repository.Fetched.Done(emptyList())
+    var rules: com.rudnam.wallet.core.data.repository.Fetched<com.rudnam.wallet.core.model.Rules> = com.rudnam.wallet.core.data.repository.Fetched.Done(
+        com.rudnam.wallet.core.model.Rules(
+            payees = listOf(com.rudnam.wallet.core.model.PayeeRule("doutor", "Doutor", 13, 12), com.rudnam.wallet.core.model.PayeeRule("ramen taro", "Ramen Taro", 10, 3)),
+            cards = listOf(com.rudnam.wallet.core.model.CardRule("PayPay Card", 5, 21)),
+        ),
+    )
+    val shops = mutableListOf<Pair<String, Long?>>()
+    val cards = mutableListOf<Pair<String, Long?>>()
+    var tokens = mutableListOf<com.rudnam.wallet.core.model.McpToken>()
+    val deletedTokens = mutableListOf<Long>()
+
+    override suspend fun setNotificationSettings(autoConfirm: Boolean, defaultAccountId: Long?) = result.also { notificationSettings += autoConfirm to defaultAccountId }
+    override suspend fun notifications() = notificationList
+    override suspend fun rules() = rules
+    override suspend fun setShop(payee: String, categoryId: Long) = result.also { shops += payee to categoryId }
+    override suspend fun forgetShop(key: String) = result.also { shops += key to null }
+    override suspend fun setCard(source: String, accountId: Long) = result.also { cards += source to accountId }
+    override suspend fun forgetCard(source: String) = result.also { cards += source to null }
+    override val mcpAddress = "https://wallet.example.com/mcp"
+    override suspend fun mcpTokens() = com.rudnam.wallet.core.data.repository.Fetched.Done(tokens.map { it.copy(token = null) })
+    override suspend fun createMcpToken(name: String): com.rudnam.wallet.core.data.repository.Fetched<com.rudnam.wallet.core.model.McpToken> {
+        val token = com.rudnam.wallet.core.model.McpToken(tokens.size + 1L, name, java.time.Instant.EPOCH, null, "wallet_secret", false)
+        tokens += token
+        return com.rudnam.wallet.core.data.repository.Fetched.Done(token)
+    }
+    override suspend fun deleteMcpToken(id: Long) = result.also { deletedTokens += id }
 }
 
 /** A [UserRepository] with [me] signed in; it keeps what it's asked. */

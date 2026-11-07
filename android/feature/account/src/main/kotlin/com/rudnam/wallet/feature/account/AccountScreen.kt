@@ -55,6 +55,7 @@ import com.rudnam.wallet.core.ui.RecordDetail
 import com.rudnam.wallet.core.ui.recordDays
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
 import java.time.Instant
+import com.rudnam.wallet.core.ui.ServerText
 
 /** Where the account page's taps lead. */
 interface AccountNavigation {
@@ -83,7 +84,7 @@ internal fun AccountDestination(navigation: AccountNavigation, snackbar: Snackba
             is AccountMessage.Counted -> resources.getString(R.string.feature_account_counted, format?.money(message.balance).orEmpty()).also { haptics.success() }
             is AccountMessage.AlreadyRight -> resources.getString(R.string.feature_account_already_right, format?.money(message.balance).orEmpty()).also { haptics.success() }
             AccountMessage.Offline -> resources.getString(R.string.feature_account_offline)
-            is AccountMessage.Failed -> message.message
+            is AccountMessage.Failed -> ServerText.translate(message.message, resources.configuration.locales[0])
         }
         snackbar.showSnackbar(text)
     }

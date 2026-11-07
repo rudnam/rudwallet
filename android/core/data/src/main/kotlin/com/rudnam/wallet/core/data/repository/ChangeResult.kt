@@ -34,3 +34,34 @@ internal suspend fun change(io: CoroutineDispatcher, block: suspend () -> Unit):
         if (e.status in 400..499) ChangeResult.Refused(e.message) else ChangeResult.Offline
     }
 }
+
+/** What asking the server for something brought: it, or why not. */
+sealed interface Fetched<out T> {
+    data class Done<T>(val value: T) : Fetched<T>
+
+    data object Offline : Fetched<Nothing>
+
+    data object SignedOut : Fetched<Nothing>
+
+    /** The server refused; [message] is for the user, if it gave one. */
+    data class Failed(val message: String) : Fetched<Nothing>
+}
+
+/** Runs [block] (a call to the server) on [io], and says what it brought. */
+internal suspend fun <T> fetch(io: CoroutineDispatcher, block: suspend () -> T): Fetched<T> = withContext(io) {
+    try {
+        Fetched.Done(block())
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: SignedOutException) {
+        Fetched.SignedOut
+    } catch (e: IOException) {
+        Fetched.Offline
+    } catch (e: ApiException) {
+        Fetched.Failed(e.message)
+    } catch (e: kotlinx.serialization.SerializationException) {
+        Fetched.Failed("")
+    } catch (e: IllegalArgumentException) {
+        Fetched.Failed("") // a date written in a way it never has been
+    }
+}

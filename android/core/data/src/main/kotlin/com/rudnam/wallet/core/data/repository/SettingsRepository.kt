@@ -10,7 +10,11 @@ import com.rudnam.wallet.core.database.model.asEntity
 import com.rudnam.wallet.core.model.AccountInput
 import com.rudnam.wallet.core.model.Category
 import com.rudnam.wallet.core.model.CategoryInput
+import com.rudnam.wallet.core.model.McpToken
+import com.rudnam.wallet.core.model.PaymentNotification
+import com.rudnam.wallet.core.model.Rules
 import com.rudnam.wallet.core.model.Wallet
+import com.rudnam.wallet.core.network.Server
 import com.rudnam.wallet.core.network.WalletNetworkDataSource
 import com.rudnam.wallet.core.network.model.NetworkSettingsInput
 import com.rudnam.wallet.core.network.model.asModel
@@ -43,10 +47,39 @@ interface SettingsRepository {
 
     /** Deletes a category: its records become uncategorised, and its budgets go. */
     suspend fun deleteCategory(id: Long): ChangeResult
+
+    /** Payment notifications: confirm records from shops that have a category, and the account payments go to (null: the first). */
+    suspend fun setNotificationSettings(autoConfirm: Boolean, defaultAccountId: Long?): ChangeResult
+
+    /** The last payment notifications the phone sent, newest first. */
+    suspend fun notifications(): Fetched<List<PaymentNotification>>
+
+    /** Each shop's category and each card's account, as confirming payments taught them. */
+    suspend fun rules(): Fetched<Rules>
+
+    /** Files a shop (by its key, or a new shop by its name) under a category. */
+    suspend fun setShop(payee: String, categoryId: Long): ChangeResult
+
+    suspend fun forgetShop(key: String): ChangeResult
+
+    suspend fun setCard(source: String, accountId: Long): ChangeResult
+
+    suspend fun forgetCard(source: String): ChangeResult
+
+    /** Where an MCP client (Claude) connects: the server's /mcp. */
+    val mcpAddress: String
+
+    suspend fun mcpTokens(): Fetched<List<McpToken>>
+
+    /** A new connection for Claude; its token is in the answer only. */
+    suspend fun createMcpToken(name: String): Fetched<McpToken>
+
+    suspend fun deleteMcpToken(id: Long): ChangeResult
 }
 
 internal class ServerSettingsRepository @Inject constructor(
     private val network: WalletNetworkDataSource,
+    server: Server,
     private val walletDao: WalletDao,
     private val transactionDao: TransactionDao,
     private val budgetDao: BudgetDao,
@@ -90,6 +123,31 @@ internal class ServerSettingsRepository @Inject constructor(
         budgetDao.deleteForCategory(id)
         reload()
     }
+
+    override suspend fun setNotificationSettings(autoConfirm: Boolean, defaultAccountId: Long?) = change(io) {
+        network.updateSettings(NetworkSettingsInput(network.wallet().settings.currency, autoConfirm, defaultAccountId))
+        reload()
+    }
+
+    override suspend fun notifications() = fetch(io) { network.notifications().notifications.map { it.asModel() } }
+
+    override suspend fun rules() = fetch(io) { network.rules().asModel() }
+
+    override suspend fun setShop(payee: String, categoryId: Long) = change(io) { network.setPayeeRule(payee, categoryId) }
+
+    override suspend fun forgetShop(key: String) = change(io) { network.deletePayeeRule(key) }
+
+    override suspend fun setCard(source: String, accountId: Long) = change(io) { network.setCardRule(source, accountId) }
+
+    override suspend fun forgetCard(source: String) = change(io) { network.deleteCardRule(source) }
+
+    override val mcpAddress: String = server.resolve("/mcp")
+
+    override suspend fun mcpTokens() = fetch(io) { network.mcpTokens().map { it.asModel() } }
+
+    override suspend fun createMcpToken(name: String) = fetch(io) { network.createMcpToken(name).asModel() }
+
+    override suspend fun deleteMcpToken(id: Long) = change(io) { network.deleteMcpToken(id) }
 
     // The change is made; if fetching it back fails, the next refresh brings it.
     private suspend fun reload() {

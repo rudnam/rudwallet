@@ -5,7 +5,9 @@ import com.rudnam.wallet.core.network.model.NetworkBudget
 import com.rudnam.wallet.core.network.model.NetworkCategory
 import com.rudnam.wallet.core.network.model.NetworkCategoryInput
 import com.rudnam.wallet.core.network.model.NetworkDeleteMe
+import com.rudnam.wallet.core.network.model.NetworkMcpToken
 import com.rudnam.wallet.core.network.model.NetworkMe
+import com.rudnam.wallet.core.network.model.NetworkRules
 import com.rudnam.wallet.core.network.model.NetworkSettingsInput
 import com.rudnam.wallet.core.network.model.NetworkBudgetInput
 import com.rudnam.wallet.core.network.model.NetworkBulkChange
@@ -113,6 +115,25 @@ interface WalletNetworkDataSource {
 
     /** Deletes a category: its records become uncategorised, and its budgets go. */
     suspend fun deleteCategory(id: Long)
+
+    suspend fun rules(): NetworkRules
+
+    /** Files a shop (by its name or matching key) under a category. */
+    suspend fun setPayeeRule(payee: String, categoryId: Long)
+
+    suspend fun deletePayeeRule(payee: String)
+
+    /** Sends a card's payments to an account. */
+    suspend fun setCardRule(source: String, accountId: Long)
+
+    suspend fun deleteCardRule(source: String)
+
+    suspend fun mcpTokens(): List<NetworkMcpToken>
+
+    /** A new connection; the answer has the token, which is never shown again. */
+    suspend fun createMcpToken(name: String): NetworkMcpToken
+
+    suspend fun deleteMcpToken(id: Long)
 }
 
 /** The server ended the session (401), or nobody is signed in. */

@@ -70,6 +70,7 @@ import com.rudnam.wallet.core.ui.recordDays
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
 import java.time.Instant
 import java.time.YearMonth
+import com.rudnam.wallet.core.ui.ServerText
 
 /** Where Activity's taps lead. */
 interface ActivityNavigation {
@@ -99,7 +100,7 @@ internal fun ActivityDestination(navigation: ActivityNavigation, snackbar: Snack
             is ActivityMessage.Restored ->
                 if (message.count == 1) res.getString(R.string.feature_activity_restored_one) else res.getQuantityString(R.plurals.feature_activity_restored, message.count, message.count)
             ActivityMessage.Offline -> res.getString(R.string.feature_activity_offline)
-            is ActivityMessage.Failed -> res.getString(R.string.feature_activity_failed, message.message)
+            is ActivityMessage.Failed -> res.getString(R.string.feature_activity_failed, ServerText.translate(message.message, res.configuration.locales[0]))
             is ActivityMessage.Bulk -> {
                 val n = message.changed
                 val done = when (val c = message.change) {

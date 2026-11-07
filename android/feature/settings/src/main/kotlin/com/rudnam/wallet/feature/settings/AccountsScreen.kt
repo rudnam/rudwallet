@@ -77,6 +77,7 @@ import com.rudnam.wallet.core.ui.CategoryIcon
 import com.rudnam.wallet.core.ui.MoneyFormat
 import com.rudnam.wallet.core.ui.kindName
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
+import com.rudnam.wallet.core.ui.serverText
 
 /** Each kind of account: its icon and colour, and names people often use. */
 internal data class KindMeta(val glyph: String, val color: String, val names: List<Int>)
@@ -283,7 +284,7 @@ private fun AccountSheet(wallet: Wallet, editor: AccountEditor, actions: Account
                     }
                 }
             }
-            editor.refused?.let { Text(it, color = WalletTheme.colors.danger, style = MaterialTheme.typography.bodySmall) }
+            editor.refused?.let { Text(serverText(it), color = WalletTheme.colors.danger, style = MaterialTheme.typography.bodySmall) }
             SheetButtons(
                 deletable = editor.id != null,
                 busy = editor.busy,

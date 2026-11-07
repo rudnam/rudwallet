@@ -85,6 +85,7 @@ import com.rudnam.wallet.core.ui.CategoryIcon
 import com.rudnam.wallet.core.ui.MoneyFormat
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
 import java.time.Instant
+import com.rudnam.wallet.core.ui.serverText
 
 @Composable
 internal fun RecordSheetDestination(onDone: () -> Unit, viewModel: RecordViewModel = hiltViewModel()) {
@@ -237,7 +238,7 @@ private fun Notices(state: RecordUiState.Ready) {
     if (record.pending != null) {
         val refused = record.refusal
         Notice(
-            if (refused != null) stringResource(R.string.feature_record_refused, refused) else stringResource(R.string.feature_record_waiting),
+            if (refused != null) stringResource(R.string.feature_record_refused, serverText(refused)) else stringResource(R.string.feature_record_waiting),
             attention = refused != null,
         )
     }
@@ -497,7 +498,7 @@ private fun TagField(state: RecordUiState.Ready, actions: RecordActions) {
 
 @Composable
 private fun Problem(state: RecordUiState.Ready) {
-    val text = state.serverMessage ?: when (state.problem) {
+    val text = state.serverMessage?.let { serverText(it) } ?: when (state.problem) {
         RecordProblem.NoAmount -> stringResource(
             if (state.wallet.settings.currencyExponent == 0) R.string.feature_record_no_amount_yen else R.string.feature_record_no_amount_cents,
         )

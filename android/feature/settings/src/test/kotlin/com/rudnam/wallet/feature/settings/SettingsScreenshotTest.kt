@@ -9,7 +9,13 @@ import com.rudnam.wallet.core.model.Account
 import com.rudnam.wallet.core.model.AccountKind
 import com.rudnam.wallet.core.model.Category
 import com.rudnam.wallet.core.model.CategoryKind
+import com.rudnam.wallet.core.model.CardRule
+import com.rudnam.wallet.core.model.McpToken
 import com.rudnam.wallet.core.model.Me
+import com.rudnam.wallet.core.model.NotificationStatus
+import com.rudnam.wallet.core.model.PayeeRule
+import com.rudnam.wallet.core.model.PaymentNotification
+import com.rudnam.wallet.core.model.Rules
 import com.rudnam.wallet.core.testing.SampleWallet
 import org.junit.Rule
 import org.junit.Test
@@ -110,4 +116,63 @@ class SettingsScreenshotTest {
 
     @Test
     fun language() = shot("language") { LanguageScreen(null, "en", {}, navigation) }
+
+    private val rulesActions = object : RulesActions {
+        override fun setShop(key: String, name: String, categoryId: Long) {}
+        override fun forgetShop(key: String, name: String) {}
+        override fun addShop(name: String, categoryId: Long) {}
+        override fun setCard(source: String, accountId: Long) {}
+        override fun forgetCard(source: String) {}
+        override fun reload() {}
+    }
+    private val notificationsActions = object : NotificationsActions {
+        override fun setAutoConfirm(on: Boolean) {}
+        override fun setDefaultAccount(accountId: Long?) {}
+    }
+    private val claudeActions = object : ClaudeActions {
+        override fun create(name: String) {}
+        override fun askDisconnect(token: McpToken?) {}
+        override fun disconnect() {}
+    }
+    private val rules = Rules(
+        payees = listOf(PayeeRule("doutor", "Doutor", 13, 12), PayeeRule("ramen taro", "Ramen Taro", 10, 3), PayeeRule("life", "Life Supermarket", 11, 1)),
+        cards = listOf(CardRule("PayPay Card", 5, 21), CardRule("Google Wallet Visa", 2, 4)),
+    )
+
+    @Test
+    @Config(qualifiers = "w411dp-h1300dp-xxhdpi")
+    fun shopsAndCards() = shot("rules") { RulesScreen(SampleWallet.wallet, Loadable.Ready(rules), rulesActions, navigation) }
+
+    @Test
+    @Config(qualifiers = "ja-w411dp-h1300dp-xxhdpi")
+    fun shopsAndCardsJapanese() = shot("rules-ja") { RulesScreen(SampleWallet.wallet, Loadable.Ready(rules), rulesActions, navigation) }
+
+    private val notifications = listOf(
+        PaymentNotification(3, "PayPay", "PayPay", "ドトール で ¥480 支払いました", SampleWallet.at(14, 8, 10), NotificationStatus.Payment, ""),
+        PaymentNotification(2, "Google Wallet", "FamilyMart", "", SampleWallet.at(14, 8, 55), NotificationStatus.Unparsed, "No amount in the notification."),
+        PaymentNotification(1, "PayPay", "PayPay", "チャージが完了しました", SampleWallet.at(12, 19, 2), NotificationStatus.Ignored, "Not a payment made (declined, a balance or a top-up)."),
+    )
+
+    @Test
+    @Config(qualifiers = "w411dp-h1300dp-xxhdpi")
+    fun paymentNotifications() = shot("notifications") {
+        NotificationsScreen(SampleWallet.wallet, access = false, autoConfirm = null, recent = Loadable.Ready(notifications), actions = notificationsActions, onOpenAccess = {}, navigation = navigation)
+    }
+
+    @Test
+    @Config(qualifiers = "ja-w411dp-h1300dp-xxhdpi")
+    fun paymentNotificationsJapanese() = shot("notifications-ja") {
+        NotificationsScreen(SampleWallet.wallet, access = true, autoConfirm = null, recent = Loadable.Ready(notifications), actions = notificationsActions, onOpenAccess = {}, navigation = navigation)
+    }
+
+    @Test
+    fun widgets() = shot("widgets") { WidgetsScreen(canPin = true, onPin = {}, navigation = navigation) }
+
+    @Test
+    @Config(qualifiers = "w411dp-h1100dp-xxhdpi")
+    fun claude() = shot("claude") {
+        val fresh = McpToken(2, "Claude Desktop", SampleWallet.at(14, 9, 0), null, "wallet_3f9a0c1e7b2d4a6f8e1c3b5d7f9a1c3e", false)
+        val tokens = listOf(McpToken(1, "Claude", SampleWallet.at(2, 10, 0), SampleWallet.at(13, 21, 0), null, true), fresh.copy(token = null))
+        ClaudeScreen(state.me, ClaudeUiState(state.me, "https://wallet.example.com/mcp", Loadable.Ready(tokens), fresh = fresh), claudeActions, onCopy = { _, _ -> }, navigation = navigation)
+    }
 }

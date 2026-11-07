@@ -5,7 +5,13 @@ import com.rudnam.wallet.core.model.AccountKind
 import com.rudnam.wallet.core.model.AccountInput
 import com.rudnam.wallet.core.model.Budget
 import com.rudnam.wallet.core.model.CategoryInput
+import com.rudnam.wallet.core.model.McpToken
 import com.rudnam.wallet.core.model.Me
+import com.rudnam.wallet.core.model.NotificationStatus
+import com.rudnam.wallet.core.model.PayeeRule
+import com.rudnam.wallet.core.model.CardRule
+import com.rudnam.wallet.core.model.PaymentNotification
+import com.rudnam.wallet.core.model.Rules
 import com.rudnam.wallet.core.model.BudgetInput
 import com.rudnam.wallet.core.model.CategoryTotal
 import com.rudnam.wallet.core.model.DayTotal
@@ -203,7 +209,44 @@ data class NetworkDayTotal(val day: String, val spent: Long = 0, val income: Lon
 data class NetworkNotifications(val notifications: List<NetworkNotification> = emptyList())
 
 @Serializable
-data class NetworkNotification(val id: Long)
+data class NetworkNotification(
+    val id: Long,
+    @SerialName("package") val packageName: String = "",
+    val app: String = "",
+    val title: String = "",
+    val text: String = "",
+    @SerialName("posted_at") val postedAt: String? = null,
+    val status: String = "unparsed",
+    val detail: String = "",
+)
+
+@Serializable
+data class NetworkRules(val payees: List<NetworkPayeeRule> = emptyList(), val cards: List<NetworkCardRule> = emptyList())
+
+@Serializable
+data class NetworkPayeeRule(val key: String, val payee: String = "", @SerialName("category_id") val categoryId: Long, val records: Int = 0)
+
+@Serializable
+data class NetworkCardRule(val source: String, @SerialName("account_id") val accountId: Long, val records: Int = 0)
+
+@Serializable
+data class NetworkPayeeRuleInput(val payee: String, @SerialName("category_id") val categoryId: Long)
+
+@Serializable
+data class NetworkCardRuleInput(val source: String, @SerialName("account_id") val accountId: Long)
+
+@Serializable
+data class NetworkMcpToken(
+    val id: Long,
+    val name: String,
+    @SerialName("created_at") val createdAt: String,
+    @SerialName("last_used_at") val lastUsedAt: String? = null,
+    val token: String? = null,
+    @SerialName("signed_in") val signedIn: Boolean = false,
+)
+
+@Serializable
+data class NetworkName(val name: String)
 
 @Serializable
 data class NetworkDownloads(val android: NetworkApk? = null)
@@ -264,6 +307,30 @@ fun NetworkBudget.asModel() = Budget(id, name, categoryId, amount)
 fun BudgetInput.asNetwork() = NetworkBudgetInput(name, categoryId, amount)
 
 fun NetworkMe.asModel() = Me(email, hasPassword, demo)
+
+fun NetworkRules.asModel() = Rules(
+    payees = payees.map { PayeeRule(it.key, it.payee.ifEmpty { it.key }, it.categoryId, it.records) },
+    cards = cards.map { CardRule(it.source, it.accountId, it.records) },
+)
+
+fun NetworkNotification.asModel() = PaymentNotification(
+    id = id,
+    app = app.ifEmpty { packageName },
+    title = title,
+    text = text,
+    postedAt = postedAt?.let { OffsetDateTime.parse(it).toInstant() } ?: java.time.Instant.EPOCH,
+    status = NotificationStatus.fromApi(status),
+    detail = detail,
+)
+
+fun NetworkMcpToken.asModel() = McpToken(
+    id = id,
+    name = name,
+    createdAt = OffsetDateTime.parse(createdAt).toInstant(),
+    lastUsedAt = lastUsedAt?.let { OffsetDateTime.parse(it).toInstant() },
+    token = token,
+    signedIn = signedIn,
+)
 
 fun AccountInput.asNetwork() = NetworkAccountInput(name, kind.apiName, initialBalance, color, archived)
 
