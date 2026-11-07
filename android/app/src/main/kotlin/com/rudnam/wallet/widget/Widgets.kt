@@ -6,7 +6,9 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import android.util.SizeF
 import android.view.View
 import android.widget.RemoteViews
 import androidx.core.net.toUri
@@ -42,6 +44,13 @@ import javax.inject.Singleton
 /** This month: spent so far, what the overall budget allows a day, and payments to check. */
 class MonthWidget : AppWidgetProvider() {
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) = WidgetUpdater.refresh(context)
+
+    override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, id: Int, options: Bundle) {
+        // Resized: before Android 12 the widget picks its layout here (one row tall, or more); redraw from the saved summary.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) return
+        val saved = EntryPointAccessors.fromApplication(context, WidgetEntryPoint::class.java).summaries().saved()
+        manager.updateAppWidget(id, WidgetViews.month(context, saved?.let { WidgetData.Summary(it) } ?: WidgetData.Offline, options))
+    }
 }
 
 /** Budgets: each monthly budget with a meter, as many as the widget is tall enough for. */
@@ -81,7 +90,7 @@ class WidgetsWorker @AssistedInject constructor(
         val data = summaries.fetch()
         val manager = AppWidgetManager.getInstance(applicationContext)
         for (id in manager.getAppWidgetIds(ComponentName(applicationContext, MonthWidget::class.java))) {
-            manager.updateAppWidget(id, WidgetViews.month(applicationContext, data))
+            manager.updateAppWidget(id, WidgetViews.month(applicationContext, data, manager.getAppWidgetOptions(id)))
         }
         for (id in manager.getAppWidgetIds(ComponentName(applicationContext, BudgetsWidget::class.java))) {
             manager.updateAppWidget(id, WidgetViews.budgets(applicationContext, data, manager.getAppWidgetOptions(id)))
@@ -122,9 +131,24 @@ class KeepAliveWorker(context: Context, params: WorkerParameters) : CoroutineWor
 internal object WidgetViews {
     private enum class Meter { Ok, Warn, Over }
 
+    /** From this height (dp) the month widget is drawn in full; below it, in one row (widget_month_row.xml). */
+    private const val FULL_DP = 100
+
+    /**
+     * The month widget at the size it is ([options]). From Android 12 it carries both layouts and
+     * the launcher shows the one that fits, as it's resized; before, it's drawn for its height.
+     */
+    fun month(c: Context, data: WidgetData, options: Bundle? = null): RemoteViews =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            RemoteViews(mapOf(SizeF(0f, 0f) to month(c, data, full = false), SizeF(0f, FULL_DP.toFloat()) to month(c, data, full = true)))
+        } else {
+            val height = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT) ?: 0
+            month(c, data, full = height == 0 || height >= FULL_DP)
+        }
+
     /** Says what Wallet's month line says: spent so far, the overall budget's meter and what it means today, else the total balance. */
-    fun month(c: Context, data: WidgetData): RemoteViews {
-        val v = RemoteViews(c.packageName, R.layout.widget_month)
+    internal fun month(c: Context, data: WidgetData, full: Boolean): RemoteViews {
+        val v = RemoteViews(c.packageName, if (full) R.layout.widget_month else R.layout.widget_month_row)
         v.setOnClickPendingIntent(R.id.add, open(c, "add"))
         val s = (data as? WidgetData.Summary)?.summary ?: return v.also { message(it, c, data) }
         v.setViewVisibility(R.id.content, View.VISIBLE)
@@ -133,7 +157,8 @@ internal object WidgetViews {
         v.setTextViewText(R.id.spent, money(s, s.spent))
         val budget = s.budget
         if (budget != null) {
-            val state = meter(v, R.id.meter, R.id.meter_warn, R.id.meter_over, s.spent, budget.amount)
+            // One row tall, there's no meter: the line under the figure says it.
+            val state = if (full) meter(v, R.id.meter, R.id.meter_warn, R.id.meter_over, s.spent, budget.amount) else meterState(s.spent, budget.amount)
             v.setTextColor(R.id.detail, c.getColor(if (state == Meter.Over) R.color.widget_danger else R.color.widget_muted))
             v.setTextViewText(
                 R.id.detail,
@@ -144,7 +169,7 @@ internal object WidgetViews {
                 },
             )
         } else {
-            listOf(R.id.meter, R.id.meter_warn, R.id.meter_over).forEach { v.setViewVisibility(it, View.GONE) }
+            if (full) listOf(R.id.meter, R.id.meter_warn, R.id.meter_over).forEach { v.setViewVisibility(it, View.GONE) }
             v.setTextColor(R.id.detail, c.getColor(R.color.widget_muted))
             v.setTextViewText(R.id.detail, c.getString(R.string.widget_balance, money(s, s.balance)))
         }
@@ -212,17 +237,19 @@ internal object WidgetViews {
 
     /** Fills the bar for the budget's state, as the app's meter: within it, 80% or more of it used, or over. */
     private fun meter(v: RemoteViews, okBar: Int, warnBar: Int, overBar: Int, spent: Long, amount: Long): Meter {
-        val state = when {
-            spent > amount -> Meter.Over
-            amount > 0 && spent * 10 >= amount * 8 -> Meter.Warn
-            else -> Meter.Ok
-        }
+        val state = meterState(spent, amount)
         // ProgressBar takes ints; per mille keeps any amount in range.
         val progress = if (amount <= 0) 1000 else minOf(1000L, spent * 1000 / amount).toInt()
         val bars = listOf(okBar, warnBar, overBar)
         bars.forEachIndexed { i, bar -> v.setViewVisibility(bar, if (i == state.ordinal) View.VISIBLE else View.GONE) }
         v.setProgressBar(bars[state.ordinal], 1000, progress, false)
         return state
+    }
+
+    private fun meterState(spent: Long, amount: Long) = when {
+        spent > amount -> Meter.Over
+        amount > 0 && spent * 10 >= amount * 8 -> Meter.Warn
+        else -> Meter.Ok
     }
 
     /** Days left in the month, today included, as the app counts them. */
