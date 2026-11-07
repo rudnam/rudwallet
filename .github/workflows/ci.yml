@@ -65,16 +65,26 @@ jobs:
           distribution: temurin
           java-version: 21
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
-      # The preview build: the release build (R8, not debuggable, so it runs as fast as the real
-      # app), installed beside it as "RudWallet Preview" and signed with the debug key. Building it
-      # also checks R8's shrinking on every change.
-      - run: ./gradlew assemblePreview
+        with:
+          # Pull requests save their cache too (by default only main does), so a push rebuilds
+          # only the modules it changed. GitHub gives a pull request's cache to that pull request
+          # alone; main's cache is untouched by it.
+          cache-read-only: false
+      # One Gradle run for everything, so the build is set up once and its tasks can overlap:
+      # - the preview build: the release build (R8, not debuggable, so it runs as fast as the
+      #   real app), installed beside it as "RudWallet Preview" and signed with the debug key;
+      #   building it also checks R8's shrinking on every change;
+      # - every module's tests (android/*/src/test), which also draw the native screens;
+      # - Android Lint on the native modules.
+      # --continue: a failing test doesn't stop the rest, so the preview is still published
+      # (below), and the job still fails.
+      - run: ./gradlew assemblePreview testDebugUnitTest lintNative --continue -Proborazzi.test.record=true
         working-directory: android
       # On a pull request, the preview build as a
       # pre-release asset: a plain download link a phone can open, which artifacts aren't.
       # Updated on every push; android-preview-cleanup.yml deletes it when the pull request closes.
       - name: Publish the preview APK
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        if: ${{ !cancelled() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && hashFiles('android/app/build/outputs/apk/preview/app-preview.apk') != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
@@ -91,12 +101,6 @@ jobs:
             gh release create "$tag" rudwallet-preview.apk --prerelease --latest=false --target "$SHA" --title "Android preview for #$PR" --notes "$notes Last built from $SHA."
             gh pr comment "$PR" --body "📱 **Android preview:** [rudwallet-preview.apk]($url). Open it on the phone to install \"RudWallet Preview\" beside the real app; it's rebuilt on every push. Google sign-in returns to the real app, so sign in with email and password. (The repository is private: the link needs the browser signed in to GitHub, or it answers 404.)"
           fi
-      # Every module's tests (android/*/src/test), which also draw the native screens.
-      - run: ./gradlew testDebugUnitTest -Proborazzi.test.record=true
-        working-directory: android
-      # Android Lint on the native modules.
-      - run: ./gradlew lintNative
-        working-directory: android
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -104,6 +108,7 @@ jobs:
           path: android/**/build/outputs/roborazzi/
           retention-days: 7
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() && hashFiles('android/app/build/outputs/apk/preview/app-preview.apk') != '' }}
         with:
           name: android-preview-apk
           path: android/app/build/outputs/apk/preview/app-preview.apk
