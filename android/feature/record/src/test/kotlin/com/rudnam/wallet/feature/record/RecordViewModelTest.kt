@@ -54,6 +54,15 @@ class RecordViewModelTest {
     }
 
     @Test
+    fun `the categories keep their order when the server's habits come in`() = runTest {
+        records.habits = RecordHabits(emptyMap(), mapOf(13L to 5), emptyList())
+        val other = SampleWallet.wallet.categories.first { it.id != 13L && it.kind == SampleWallet.wallet.category(13L)!!.kind }.id
+        records.refreshed = RecordHabits(emptyMap(), mapOf(other to 50), emptyList())
+        val vm = viewModel()
+        assertEquals(13L, vm.ready().categories.first().id)
+    }
+
+    @Test
     fun `saving without an amount says so, and with one it's added and the sheet closes`() = runTest {
         val vm = viewModel()
         vm.ready()

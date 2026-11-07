@@ -2,6 +2,8 @@ package com.rudnam.wallet.core.data.repository
 
 import com.rudnam.wallet.core.model.RecordInput
 import com.rudnam.wallet.core.model.Transaction
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /** How adding or changing a record went. */
 sealed interface SaveResult {
@@ -36,6 +38,12 @@ data class RecordHabits(
     val tags: List<String>,
 )
 
+/** The server's last [RecordHabits], kept for the next record sheet; emptied when someone signs out. */
+@Singleton
+class HabitsCache @Inject constructor() {
+    @Volatile var habits: RecordHabits? = null
+}
+
 /**
  * Adding, changing and deleting records. A new record without a connection
  * goes to the outbox and is sent by OutboxWorker when there is one; the
@@ -57,7 +65,15 @@ interface RecordRepository {
     /** The record with this id: from the phone's copy, or what's waiting to be sent. */
     suspend fun get(id: Long): Transaction?
 
+    /**
+     * What the user usually does, at once: the server's last answer, or before there is one,
+     * counted from the records on the phone. The record sheet sorts by it as it opens, so it
+     * mustn't wait on the network (the categories would reshuffle when the answer came).
+     */
     suspend fun habits(): RecordHabits
+
+    /** Asks the server, and keeps its answer for the next [habits]; offline, the same as [habits]. */
+    suspend fun refreshHabits(): RecordHabits
 
     /** The account a new record starts in: the one used last time. */
     suspend fun lastAccount(): Long?

@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -30,6 +29,7 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import com.rudnam.wallet.core.designsystem.component.PageLoading
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -50,6 +50,8 @@ import com.rudnam.wallet.core.designsystem.theme.figures
 import com.rudnam.wallet.core.model.AccountKind
 import com.rudnam.wallet.core.model.Transaction
 import com.rudnam.wallet.core.ui.AccountCard
+import com.rudnam.wallet.core.ui.sharedBounds
+import com.rudnam.wallet.core.ui.accountCardKey
 import com.rudnam.wallet.core.ui.MoneyFormat
 import com.rudnam.wallet.core.ui.RecordDetail
 import com.rudnam.wallet.core.ui.recordDays
@@ -144,7 +146,7 @@ internal fun AccountScreen(
         },
     ) { padding ->
         when (state) {
-            AccountUiState.Loading -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            AccountUiState.Loading -> PageLoading(Modifier.fillMaxSize().padding(padding))
             AccountUiState.Gone -> Box(Modifier.fillMaxSize().padding(padding).padding(24.dp)) {
                 Text(stringResource(R.string.feature_account_gone), color = WalletTheme.colors.muted)
             }
@@ -162,7 +164,7 @@ private fun Account(state: AccountUiState.Ready, navigation: AccountNavigation, 
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        item(key = "card") { AccountCard(state.account, format) }
+        item(key = "card") { AccountCard(state.account, format, Modifier.sharedBounds(accountCardKey(state.account.id), MaterialTheme.shapes.medium)) }
         if (state.account.kind == AccountKind.Cash) {
             // Cash can't fill itself in: what's really there becomes the balance.
             item(key = "count") {

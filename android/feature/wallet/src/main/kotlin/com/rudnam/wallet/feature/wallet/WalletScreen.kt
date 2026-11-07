@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -33,6 +32,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import com.rudnam.wallet.core.ui.serverText
+import com.rudnam.wallet.core.designsystem.component.PageLoading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.material3.ButtonDefaults
@@ -163,7 +163,7 @@ internal fun WalletScreen(
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
             when (state) {
-                WalletUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                WalletUiState.Loading -> PageLoading(Modifier.fillMaxSize())
                 WalletUiState.Unavailable -> Unavailable(onRefresh)
                 is WalletUiState.Ready -> Wallet(state, navigation, onDismissSetup, onUpdateLater, onReorder, onResend, onLeaveDemo, now)
             }

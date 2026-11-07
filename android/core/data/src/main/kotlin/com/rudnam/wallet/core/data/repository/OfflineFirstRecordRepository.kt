@@ -38,6 +38,7 @@ internal class OfflineFirstRecordRepository @Inject constructor(
     private val preferences: UserPreferencesRepository,
     private val scheduler: OutboxScheduler,
     private val clock: Clock,
+    private val knownHabits: HabitsCache,
     @Dispatcher(WalletDispatchers.IO) private val io: CoroutineDispatcher,
 ) : RecordRepository {
     override suspend fun add(input: RecordInput): SaveResult = withContext(io) {
@@ -110,24 +111,33 @@ internal class OfflineFirstRecordRepository @Inject constructor(
         if (id < 0) outboxDao.get(-id)?.asTransaction() else transactionDao.get(id)?.asModel()
     }
 
-    override suspend fun habits(): RecordHabits = withContext(io) {
+    private fun habitsSince() = clock.instant().minus(Duration.ofDays(120))
+
+    override suspend fun habits(): RecordHabits = knownHabits.habits ?: withContext(io) {
+        // Before the server has answered: counted from what the phone has.
+        val recent = transactionDao.since(habitsSince()).map { it.asModel() }.filter { it.confirmed }
+        habitsOf(recent, recent.flatMap { it.tags }.groupingBy { it }.eachCount().entries.sortedByDescending { it.value }.map { it.key })
+    }
+
+    override suspend fun refreshHabits(): RecordHabits = withContext(io) {
         coroutineScope {
-            val since = clock.instant().minus(Duration.ofDays(120))
-            val recent = async {
-                // Offline: what the phone has.
-                runCatching { network.confirmedSince(since).map { it.asModel() } }
-                    .getOrElse { transactionDao.since(since).map { it.asModel() }.filter { it.confirmed } }
-            }
-            val tags = async { runCatching { network.tags().map { it.name } }.getOrDefault(emptyList()) }
-            val list = recent.await()
-            val payees = LinkedHashMap<String, Transaction>()
-            val use = HashMap<Long, Int>()
-            for (t in list) {
-                if (t.payee.isNotEmpty() && t.payee !in payees) payees[t.payee] = t
-                t.categoryId?.let { use.merge(it, 1, Int::plus) }
-            }
-            RecordHabits(payees, use, tags.await())
+            val recent = async { runCatching { network.confirmedSince(habitsSince()).map { it.asModel() } } }
+            val tags = async { runCatching { network.tags().map { it.name } } }
+            val list = recent.await().getOrNull()
+            val tagList = tags.await().getOrNull()
+            // Offline: nothing new to keep.
+            if (list == null || tagList == null) habits() else habitsOf(list, tagList).also { knownHabits.habits = it }
         }
+    }
+
+    private fun habitsOf(recent: List<Transaction>, tags: List<String>): RecordHabits {
+        val payees = LinkedHashMap<String, Transaction>()
+        val use = HashMap<Long, Int>()
+        for (t in recent) {
+            if (t.payee.isNotEmpty() && t.payee !in payees) payees[t.payee] = t
+            t.categoryId?.let { use.merge(it, 1, Int::plus) }
+        }
+        return RecordHabits(payees, use, tags)
     }
 
     override suspend fun lastAccount(): Long? = preferences.preferences.first().lastAccountId

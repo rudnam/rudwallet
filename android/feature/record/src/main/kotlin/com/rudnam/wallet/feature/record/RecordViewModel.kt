@@ -87,7 +87,9 @@ class RecordViewModel @Inject constructor(
         val form: RecordForm? = null,
         val record: Transaction? = null,
         val missing: Boolean = false,
-        val habits: RecordHabits = RecordHabits(emptyMap(), emptyMap(), emptyList()),
+        // Null until known: the sheet waits for it (a moment, from the phone), so the
+        // categories open in their order and stay there.
+        val habits: RecordHabits? = null,
         val showAllCategories: Boolean = false,
         val showExtras: Boolean = false,
         val busy: Boolean = false,
@@ -107,8 +109,8 @@ class RecordViewModel @Inject constructor(
         val form = s.form
         when {
             s.missing -> RecordUiState.Missing
-            form == null -> RecordUiState.Loading
-            else -> ready(w, form, s)
+            form == null || s.habits == null -> RecordUiState.Loading
+            else -> ready(w, form, s, s.habits)
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecordUiState.Loading)
 
@@ -139,13 +141,15 @@ class RecordViewModel @Inject constructor(
         viewModelScope.launch {
             val habits = records.habits()
             sheet.update { it.copy(habits = habits) }
+            // The server's latest, for the next sheet: this one keeps its order.
+            records.refreshHabits()
         }
     }
 
-    private fun ready(w: Wallet, form: RecordForm, s: Sheet): RecordUiState.Ready {
+    private fun ready(w: Wallet, form: RecordForm, s: Sheet, habits: RecordHabits): RecordUiState.Ready {
         val ofKind = w.categories
             .filter { form.kind != TransactionKind.Transfer && it.kind.apiName == form.kind.apiName }
-            .sortedByDescending { s.habits.categoryUse[it.id] ?: 0 }
+            .sortedByDescending { habits.categoryUse[it.id] ?: 0 }
         val folding = ofKind.size > FEW_CATEGORIES + 1
         val chosenHidden = ofKind.indexOfFirst { it.id == form.categoryId } >= FEW_CATEGORIES
         val shown = when {
@@ -161,9 +165,9 @@ class RecordViewModel @Inject constructor(
             categories = shown,
             canFoldCategories = folding,
             showAllCategories = s.showAllCategories,
-            recentPayees = if (s.record == null && typed.isEmpty()) s.habits.payees.keys.take(FEW_PAYEES) else emptyList(),
-            payeeSuggestions = if (typed.isEmpty()) emptyList() else s.habits.payees.keys.filter { it.contains(typed, ignoreCase = true) && it != typed }.take(5),
-            tagSuggestions = s.habits.tags.filter { t -> form.tags.none { it.equals(t, ignoreCase = true) } },
+            recentPayees = if (s.record == null && typed.isEmpty()) habits.payees.keys.take(FEW_PAYEES) else emptyList(),
+            payeeSuggestions = if (typed.isEmpty()) emptyList() else habits.payees.keys.filter { it.contains(typed, ignoreCase = true) && it != typed }.take(5),
+            tagSuggestions = habits.tags.filter { t -> form.tags.none { it.equals(t, ignoreCase = true) } },
             showExtras = s.showExtras,
             busy = s.busy,
             problem = s.problem,
@@ -195,7 +199,7 @@ class RecordViewModel @Inject constructor(
     /** A payee typed or picked; one paid before brings what was chosen there last (on a new record). */
     fun setPayee(payee: String) {
         val s = sheet.value
-        val habit = s.habits.payees[payee]?.takeIf { s.record == null }
+        val habit = s.habits?.payees?.get(payee)?.takeIf { s.record == null }
         val active = (uiState.value as? RecordUiState.Ready)?.wallet?.activeAccounts.orEmpty()
         edit { f ->
             if (habit == null) return@edit f.copy(payee = payee)

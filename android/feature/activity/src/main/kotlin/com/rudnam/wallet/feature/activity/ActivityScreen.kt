@@ -43,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import com.rudnam.wallet.core.designsystem.component.PageLoading
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -125,7 +126,7 @@ internal fun ActivityDestination(navigation: ActivityNavigation, snackbar: Snack
     }
 
     when (val s = state) {
-        ActivityUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        ActivityUiState.Loading -> PageLoading(Modifier.fillMaxSize())
         is ActivityUiState.Ready -> ActivityScreen(s, viewModel, navigation)
     }
 }

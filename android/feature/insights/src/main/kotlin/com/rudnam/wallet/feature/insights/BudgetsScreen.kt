@@ -44,6 +44,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import com.rudnam.wallet.core.designsystem.component.PageLoading
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -133,7 +134,7 @@ internal fun BudgetsScreen(state: BudgetsUiState, editor: BudgetEditor?, actions
         },
     ) { padding ->
         when {
-            ready == null -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+            ready == null -> PageLoading(Modifier.fillMaxSize().padding(padding))
             ready.budgets.isEmpty() -> NoBudgets(actions, Modifier.padding(padding))
             else -> {
                 val format = rememberMoneyFormat(ready.wallet.settings)

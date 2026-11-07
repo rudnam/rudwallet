@@ -7,6 +7,7 @@ import com.rudnam.wallet.core.data.repository.OfflineFirstWalletRepository
 import com.rudnam.wallet.core.data.repository.SaveResult
 import com.rudnam.wallet.core.data.repository.SyncResult
 import com.rudnam.wallet.core.data.sync.OutboxScheduler
+import com.rudnam.wallet.core.data.repository.HabitsCache
 import com.rudnam.wallet.core.data.repository.StatsCache
 import com.rudnam.wallet.core.database.WalletCache
 import com.rudnam.wallet.core.database.WalletDatabase
@@ -144,9 +145,9 @@ class OfflineFirstRecordRepositoryTest {
         var scheduled = 0
         val records = OfflineFirstRecordRepository(
             network, db.transactionDao(), db.outboxDao(), TestUserPreferences().repository,
-            object : OutboxScheduler { override fun schedule() { scheduled++ } }, Clock.fixed(at, ZoneOffset.UTC), io,
+            object : OutboxScheduler { override fun schedule() { scheduled++ } }, Clock.fixed(at, ZoneOffset.UTC), HabitsCache(), io,
         )
-        val wallet = OfflineFirstWalletRepository(network, db.walletDao(), db.transactionDao(), db.budgetDao(), db.outboxDao(), WalletCache(db), StatsCache(), io)
+        val wallet = OfflineFirstWalletRepository(network, db.walletDao(), db.transactionDao(), db.budgetDao(), db.outboxDao(), WalletCache(db), StatsCache(), HabitsCache(), io)
         val month = Instant.parse("2026-11-01T00:00:00Z") to Instant.parse("2026-12-01T00:00:00Z")
         wallet.refresh(month.first, month.second)
 
@@ -182,7 +183,7 @@ class OfflineFirstRecordRepositoryTest {
         val io = StandardTestDispatcher(testScheduler)
         val records = OfflineFirstRecordRepository(
             network, db.transactionDao(), db.outboxDao(), TestUserPreferences().repository,
-            object : OutboxScheduler { override fun schedule() {} }, Clock.fixed(at, ZoneOffset.UTC), io,
+            object : OutboxScheduler { override fun schedule() {} }, Clock.fixed(at, ZoneOffset.UTC), HabitsCache(), io,
         )
         records.add(expense(800, "Shop"))
         network.offline = false
@@ -194,6 +195,6 @@ class OfflineFirstRecordRepositoryTest {
 
         assertEquals(SaveResult.Done, records.delete(-refused.localId))
         assertTrue(db.outboxDao().all().isEmpty())
-        assertEquals(listOf("trip"), records.habits().tags)
+        assertEquals(listOf("trip"), records.refreshHabits().tags)
     }
 }

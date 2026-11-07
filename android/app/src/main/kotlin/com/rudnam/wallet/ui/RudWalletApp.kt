@@ -1,5 +1,13 @@
 package com.rudnam.wallet.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -17,11 +25,17 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import com.rudnam.wallet.core.designsystem.theme.WalletMotion
+import com.rudnam.wallet.core.ui.LocalSharedTransitionScope
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
@@ -71,6 +85,7 @@ import java.time.YearMonth
 import com.rudnam.wallet.core.ui.ServerText
 
 /** The app: the four tabs along the bottom, and the pages above them, each a destination of the NavHost. */
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun RudWalletApp(
     signedIn: Boolean,
@@ -99,80 +114,103 @@ fun RudWalletApp(
         containerColor = WalletTheme.colors.ground,
         contentWindowInsets = WindowInsets(0),
         snackbarHost = { SnackbarHost(snackbar) },
-        bottomBar = { if (tab != null) TabBar(tab, reviewCount, appState::navigateToTab) },
+        bottomBar = { AnimatedTabBar(tab, reviewCount, appState::navigateToTab) },
     ) { padding ->
-        Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
-            NavHost(
-                appState.navController,
-                startDestination = WalletRoute,
-                enterTransition = { enter() },
-                exitTransition = { exit() },
-                popEnterTransition = { popEnter() },
-                popExitTransition = { popExit() },
-            ) {
-                walletScreen(
-                    navigation = object : WalletNavigation {
-                        override fun openPage(path: String) = appState.openPath(path)
-                        override fun openRecord(record: Transaction) = appState.navController.navigate(RecordRoute(record.id))
-                        override fun addRecord() = appState.navController.navigate(RecordRoute())
-                        override fun createAccount() {
-                            appState.signUpNext = true
-                        }
-                    },
-                    snackbar = snackbar,
-                )
-                activityScreen(
-                    navigation = object : ActivityNavigation {
-                        override fun openRecord(record: Transaction) = appState.navController.navigate(RecordRoute(record.id))
-                        override fun addRecord() = appState.navController.navigate(RecordRoute())
-                    },
-                    snackbar = snackbar,
-                )
-                accountScreen(
-                    navigation = object : AccountNavigation {
-                        override fun back() {
-                            appState.navController.popBackStack()
-                        }
-                        override fun editAccounts() = appState.openPath("settings?section=accounts")
-                        override fun openRecord(record: Transaction) = appState.navController.navigate(RecordRoute(record.id))
-                    },
-                    snackbar = snackbar,
-                )
-                signInScreen()
-                insightsScreen(
-                    navigation = object : InsightsNavigation {
-                        override fun openBudgets() = appState.navController.navigate(BudgetsRoute)
-                        override fun openRecords(month: YearMonth, categoryId: Long, accountId: Long?) =
-                            appState.navController.navigate(ActivityRoute(month = month.toString(), account = accountId, category = categoryId))
-                        override fun back() {
-                            appState.navController.popBackStack()
-                        }
-                    },
-                    snackbar = snackbar,
-                )
-                settingsScreen(
-                    navigation = object : SettingsNavigation {
-                        override fun open(path: String) = appState.openPath(path)
-                        override fun back() {
-                            appState.navController.popBackStack()
-                        }
-                    },
-                    snackbar = snackbar,
-                )
-                importsScreens(
-                    navigation = object : ImportsNavigation {
-                        override fun back() {
-                            appState.navController.popBackStack()
-                        }
-                        override fun review(source: ImportSource, uri: String?) = appState.navController.navigate(ImportReviewRoute(source.key, uri))
-                        override fun card() = appState.navController.navigate(CardRoute)
-                        override fun open(path: String) = appState.openPath(path)
-                    },
-                    snackbar = snackbar,
-                )
-                recordSheet(onDone = { appState.navController.popBackStack() })
+        // Pages can share elements as they change (an account's card grows into its page).
+        SharedTransitionLayout(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
+            CompositionLocalProvider(LocalSharedTransitionScope provides this) {
+                NavHost(
+                    appState.navController,
+                    startDestination = WalletRoute,
+                    enterTransition = { enter() },
+                    exitTransition = { exit() },
+                    popEnterTransition = { popEnter() },
+                    popExitTransition = { popExit() },
+                ) {
+                    walletScreen(
+                        navigation = object : WalletNavigation {
+                            override fun openPage(path: String) = appState.openPath(path)
+                            override fun openRecord(record: Transaction) = appState.navController.navigate(RecordRoute(record.id))
+                            override fun addRecord() = appState.navController.navigate(RecordRoute())
+                            override fun createAccount() {
+                                appState.signUpNext = true
+                            }
+                        },
+                        snackbar = snackbar,
+                    )
+                    activityScreen(
+                        navigation = object : ActivityNavigation {
+                            override fun openRecord(record: Transaction) = appState.navController.navigate(RecordRoute(record.id))
+                            override fun addRecord() = appState.navController.navigate(RecordRoute())
+                        },
+                        snackbar = snackbar,
+                    )
+                    accountScreen(
+                        navigation = object : AccountNavigation {
+                            override fun back() {
+                                appState.navController.popBackStack()
+                            }
+                            override fun editAccounts() = appState.openPath("settings?section=accounts")
+                            override fun openRecord(record: Transaction) = appState.navController.navigate(RecordRoute(record.id))
+                        },
+                        snackbar = snackbar,
+                    )
+                    signInScreen()
+                    insightsScreen(
+                        navigation = object : InsightsNavigation {
+                            override fun openBudgets() = appState.navController.navigate(BudgetsRoute)
+                            override fun openRecords(month: YearMonth, categoryId: Long, accountId: Long?) =
+                                appState.navController.navigate(ActivityRoute(month = month.toString(), account = accountId, category = categoryId))
+                            override fun back() {
+                                appState.navController.popBackStack()
+                            }
+                        },
+                        snackbar = snackbar,
+                    )
+                    settingsScreen(
+                        navigation = object : SettingsNavigation {
+                            override fun open(path: String) = appState.openPath(path)
+                            override fun back() {
+                                appState.navController.popBackStack()
+                            }
+                        },
+                        snackbar = snackbar,
+                    )
+                    importsScreens(
+                        navigation = object : ImportsNavigation {
+                            override fun back() {
+                                appState.navController.popBackStack()
+                            }
+                            override fun review(source: ImportSource, uri: String?) = appState.navController.navigate(ImportReviewRoute(source.key, uri))
+                            override fun card() = appState.navController.navigate(CardRoute)
+                            override fun open(path: String) = appState.openPath(path)
+                        },
+                        snackbar = snackbar,
+                    )
+                    recordSheet(onDone = { appState.navController.popBackStack() })
+                }
             }
         }
+    }
+}
+
+/**
+ * The tab bar, on the tabs only: it slides away as a page opens on top of a tab, and back as
+ * the page closes, in step with the pages (rather than vanishing in one frame).
+ */
+@Composable
+private fun AnimatedTabBar(tab: TopLevelDestination?, reviewCount: Int, onSelect: (TopLevelDestination) -> Unit) {
+    // While it slides away there's no tab any more: it keeps showing the last one.
+    val last = remember { object { var tab = TopLevelDestination.Wallet } }
+    if (tab != null) last.tab = tab
+    val spec = tween<IntSize>(WalletMotion.PAGE, easing = WalletMotion.EmphasizedDecelerate)
+    val slide = tween<IntOffset>(WalletMotion.PAGE, easing = WalletMotion.EmphasizedDecelerate)
+    AnimatedVisibility(
+        visible = tab != null,
+        enter = expandVertically(spec, expandFrom = Alignment.Top) + slideInVertically(slide) { it },
+        exit = shrinkVertically(spec, shrinkTowards = Alignment.Top) + slideOutVertically(slide) { it },
+    ) {
+        TabBar(last.tab, reviewCount, onSelect)
     }
 }
 

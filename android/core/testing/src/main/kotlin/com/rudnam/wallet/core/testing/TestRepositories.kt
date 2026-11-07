@@ -73,6 +73,9 @@ class TestRecordRepository(private val wallet: TestWalletRepository? = null) : c
     override suspend fun restore(id: Long) = next
     override suspend fun get(id: Long) = records[id]
     override suspend fun habits() = habits
+    /** What the server answers when asked again; null: the same as [habits]. */
+    var refreshed: com.rudnam.wallet.core.data.repository.RecordHabits? = null
+    override suspend fun refreshHabits() = refreshed ?: habits
     override suspend fun lastAccount() = lastAccount
     override suspend fun sendPending() = SyncResult.Done
 }

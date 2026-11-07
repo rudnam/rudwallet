@@ -40,6 +40,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import com.rudnam.wallet.core.designsystem.component.PageLoading
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -86,7 +87,7 @@ interface InsightsNavigation {
 internal fun InsightsDestination(navigation: InsightsNavigation, viewModel: InsightsViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     when (val s = state) {
-        InsightsUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        InsightsUiState.Loading -> PageLoading(Modifier.fillMaxSize())
         is InsightsUiState.Ready -> InsightsScreen(s, viewModel, navigation)
     }
 }

@@ -15,6 +15,7 @@ import com.rudnam.wallet.core.data.repository.StatsQuery
 import com.rudnam.wallet.core.data.repository.StatsResult
 import com.rudnam.wallet.core.model.BudgetInput
 import com.rudnam.wallet.core.data.repository.SyncResult
+import com.rudnam.wallet.core.data.repository.HabitsCache
 import com.rudnam.wallet.core.data.repository.StatsCache
 import com.rudnam.wallet.core.database.WalletCache
 import com.rudnam.wallet.core.database.WalletDatabase
@@ -221,7 +222,7 @@ class OfflineFirstWalletRepositoryTest {
     @Test
     fun `a refresh fills the phone, offline keeps it, and signing out empties it`() = runTest {
         val network = FakeNetwork()
-        val repository = OfflineFirstWalletRepository(network, db.walletDao(), db.transactionDao(), db.budgetDao(), db.outboxDao(), WalletCache(db), StatsCache(), StandardTestDispatcher(testScheduler))
+        val repository = OfflineFirstWalletRepository(network, db.walletDao(), db.transactionDao(), db.budgetDao(), db.outboxDao(), WalletCache(db), StatsCache(), HabitsCache(), StandardTestDispatcher(testScheduler))
         assertNull(repository.wallet.first())
 
         assertEquals(SyncResult.Done, repository.refresh(from, to))
@@ -250,7 +251,7 @@ class OfflineFirstWalletRepositoryTest {
         val network = FakeNetwork()
         val io = StandardTestDispatcher(testScheduler)
         val stats = StatsCache()
-        val wallet = OfflineFirstWalletRepository(network, db.walletDao(), db.transactionDao(), db.budgetDao(), db.outboxDao(), WalletCache(db), stats, io)
+        val wallet = OfflineFirstWalletRepository(network, db.walletDao(), db.transactionDao(), db.budgetDao(), db.outboxDao(), WalletCache(db), stats, HabitsCache(), io)
         val insights = ServerInsightsRepository(network, db.budgetDao(), stats, io)
         val query = StatsQuery(from, to, ZoneId.of("Asia/Tokyo"))
 
@@ -286,7 +287,7 @@ class OfflineFirstWalletRepositoryTest {
     fun `accounts, categories and the currency change on the server, then on the phone`() = runTest {
         val network = FakeNetwork()
         val io = StandardTestDispatcher(testScheduler)
-        val wallet = OfflineFirstWalletRepository(network, db.walletDao(), db.transactionDao(), db.budgetDao(), db.outboxDao(), WalletCache(db), StatsCache(), io)
+        val wallet = OfflineFirstWalletRepository(network, db.walletDao(), db.transactionDao(), db.budgetDao(), db.outboxDao(), WalletCache(db), StatsCache(), HabitsCache(), io)
         val settings = ServerSettingsRepository(network, com.rudnam.wallet.core.network.Server(), db.walletDao(), db.transactionDao(), db.budgetDao(), io)
         wallet.refresh(from, to)
 
