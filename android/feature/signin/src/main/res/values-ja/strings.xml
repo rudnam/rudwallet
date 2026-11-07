@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feature_signin_tagline">お金のことを、静かに整えて。</string>
+    <string name="feature_signin_sign_in">ログイン</string>
+    <string name="feature_signin_create_an_account">アカウントを作成</string>
+    <string name="feature_signin_google">Googleで続ける</string>
+    <string name="feature_signin_or">または</string>
+    <string name="feature_signin_email">メールアドレス</string>
+    <string name="feature_signin_password">パスワード</string>
+    <string name="feature_signin_password_rule">10文字以上</string>
+    <string name="feature_signin_create_account">アカウントを作成</string>
+    <string name="feature_signin_forgot">パスワードをお忘れの方</string>
+    <string name="feature_signin_to_sign_up">はじめての方はこちら: アカウントを作成</string>
+    <string name="feature_signin_to_sign_in">アカウントをお持ちの方: ログイン</string>
+    <string name="feature_signin_just_looking">まずは見てみたい方は</string>
+    <string name="feature_signin_try_demo">デモを試す</string>
+    <string name="feature_signin_reset_title">パスワードの再設定</string>
+    <string name="feature_signin_reset_intro">アカウントのメールアドレスを入力してください。新しいパスワードを設定するためのリンクをお送りします。</string>
+    <string name="feature_signin_reset_sent">このメールアドレスのアカウントがあれば、新しいパスワードを設定するためのリンクを送信しました。リンクの有効期限は1時間です。</string>
+    <string name="feature_signin_send_again">再送する</string>
+    <string name="feature_signin_send_link">リンクを送信</string>
+    <string name="feature_signin_back_to_sign_in">ログインに戻る</string>
+    <string name="feature_signin_demo_loading">デモを準備しています…</string>
+    <string name="feature_signin_google_cancelled">Googleでのログインはキャンセルされました。</string>
+    <string name="feature_signin_google_expired">ログインの有効期限が切れました。もう一度お試しください。</string>
+    <string name="feature_signin_google_closed">このサーバーでは新しいアカウントを受け付けていません。</string>
+    <string name="feature_signin_google_unverified">Googleアカウントのメールアドレスが、Googleで確認されていません。</string>
+    <string name="feature_signin_google_linked">このメールアドレスのアカウントは、別のGoogleアカウントと連携済みです。</string>
+    <string name="feature_signin_google_busy">試行回数が多すぎます。1分ほど待ってからお試しください。</string>
+    <string name="feature_signin_google_failed">Googleでログインできませんでした。もう一度お試しください。</string>
+    <string name="feature_signin_deleted">アカウントとすべてのデータを削除しました。</string>
+    <string name="feature_signin_offline">サーバーに接続できません。ログインには接続が必要です。</string>
+    <string name="feature_signin_refused">ログインできませんでした。もう一度お試しください。</string>
+    <string name="feature_signin_language">言語</string>
+    <string name="feature_signin_show_password">パスワードを表示</string>
+    <string name="feature_signin_hide_password">パスワードを隠す</string>
+</resources>

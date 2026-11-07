@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="message_added">%sを追加しました</string>
+    <string name="message_queued">この端末に保存しました。オンラインになると送信されます。</string>
+    <string name="message_confirmed">確定しました</string>
+    <string name="message_saved">保存しました</string>
+    <string name="message_deleted">削除しました</string>
+    <string name="message_undo">元に戻す</string>
+    <string name="message_change_undone">変更を元に戻しました</string>
+    <string name="message_restored">記録を元に戻しました</string>
+    <string name="message_undo_failed">元に戻せませんでした: %s</string>
+    <string name="message_offline">サーバーに接続できません。</string>
+</resources>

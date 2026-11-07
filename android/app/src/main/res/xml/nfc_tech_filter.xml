@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Cards RudWallet is offered for when one is tapped to the phone: FeliCa
-     (NFC-F), which transit IC cards are. ICCardPlugin reads them. -->
+     (NFC-F), which transit IC cards are. IcCardReader (core/data) reads them. -->
 <resources>
     <tech-list>
         <tech>android.nfc.tech.NfcF</tech>

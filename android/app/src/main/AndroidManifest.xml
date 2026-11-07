@@ -1,15 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <application
+        android:name=".RudWalletApplication"
         android:allowBackup="true"
+        android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
         <activity
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|layoutDirection|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:windowSoftInputMode="adjustResize"
             android:name=".MainActivity"
             android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBarLaunch"
@@ -21,8 +25,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- <package>://auth?… (Google sign-in coming back from the browser) and
-                 <package>://open/<page> (the widgets). See web/src/native.ts. -->
+            <!-- <package>://open/<page> (the widgets; MainActivity opens the page) and
+                 <package>://auth?… (Google sign-in coming back from the browser; MainActivity hands it to the sign-in page). -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -31,7 +35,7 @@
             </intent-filter>
 
             <!-- A transit IC card tapped to the phone offers RudWallet, which
-                 opens on the IC card import with the card read (ICCardPlugin). -->
+                 opens the card page with the card read (MainActivity, IcCardReader). -->
             <intent-filter>
                 <action android:name="android.nfc.action.TECH_DISCOVERED" />
             </intent-filter>
@@ -41,7 +45,7 @@
 
         </activity>
 
-        <!-- Home screen widgets (java/com/rudnam/wallet/widget). -->
+        <!-- Home screen widgets (kotlin/com/rudnam/wallet/widget). -->
         <receiver
             android:name=".widget.MonthWidget"
             android:exported="false"
@@ -79,7 +83,7 @@
         </receiver>
 
         <!-- Reads payment apps' notifications once the user gives notification
-             access (java/com/rudnam/wallet/notify). -->
+             access (kotlin/com/rudnam/wallet/notify; the queue is core/data's notify). -->
         <service
             android:name=".notify.PaymentListener"
             android:label="@string/notify_listener_label"
@@ -90,21 +94,35 @@
             </intent-filter>
         </service>
 
+        <!-- WorkManager starts from RudWalletApplication (Configuration.Provider), with Hilt's workers. -->
         <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.fileprovider"
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
             android:exported="false"
-            android:grantUriPermissions="true">
+            tools:node="merge">
             <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths"></meta-data>
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
         </provider>
+
+        <!-- Keeps the language picked in the app (per-app language) on Android 12 and older;
+             Android 13+ keeps it in the system's settings. -->
+        <service
+            android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
+            android:enabled="false"
+            android:exported="false">
+            <meta-data
+                android:name="autoStoreLocales"
+                android:value="true" />
+        </service>
+
     </application>
 
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Reading transit IC cards (ICCardPlugin). Not required: phones
+    <!-- Reading transit IC cards (IcCardReader, in core/data). Not required: phones
          without NFC can still install the app. -->
     <uses-permission android:name="android.permission.NFC" />
     <uses-feature android:name="android.hardware.nfc" android:required="false" />

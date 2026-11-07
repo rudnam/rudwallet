@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Worded as the website words them; web/src/locales/ja.ts has the Japanese. -->
+<resources>
+    <string name="feature_activity_title">Activity</string>
+    <string name="feature_activity_select">Select</string>
+    <string name="feature_activity_done">Done</string>
+    <string name="feature_activity_add_record">Add record</string>
+    <string name="feature_activity_every_month">Results from every month</string>
+    <string name="feature_activity_tag_every_month">#%s in every month</string>
+    <string name="feature_activity_back_to">Back to %s</string>
+    <string name="feature_activity_previous_month">Previous month</string>
+    <string name="feature_activity_next_month">Next month</string>
+    <string name="feature_activity_spent">Spent</string>
+    <string name="feature_activity_income">Income</string>
+    <string name="feature_activity_net">Net</string>
+    <string name="feature_activity_account">Account</string>
+    <string name="feature_activity_all_accounts">Every account</string>
+    <string name="feature_activity_category">Category</string>
+    <string name="feature_activity_all_categories">Every category</string>
+    <string name="feature_activity_no_category">No category</string>
+    <string name="feature_activity_search">Search records</string>
+    <string name="feature_activity_filter_by_tag">Filter by tag</string>
+    <string name="feature_activity_nothing">No records match.</string>
+    <string name="feature_activity_capped">Showing the newest %s matches. Add words or a filter to narrow the search.</string>
+    <string name="feature_activity_search_offline">Searching every month needs a connection.</string>
+    <string name="feature_activity_to_check">%d to check</string>
+    <string name="feature_activity_all_ready">Every payment here has a category.</string>
+    <string name="feature_activity_payment">Payment</string>
+    <string name="feature_activity_category_for">Category for %s</string>
+    <string name="feature_activity_confirm">Confirm</string>
+    <string name="feature_activity_amount_unknown">Amount?</string>
+    <string name="feature_activity_duplicate_of">Possible duplicate of a record you already have:</string>
+    <string name="feature_activity_duplicate">Possible duplicate: you already have a record of this amount around this time.</string>
+    <string name="feature_activity_delete_duplicate">Delete duplicate</string>
+    <string name="feature_activity_remember">Use %1$s for %2$s from now on, instead of %3$s</string>
+    <string name="feature_activity_choose_records">Choose records</string>
+    <string name="feature_activity_choose_none">Choose none</string>
+    <string name="feature_activity_choose_all">Choose all %d</string>
+    <string name="feature_activity_set_category">Category…</string>
+    <string name="feature_activity_move">Account…</string>
+    <string name="feature_activity_tag">Tag…</string>
+    <string name="feature_activity_add_tag">Add tag</string>
+    <string name="feature_activity_new_tag">New tag…</string>
+    <string name="feature_activity_remove_tag">Remove tag</string>
+    <string name="feature_activity_tag_with">Tag the chosen records with:</string>
+    <string name="feature_activity_delete">Delete</string>
+    <string name="feature_activity_cancel">Cancel</string>
+    <string name="feature_activity_undo">Undo</string>
+    <string name="feature_activity_confirmed_payee">Confirmed %s</string>
+    <string name="feature_activity_deleted_payee">Deleted %s</string>
+    <string name="feature_activity_restored_one">Record restored</string>
+    <string name="feature_activity_failed">Couldn’t do that: %s</string>
+    <string name="feature_activity_offline">Can’t reach the server. That needs a connection.</string>
+    <plurals name="feature_activity_deleted">
+        <item quantity="one">Deleted %d record.</item>
+        <item quantity="other">Deleted %d records.</item>
+    </plurals>
+    <plurals name="feature_activity_moved">
+        <item quantity="one">Moved %d record.</item>
+        <item quantity="other">Moved %d records.</item>
+    </plurals>
+    <plurals name="feature_activity_recategorised">
+        <item quantity="one">Recategorised %d record.</item>
+        <item quantity="other">Recategorised %d records.</item>
+    </plurals>
+    <plurals name="feature_activity_tagged">
+        <item quantity="one">Tagged %1$d record #%2$s.</item>
+        <item quantity="other">Tagged %1$d records #%2$s.</item>
+    </plurals>
+    <plurals name="feature_activity_untagged">
+        <item quantity="one">Took #%2$s off %1$d record.</item>
+        <item quantity="other">Took #%2$s off %1$d records.</item>
+    </plurals>
+    <plurals name="feature_activity_confirmed">
+        <item quantity="one">Confirmed %d payment</item>
+        <item quantity="other">Confirmed %d payments</item>
+    </plurals>
+    <plurals name="feature_activity_restored">
+        <item quantity="one">Restored %d record.</item>
+        <item quantity="other">Restored %d records.</item>
+    </plurals>
+    <plurals name="feature_activity_delete_ask">
+        <item quantity="one">Delete %d record?</item>
+        <item quantity="other">Delete %d records?</item>
+    </plurals>
+    <plurals name="feature_activity_some_ready">
+        <item quantity="one">%1$d of %2$d payment has a category. The rest stay for you.</item>
+        <item quantity="other">%1$d of %2$d payments have a category. The rest stay for you.</item>
+    </plurals>
+    <plurals name="feature_activity_confirm_ready">
+        <item quantity="one">Confirm %d with a category</item>
+        <item quantity="other">Confirm %d with a category</item>
+    </plurals>
+    <plurals name="feature_activity_chosen">
+        <item quantity="one">%d chosen</item>
+        <item quantity="other">%d chosen</item>
+    </plurals>
+    <plurals name="feature_activity_didnt_fit">
+        <item quantity="one">%d didn’t fit and stayed as it was.</item>
+        <item quantity="other">%d didn’t fit and stayed as they were.</item>
+    </plurals>
+</resources>

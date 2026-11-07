@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Worded as the website words them; web/src/locales/ja.ts has the Japanese. -->
+<resources>
+    <string name="feature_account_back">Wallet</string>
+    <string name="feature_account_edit">Edit %s</string>
+    <string name="feature_account_gone">This account no longer exists.</string>
+    <string name="feature_account_count">Count cash</string>
+    <string name="feature_account_out">Out in %s</string>
+    <string name="feature_account_in">In</string>
+    <string name="feature_account_nothing">Nothing recorded in this account this month.</string>
+    <string name="feature_account_count_explain">Enter what’s in your wallet now. The difference from %s is recorded for you.</string>
+    <string name="feature_account_amount">Amount (%s)</string>
+    <string name="feature_account_counted">Counted: %s</string>
+    <string name="feature_account_already_right">Already right: %s</string>
+    <string name="feature_account_no_amount_yen">Enter an amount, like 1200.</string>
+    <string name="feature_account_no_amount_cents">Enter an amount, like 12.50.</string>
+    <string name="feature_account_offline">Can’t reach the server. Counting needs a connection.</string>
+    <string name="feature_account_save">Save</string>
+    <string name="feature_account_cancel">Cancel</string>
+</resources>

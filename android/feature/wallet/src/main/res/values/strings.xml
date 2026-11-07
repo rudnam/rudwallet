@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Worded as the website words them; web/src/locales/ja.ts has the Japanese. -->
+<resources>
+    <string name="feature_wallet_title">Wallet</string>
+    <string name="feature_wallet_search">Search records</string>
+    <string name="feature_wallet_add_record">Add record</string>
+    <string name="feature_wallet_total_balance">Total balance</string>
+    <string name="feature_wallet_accounts">Accounts</string>
+    <string name="feature_wallet_spent_this_month">Spent this month</string>
+    <string name="feature_wallet_no_spending">No spending recorded this month yet.</string>
+    <string name="feature_wallet_per_day">%s a day keeps you within budget</string>
+    <string name="feature_wallet_over_budget">%s over budget this month</string>
+    <string name="feature_wallet_spent_so_far">%1$s spent so far in %2$s</string>
+    <string name="feature_wallet_latest_records">Latest records</string>
+    <string name="feature_wallet_all_records">All records</string>
+    <string name="feature_wallet_nothing_recorded">Nothing recorded this month yet.</string>
+    <string name="feature_wallet_add_a_record">Add a record</string>
+    <string name="feature_wallet_unavailable">Couldn’t load your wallet.</string>
+    <string name="feature_wallet_try_again">Try again</string>
+    <string name="feature_wallet_offline">Can’t reach the server. Showing what was saved.</string>
+    <string name="feature_wallet_failed">Couldn’t refresh your wallet.</string>
+    <string name="feature_wallet_update">RudWallet %s is available.</string>
+    <string name="feature_wallet_update_unnamed">A new version of RudWallet is available.</string>
+    <string name="feature_wallet_update_install">Update</string>
+    <string name="feature_wallet_update_later">Later</string>
+    <string name="feature_wallet_setup_title">Get set up</string>
+    <string name="feature_wallet_setup_progress">%1$d of %2$d</string>
+    <string name="feature_wallet_setup_hide">Hide</string>
+    <string name="feature_wallet_setup_accounts">Add your accounts</string>
+    <string name="feature_wallet_setup_accounts_detail">Your bank, cards and e-money, with what’s in them today.</string>
+    <string name="feature_wallet_setup_accounts_action">Add account</string>
+    <string name="feature_wallet_setup_notifications">Turn on payment notifications</string>
+    <string name="feature_wallet_setup_notifications_detail">PayPay and Google Wallet payments become records by themselves.</string>
+    <string name="feature_wallet_setup_notifications_action">Set up</string>
+    <string name="feature_wallet_setup_budget">Set a monthly budget</string>
+    <string name="feature_wallet_setup_budget_detail">See at a glance how much is left.</string>
+    <string name="feature_wallet_setup_budget_action">Add budget</string>
+    <string name="feature_wallet_setup_done">Done</string>
+    <string name="feature_wallet_setup_currency">Amounts are in %s.</string>
+    <string name="feature_wallet_setup_change_currency">Change currency</string>
+    <string name="feature_wallet_setup_import">Import your history</string>
+    <string name="feature_wallet_demo">This is a demo with sample data.</string>
+    <string name="feature_wallet_demo_detail">Change anything you like: nobody else sees it, and it’s deleted within a day.</string>
+    <string name="feature_wallet_demo_create">Create your account</string>
+    <string name="feature_wallet_confirm">Confirm your email: open the link we sent to %s.</string>
+    <string name="feature_wallet_confirm_sent">Sent. Check your inbox at %s.</string>
+    <string name="feature_wallet_confirm_again">Send again</string>
+</resources>

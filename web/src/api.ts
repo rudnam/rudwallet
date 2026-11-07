@@ -506,6 +506,9 @@ function keptAnswers(): Record<string, unknown> {
 
 function keep(path: string, data: unknown) {
   try {
+    // Only while someone is signed in: an answer arriving after signing out
+    // (a request already on its way) mustn't be kept for the next person.
+    if (!localStorage.getItem(meKey)) return;
     const answers = keptAnswers();
     delete answers[path]; // to the end, as the latest seen
     answers[path] = data;
@@ -689,6 +692,11 @@ export const api = {
     await sendUnsent().catch(() => 0);
     await request<void>('POST', '/api/logout');
     outbox.forget(email);
+    await saveSession('');
+  },
+  /** Signed out by the Android app's own Settings, which has told the server: forgets the session here too. */
+  forgetSession: async () => {
+    outbox.forget(owner());
     await saveSession('');
   },
   authOptions: () => request<AuthOptions>('GET', '/api/auth/options'),

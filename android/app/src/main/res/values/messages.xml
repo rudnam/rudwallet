@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The snackbar after the record sheet, worded as the website words them. -->
+<resources>
+    <string name="message_added">Added %s</string>
+    <string name="message_queued">Saved on this phone. It’s sent when you’re online.</string>
+    <string name="message_confirmed">Confirmed</string>
+    <string name="message_saved">Saved</string>
+    <string name="message_deleted">Deleted</string>
+    <string name="message_undo">Undo</string>
+    <string name="message_change_undone">Change undone</string>
+    <string name="message_restored">Record restored</string>
+    <string name="message_undo_failed">Couldn’t undo: %s</string>
+    <string name="message_offline">Can’t reach the server.</string>
+</resources>

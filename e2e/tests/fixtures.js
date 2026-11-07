@@ -80,12 +80,18 @@ function resetLink(request, to) {
  * installed it. icCard is what a transit IC card held to the phone reads
  * as ({idm, history}; icEntry), for a phone with NFC turned on; tapICCard
  * taps one. Native calls are kept in window.calls ("Plugin.method"), and
- * links opened in the phone's browser in window.opened. Call before the
- * first page.goto.
+ * links opened in the phone's browser in window.opened. nativeNav, if set,
+ * is an app build with native navigation (android/…/web/NativeNavPlugin.kt):
+ * its config ({nativePages, appearance, language}) is what the app says at
+ * start, and what the web app asks of it is kept in window.native
+ * ([['go', {path}], ['overlay', {open}], …]); nativeShow and nativeBack
+ * send the app's events. Call before the first page.goto.
  */
-async function asAndroidApp(page, { build = 3, installer = 'com.google.android.packageinstaller', icCard = null } = {}) {
+async function asAndroidApp(page, { build = 3, installer = 'com.google.android.packageinstaller', icCard = null, nativeNav = null } = {}) {
   await page.addInitScript(
-    ({ build, installer, icCard }) => {
+    ({ build, installer, icCard, nativeNav }) => {
+      window.native = [];
+      const asked = (name) => (o) => void window.native.push([name, o ?? {}]);
       const answers = {
         'App.getInfo': () => ({ name: 'RudWallet', id: 'com.rudnam.wallet', build: String(build), version: '2.0' }),
         'Updates.installer': () => ({ installer }),
@@ -94,6 +100,12 @@ async function asAndroidApp(page, { build = 3, installer = 'com.google.android.p
         'ICCard.read': () => icCard,
         'ICCard.cancel': () => undefined,
         'ICCard.removeListener': ({ callbackId }) => void delete window.listeners[callbackId],
+        'NativeNav.config': () => nativeNav,
+        'NativeNav.go': asked('go'),
+        'NativeNav.overlay': asked('overlay'),
+        'NativeNav.setAppearance': asked('setAppearance'),
+        'NativeNav.setLanguage': asked('setLanguage'),
+        'NativeNav.removeListener': ({ callbackId }) => void delete window.listeners[callbackId],
       };
       window.listeners = {}; // callbackId: {event: "Plugin.event", callback}
       window.calls = [];
@@ -111,6 +123,17 @@ async function asAndroidApp(page, { build = 3, installer = 'com.google.android.p
               { name: 'addListener', rtype: 'callback' },
             ],
           },
+          ...(nativeNav
+            ? [
+                {
+                  name: 'NativeNav',
+                  methods: [
+                    ...['config', 'go', 'overlay', 'setAppearance', 'setLanguage', 'removeListener'].map((name) => ({ name, rtype: 'promise' })),
+                    { name: 'addListener', rtype: 'callback' },
+                  ],
+                },
+              ]
+            : []),
         ],
         nativeCallback: (plugin, method, options, callback) => {
           window.calls.push(`${plugin}.${method}`);
@@ -124,11 +147,40 @@ async function asAndroidApp(page, { build = 3, installer = 'com.google.android.p
         },
       };
     },
-    { build, installer, icCard },
+    { build, installer, icCard, nativeNav },
   );
 }
 
 /** Taps a transit IC card to the phone, as the Android app reports it (a page set up with asAndroidApp). */
+/** The app sends the web app an event, e.g. ('signedOut', { deleted: false }) (asAndroidApp with nativeNav). */
+async function nativeEmit(page, event, data) {
+  await page.evaluate(
+    ({ event, data }) => {
+      for (const l of Object.values(window.listeners)) if (l.event === `NativeNav.${event}`) l.callback(data);
+    },
+    { event, data },
+  );
+}
+
+/** The app shows a page in the web view (asAndroidApp with nativeNav). */
+async function nativeShow(page, path) {
+  await page.evaluate((path) => {
+    for (const l of Object.values(window.listeners)) if (l.event === 'NativeNav.show') l.callback({ path });
+  }, path);
+}
+
+/** The app's back gesture while the web app has a sheet or dialog open. */
+async function nativeBack(page) {
+  await page.evaluate(() => {
+    for (const l of Object.values(window.listeners)) if (l.event === 'NativeNav.back') l.callback({});
+  });
+}
+
+/** What the web app asked of the app so far: [['go', {path}], …]. */
+function nativeAsked(page) {
+  return page.evaluate(() => window.native);
+}
+
 async function tapICCard(page, read) {
   await page.evaluate((read) => {
     for (const l of Object.values(window.listeners)) if (l.event === 'ICCard.tapped') l.callback(read);
@@ -196,4 +248,4 @@ async function sendNotifications(request, ...notifications) {
   return (await res.json()).notifications;
 }
 
-module.exports = { test, expect: base.expect, signUp, asAndroidApp, uniqueEmail, PASSWORD, confirmationLink, resetLink, PAYPAY, payPayCard, sendNotifications, icCardRead, icEntry, tapICCard };
+module.exports = { test, expect: base.expect, signUp, asAndroidApp, uniqueEmail, PASSWORD, confirmationLink, resetLink, PAYPAY, payPayCard, sendNotifications, icCardRead, icEntry, tapICCard, nativeShow, nativeBack, nativeAsked, nativeEmit };

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feature_record_new">新しい記録</string>
+    <string name="feature_record_edit">記録を編集</string>
+    <string name="feature_record_review">支払いを確認</string>
+    <string name="feature_record_expense">支出</string>
+    <string name="feature_record_income">収入</string>
+    <string name="feature_record_transfer">振替</string>
+    <string name="feature_record_type">種類</string>
+    <string name="feature_record_amount">金額（%s）</string>
+    <string name="feature_record_amount_label">金額</string>
+    <string name="feature_record_category">カテゴリ</string>
+    <string name="feature_record_more">もっと見る</string>
+    <string name="feature_record_fewer">閉じる</string>
+    <string name="feature_record_payee">支払先</string>
+    <string name="feature_record_from_whom">入金元</string>
+    <string name="feature_record_payee_hint">お店や相手</string>
+    <string name="feature_record_from_whom_hint">勤務先、友人など</string>
+    <string name="feature_record_recently_paid">最近の支払先</string>
+    <string name="feature_record_account">口座</string>
+    <string name="feature_record_from">振替元</string>
+    <string name="feature_record_to">振替先</string>
+    <string name="feature_record_date">日時</string>
+    <string name="feature_record_note">メモ</string>
+    <string name="feature_record_optional">任意</string>
+    <string name="feature_record_tags">タグ</string>
+    <string name="feature_record_tag_hint">旅行、仕事など</string>
+    <string name="feature_record_tag_another">さらに追加</string>
+    <plurals name="feature_record_tag_full">
+        <item quantity="other">タグは%d個までです</item>
+    </plurals>
+    <string name="feature_record_remove_tag">タグ「%s」を外す</string>
+    <string name="feature_record_extras">メモやタグを追加</string>
+    <string name="feature_record_save">保存</string>
+    <string name="feature_record_confirm">確定</string>
+    <string name="feature_record_delete">削除</string>
+    <string name="feature_record_delete_ask">この記録を削除しますか？</string>
+    <string name="feature_record_cancel">キャンセル</string>
+    <string name="feature_record_changes_title">変更を保存しますか？</string>
+    <string name="feature_record_changes_save">変更を保存</string>
+    <string name="feature_record_back">戻る</string>
+    <string name="feature_record_none">なし</string>
+    <string name="feature_record_no_amount_yen">金額を入力してください（例: 1200）。</string>
+    <string name="feature_record_no_amount_cents">金額を入力してください（例: 12.50）。</string>
+    <string name="feature_record_offline">サーバーに接続できません。保存済みの記録の変更には接続が必要です。</string>
+    <string name="feature_record_sent_meanwhile">この記録はたった今送信されました。変更するには開き直してください。</string>
+    <string name="feature_record_signed_out">ログアウトされました。保存するにはもう一度ログインしてください。</string>
+    <string name="feature_record_delete_digit">1桁消す</string>
+    <string name="feature_record_number_pad">テンキー</string>
+    <string name="feature_record_notice_card">通知から読み取りました（%s）。内容を確認し、カテゴリを選んで確定してください。次回からはこのお店とカードが自動で入ります。</string>
+    <string name="feature_record_notice">通知から読み取りました。内容を確認し、カテゴリを選んで確定してください。次回からはこのお店とカードが自動で入ります。</string>
+    <string name="feature_record_duplicate">同じ時間帯に同じ金額の記録がすでにあります。同じ支払いなら、こちらを削除してください。</string>
+    <string name="feature_record_waiting">この端末に保存しました。オンラインになると送信されます。</string>
+    <string name="feature_record_refused">サーバーがこの記録を受け付けませんでした: %s。修正して保存するか、削除してください。</string>
+</resources>

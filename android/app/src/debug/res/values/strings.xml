@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug and preview builds install beside the real app (applicationIdSuffix .preview), under their own name. -->
+<resources>
+    <string name="app_name" translatable="false">RudWallet Preview</string>
+    <string name="title_activity_main" translatable="false">RudWallet Preview</string>
+</resources>

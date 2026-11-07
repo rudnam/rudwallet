@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feature_activity_title">明細</string>
+    <string name="feature_activity_select">選択</string>
+    <string name="feature_activity_done">完了</string>
+    <string name="feature_activity_add_record">記録を追加</string>
+    <string name="feature_activity_every_month">すべての月の検索結果</string>
+    <string name="feature_activity_tag_every_month">すべての月の #%s</string>
+    <string name="feature_activity_back_to">%sに戻る</string>
+    <string name="feature_activity_previous_month">前の月</string>
+    <string name="feature_activity_next_month">次の月</string>
+    <string name="feature_activity_spent">支出</string>
+    <string name="feature_activity_income">収入</string>
+    <string name="feature_activity_net">収支</string>
+    <string name="feature_activity_account">口座</string>
+    <string name="feature_activity_all_accounts">すべての口座</string>
+    <string name="feature_activity_category">カテゴリ</string>
+    <string name="feature_activity_all_categories">すべてのカテゴリ</string>
+    <string name="feature_activity_no_category">カテゴリなし</string>
+    <string name="feature_activity_search">記録を検索</string>
+    <string name="feature_activity_filter_by_tag">タグで絞り込む</string>
+    <string name="feature_activity_nothing">該当する記録はありません。</string>
+    <string name="feature_activity_capped">新しい順に%s件を表示しています。言葉を足すか、絞り込みで検索を狭めてください。</string>
+    <string name="feature_activity_search_offline">すべての月の検索には接続が必要です。</string>
+    <string name="feature_activity_to_check">確認待ち%d件</string>
+    <string name="feature_activity_all_ready">ここのすべての支払いにカテゴリがあります。</string>
+    <string name="feature_activity_payment">支払い</string>
+    <string name="feature_activity_category_for">%sのカテゴリ</string>
+    <string name="feature_activity_confirm">確定</string>
+    <string name="feature_activity_amount_unknown">金額不明</string>
+    <string name="feature_activity_duplicate_of">重複の可能性: 次の記録がすでにあります。</string>
+    <string name="feature_activity_duplicate">重複の可能性: 同じ時間帯に同じ金額の記録がすでにあります。</string>
+    <string name="feature_activity_delete_duplicate">重複を削除</string>
+    <string name="feature_activity_remember">今後%2$sは%3$sではなく%1$sにする</string>
+    <string name="feature_activity_choose_records">記録を選んでください</string>
+    <string name="feature_activity_choose_none">選択を解除</string>
+    <string name="feature_activity_choose_all">%d件すべて選択</string>
+    <string name="feature_activity_set_category">カテゴリ…</string>
+    <string name="feature_activity_move">口座…</string>
+    <string name="feature_activity_tag">タグ…</string>
+    <string name="feature_activity_add_tag">タグを付ける</string>
+    <string name="feature_activity_new_tag">新しいタグ…</string>
+    <string name="feature_activity_remove_tag">タグを外す</string>
+    <string name="feature_activity_tag_with">選んだ記録に付けるタグ：</string>
+    <string name="feature_activity_delete">削除</string>
+    <string name="feature_activity_cancel">キャンセル</string>
+    <string name="feature_activity_undo">元に戻す</string>
+    <string name="feature_activity_confirmed_payee">%sを確定しました</string>
+    <string name="feature_activity_deleted_payee">%sを削除しました</string>
+    <string name="feature_activity_restored_one">記録を元に戻しました</string>
+    <string name="feature_activity_failed">できませんでした: %s</string>
+    <string name="feature_activity_offline">サーバーに接続できません。接続が必要です。</string>
+    <plurals name="feature_activity_deleted"><item quantity="other">%d件の記録を削除しました。</item></plurals>
+    <plurals name="feature_activity_moved"><item quantity="other">%d件の記録を移動しました。</item></plurals>
+    <plurals name="feature_activity_recategorised"><item quantity="other">%d件の記録のカテゴリを変更しました。</item></plurals>
+    <plurals name="feature_activity_tagged"><item quantity="other">%1$d件の記録に #%2$s を付けました。</item></plurals>
+    <plurals name="feature_activity_untagged"><item quantity="other">%1$d件の記録から #%2$s を外しました。</item></plurals>
+    <plurals name="feature_activity_confirmed"><item quantity="other">%d件の支払いを確定しました</item></plurals>
+    <plurals name="feature_activity_restored"><item quantity="other">%d件の記録を元に戻しました。</item></plurals>
+    <plurals name="feature_activity_delete_ask"><item quantity="other">%d件の記録を削除しますか？</item></plurals>
+    <plurals name="feature_activity_some_ready"><item quantity="other">%2$d件中%1$d件にカテゴリがあります。残りはそのまま残ります。</item></plurals>
+    <plurals name="feature_activity_confirm_ready"><item quantity="other">カテゴリのある%d件を確定</item></plurals>
+    <plurals name="feature_activity_chosen"><item quantity="other">%d件を選択中</item></plurals>
+    <plurals name="feature_activity_didnt_fit"><item quantity="other">%d件は対象外のため、そのままです。</item></plurals>
+</resources>

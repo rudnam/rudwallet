@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Builds the Android app for release: the web app (bundled into the app),
-# then a signed app bundle for the Play Store and an APK to install directly.
+# Builds the Android app for release: a signed app bundle for the Play Store
+# and an APK to install directly.
 #
 #   ./android/build.sh            -> android/wallet.aab and android/wallet.apk
 #   ./android/build.sh install    also installs the APK on the phone plugged in (adb)
 #
 # Needs a JDK and the Android SDK (JAVA_HOME and ANDROID_HOME, or the paths in
-# ~/.bubblewrap/config.json), Node, and android.keystore with its passwords in
+# ~/.bubblewrap/config.json), and android.keystore with its passwords in
 # signing-key.txt, next to this script. The version comes from version.sh,
 # or WALLET_VERSION_CODE and WALLET_VERSION_NAME if they're set. CI's
 # Android release workflow (.github/workflows/android-release.yml) runs this
@@ -28,11 +28,8 @@ export WALLET_KEYSTORE_PASSWORD WALLET_KEY_PASSWORD
 
 # The version: one above what the site offers (version.sh), unless given.
 : "${WALLET_VERSION_CODE:=$(./version.sh)}"
-: "${WALLET_VERSION_NAME:=$(sed -n "s/.*WALLET_VERSION_NAME') ?: \"\(.*\)\".*/\1/p" app/build.gradle).$WALLET_VERSION_CODE}"
+: "${WALLET_VERSION_NAME:=$(sed -n 's/.*WALLET_VERSION_NAME") ?: "\(.*\)".*/\1/p' app/build.gradle.kts).$WALLET_VERSION_CODE}"
 export WALLET_VERSION_CODE WALLET_VERSION_NAME
-
-# The web app, built for the app (web/.env.android) and copied in.
-(cd ../web && { [[ -d node_modules ]] || npm ci --no-audit --no-fund; } && npm run android)
 
 ./gradlew --quiet bundleRelease assembleRelease
 cp app/build/outputs/bundle/release/app-release.aab wallet.aab

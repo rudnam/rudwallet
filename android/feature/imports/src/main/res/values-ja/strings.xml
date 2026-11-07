@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feature_imports_title">記録のインポート</string>
+    <string name="feature_imports_back">設定</string>
+    <string name="feature_imports_paypay_how">PayPayアプリで「取引履歴」を開き、ダウンロードボタンから最大1年分の期間を選んでCSVファイルを保存してください。メールから記録済みの支払いはスキップされ、期間が重なっても同じ支払いは1回だけ追加されます。</string>
+    <string name="feature_imports_mufg_how">三菱UFJダイレクトで入出金明細を開き、期間を選んでCSVファイルをダウンロードしてください。取り込み済みの行や、通知から記録済みの行は飛ばします。</string>
+    <string name="feature_imports_budgetbakers_how">BudgetBakersのWalletアプリで記録をCSVに書き出し（Web版: Records → Export）、ここでそのファイルを選んでください。取り込む前に、口座とカテゴリの行き先を選べます。同じファイルを2回取り込んでも重複はしません。</string>
+    <string name="feature_imports_ic_how">Suica・PASMO・ICOCAなどの交通系ICカードをスマホの背面にかざすと、電車やバスの運賃、買い物、チャージを取り込めます。カードには直近20件しか残らないので、1〜2週間ごとに読み取ってください。このスマホのモバイルSuicaは、この方法では読み取れません。</string>
+    <string name="feature_imports_choose_file">CSVファイルを選ぶ</string>
+    <string name="feature_imports_unreadable">ファイルを読み込めませんでした。</string>
+    <string name="feature_imports_no_payments">このファイルには支払いがありません。</string>
+    <string name="feature_imports_no_records">このファイルには記録がありません。</string>
+    <string name="feature_imports_choose_another">別のファイルを選ぶ</string>
+    <string name="feature_imports_reading_file">ファイルを読み込んでいます…</string>
+    <string name="feature_imports_importing">取り込み中…</string>
+    <string name="feature_imports_import_rest">残りを取り込む</string>
+    <string name="feature_imports_cancel">キャンセル</string>
+    <string name="feature_imports_done">完了</string>
+    <string name="feature_imports_paypay_categories">お店ごとにカテゴリを選んでください。お店のカテゴリは記憶され、次からの支払いも仕分けられます。</string>
+    <string name="feature_imports_mufg_categories">相手ごとにカテゴリを選んでください（給与なら勤務先など）。次の明細でも使われます。選ばなかった相手はカテゴリなしで取り込むので、あとで整理できます。</string>
+    <string name="feature_imports_budgetbakers_categories">カテゴリごとの行き先も選んでください。近いものを選んであります。どれにも合わないBudgetBakersのカテゴリは、そのまま追加できます。</string>
+    <string name="feature_imports_ic_categories">種類ごとにカテゴリを選んでください。次に読み取るときにも使われます。</string>
+    <string name="feature_imports_problems">次の行は読み取れないため、取り込みません:</string>
+    <string name="feature_imports_role_bank">この明細の三菱UFJ銀行の口座</string>
+    <string name="feature_imports_role_cash">現金（ATMでの引き出し）</string>
+    <string name="feature_imports_role_paypay_card">PayPayカード（毎月の引き落とし）</string>
+    <string name="feature_imports_role_smbc_card">三井住友カード（毎月の引き落とし）</string>
+    <string name="feature_imports_role_paypay">PayPay残高（チャージ）</string>
+    <string name="feature_imports_role_card">このカード</string>
+    <string name="feature_imports_role_top_up">チャージの支払い元</string>
+    <string name="feature_imports_also_looks">この口座に似た口座もあります: %s</string>
+    <string name="feature_imports_statement_rows">明細の行</string>
+    <string name="feature_imports_card_entries">カードの履歴</string>
+    <string name="feature_imports_already_imported">取り込み済み</string>
+    <string name="feature_imports_already_recorded_in">%sに記録済み</string>
+    <string name="feature_imports_transfer">振替: %1$s → %2$s</string>
+    <string name="feature_imports_no_rule">ルールなし: カテゴリが必要</string>
+    <string name="feature_imports_already_recorded">記録済みと照合</string>
+    <string name="feature_imports_start_unknown">起点: 金額は不明</string>
+    <string name="feature_imports_nothing_paid">支払いなし</string>
+    <string name="feature_imports_top_up">チャージ</string>
+    <string name="feature_imports_expense">支出</string>
+    <string name="feature_imports_income_kind">収入</string>
+    <string name="feature_imports_statement_balance">%1$sの明細の残高: %2$s。アプリの口座: %3$s。</string>
+    <string name="feature_imports_they_match">一致しています。</string>
+    <string name="feature_imports_bank_adjusted">明細と一致するよう、%1$sの開始残高を%2$s変更し、%3$sにしました。</string>
+    <string name="feature_imports_bank_will_adjust">取り込むと、アプリにない%4$sより前の記録の分として、%1$sの開始残高を%2$s変更し、%3$sにします。</string>
+    <string name="feature_imports_bank_apart">%1$sの差があります。%2$sより前の記録がそろっていなければ、口座の開始残高を%3$sにしてください（設定 › 口座）。そうでなければ、別の口座に入っている記録がないか確認してください。</string>
+    <string name="feature_imports_misplaced">%1$s分の行はすでに別の口座に記録されています（下の表を参照）。一致させるには、それらの記録を%2$sに移してください。</string>
+    <string name="feature_imports_match_bank">銀行口座の残高を明細に合わせる</string>
+    <string name="feature_imports_match_card">カードの口座の残高をカードに合わせる</string>
+    <string name="feature_imports_card_balance">カードの残高: %1$s。アプリの%2$s: %3$s。</string>
+    <string name="feature_imports_card_adjusted">カードと一致するよう、%1$sの開始残高を%2$s変更し、%3$sにしました。</string>
+    <string name="feature_imports_card_will_adjust">取り込むと、%1$sの開始残高を%2$s変更し、%3$sにします。</string>
+    <string name="feature_imports_apart">%sの差があります。</string>
+    <string name="feature_imports_gap_review">前回の読み取りから、カードに残る件数より多く使われたため、一部の履歴は失われています。その差は下の残高に表れます。</string>
+    <string name="feature_imports_new_account_named">新しい口座: %s</string>
+    <string name="feature_imports_new_account">新しい口座</string>
+    <string name="feature_imports_dont_import">取り込まない</string>
+    <string name="feature_imports_new_account_name">新しい口座の名前</string>
+    <string name="feature_imports_existing_account">「%s」という口座がすでにあるため、記録はその口座に入ります。</string>
+    <string name="feature_imports_tick_shops">お店にチェックを入れると、まとめて設定できます</string>
+    <string name="feature_imports_tick_categories">カテゴリにチェックを入れると、まとめて設定できます</string>
+    <string name="feature_imports_set_category">カテゴリを設定</string>
+    <string name="feature_imports_no_category">カテゴリなし</string>
+    <string name="feature_imports_your_categories">あなたのカテゴリ</string>
+    <string name="feature_imports_new_categories">新しいカテゴリ</string>
+    <string name="feature_imports_as_before">前回と同じ</string>
+    <string name="feature_imports_new_category">新しいカテゴリ</string>
+    <string name="feature_imports_income_badge">収入</string>
+    <string name="feature_imports_choose_named">%sを選択</string>
+    <string name="feature_imports_category_for">%sのカテゴリ</string>
+    <string name="feature_imports_sort_with_claude">カテゴリのない記録はClaudeで仕分けられます。</string>
+    <string name="feature_imports_ic_card">交通系ICカード</string>
+    <string name="feature_imports_read_card">カードを読み取る</string>
+    <string name="feature_imports_hold_card">カードをスマホの背面にかざしてください…</string>
+    <string name="feature_imports_reading_card">カードを読み取り中…</string>
+    <string name="feature_imports_nfc_off">NFCがオフになっています。</string>
+    <string name="feature_imports_turn_on_nfc">NFCをオンにする</string>
+    <string name="feature_imports_no_nfc">このスマホはNFCに対応していないため、カードを読み取れません。</string>
+    <string name="feature_imports_not_transit">交通系ICカードではないようです。Suica・PASMO・ICOCAなど、改札で使えるカードを読み取れます。</string>
+    <string name="feature_imports_lost">読み取り中にカードが離れました。音が鳴るまで動かさずにかざしてください。</string>
+    <string name="feature_imports_card_named">カード ••%s</string>
+    <string name="feature_imports_tap_card">交通系ICカードをスマホの背面にかざすと、残高を確認できます。</string>
+    <string name="feature_imports_balance_on_card">カードの残高</string>
+    <string name="feature_imports_last_used">最終利用 %s</string>
+    <string name="feature_imports_checking">新しい履歴を確認中…</string>
+    <string name="feature_imports_gap">前回の読み取りから、カードに残る件数より多く使われたため、一部の履歴は失われています。</string>
+    <string name="feature_imports_review_first">先に確認する</string>
+    <string name="feature_imports_all_imported">このカードの履歴はすべて取り込み済みです。</string>
+    <string name="feature_imports_card_off">アプリの%1$sとカードの残高に%2$sの差があります。</string>
+    <string name="feature_imports_latest_entries">最近の履歴</string>
+    <string name="feature_imports_status_new">新規</string>
+    <string name="feature_imports_status_imported">取り込み済み</string>
+    <string name="feature_imports_couldnt_check">新しい履歴を確認できませんでした: %s</string>
+    <string name="feature_imports_offline">サーバーに接続できません。取り込みには接続が必要です。</string>
+    <string name="feature_imports_failed">読み込めませんでした。</string>
+    <string name="feature_imports_try_again">再試行</string>
+    <plurals name="feature_imports_payments_range">
+        <item quantity="other">%2$s〜%3$sの支払い%1$d件。支払い方法ごとに記録する口座を選んでください:</item>
+    </plurals>
+    <plurals name="feature_imports_rows_range">
+        <item quantity="other">%1$d行（%2$s〜%3$s）。口座を選んでください:</item>
+    </plurals>
+    <plurals name="feature_imports_records_range">
+        <item quantity="other">%2$s〜%3$sの記録%1$d件。口座ごとに記録先を選んでください:</item>
+    </plurals>
+    <plurals name="feature_imports_entries_range">
+        <item quantity="other">カード ••%4$s: %1$d件（%2$s〜%3$s）。口座を選んでください:</item>
+    </plurals>
+    <plurals name="feature_imports_import_payments">
+        <item quantity="other">%d件を取り込む</item>
+    </plurals>
+    <plurals name="feature_imports_import_rows">
+        <item quantity="other">%d行を取り込む</item>
+    </plurals>
+    <plurals name="feature_imports_import_records">
+        <item quantity="other">%d件を取り込む</item>
+    </plurals>
+    <plurals name="feature_imports_import_entries">
+        <item quantity="other">%d件を取り込む</item>
+    </plurals>
+    <plurals name="feature_imports_record_count">
+        <item quantity="other">%d件</item>
+    </plurals>
+    <plurals name="feature_imports_imported">
+        <item quantity="other">%d件を取り込みました</item>
+    </plurals>
+    <plurals name="feature_imports_created_accounts">
+        <item quantity="other">%d口座を作成</item>
+    </plurals>
+    <plurals name="feature_imports_created_categories">
+        <item quantity="other">%dカテゴリを作成</item>
+    </plurals>
+    <plurals name="feature_imports_new_since">
+        <item quantity="other">前回の取り込みから新しい履歴が%d件あります。</item>
+    </plurals>
+    <plurals name="feature_imports_not_imported">
+        <item quantity="other">まだ取り込んでいない履歴が%d件あります。</item>
+    </plurals>
+    <plurals name="feature_imports_chosen">
+        <item quantity="other">%d件を選択中</item>
+    </plurals>
+    <plurals name="feature_imports_show_all_shops">
+        <item quantity="other">%d件のお店をすべて表示</item>
+    </plurals>
+    <plurals name="feature_imports_show_all_categories">
+        <item quantity="other">%d件のカテゴリをすべて表示</item>
+    </plurals>
+    <plurals name="feature_imports_skipped_imported">
+        <item quantity="other">取り込み済みの%d件はスキップ</item>
+    </plurals>
+    <plurals name="feature_imports_skipped_matched">
+        <item quantity="other">通知や手入力で記録済みの%d件はスキップ</item>
+    </plurals>
+    <plurals name="feature_imports_left_out">
+        <item quantity="other">取り込まない支払い方法の%d件は除外</item>
+    </plurals>
+</resources>

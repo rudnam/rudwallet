@@ -14,7 +14,9 @@ import { AccountPage } from './features/account/AccountPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 import { prefetchStats, StatsPage } from './features/stats/StatsPage';
 import { addMonths, monthStart } from './money';
-import { appDrawn, onAppLinks } from './native';
+import { appDrawn, embedded, nativeConfig, nativeSetAppearance, nativeSetLanguage, onAppLinks, onNativeAppearance, onNativeSignedIn, onNativeSignedOut } from './native';
+import { appearance, setAppearance } from './appearance';
+import { pickedLanguage, setLanguage } from './language';
 import { initialNotice, signinErrors, type Notice } from './notice';
 import { href, navigate, replaceRoute, useRoute } from './router';
 import { t, tx, type Key } from './i18n';
@@ -54,6 +56,33 @@ export function App() {
     return me ? { status: 'signed-in', me } : { status: 'loading' };
   });
   const route = useRoute();
+
+  // Embedded in the Android app (native.ts), the app owns Appearance and
+  // Language: this follows what it says. A choice made here before the app
+  // had its own goes to the app once.
+  useEffect(() => {
+    nativeConfig().then((app) => {
+      if (!app) return;
+      if (app.appearance !== 'auto') setAppearance(app.appearance, true);
+      else if (appearance() !== 'auto') nativeSetAppearance(appearance());
+      if (app.language === 'en' || app.language === 'ja') setLanguage(app.language, true);
+      else if (pickedLanguage()) nativeSetLanguage(pickedLanguage());
+    });
+  }, []);
+
+  // Embedded, signing out and Appearance are in the app's own Settings: this follows.
+  useEffect(() => {
+    onNativeSignedOut((deleted) => {
+      void api.forgetSession().then(() => signedOut(deleted ? { message: t('Your account and everything in it were deleted.'), ok: true } : undefined));
+    });
+    onNativeAppearance((a) => setAppearance(a, true));
+    onNativeSignedIn(() => {
+      api.me().then(
+        (me) => setSession({ status: 'signed-in', me }),
+        () => {},
+      );
+    });
+  }, []);
 
   // In the Android app: Google sign-in coming back from the browser, and
   // widgets opening a page.
@@ -294,7 +323,8 @@ function Shell({
   const current = pages.some((p) => p.page === route.page) || route.page in subpages ? route.page : 'home';
   const navPage = subpages[current] ?? current;
 
-  // The Android widget's New record button opens #/add.
+  // The Android widget's New record button opens #/add. (Embedded in the
+  // app, native.ts, the app opens its own record sheet for #/add instead.)
   useEffect(() => {
     if (route.page !== 'add') return;
     history.replaceState(null, '', href('home'));
@@ -390,7 +420,8 @@ function Shell({
       </nav>
       <main className="page" key={`${route.page}-${version}`}>
         {me.demo && <DemoBanner onCreateAccount={onCreateAccount} />}
-        <UpdateBanner />
+        {/* Embedded, the app offers its own updates. */}
+        {!embedded && <UpdateBanner />}
         {me.confirm_email && <ConfirmEmail email={me.email} />}
         {page}
       </main>

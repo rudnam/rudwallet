@@ -1,6 +1,6 @@
 # Notes for AI agents
 
-Go API (`internal/`, one package per feature), PostgreSQL, and a React + TypeScript frontend (`web/src/`, built by Vite into `web/dist/` and embedded in the binary). The Android app (`android/`) is the same web app packaged with Capacitor, plus native widgets. README.md explains the layout, the API and how to add a feature; follow `internal/wallet` or `internal/notify`. Deploys and migrations: README.md, "Production". The Android app, and its reader for payment notifications: `android/README.md`.
+Go API (`internal/`, one package per feature), PostgreSQL, and a React + TypeScript frontend (`web/src/`, built by Vite into `web/dist/` and embedded in the binary). The Android app (`android/`) is a native app (Kotlin, Compose, Hilt, Room; Android's recommended architecture), with no web view and nothing of `web/` inside it; Android work follows `android/README.md`, "Native app". README.md explains the layout, the API and how to add a feature; follow `internal/wallet` or `internal/notify`. Deploys and migrations: README.md, "Production". The Android app, and its reader for payment notifications: `android/README.md`.
 
 ## Verify your work before calling it done
 
@@ -30,12 +30,12 @@ The user reviews changes by looking at them, not by deploying them. When you cha
 
 - **Production is on AWS, deployed only by CI** when `main` changes (`.github/workflows/ci.yml`; infrastructure in rudnam/rudnam-infra). Nothing on this machine is production: the Compose project named after this folder is local development. `verify.sh` and `preview.sh` use their own projects (`<folder>-verify`, `<folder>-preview`). Don't push to `main` or run AWS commands against production unless asked.
 - Never edit a migration in `internal/db/migrations/` that may have been deployed; add a new file numbered one above the highest. The number is the version recorded in `schema_migrations`, so never reuse one: `002` was deleted, and a database that ran it would silently skip a new `002_*`. Keep each migration compatible with the previous release (README.md, "Production").
-- **Keep the API backward compatible.** Phones run the web app from their installed Android build, which can be months old, against the current server. Add fields and endpoints; don't rename, remove or change the meaning of existing ones.
+- **Keep the API backward compatible.** Phones run their installed Android build, which can be months old (older ones still run the web app bundled in them), against the current server. Add fields and endpoints; don't rename, remove or change the meaning of existing ones.
 - Every query on user data is scoped by user ID in the feature's `Store`. Another user's row is a 404, not a 403.
 - Handlers return errors: `httpx.Errorf(status, msg)` for messages the user should see, and any other error for a logged 500. Don't leak internal errors to the client.
 - Keep dependencies minimal: standard library first in Go; no new npm packages without a clear reason.
 - When you add or change an endpoint, a setting or a package, update its table in README.md (API, Configuration, or How the code is organized).
-- **Label a pull request `android-release` when it changes what ships inside the Android app**: anything under `web/src/`, `web/public/`, `web/index.html` or `android/` (other than its README and scripts). Once it's merged and CI passes on `main`, `.github/workflows/android-release.yml` builds, signs and publishes a new APK, and every phone on a recent build is offered it. Don't label server-only, test-only or docs-only changes: phones would be nagged to update for nothing. Say in the PR description whether you labelled it and why.
+- **Label a pull request `android-release` when it changes what ships inside the Android app**: anything under `android/` (other than its README and scripts). Changes to `web/` don't ship in the app any more. Once it's merged and CI passes on `main`, `.github/workflows/android-release.yml` builds, signs and publishes a new APK, and every phone on a recent build is offered it. Don't label server-only, test-only or docs-only changes: phones would be nagged to update for nothing. Say in the PR description whether you labelled it and why.
 
 ## Environment gotchas
 

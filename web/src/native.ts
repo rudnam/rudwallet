@@ -12,6 +12,92 @@ import type { ICCardRead } from './api';
 /** True inside the Android app. */
 export const isApp = Capacitor.isNativePlatform();
 
+/**
+ * The Android app's native navigation (android/…/web/NativeNavPlugin.kt).
+ * In an app build with native screens, the app draws the tabs, the plus
+ * and the pages that are native, and shows this web app only for the
+ * pages that aren't yet, under its own tabs. This web app is then
+ * "embedded": it doesn't draw its own navigation, asks the app for every
+ * page change (go) and shows the page the app tells it to (show). Older
+ * app builds have no NativeNav, and the web app runs the whole app as before.
+ */
+const nativeNav = registerPlugin<{
+  config(): Promise<NativeConfig>;
+  go(o: { path: string; replace?: boolean }): Promise<void>;
+  overlay(o: { open: boolean }): Promise<void>;
+  setAppearance(o: { appearance: string }): Promise<void>;
+  setLanguage(o: { language: string }): Promise<void>;
+  addListener(event: 'show', f: (e: { path: string }) => void): Promise<PluginListenerHandle>;
+  addListener(event: 'back', f: () => void): Promise<PluginListenerHandle>;
+  addListener(event: 'signedOut', f: (e: { deleted: boolean }) => void): Promise<PluginListenerHandle>;
+  addListener(event: 'signedIn', f: () => void): Promise<PluginListenerHandle>;
+  addListener(event: 'appearance', f: (e: { appearance: 'auto' | 'light' | 'dark' }) => void): Promise<PluginListenerHandle>;
+}>('NativeNav');
+
+export interface NativeConfig {
+  /** The pages the app draws itself, e.g. ['home']. */
+  nativePages: string[];
+  appearance: 'auto' | 'light' | 'dark';
+  /** 'ja', 'en', or '' for the phone's. */
+  language: string;
+}
+
+/** True in an app build whose navigation is native (see nativeNav). */
+export const embedded: boolean = isApp && Capacitor.isPluginAvailable('NativeNav');
+
+/** What the app says at start: which pages it draws itself, and the settings this web app follows. */
+export function nativeConfig(): Promise<NativeConfig | null> {
+  return embedded ? nativeNav.config().catch(() => null) : Promise.resolve(null);
+}
+
+/** Asks the app for a page, e.g. "records?account=3". [replace]: instead of the page shown now. */
+export function nativeGo(path: string, replace = false): void {
+  nativeNav.go({ path, replace }).catch(() => {});
+}
+
+/** Tells the app a sheet or dialog is open, so its back gesture closes that first. */
+export function nativeOverlay(open: boolean): void {
+  if (embedded) nativeNav.overlay({ open }).catch(() => {});
+}
+
+/** Settings still chosen here, for the app to follow. */
+export function nativeSetAppearance(appearance: string): void {
+  if (embedded) nativeNav.setAppearance({ appearance }).catch(() => {});
+}
+
+export function nativeSetLanguage(language: string | null): void {
+  if (embedded) nativeNav.setLanguage({ language: language ?? '' }).catch(() => {});
+}
+
+/** The page the app asks this web app to show. */
+export function onNativeShow(f: (path: string) => void): void {
+  if (embedded) nativeNav.addListener('show', (e) => f(e.path)).catch(() => {});
+}
+
+/** The app's back gesture while a sheet or dialog is open. */
+export function onNativeBack(f: () => void): void {
+  if (embedded) nativeNav.addListener('back', f).catch(() => {});
+}
+
+/**
+ * Signed out in the app's own Settings, which has already told the server
+ * and forgotten the token: this web app forgets the session too. [deleted]:
+ * the account was deleted.
+ */
+export function onNativeSignedOut(f: (deleted: boolean) => void): void {
+  if (embedded) nativeNav.addListener('signedOut', (e) => f(e.deleted)).catch(() => {});
+}
+
+/** Signed in on the app's own sign-in page, which kept the new session: this reads it again. */
+export function onNativeSignedIn(f: () => void): void {
+  if (embedded) nativeNav.addListener('signedIn', () => void loadSession().then(f)).catch(() => {});
+}
+
+/** Appearance chosen in the app's own Settings. */
+export function onNativeAppearance(f: (appearance: 'auto' | 'light' | 'dark') => void): void {
+  if (embedded) nativeNav.addListener('appearance', (e) => f(e.appearance)).catch(() => {});
+}
+
 /** Where the API is: '' (this site) on the web, the server in the app. */
 export const server: string = isApp ? (import.meta.env.VITE_SERVER ?? '') : '';
 
@@ -209,7 +295,8 @@ export function onAppLinks(handlers: {
       const verifier = (await Preferences.get({ key: verifierKey })).value ?? '';
       await Preferences.remove({ key: verifierKey });
       handlers.onAuth(code && verifier ? { code, verifier } : { error: params.get('signin_error') ?? 'failed' });
-    } else if (host === 'open') {
+    } else if (host === 'open' && !embedded) {
+      // Embedded, the app opens its own links (MainActivity).
       handlers.onOpen(path.join('/'));
     }
   };

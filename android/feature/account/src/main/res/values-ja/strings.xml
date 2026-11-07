@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feature_account_back">ウォレット</string>
+    <string name="feature_account_edit">%sを編集</string>
+    <string name="feature_account_gone">この口座はもうありません。</string>
+    <string name="feature_account_count">現金を数える</string>
+    <string name="feature_account_out">%sの出金</string>
+    <string name="feature_account_in">入金</string>
+    <string name="feature_account_nothing">今月はこの口座の記録がありません。</string>
+    <string name="feature_account_count_explain">いま財布にある金額を入力してください。%sとの差額が記録されます。</string>
+    <string name="feature_account_amount">金額（%s）</string>
+    <string name="feature_account_counted">数えました: %s</string>
+    <string name="feature_account_already_right">合っています: %s</string>
+    <string name="feature_account_no_amount_yen">金額を入力してください（例: 1200）。</string>
+    <string name="feature_account_no_amount_cents">金額を入力してください（例: 12.50）。</string>
+    <string name="feature_account_offline">サーバーに接続できません。数えるには接続が必要です。</string>
+    <string name="feature_account_save">保存</string>
+    <string name="feature_account_cancel">キャンセル</string>
+</resources>

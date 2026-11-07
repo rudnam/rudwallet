@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feature_wallet_title">ウォレット</string>
+    <string name="feature_wallet_search">記録を検索</string>
+    <string name="feature_wallet_add_record">記録を追加</string>
+    <string name="feature_wallet_total_balance">総残高</string>
+    <string name="feature_wallet_accounts">口座</string>
+    <string name="feature_wallet_spent_this_month">今月の支出</string>
+    <string name="feature_wallet_no_spending">今月の支出はまだありません。</string>
+    <string name="feature_wallet_per_day">1日%sまでなら予算内</string>
+    <string name="feature_wallet_over_budget">今月は予算を%s超過</string>
+    <string name="feature_wallet_spent_so_far">%2$sはここまで%1$s</string>
+    <string name="feature_wallet_latest_records">最近の記録</string>
+    <string name="feature_wallet_all_records">すべての記録</string>
+    <string name="feature_wallet_nothing_recorded">今月の記録はまだありません。</string>
+    <string name="feature_wallet_add_a_record">記録を追加</string>
+    <string name="feature_wallet_unavailable">データを読み込めませんでした。</string>
+    <string name="feature_wallet_try_again">もう一度</string>
+    <string name="feature_wallet_offline">サーバーに接続できません。保存済みの内容を表示しています。</string>
+    <string name="feature_wallet_failed">ウォレットを更新できませんでした。</string>
+    <string name="feature_wallet_update">RudWallet %s が利用できます。</string>
+    <string name="feature_wallet_update_unnamed">RudWallet の新しいバージョンが利用できます。</string>
+    <string name="feature_wallet_update_install">アップデート</string>
+    <string name="feature_wallet_update_later">あとで</string>
+    <string name="feature_wallet_setup_title">はじめの準備</string>
+    <string name="feature_wallet_setup_progress">%1$d / %2$d</string>
+    <string name="feature_wallet_setup_hide">閉じる</string>
+    <string name="feature_wallet_setup_accounts">口座を登録する</string>
+    <string name="feature_wallet_setup_accounts_detail">銀行、カード、電子マネーを、今日の残高とあわせて。</string>
+    <string name="feature_wallet_setup_accounts_action">口座を追加</string>
+    <string name="feature_wallet_setup_notifications">決済通知をオンにする</string>
+    <string name="feature_wallet_setup_notifications_detail">PayPayやGoogleウォレットの支払いが自動で記録になります。</string>
+    <string name="feature_wallet_setup_notifications_action">設定する</string>
+    <string name="feature_wallet_setup_budget">月の予算を決める</string>
+    <string name="feature_wallet_setup_budget_detail">残りがひと目でわかります。</string>
+    <string name="feature_wallet_setup_budget_action">予算を追加</string>
+    <string name="feature_wallet_setup_done">完了</string>
+    <string name="feature_wallet_setup_currency">金額の単位は%sです。</string>
+    <string name="feature_wallet_setup_change_currency">通貨を変更</string>
+    <string name="feature_wallet_setup_import">履歴を取り込む</string>
+    <string name="feature_wallet_demo">サンプルデータのデモです。</string>
+    <string name="feature_wallet_demo_detail">自由に変更できます。ほかの人には見えず、1日以内に削除されます。</string>
+    <string name="feature_wallet_demo_create">アカウントを作成</string>
+    <string name="feature_wallet_confirm">メールアドレスの確認: %s にお送りしたリンクを開いてください。</string>
+    <string name="feature_wallet_confirm_sent">送信しました。%s の受信箱をご確認ください。</string>
+    <string name="feature_wallet_confirm_again">再送する</string>
+</resources>

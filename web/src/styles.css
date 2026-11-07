@@ -292,6 +292,13 @@ a.button.secondary:hover { background: var(--sunken); }
 .to-check-head { display: flex; align-items: center; gap: 8px; font-size: 1rem; font-weight: 600; letter-spacing: -0.01em; }
 .attention-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--attention); flex: none; }
 
+/* Embedded in the Android app (native.ts): the app draws the tabs and the
+   plus, and keeps the page clear of the system bars itself. */
+.embedded .nav, .embedded .fab { display: none; }
+.embedded body { padding: 0; }
+.embedded .shell .page { padding-bottom: 32px; }
+.embedded .toast { bottom: 24px; }
+
 /* A short confirmation after saving. */
 .toast {
   position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); z-index: 20; transform: translateX(-50%);
