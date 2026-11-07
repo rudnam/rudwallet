@@ -6,14 +6,10 @@ plugins {
 }
 
 /**
- * The server the app talks to: VITE_SERVER in web/.env.android, which the
- * web app built into the app reads too, so the two can't disagree.
- * -Prudwallet.server=https://… overrides it (a local server, say).
+ * The server the app talks to: rudwallet.server in gradle.properties, or
+ * -Prudwallet.server=https://… for another (a local server, say).
  */
-val server: String = providers.gradleProperty("rudwallet.server").orNull
-    ?: rootProject.file("../web/.env.android").readLines()
-        .firstNotNullOfOrNull { Regex("""^VITE_SERVER=(.+)$""").find(it.trim())?.groupValues?.get(1) }
-    ?: error("VITE_SERVER is missing from web/.env.android")
+val server: String = providers.gradleProperty("rudwallet.server").orNull ?: error("rudwallet.server is missing from gradle.properties")
 
 android {
     namespace = "com.rudnam.wallet.core.network"

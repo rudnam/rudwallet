@@ -94,6 +94,11 @@ class OfflineFirstWalletRepositoryTest {
         override suspend fun reconcile(accountId: Long, balance: Long) = com.rudnam.wallet.core.network.model.NetworkReconcileResult()
         override suspend fun setAccountOrder(ids: List<Long>) = Unit
         override suspend fun tags() = emptyList<com.rudnam.wallet.core.network.model.NetworkTag>()
+        override suspend fun widgetSummary(from: Instant, to: Instant) = com.rudnam.wallet.core.network.model.NetworkWidgetSummary()
+        override suspend fun sendNotifications(notifications: List<com.rudnam.wallet.core.network.model.NetworkIncomingNotification>) {
+            sentNotifications += notifications
+        }
+        val sentNotifications = mutableListOf<com.rudnam.wallet.core.network.model.NetworkIncomingNotification>()
         override suspend fun authOptions() = com.rudnam.wallet.core.network.model.NetworkAuthOptions()
         override suspend fun login(email: String, password: String) = com.rudnam.wallet.core.network.model.NetworkMe(email, token = "t")
         override suspend fun signup(email: String, password: String) = com.rudnam.wallet.core.network.model.NetworkMe(email, token = "t")

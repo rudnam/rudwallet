@@ -239,6 +239,34 @@ data class NetworkNotification(
     val detail: String = "",
 )
 
+/** A payment app's notification as the phone read it (internal/notify): [whenMillis] is when the payment was made. */
+@Serializable
+data class NetworkIncomingNotification(
+    @SerialName("package") val packageName: String,
+    @SerialName("when") val whenMillis: Long,
+    val title: String,
+    val text: String,
+)
+
+@Serializable
+data class NetworkIncomingNotifications(val notifications: List<NetworkIncomingNotification>)
+
+/** What the home screen widgets show (GET /api/widget, internal/widget). */
+@Serializable
+data class NetworkWidgetSummary(
+    val currency: String = "JPY",
+    @SerialName("currency_exponent") val currencyExponent: Int = 0,
+    val spent: Long = 0,
+    val balance: Long = 0,
+    /** The overall budget, if there is one. */
+    val budget: NetworkWidgetBudget? = null,
+    val budgets: List<NetworkWidgetBudget> = emptyList(),
+    @SerialName("review_count") val reviewCount: Int = 0,
+)
+
+@Serializable
+data class NetworkWidgetBudget(val name: String = "", val amount: Long = 0, val spent: Long = 0)
+
 @Serializable
 data class NetworkRules(val payees: List<NetworkPayeeRule> = emptyList(), val cards: List<NetworkCardRule> = emptyList())
 

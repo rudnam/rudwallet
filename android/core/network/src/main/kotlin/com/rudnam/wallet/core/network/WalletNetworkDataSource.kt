@@ -9,7 +9,9 @@ import com.rudnam.wallet.core.network.model.NetworkFileImport
 import com.rudnam.wallet.core.network.model.NetworkICCardImport
 import com.rudnam.wallet.core.network.model.NetworkImportPreview
 import com.rudnam.wallet.core.network.model.NetworkImportResult
+import com.rudnam.wallet.core.network.model.NetworkIncomingNotification
 import com.rudnam.wallet.core.network.model.NetworkMcpToken
+import com.rudnam.wallet.core.network.model.NetworkWidgetSummary
 import com.rudnam.wallet.core.network.model.NetworkAuthOptions
 import com.rudnam.wallet.core.network.model.NetworkMe
 import com.rudnam.wallet.core.network.model.NetworkRules
@@ -55,6 +57,12 @@ interface WalletNetworkDataSource {
 
     /** Payment notifications the phone has sent (for the first-run checklist). */
     suspend fun notifications(): NetworkNotifications
+
+    /** What the home screen widgets show for [from, to). */
+    suspend fun widgetSummary(from: Instant, to: Instant): NetworkWidgetSummary
+
+    /** Sends payment apps' notifications; the server records each payment once, however often it's sent. */
+    suspend fun sendNotifications(notifications: List<NetworkIncomingNotification>)
 
     /** The APK the server offers, if any. Needs no session. */
     suspend fun downloads(): NetworkDownloads

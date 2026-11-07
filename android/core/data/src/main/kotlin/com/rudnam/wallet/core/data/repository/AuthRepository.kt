@@ -82,7 +82,6 @@ internal class ServerAuthRepository @Inject constructor(
     private val server: Server,
     private val session: SessionStore,
     private val preferences: UserPreferencesRepository,
-    private val events: SessionEvents,
     @Dispatcher(WalletDispatchers.IO) private val io: CoroutineDispatcher,
 ) : AuthRepository {
     override suspend fun options(): AuthOptions = withContext(io) {
@@ -118,14 +117,13 @@ internal class ServerAuthRepository @Inject constructor(
 
     override suspend fun resendConfirmation() = change(io) { network.resendConfirmation() }
 
-    /** Keeps the new session and who it is, and tells the app. */
+    /** Keeps the new session and who it is; the app follows the session. */
     private suspend fun signedIn(block: suspend () -> NetworkMe): SignInResult = withContext(io) {
         try {
             val me = block()
             val token = me.token ?: return@withContext SignInResult.Refused("")
             preferences.setMe(me.asModel())
             session.save(token)
-            events.sendSignedIn()
             SignInResult.SignedIn
         } catch (e: CancellationException) {
             throw e

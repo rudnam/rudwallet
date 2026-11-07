@@ -37,5 +37,8 @@ object DataStoreModule {
 @InstallIn(SingletonComponent::class)
 internal interface SessionModule {
     @Binds
-    fun sessionStore(impl: CapacitorSessionStore): SessionStore
+    fun sessionStore(impl: EncryptedSessionStore): SessionStore
+
+    @Binds
+    fun tokenCipher(impl: KeystoreCipher): TokenCipher
 }

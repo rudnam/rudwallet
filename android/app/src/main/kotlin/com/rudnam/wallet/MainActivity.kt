@@ -31,6 +31,7 @@ import androidx.activity.compose.setContent
 import com.rudnam.wallet.core.datastore.Appearance
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
 import com.rudnam.wallet.ui.RudWalletApp
+import com.rudnam.wallet.widget.WidgetUpdater
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -48,6 +49,14 @@ class MainActivity : AppCompatActivity() {
     @Inject lateinit var icCards: IcCards
 
     @Inject lateinit var googleReturns: GoogleReturns
+
+    @Inject lateinit var widgets: WidgetUpdater
+
+    // Leaving the app: the home screen widgets show what changed in it.
+    override fun onStop() {
+        super.onStop()
+        widgets.refresh()
+    }
 
     /** Pages asked for by links (the widgets), for the app's navigation. */
     private val links = Channel<String>(Channel.BUFFERED)
@@ -87,9 +96,7 @@ class MainActivity : AppCompatActivity() {
                     recordEvents = viewModel.recordEvents,
                     settings = settings,
                     onUndo = viewModel::undo,
-                    appearance = ready.appearance.key,
                     signOuts = viewModel.signOuts,
-                    signIns = viewModel.signIns,
                 )
             }
         }
@@ -131,7 +138,7 @@ class MainActivity : AppCompatActivity() {
             }
             return
         }
-        // Google sign-in coming back from the browser: the sign-in page finishes it.
+        // Google sign-in coming back from the browser: the sign-in page finishes it. (<package>://auth)
         if (data?.scheme == packageName && data.host == "auth") {
             googleReturns.send(GoogleReturn(data.getQueryParameter("code"), data.getQueryParameter("signin_error")))
             intent.data = null // handled: not again if the activity is remade

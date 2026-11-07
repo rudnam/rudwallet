@@ -44,7 +44,7 @@
 
         </activity>
 
-        <!-- Home screen widgets (java/com/rudnam/wallet/widget). -->
+        <!-- Home screen widgets (kotlin/com/rudnam/wallet/widget). -->
         <receiver
             android:name=".widget.MonthWidget"
             android:exported="false"
@@ -82,7 +82,7 @@
         </receiver>
 
         <!-- Reads payment apps' notifications once the user gives notification
-             access (java/com/rudnam/wallet/notify). -->
+             access (kotlin/com/rudnam/wallet/notify; the queue is core/data's notify). -->
         <service
             android:name=".notify.PaymentListener"
             android:label="@string/notify_listener_label"
@@ -116,15 +116,6 @@
                 android:value="true" />
         </service>
 
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.fileprovider"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths"></meta-data>
-        </provider>
     </application>
 
     <!-- Permissions -->

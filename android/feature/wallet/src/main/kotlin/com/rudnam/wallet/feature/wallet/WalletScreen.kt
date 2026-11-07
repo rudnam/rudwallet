@@ -63,7 +63,7 @@ import com.rudnam.wallet.core.ui.recordDays
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
 import java.time.Instant
 
-/** Where Wallet's taps lead. Pages that aren't native yet are web paths (see the app's WebRoute). */
+/** Where Wallet's taps lead: other pages, by the website's paths for them (the app's openPath). */
 interface WalletNavigation {
     /** A page by its web path, e.g. "records", "account?id=3", "settings?section=notifications". */
     fun openPage(path: String)

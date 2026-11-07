@@ -12,7 +12,10 @@ import com.rudnam.wallet.core.network.model.NetworkFileImport
 import com.rudnam.wallet.core.network.model.NetworkICCardImport
 import com.rudnam.wallet.core.network.model.NetworkImportPreview
 import com.rudnam.wallet.core.network.model.NetworkImportResult
+import com.rudnam.wallet.core.network.model.NetworkIncomingNotification
+import com.rudnam.wallet.core.network.model.NetworkIncomingNotifications
 import com.rudnam.wallet.core.network.model.NetworkMcpToken
+import com.rudnam.wallet.core.network.model.NetworkWidgetSummary
 import com.rudnam.wallet.core.network.model.NetworkAppCode
 import com.rudnam.wallet.core.network.model.NetworkAuthOptions
 import com.rudnam.wallet.core.network.model.NetworkCredentials
@@ -121,6 +124,12 @@ internal interface WalletApi {
 
     @GET("api/notifications")
     suspend fun notifications(): NetworkNotifications
+
+    @GET("api/widget")
+    suspend fun widgetSummary(@Query("from") from: String, @Query("to") to: String): NetworkWidgetSummary
+
+    @POST("api/notifications")
+    suspend fun sendNotifications(@Body body: NetworkIncomingNotifications): Response<Unit>
 
     @GET("api/downloads")
     suspend fun downloads(): NetworkDownloads
@@ -258,6 +267,11 @@ internal class RetrofitWalletNetwork @Inject constructor(retrofit: Retrofit, pri
         call { api.stats(rfc3339(from), rfc3339(to), zone, accountId) }
 
     override suspend fun notifications() = call { api.notifications() }
+
+    override suspend fun widgetSummary(from: Instant, to: Instant) = call { api.widgetSummary(rfc3339(from), rfc3339(to)) }
+
+    override suspend fun sendNotifications(notifications: List<NetworkIncomingNotification>) =
+        call { api.sendNotifications(NetworkIncomingNotifications(notifications)).orThrow() }
 
     override suspend fun me() = call { api.me() }
 

@@ -73,3 +73,17 @@ data class McpToken(
     /** Made by signing in from the Claude app, rather than a token made here. */
     val signedIn: Boolean,
 )
+
+/** What the home screen widgets show: this month's spending, the overall budget, each budget, and payments to check. */
+data class WidgetSummary(
+    val currency: String,
+    val currencyExponent: Int,
+    val spent: Long,
+    val balance: Long,
+    /** The overall budget, if there is one. */
+    val budget: WidgetBudget?,
+    val budgets: List<WidgetBudget>,
+    val reviewCount: Int,
+)
+
+data class WidgetBudget(val name: String, val amount: Long, val spent: Long)

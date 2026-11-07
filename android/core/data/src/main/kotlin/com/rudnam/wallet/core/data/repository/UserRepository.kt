@@ -21,22 +21,15 @@ import javax.inject.Singleton
 /** Why the session ended here: the user signed out, or deleted the account. */
 enum class SignOutReason { SignedOut, Deleted }
 
-/** Signing in and out in the app, for what still keeps its own state (the web view) to follow. */
+/** Sign-outs made in the app, and why: an account deleted, the sign-in page says so. */
 @Singleton
 class SessionEvents @Inject constructor() {
     private val events = MutableSharedFlow<SignOutReason>(extraBufferCapacity = 4)
-    private val signIns = MutableSharedFlow<Unit>(extraBufferCapacity = 4)
 
     val signedOut: SharedFlow<SignOutReason> = events.asSharedFlow()
 
-    val signedIn: SharedFlow<Unit> = signIns.asSharedFlow()
-
     fun send(reason: SignOutReason) {
         events.tryEmit(reason)
-    }
-
-    fun sendSignedIn() {
-        signIns.tryEmit(Unit)
     }
 }
 

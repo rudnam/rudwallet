@@ -12,7 +12,6 @@ web/node_modules/
 web/dist/*
 !web/dist/.gitkeep
 # The web app as built for the Android app (npm run android)
-web/dist-android/
 
 # Android: generated build output and, above all, the signing key
 android/**/build/

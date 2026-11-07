@@ -1,9 +1,0 @@
-{
-  "appId": "com.rudnam.wallet",
-  "appName": "RudWallet",
-  "webDir": "dist-android",
-  "android": { "path": "../android" },
-  "plugins": {
-    "SystemBars": { "insetsHandling": "native", "initialViewportFitValueHint": "cover" }
-  }
-}

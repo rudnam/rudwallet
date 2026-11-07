@@ -1,14 +1,10 @@
 package com.rudnam.wallet.ui
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.MaterialTheme
@@ -32,11 +28,8 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.core.view.isInvisible
-import androidx.fragment.compose.AndroidFragment
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import com.rudnam.wallet.R
 import com.rudnam.wallet.core.designsystem.icon.LineIcon
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
@@ -68,19 +61,12 @@ import com.rudnam.wallet.feature.wallet.WalletNavigation
 import com.rudnam.wallet.feature.wallet.navigation.WalletRoute
 import com.rudnam.wallet.feature.wallet.navigation.walletScreen
 import com.rudnam.wallet.navigation.TopLevelDestination
-import com.rudnam.wallet.navigation.WebRoute
-import com.rudnam.wallet.web.WebPageFragment
-import com.rudnam.wallet.web.WebRequest
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import java.time.YearMonth
 import com.rudnam.wallet.core.ui.ServerText
 
-/**
- * The app: the four tabs along the bottom, and the pages above them. Native
- * pages are destinations of the NavHost; the rest are [WebRoute]s, shown by
- * the one web view underneath, which shows through their empty destination.
- */
+/** The app: the four tabs along the bottom, and the pages above them, each a destination of the NavHost. */
 @Composable
 fun RudWalletApp(
     signedIn: Boolean,
@@ -89,29 +75,19 @@ fun RudWalletApp(
     recordEvents: Flow<RecordEvent>,
     settings: WalletSettings?,
     onUndo: suspend (RecordEvent) -> SaveResult,
-    appearance: String = "auto",
     signOuts: Flow<SignOutReason> = emptyFlow(),
-    signIns: Flow<Unit> = emptyFlow(),
     appState: RudWalletAppState = rememberRudWalletAppState(),
 ) {
     val snackbar = remember { SnackbarHostState() }
     RecordMessages(recordEvents, settings, snackbar, onUndo)
     val tab = appState.currentTab
-    val webPath = appState.webPath
 
     // The app follows the session: the sign-in page without one, Wallet with one.
     LaunchedEffect(signedIn) {
         if (!signedIn) appState.showSignIn() else if (appState.onSignIn) appState.showWallet()
     }
-    // The web view keeps its own idea of who's in, for the pages it still shows: it follows.
-    LaunchedEffect(signOuts) {
-        signOuts.collect {
-            val deleted = it == SignOutReason.Deleted
-            appState.web?.signedOut(deleted)
-            if (deleted) appState.showSignIn(deleted = true)
-        }
-    }
-    LaunchedEffect(signIns) { signIns.collect { appState.web?.signedIn() } }
+    // An account deleted in Settings: the sign-in page says so.
+    LaunchedEffect(signOuts) { signOuts.collect { if (it == SignOutReason.Deleted) appState.showSignIn(deleted = true) } }
     // Links into the app (the widgets: <package>://open/<page>).
     LaunchedEffect(links) { links.collect { appState.openPath(it) } }
 
@@ -122,7 +98,6 @@ fun RudWalletApp(
         bottomBar = { if (tab != null) TabBar(tab, reviewCount, appState::navigateToTab) },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
-            WebHost(appState, signedIn, visible = webPath != null, path = webPath, appearance = appearance)
             NavHost(appState.navController, startDestination = WalletRoute) {
                 walletScreen(
                     navigation = object : WalletNavigation {
@@ -185,14 +160,9 @@ fun RudWalletApp(
                     snackbar = snackbar,
                 )
                 recordSheet(onDone = { appState.navController.popBackStack() })
-                // Web pages and the tabs still on the web: the web view underneath shows them (WebHost).
-                composable<WebRoute> { }
             }
         }
     }
-
-    // A sheet or dialog in the web view closes with back before its page does.
-    BackHandler(enabled = webPath != null && appState.webOverlayOpen) { appState.web?.back() }
 }
 
 
@@ -221,34 +191,6 @@ private fun TabBar(current: TopLevelDestination, reviewCount: Int, onSelect: (To
             )
         }
     }
-}
-
-/**
- * The web view, made once and kept: shown for web pages, hidden (and out of
- * reach of touch and TalkBack) on native ones. It lies in the space the
- * app's layout leaves it, clear of the system bars and the keyboard.
- */
-@Composable
-private fun WebHost(appState: RudWalletAppState, signedIn: Boolean, visible: Boolean, path: String?, appearance: String) {
-    // Signed out, the web app may still ask for pages as it leaves them (Wallet, after signing out): the sign-in page stays.
-    val session by rememberUpdatedState(signedIn)
-    AndroidFragment<WebPageFragment>(
-        modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding(),
-        onUpdate = { fragment ->
-            appState.web = fragment
-            fragment.onRequest = { request ->
-                when (request) {
-                    is WebRequest.Go -> if (session) appState.openPath(request.path, request.replace)
-                    is WebRequest.Overlay -> appState.webOverlayOpen = request.open
-                }
-            }
-        },
-    )
-    val web = appState.web
-    LaunchedEffect(web, visible) { web?.view?.isInvisible = !visible }
-    LaunchedEffect(web, path) { if (web != null && path != null) web.show(path) }
-    // Chosen in the app's Settings: the web pages follow. (A new language remakes the activity, and the web view with it.)
-    LaunchedEffect(web, appearance) { web?.setAppearance(appearance) }
 }
 
 /**

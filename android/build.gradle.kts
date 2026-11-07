@@ -13,9 +13,6 @@ plugins {
     alias(libs.plugins.roborazzi) apply false
 }
 
-// Versions Capacitor's own modules read (rootProject.ext).
-apply(from = "variables.gradle")
-
 allprojects {
     repositories {
         google()
@@ -23,7 +20,7 @@ allprojects {
     }
 }
 
-// Android Lint over the native app's own modules (not Capacitor's): ./gradlew lintNative, as CI runs it.
+// Android Lint over every module: ./gradlew lintNative, as CI runs it.
 tasks.register("lintNative") {
     group = "verification"
     description = "Runs Android Lint on app, core:* and feature:*."

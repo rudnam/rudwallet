@@ -20,7 +20,6 @@ import com.rudnam.wallet.feature.signin.navigation.SignInRoute
 import com.rudnam.wallet.feature.insights.navigation.InsightsRoute
 import com.rudnam.wallet.feature.settings.navigation.SettingsRoute
 import com.rudnam.wallet.feature.settings.navigation.SettingsSectionRoute
-import com.rudnam.wallet.navigation.WebRoute
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -32,7 +31,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** How the app moves between native pages and web ones, and which tab shows. */
+/** How the app moves between its pages, and which tab shows. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
 class RudWalletAppStateTest {
@@ -41,7 +40,6 @@ class RudWalletAppStateTest {
 
     private lateinit var state: RudWalletAppState
     private var tab: TopLevelDestination? = null
-    private var webPath: String? = null
 
     @Before
     fun setUp() {
@@ -51,7 +49,6 @@ class RudWalletAppStateTest {
             state = rememberRudWalletAppState(nav)
             NavHost(nav, startDestination = WalletRoute) {
                 composable<WalletRoute> {}
-                composable<WebRoute> {}
                 composable<ActivityRoute> {}
                 composable<AccountRoute> {}
                 composable<InsightsRoute> {}
@@ -63,31 +60,28 @@ class RudWalletAppStateTest {
                 composable<SettingsSectionRoute> {}
             }
             tab = state.currentTab
-            webPath = state.webPath
         }
     }
 
-    private fun currentWebPath(): String? = state.navController.currentBackStackEntry?.let(::webPathOf)
+    private inline fun <reified T : Any> showing() = state.navController.currentBackStackEntry!!.destination.hasRoute<T>()
 
     @Test
-    fun `a web page opens over Wallet, and home goes back to it`() {
+    fun `a page opens over Wallet, and home goes back to it`() {
         compose.runOnIdle { state.openPath("account?id=3") }
         compose.runOnIdle {
-            // Native: the account's own page, without the tabs (it has its own way back).
-            assertNull(webPath)
+            // The account's own page, without the tabs (it has its own way back).
             assertNull(tab)
             assertEquals(3L, state.navController.currentBackStackEntry!!.toRoute<AccountRoute>().id)
             state.openPath("home")
         }
         compose.runOnIdle {
-            assertNull(webPath)
             assertEquals(TopLevelDestination.Wallet, tab)
             assertFalse(state.navController.popBackStack()) // Wallet is the start: back leaves the app
         }
     }
 
     @Test
-    fun `tabs replace each other, and a redirect replaces its page`() {
+    fun `tabs replace each other, and a page the app hasn't got opens Wallet`() {
         compose.runOnIdle { state.navigateToTab(TopLevelDestination.Insights) }
         compose.runOnIdle {
             assertEquals(TopLevelDestination.Insights, tab)
@@ -95,31 +89,22 @@ class RudWalletAppStateTest {
         }
         compose.runOnIdle {
             assertEquals(TopLevelDestination.Settings, tab)
-            assertNull(currentWebPath())
+            // A link from an older build, say.
             state.openPath("connect?client=claude")
         }
-        compose.runOnIdle {
-            assertNull(tab)
-            assertEquals("connect?client=claude", currentWebPath())
-            state.openPath("reset?token=x", replace = true)
-        }
-        compose.runOnIdle { assertTrue(state.navController.popBackStack()) }
-        compose.runOnIdle { assertEquals(TopLevelDestination.Settings, tab) } // the replaced page isn't in between
+        compose.runOnIdle { assertEquals(TopLevelDestination.Wallet, tab) }
     }
 
     @Test
     fun `pages open one after another, each its own`() {
-        compose.runOnIdle { state.openPath("signin") }
         compose.runOnIdle { state.openPath("budgets") }
-        compose.runOnIdle { state.openPath("connect?client=claude") }
+        compose.runOnIdle { state.openPath("settings?section=rules") }
         compose.runOnIdle {
-            assertEquals("connect?client=claude", currentWebPath())
+            assertTrue(showing<SettingsSectionRoute>())
             assertTrue(state.navController.popBackStack())
-            // The budgets are native, without the tabs.
-            assertNull(currentWebPath())
-            assertTrue(state.navController.currentBackStackEntry!!.destination.hasRoute<BudgetsRoute>())
+            assertTrue(showing<BudgetsRoute>())
             assertTrue(state.navController.popBackStack())
-            assertEquals("signin", currentWebPath())
+            assertTrue(showing<WalletRoute>())
         }
     }
 
@@ -127,7 +112,6 @@ class RudWalletAppStateTest {
     fun `insights is native, with its period and account`() {
         compose.runOnIdle { state.navigateToTab(TopLevelDestination.Insights) }
         compose.runOnIdle {
-            assertNull(webPath)
             assertEquals(TopLevelDestination.Insights, tab)
             state.openPath("stats?span=custom&start=2026-10-01&end=2026-10-15&account=3")
         }
@@ -142,7 +126,6 @@ class RudWalletAppStateTest {
     fun `records and review are native, with their filters`() {
         compose.runOnIdle { state.openPath("records?account=3&category=none") }
         compose.runOnIdle {
-            assertNull(webPath)
             assertEquals(TopLevelDestination.Activity, tab)
             val route = state.navController.currentBackStackEntry!!.toRoute<ActivityRoute>()
             assertEquals(3L, route.account)
@@ -170,14 +153,13 @@ class RudWalletAppStateTest {
     }
 
     @Test
-    fun `settings pages that are native open natively, the rest on the web`() {
+    fun `a settings page opens by its section, and an unknown section opens Settings`() {
         compose.runOnIdle { state.openPath("settings?section=accounts") }
         compose.runOnIdle {
-            assertNull(webPath)
             assertEquals(SettingsSectionRoute("accounts"), state.navController.currentBackStackEntry!!.toRoute<SettingsSectionRoute>())
-            state.openPath("connect?client=claude")
+            state.openPath("settings?section=nonsense")
         }
-        compose.runOnIdle { assertEquals("connect?client=claude", currentWebPath()) }
+        compose.runOnIdle { assertEquals(TopLevelDestination.Settings, tab) }
     }
 
     @Test

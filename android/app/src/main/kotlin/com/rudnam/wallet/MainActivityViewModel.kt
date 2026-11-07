@@ -6,6 +6,7 @@ import com.rudnam.wallet.core.data.repository.RecordEvent
 import com.rudnam.wallet.core.data.repository.RecordEvents
 import com.rudnam.wallet.core.data.repository.RecordRepository
 import com.rudnam.wallet.core.data.repository.SaveResult
+import com.rudnam.wallet.core.data.notify.PaymentNotificationSender
 import com.rudnam.wallet.core.data.repository.SessionEvents
 import com.rudnam.wallet.core.data.repository.SignOutReason
 import com.rudnam.wallet.core.data.repository.WalletRepository
@@ -26,6 +27,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.YearMonth
+import com.rudnam.wallet.widget.WidgetUpdater
 import javax.inject.Inject
 
 /** What the app as a whole shows: who's signed in, how it looks, the Activity tab's count, and what happened to records. */
@@ -34,6 +36,8 @@ class MainActivityViewModel @Inject constructor(
     session: SessionStore,
     private val preferences: UserPreferencesRepository,
     sessionEvents: SessionEvents,
+    private val widgets: WidgetUpdater,
+    private val notifications: PaymentNotificationSender,
     private val wallet: WalletRepository,
     recordEvents: RecordEvents,
     private val records: RecordRepository,
@@ -53,8 +57,6 @@ class MainActivityViewModel @Inject constructor(
     /** Sign-outs made in the app's own Settings, for the web view to follow. */
     val signOuts: SharedFlow<SignOutReason> = sessionEvents.signedOut
 
-    /** Signing in on the app's sign-in page, for the web view to follow. */
-    val signIns: SharedFlow<Unit> = sessionEvents.signedIn
 
     /** The wallet's currency, for writing amounts in the snackbar. */
     val settings: StateFlow<WalletSettings?> = wallet.wallet.map { it?.settings }
@@ -66,6 +68,13 @@ class MainActivityViewModel @Inject constructor(
             session.token.map { it != null }.distinctUntilChanged().drop(1).filter { !it }.collect {
                 wallet.forget()
                 preferences.setMe(null)
+            }
+        }
+        // Signed in or out: the widgets show who; payment notifications kept while signed out go now.
+        viewModelScope.launch {
+            session.token.map { it != null }.distinctUntilChanged().drop(1).collect { signedIn ->
+                widgets.refresh()
+                if (signedIn) notifications.schedule()
             }
         }
     }
