@@ -39,4 +39,10 @@
     <string name="feature_wallet_setup_currency">Amounts are in %s.</string>
     <string name="feature_wallet_setup_change_currency">Change currency</string>
     <string name="feature_wallet_setup_import">Import your history</string>
+    <string name="feature_wallet_demo">This is a demo with sample data.</string>
+    <string name="feature_wallet_demo_detail">Change anything you like: nobody else sees it, and it’s deleted within a day.</string>
+    <string name="feature_wallet_demo_create">Create your account</string>
+    <string name="feature_wallet_confirm">Confirm your email: open the link we sent to %s.</string>
+    <string name="feature_wallet_confirm_sent">Sent. Check your inbox at %s.</string>
+    <string name="feature_wallet_confirm_again">Send again</string>
 </resources>

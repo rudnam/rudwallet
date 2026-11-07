@@ -85,3 +85,17 @@ test('an account deleted in the app’s Settings says so on the sign-in page', a
   await nativeEmit(page, 'signedOut', { deleted: true });
   await expect(page.getByText('Your account and everything in it were deleted.')).toBeVisible();
 });
+
+test('signed in on the app’s own sign-in page: this reads the session again', async ({ page }) => {
+  await asAndroidApp(page, { build: 9999, nativeNav: app });
+  await signUp(page);
+  // The session's token, as Capacitor's preferences keep it (the web build keeps them in localStorage).
+  const token = await page.evaluate(() => localStorage.getItem('CapacitorStorage.session'));
+  expect(token).toBeTruthy();
+  await nativeEmit(page, 'signedOut', { deleted: false });
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+  // The app signs in and keeps the new session in the same place, then says so.
+  await page.evaluate((t) => localStorage.setItem('CapacitorStorage.session', t), token);
+  await nativeEmit(page, 'signedIn', {});
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeHidden();
+});

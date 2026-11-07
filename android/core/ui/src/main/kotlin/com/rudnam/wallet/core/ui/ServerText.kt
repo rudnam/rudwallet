@@ -13,7 +13,8 @@ import java.util.Locale
  */
 object ServerText {
     fun translate(message: String, locale: Locale): String {
-        if (locale.language != "ja") return message
+        // The server writes them in lower case, as phrases; the app shows them as sentences.
+        if (locale.language != "ja") return message.replaceFirstChar { it.titlecase(locale) }
         JA[message]?.let { return it }
         for (p in patterns) {
             val m = p.regex.matchEntire(message) ?: continue
@@ -23,7 +24,7 @@ object ServerText {
                 if (name == "msg") translate(value, locale) else value
             }
         }
-        return message
+        return message.replaceFirstChar { it.titlecase(locale) }
     }
 
     private class Pattern(val regex: Regex, val names: List<String>, val translated: String)

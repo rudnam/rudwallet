@@ -13,6 +13,11 @@ import com.rudnam.wallet.core.network.model.NetworkICCardImport
 import com.rudnam.wallet.core.network.model.NetworkImportPreview
 import com.rudnam.wallet.core.network.model.NetworkImportResult
 import com.rudnam.wallet.core.network.model.NetworkMcpToken
+import com.rudnam.wallet.core.network.model.NetworkAppCode
+import com.rudnam.wallet.core.network.model.NetworkAuthOptions
+import com.rudnam.wallet.core.network.model.NetworkCredentials
+import com.rudnam.wallet.core.network.model.NetworkDemo
+import com.rudnam.wallet.core.network.model.NetworkEmail
 import com.rudnam.wallet.core.network.model.NetworkMe
 import com.rudnam.wallet.core.network.model.NetworkName
 import com.rudnam.wallet.core.network.model.NetworkPayeeRuleInput
@@ -122,6 +127,27 @@ internal interface WalletApi {
 
     @GET("api/me")
     suspend fun me(): NetworkMe
+
+    @GET("api/auth/options")
+    suspend fun authOptions(): NetworkAuthOptions
+
+    @POST("api/login")
+    suspend fun login(@Body credentials: NetworkCredentials): NetworkMe
+
+    @POST("api/signup")
+    suspend fun signup(@Body credentials: NetworkCredentials): NetworkMe
+
+    @POST("api/demo")
+    suspend fun startDemo(@Body demo: NetworkDemo): NetworkMe
+
+    @POST("api/password/forgot")
+    suspend fun forgotPassword(@Body email: NetworkEmail): Response<Unit>
+
+    @POST("api/auth/app-token")
+    suspend fun appToken(@Body code: NetworkAppCode): NetworkMe
+
+    @POST("api/verify-email")
+    suspend fun resendConfirmation(): Response<Unit>
 
     @POST("api/logout")
     suspend fun logout(): Response<Unit>
@@ -234,6 +260,20 @@ internal class RetrofitWalletNetwork @Inject constructor(retrofit: Retrofit, pri
     override suspend fun notifications() = call { api.notifications() }
 
     override suspend fun me() = call { api.me() }
+
+    override suspend fun authOptions() = call { api.authOptions() }
+
+    override suspend fun login(email: String, password: String) = call { api.login(NetworkCredentials(email, password)) }
+
+    override suspend fun signup(email: String, password: String) = call { api.signup(NetworkCredentials(email, password)) }
+
+    override suspend fun startDemo(zone: String) = call { api.startDemo(NetworkDemo(zone)) }
+
+    override suspend fun forgotPassword(email: String) = call { api.forgotPassword(NetworkEmail(email)).orThrow() }
+
+    override suspend fun appToken(code: String, verifier: String) = call { api.appToken(NetworkAppCode(code, verifier)) }
+
+    override suspend fun resendConfirmation() = call { api.resendConfirmation().orThrow() }
 
     override suspend fun logout() = call { api.logout().orThrow() }
 

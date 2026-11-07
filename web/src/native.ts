@@ -30,6 +30,7 @@ const nativeNav = registerPlugin<{
   addListener(event: 'show', f: (e: { path: string }) => void): Promise<PluginListenerHandle>;
   addListener(event: 'back', f: () => void): Promise<PluginListenerHandle>;
   addListener(event: 'signedOut', f: (e: { deleted: boolean }) => void): Promise<PluginListenerHandle>;
+  addListener(event: 'signedIn', f: () => void): Promise<PluginListenerHandle>;
   addListener(event: 'appearance', f: (e: { appearance: 'auto' | 'light' | 'dark' }) => void): Promise<PluginListenerHandle>;
 }>('NativeNav');
 
@@ -85,6 +86,11 @@ export function onNativeBack(f: () => void): void {
  */
 export function onNativeSignedOut(f: (deleted: boolean) => void): void {
   if (embedded) nativeNav.addListener('signedOut', (e) => f(e.deleted)).catch(() => {});
+}
+
+/** Signed in on the app's own sign-in page, which kept the new session: this reads it again. */
+export function onNativeSignedIn(f: () => void): void {
+  if (embedded) nativeNav.addListener('signedIn', () => void loadSession().then(f)).catch(() => {});
 }
 
 /** Appearance chosen in the app's own Settings. */

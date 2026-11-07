@@ -32,6 +32,12 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import com.rudnam.wallet.core.ui.serverText
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Button
+import androidx.compose.foundation.background
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -65,6 +71,9 @@ interface WalletNavigation {
     fun openRecord(record: Transaction)
 
     fun addRecord()
+
+    /** Leaving a demo for an account of one's own: the sign-in page opens on creating one. */
+    fun createAccount()
 }
 
 @Composable
@@ -97,6 +106,11 @@ internal fun WalletDestination(
         onDismissSetup = viewModel::dismissSetup,
         onUpdateLater = viewModel::updateLater,
         onReorder = viewModel::reorder,
+        onResend = viewModel::resendConfirmation,
+        onLeaveDemo = {
+            navigation.createAccount()
+            viewModel.leaveDemo()
+        },
     )
 }
 
@@ -109,6 +123,8 @@ internal fun WalletScreen(
     onDismissSetup: () -> Unit,
     onUpdateLater: () -> Unit,
     onReorder: (List<Long>) -> Unit = {},
+    onResend: () -> Unit = {},
+    onLeaveDemo: () -> Unit = {},
     now: Instant = Instant.now(),
 ) {
     val scroll = TopAppBarDefaults.pinnedScrollBehavior()
@@ -149,7 +165,7 @@ internal fun WalletScreen(
             when (state) {
                 WalletUiState.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                 WalletUiState.Unavailable -> Unavailable(onRefresh)
-                is WalletUiState.Ready -> Wallet(state, navigation, onDismissSetup, onUpdateLater, onReorder, now)
+                is WalletUiState.Ready -> Wallet(state, navigation, onDismissSetup, onUpdateLater, onReorder, onResend, onLeaveDemo, now)
             }
         }
     }
@@ -175,6 +191,8 @@ private fun Wallet(
     onDismissSetup: () -> Unit,
     onUpdateLater: () -> Unit,
     onReorder: (List<Long>) -> Unit,
+    onResend: () -> Unit,
+    onLeaveDemo: () -> Unit,
     now: Instant,
 ) {
     val format = rememberMoneyFormat(state.wallet.settings)
@@ -185,6 +203,12 @@ private fun Wallet(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
+        state.me?.takeIf { it.demo }?.let {
+            item(key = "demo", contentType = "notice") { DemoCard(onLeaveDemo) }
+        }
+        state.me?.takeIf { it.confirmEmail && !it.demo }?.let { me ->
+            item(key = "confirm", contentType = "notice") { ConfirmEmailCard(me.email, state.confirmation, onResend) }
+        }
         state.update?.let { update ->
             item(key = "update", contentType = "update") {
                 val uri = LocalUriHandler.current
@@ -275,6 +299,50 @@ private fun UpdateCard(versionName: String, onInstall: () -> Unit, onLater: () -
     }
 }
 
+/** In a demo: what this is, and the way to an account of one's own. */
+@Composable
+private fun DemoCard(onCreateAccount: () -> Unit) {
+    WalletPanel(Modifier.fillMaxWidth()) {
+        Column(Modifier.background(WalletTheme.colors.sunken).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                LineIcon(WalletIcons.spark, contentDescription = null, size = 20.dp)
+                Text(stringResource(R.string.feature_wallet_demo), style = MaterialTheme.typography.titleSmall)
+            }
+            Text(stringResource(R.string.feature_wallet_demo_detail), style = MaterialTheme.typography.bodySmall, color = WalletTheme.colors.muted)
+            Button(
+                onClick = onCreateAccount,
+                colors = ButtonDefaults.buttonColors(containerColor = WalletTheme.colors.action, contentColor = WalletTheme.colors.onAction),
+            ) { Text(stringResource(R.string.feature_wallet_demo_create)) }
+        }
+    }
+}
+
+/** A reminder to open the link we emailed, with a way to send it again. */
+@Composable
+private fun ConfirmEmailCard(email: String, state: Confirmation, onResend: () -> Unit) {
+    WalletPanel(Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            LineIcon(WalletIcons.mail, contentDescription = null, tint = WalletTheme.colors.muted, size = 20.dp)
+            Column(Modifier.weight(1f).padding(horizontal = 12.dp).semantics { liveRegion = LiveRegionMode.Polite }) {
+                Text(
+                    stringResource(if (state == Confirmation.Sent) R.string.feature_wallet_confirm_sent else R.string.feature_wallet_confirm, email),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                (state as? Confirmation.Failed)?.let {
+                    Text(
+                        it.message.ifEmpty { null }?.let { m -> serverText(m) } ?: stringResource(R.string.feature_wallet_offline),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = WalletTheme.colors.danger,
+                    )
+                }
+            }
+            if (state != Confirmation.Sent) {
+                TextButton(onClick = onResend, enabled = state != Confirmation.Sending) { Text(stringResource(R.string.feature_wallet_confirm_again)) }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun SetupCard(setup: SetupChecklist, currency: String, openPage: (String) -> Unit, onHide: () -> Unit) {
@@ -333,6 +401,7 @@ private fun WalletScreenPreview() {
         WalletScreen(
             state = WalletUiState.Unavailable,
             navigation = object : WalletNavigation {
+        override fun createAccount() {}
                 override fun openPage(path: String) {}
                 override fun openRecord(record: Transaction) {}
                 override fun addRecord() {}

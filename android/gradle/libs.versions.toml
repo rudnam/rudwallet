@@ -5,6 +5,7 @@
 # build.gradle) for as long as the app still carries the web view; they move
 # to current once it's gone.
 [versions]
+androidxBrowser = "1.8.0"
 agp = "8.13.0"
 kotlin = "2.2.21"
 ksp = "2.3.4"
@@ -35,6 +36,7 @@ desugarJdkLibs = "2.1.5"
 work = "2.10.5"
 
 [libraries]
+androidx-browser = { module = "androidx.browser:browser", version.ref = "androidxBrowser" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity" }
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
 androidx-coordinatorlayout = { module = "androidx.coordinatorlayout:coordinatorlayout", version.ref = "coordinatorlayout" }

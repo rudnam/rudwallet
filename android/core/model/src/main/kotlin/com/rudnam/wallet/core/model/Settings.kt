@@ -7,7 +7,12 @@ data class Me(
     val hasPassword: Boolean,
     /** A throwaway demo full of sample data, deleted within a day. */
     val demo: Boolean,
+    /** The server emailed a link to confirm the address, and it hasn't been opened yet. */
+    val confirmEmail: Boolean = false,
 )
+
+/** The ways the server offers to sign in, besides email and password. */
+data class AuthOptions(val google: Boolean, val demo: Boolean, val reset: Boolean)
 
 /** A new account, or an account's new details. [initialBalance] is what's owed, negative, for a card. */
 data class AccountInput(

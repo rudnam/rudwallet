@@ -225,3 +225,26 @@ class TestImportRepository : com.rudnam.wallet.core.data.repository.ImportReposi
     override suspend fun importCard(card: com.rudnam.wallet.core.model.IcCardRead, choices: com.rudnam.wallet.core.model.ImportChoices) =
         result.also { imported += com.rudnam.wallet.core.model.ImportSource.IcCard to choices }
 }
+
+/** An [AuthRepository] that answers [result], and keeps what it's asked. */
+class TestAuthRepository : com.rudnam.wallet.core.data.repository.AuthRepository {
+    var options = com.rudnam.wallet.core.model.AuthOptions(google = true, demo = true, reset = true)
+    var result: com.rudnam.wallet.core.data.repository.SignInResult = com.rudnam.wallet.core.data.repository.SignInResult.SignedIn
+    var change: com.rudnam.wallet.core.data.repository.ChangeResult = com.rudnam.wallet.core.data.repository.ChangeResult.Saved
+    val signIns = mutableListOf<Pair<String, String>>()
+    val signUps = mutableListOf<Pair<String, String>>()
+    val resets = mutableListOf<String>()
+    val googleReturns = mutableListOf<com.rudnam.wallet.core.data.repository.GoogleReturn>()
+    var demos = 0
+    var resent = 0
+
+    override suspend fun options() = options
+    override suspend fun signIn(email: String, password: String) = result.also { signIns += email to password }
+    override suspend fun signUp(email: String, password: String) = result.also { signUps += email to password }
+    override suspend fun startDemo() = result.also { demos++ }
+    override suspend fun forgotPassword(email: String) = change.also { resets += email }
+    override fun googleSignInUrl() = "https://wallet.example.com/api/auth/google?app_challenge=x"
+    override suspend fun finishGoogle(back: com.rudnam.wallet.core.data.repository.GoogleReturn) =
+        (if (back.code == null) com.rudnam.wallet.core.data.repository.SignInResult.GoogleFailed(back.error ?: "failed") else result).also { googleReturns += back }
+    override suspend fun resendConfirmation() = change.also { resent++ }
+}

@@ -10,6 +10,7 @@ import com.rudnam.wallet.core.testing.TestAccountRepository
 import com.rudnam.wallet.core.testing.TestUpdateRepository
 import com.rudnam.wallet.core.testing.TestUserPreferences
 import com.rudnam.wallet.core.testing.TestWalletRepository
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -25,9 +26,10 @@ class WalletViewModelTest {
     private val wallet = TestWalletRepository()
     private val updates = TestUpdateRepository()
     private val preferences = TestUserPreferences()
+    private val users = com.rudnam.wallet.core.testing.TestUserRepository()
     private val clock = Clock.fixed(SampleWallet.now, SampleWallet.zone)
 
-    private fun viewModel() = WalletViewModel(wallet, updates, preferences.repository, TestAccountRepository(), clock)
+    private fun viewModel() = WalletViewModel(wallet, updates, preferences.repository, TestAccountRepository(), users, com.rudnam.wallet.core.testing.TestAuthRepository(), clock)
 
     @Test
     fun `shows what's on the phone, this month's latest five, and refreshes once`() = runTest {
@@ -100,4 +102,28 @@ class WalletViewModelTest {
     }
 
     private suspend fun ReceiveTurbine<WalletUiState>.awaitReady(): WalletUiState.Ready = awaitSettled() as WalletUiState.Ready
+
+    @Test
+    fun `a demo says so and has no checklist, and leaving it signs out`() = runTest {
+        wallet.send(SampleWallet.wallet, SampleWallet.budgets, SampleWallet.records)
+        val demo = com.rudnam.wallet.core.testing.TestUserRepository(com.rudnam.wallet.core.model.Me("demo-1@demo.invalid", hasPassword = false, demo = true))
+        val vm = WalletViewModel(wallet, updates, preferences.repository, TestAccountRepository(), demo, com.rudnam.wallet.core.testing.TestAuthRepository(), clock)
+        val ready = vm.uiState.first { (it as? WalletUiState.Ready)?.me != null } as WalletUiState.Ready
+        assertEquals(true, ready.me!!.demo)
+        assertEquals(null, ready.setup)
+        vm.leaveDemo()
+        assertEquals(true, demo.signedOut)
+    }
+
+    @Test
+    fun `an address to confirm can have its link sent again`() = runTest {
+        wallet.send(SampleWallet.wallet, SampleWallet.budgets, SampleWallet.records)
+        val auth = com.rudnam.wallet.core.testing.TestAuthRepository()
+        val unconfirmed = com.rudnam.wallet.core.testing.TestUserRepository(com.rudnam.wallet.core.model.Me("new@example.com", hasPassword = true, demo = false, confirmEmail = true))
+        val vm = WalletViewModel(wallet, updates, preferences.repository, TestAccountRepository(), unconfirmed, auth, clock)
+        vm.uiState.first { (it as? WalletUiState.Ready)?.me?.confirmEmail == true }
+        vm.resendConfirmation()
+        assertEquals(Confirmation.Sent, (vm.uiState.first { (it as? WalletUiState.Ready)?.confirmation == Confirmation.Sent } as WalletUiState.Ready).confirmation)
+        assertEquals(1, auth.resent)
+    }
 }

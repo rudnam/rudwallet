@@ -14,8 +14,8 @@ class ServerTextTest {
         assertEquals("パスワードは8〜72文字にしてください", ServerText.translate("password must be 8 to 72 characters", ja))
         // {msg} is translated in turn.
         assertEquals("4行目: パスワードが違います", ServerText.translate("line 4: the password is incorrect", ja))
-        assertEquals("something new", ServerText.translate("something new", ja))
-        assertEquals("the password is incorrect", ServerText.translate("the password is incorrect", Locale.ENGLISH))
+        assertEquals("Something new", ServerText.translate("something new", ja))
+        assertEquals("The password is incorrect", ServerText.translate("the password is incorrect", Locale.ENGLISH))
     }
 
     /** The table is the website's (web/src/locales/ja.ts, jaServer): a message added there is added here. */

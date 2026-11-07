@@ -56,6 +56,7 @@ import com.rudnam.wallet.feature.imports.navigation.CardRoute
 import com.rudnam.wallet.feature.imports.navigation.ImportReviewRoute
 import com.rudnam.wallet.feature.imports.navigation.importsScreens
 import com.rudnam.wallet.feature.insights.InsightsNavigation
+import com.rudnam.wallet.feature.signin.navigation.signInScreen
 import com.rudnam.wallet.feature.insights.navigation.BudgetsRoute
 import com.rudnam.wallet.feature.insights.navigation.insightsScreen
 import com.rudnam.wallet.feature.settings.SettingsNavigation
@@ -90,6 +91,7 @@ fun RudWalletApp(
     onUndo: suspend (RecordEvent) -> SaveResult,
     appearance: String = "auto",
     signOuts: Flow<SignOutReason> = emptyFlow(),
+    signIns: Flow<Unit> = emptyFlow(),
     appState: RudWalletAppState = rememberRudWalletAppState(),
 ) {
     val snackbar = remember { SnackbarHostState() }
@@ -97,12 +99,19 @@ fun RudWalletApp(
     val tab = appState.currentTab
     val webPath = appState.webPath
 
-    // Signing in happens in the web view for now; the app follows the session.
+    // The app follows the session: the sign-in page without one, Wallet with one.
     LaunchedEffect(signedIn) {
         if (!signedIn) appState.showSignIn() else if (appState.onSignIn) appState.showWallet()
     }
-    // Signing out in the app's Settings: the web view, which keeps its own idea of who's in, follows.
-    LaunchedEffect(signOuts) { signOuts.collect { appState.web?.signedOut(deleted = it == SignOutReason.Deleted) } }
+    // The web view keeps its own idea of who's in, for the pages it still shows: it follows.
+    LaunchedEffect(signOuts) {
+        signOuts.collect {
+            val deleted = it == SignOutReason.Deleted
+            appState.web?.signedOut(deleted)
+            if (deleted) appState.showSignIn(deleted = true)
+        }
+    }
+    LaunchedEffect(signIns) { signIns.collect { appState.web?.signedIn() } }
     // Links into the app (the widgets: <package>://open/<page>).
     LaunchedEffect(links) { links.collect { appState.openPath(it) } }
 
@@ -120,6 +129,9 @@ fun RudWalletApp(
                         override fun openPage(path: String) = appState.openPath(path)
                         override fun openRecord(record: Transaction) = appState.navController.navigate(RecordRoute(record.id))
                         override fun addRecord() = appState.navController.navigate(RecordRoute())
+                        override fun createAccount() {
+                            appState.signUpNext = true
+                        }
                     },
                     snackbar = snackbar,
                 )
@@ -140,6 +152,7 @@ fun RudWalletApp(
                     },
                     snackbar = snackbar,
                 )
+                signInScreen()
                 insightsScreen(
                     navigation = object : InsightsNavigation {
                         override fun openBudgets() = appState.navController.navigate(BudgetsRoute)

@@ -10,6 +10,7 @@ import com.rudnam.wallet.core.network.model.NetworkICCardImport
 import com.rudnam.wallet.core.network.model.NetworkImportPreview
 import com.rudnam.wallet.core.network.model.NetworkImportResult
 import com.rudnam.wallet.core.network.model.NetworkMcpToken
+import com.rudnam.wallet.core.network.model.NetworkAuthOptions
 import com.rudnam.wallet.core.network.model.NetworkMe
 import com.rudnam.wallet.core.network.model.NetworkRules
 import com.rudnam.wallet.core.network.model.NetworkSettingsInput
@@ -94,6 +95,26 @@ interface WalletNetworkDataSource {
 
     /** Who is signed in. */
     suspend fun me(): NetworkMe
+
+    /** The ways this server offers to sign in. Needs no session. */
+    suspend fun authOptions(): NetworkAuthOptions
+
+    /** Signs in; the answer has the session's token. A wrong password is an [ApiException] (401). */
+    suspend fun login(email: String, password: String): NetworkMe
+
+    suspend fun signup(email: String, password: String): NetworkMe
+
+    /** A new demo account full of sample data, dated in the IANA time zone [zone]. */
+    suspend fun startDemo(zone: String): NetworkMe
+
+    /** Emails a link to choose a new password, if an account uses [email]; answers the same either way. */
+    suspend fun forgotPassword(email: String)
+
+    /** Trades Google sign-in's one-time code, and the secret its challenge was made from, for a session. */
+    suspend fun appToken(code: String, verifier: String): NetworkMe
+
+    /** Emails the link to confirm the address again. */
+    suspend fun resendConfirmation()
 
     /** Ends the session on the server. */
     suspend fun logout()

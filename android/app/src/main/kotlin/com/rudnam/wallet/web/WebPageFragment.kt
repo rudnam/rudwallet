@@ -61,6 +61,9 @@ class WebPageFragment : Fragment(com.getcapacitor.android.R.layout.capacitor_bri
     /** Signed out in the app's Settings (or the account deleted): the web app forgets the session too. */
     fun signedOut(deleted: Boolean) = emit("signedOut", JSObject().put("deleted", deleted))
 
+    /** Signed in on the app's sign-in page: the web app reads the session again. */
+    fun signedIn() = emit("signedIn", JSObject())
+
     /** Appearance chosen in the app's Settings: auto, light or dark. */
     fun setAppearance(appearance: String) = emit("appearance", JSObject().put("appearance", appearance))
 

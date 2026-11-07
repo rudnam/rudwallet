@@ -20,9 +20,11 @@ internal class AuthInterceptor(
             .header("X-Wallet-Client", "android")
             .header("Accept", "application/json")
             .header("Accept-Language", language().toLanguageTags().ifEmpty { "en" })
-        session.currentToken()?.let { request.header("Authorization", "Bearer $it") }
+        val token = session.currentToken()
+        token?.let { request.header("Authorization", "Bearer $it") }
         val response = chain.proceed(request.build())
-        if (response.code == 401 && !chain.request().url.encodedPath.endsWith("/api/downloads")) {
+        // Only a request made with a session can find it ended: signing in with a wrong password is a 401 too.
+        if (response.code == 401 && token != null && !chain.request().url.encodedPath.endsWith("/api/downloads")) {
             response.close()
             session.clear()
             throw SignedOutException()

@@ -38,4 +38,10 @@
     <string name="feature_wallet_setup_currency">金額の単位は%sです。</string>
     <string name="feature_wallet_setup_change_currency">通貨を変更</string>
     <string name="feature_wallet_setup_import">履歴を取り込む</string>
+    <string name="feature_wallet_demo">サンプルデータのデモです。</string>
+    <string name="feature_wallet_demo_detail">自由に変更できます。ほかの人には見えず、1日以内に削除されます。</string>
+    <string name="feature_wallet_demo_create">アカウントを作成</string>
+    <string name="feature_wallet_confirm">メールアドレスの確認: %s にお送りしたリンクを開いてください。</string>
+    <string name="feature_wallet_confirm_sent">送信しました。%s の受信箱をご確認ください。</string>
+    <string name="feature_wallet_confirm_again">再送する</string>
 </resources>

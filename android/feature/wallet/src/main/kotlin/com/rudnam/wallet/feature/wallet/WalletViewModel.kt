@@ -3,11 +3,15 @@ package com.rudnam.wallet.feature.wallet
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rudnam.wallet.core.data.repository.AccountRepository
+import com.rudnam.wallet.core.data.repository.AuthRepository
+import com.rudnam.wallet.core.data.repository.ChangeResult
+import com.rudnam.wallet.core.data.repository.UserRepository
 import com.rudnam.wallet.core.data.repository.SyncResult
 import com.rudnam.wallet.core.data.repository.UpdateRepository
 import com.rudnam.wallet.core.data.repository.WalletRepository
 import com.rudnam.wallet.core.datastore.UserPreferencesRepository
 import com.rudnam.wallet.core.model.AppUpdate
+import com.rudnam.wallet.core.model.Me
 import com.rudnam.wallet.core.model.spent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -30,6 +34,8 @@ class WalletViewModel @Inject constructor(
     private val updates: UpdateRepository,
     private val preferences: UserPreferencesRepository,
     private val accounts: AccountRepository,
+    private val users: UserRepository,
+    private val auth: AuthRepository,
     private val clock: Clock,
 ) : ViewModel() {
     private val month: YearMonth = YearMonth.now(clock)
@@ -46,9 +52,22 @@ class WalletViewModel @Inject constructor(
 
     private data class SyncState(val refreshing: Boolean = false, val last: SyncResult? = null)
 
-    private val extras = combine(sync, update, notificationsSent, preferences.preferences) { s, u, n, p -> Extras(s, u, n, p.setupDismissed) }
+    private val confirmation = MutableStateFlow<Confirmation>(Confirmation.Idle)
 
-    private data class Extras(val sync: SyncState, val update: AppUpdate?, val notificationsSent: Boolean?, val setupDismissed: Boolean)
+    private val account = combine(users.me, confirmation, ::Pair)
+
+    private val extras = combine(sync, update, notificationsSent, preferences.preferences, account) { s, u, n, p, a ->
+        Extras(s, u, n, p.setupDismissed, a.first, a.second)
+    }
+
+    private data class Extras(
+        val sync: SyncState,
+        val update: AppUpdate?,
+        val notificationsSent: Boolean?,
+        val setupDismissed: Boolean,
+        val me: Me?,
+        val confirmation: Confirmation,
+    )
 
     val uiState: StateFlow<WalletUiState> = combine(
         wallet.wallet,
@@ -64,9 +83,12 @@ class WalletViewModel @Inject constructor(
                 spent = records.spent(),
                 headline = monthHeadline(records, budgets, month, LocalDate.now(clock)),
                 latest = records.take(5),
-                setup = setup(w.accounts.size, records.isNotEmpty(), budgets.isNotEmpty(), x.notificationsSent, x.setupDismissed),
+                // A demo is set up already: no checklist.
+                setup = if (x.me?.demo == true) null else setup(w.accounts.size, records.isNotEmpty(), budgets.isNotEmpty(), x.notificationsSent, x.setupDismissed),
                 update = x.update,
                 refreshing = x.sync.refreshing,
+                me = x.me,
+                confirmation = x.confirmation,
             )
             x.sync.last == null || x.sync.refreshing -> WalletUiState.Loading
             else -> WalletUiState.Unavailable
@@ -78,6 +100,26 @@ class WalletViewModel @Inject constructor(
     init {
         refresh(userAsked = false)
         viewModelScope.launch { update.value = updates.check() }
+        // Whether the address is confirmed yet, and whether this is a demo.
+        viewModelScope.launch { users.refreshMe() }
+    }
+
+    /** Emails the link to confirm the address again. */
+    fun resendConfirmation() {
+        if (confirmation.value == Confirmation.Sending) return
+        confirmation.value = Confirmation.Sending
+        viewModelScope.launch {
+            confirmation.value = when (val r = auth.resendConfirmation()) {
+                ChangeResult.Saved -> Confirmation.Sent
+                is ChangeResult.Refused -> Confirmation.Failed(r.message)
+                else -> Confirmation.Failed("")
+            }
+        }
+    }
+
+    /** From a demo to an account of one's own: signing out deletes the demo. */
+    fun leaveDemo() {
+        viewModelScope.launch { users.signOut() }
     }
 
     private var resumedBefore = false

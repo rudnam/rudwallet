@@ -14,7 +14,7 @@ import { AccountPage } from './features/account/AccountPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 import { prefetchStats, StatsPage } from './features/stats/StatsPage';
 import { addMonths, monthStart } from './money';
-import { appDrawn, embedded, nativeConfig, nativeSetAppearance, nativeSetLanguage, onAppLinks, onNativeAppearance, onNativeSignedOut } from './native';
+import { appDrawn, embedded, nativeConfig, nativeSetAppearance, nativeSetLanguage, onAppLinks, onNativeAppearance, onNativeSignedIn, onNativeSignedOut } from './native';
 import { appearance, setAppearance } from './appearance';
 import { pickedLanguage, setLanguage } from './language';
 import { initialNotice, signinErrors, type Notice } from './notice';
@@ -76,6 +76,12 @@ export function App() {
       void api.forgetSession().then(() => signedOut(deleted ? { message: t('Your account and everything in it were deleted.'), ok: true } : undefined));
     });
     onNativeAppearance((a) => setAppearance(a, true));
+    onNativeSignedIn(() => {
+      api.me().then(
+        (me) => setSession({ status: 'signed-in', me }),
+        () => {},
+      );
+    });
   }, []);
 
   // In the Android app: Google sign-in coming back from the browser, and

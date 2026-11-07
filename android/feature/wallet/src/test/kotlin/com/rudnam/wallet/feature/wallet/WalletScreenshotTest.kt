@@ -36,6 +36,7 @@ class WalletScreenshotTest {
     fun tokyo() = TimeZone.setDefault(TimeZone.getTimeZone(SampleWallet.zone))
 
     private val navigation = object : WalletNavigation {
+        override fun createAccount() {}
         override fun openPage(path: String) {}
         override fun openRecord(record: Transaction) {}
         override fun addRecord() {}

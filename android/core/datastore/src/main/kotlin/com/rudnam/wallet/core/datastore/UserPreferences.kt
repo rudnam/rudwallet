@@ -67,7 +67,7 @@ class UserPreferencesRepository @Inject constructor(
 
     /** Who was signed in when the server last said, so Settings can show it offline; null once they sign out. */
     val me: Flow<Me?> = dataStore.data.map { p ->
-        p[ME_EMAIL]?.let { Me(it, hasPassword = p[ME_PASSWORD] ?: true, demo = p[ME_DEMO] ?: false) }
+        p[ME_EMAIL]?.let { Me(it, hasPassword = p[ME_PASSWORD] ?: true, demo = p[ME_DEMO] ?: false, confirmEmail = p[ME_CONFIRM] ?: false) }
     }
 
     suspend fun setMe(me: Me?) {
@@ -76,10 +76,12 @@ class UserPreferencesRepository @Inject constructor(
                 it.remove(ME_EMAIL)
                 it.remove(ME_PASSWORD)
                 it.remove(ME_DEMO)
+                it.remove(ME_CONFIRM)
             } else {
                 it[ME_EMAIL] = me.email
                 it[ME_PASSWORD] = me.hasPassword
                 it[ME_DEMO] = me.demo
+                it[ME_CONFIRM] = me.confirmEmail
             }
         }
     }
@@ -89,6 +91,7 @@ class UserPreferencesRepository @Inject constructor(
         val ME_EMAIL = stringPreferencesKey("me_email")
         val ME_PASSWORD = booleanPreferencesKey("me_has_password")
         val ME_DEMO = booleanPreferencesKey("me_demo")
+        val ME_CONFIRM = booleanPreferencesKey("me_confirm_email")
         val APPEARANCE = stringPreferencesKey("appearance")
         val SETUP_DISMISSED = booleanPreferencesKey("setup_dismissed")
         val UPDATE_LATER = intPreferencesKey("update_later")

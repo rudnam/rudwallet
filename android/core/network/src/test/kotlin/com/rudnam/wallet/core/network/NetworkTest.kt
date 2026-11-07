@@ -53,7 +53,10 @@ class NetworkTest {
     private class FakeSession(token: String?) : SessionStore {
         override val token = MutableStateFlow(token)
         override fun currentToken() = token.value
+        override fun save(token: String) { this.token.value = token }
         override fun clear() { token.value = null }
+        override fun keepGoogleVerifier(verifier: String) = Unit
+        override fun takeGoogleVerifier(): String? = null
     }
 
     private fun client(session: SessionStore) = OkHttpClient.Builder()
@@ -78,5 +81,12 @@ class NetworkTest {
             client(session).newCall(Request.Builder().url(server.url("/api/wallet")).build()).execute()
         }
         assertNull(session.currentToken())
+    }
+
+    @Test
+    fun `signing in with a wrong password is a refusal, not a session ending`() {
+        val session = FakeSession(null)
+        server.enqueue(MockResponse().setResponseCode(401).setBody("""{"error":"email or password is incorrect"}"""))
+        client(session).newCall(Request.Builder().url(server.url("/api/login")).build()).execute().use { assertEquals(401, it.code) }
     }
 }

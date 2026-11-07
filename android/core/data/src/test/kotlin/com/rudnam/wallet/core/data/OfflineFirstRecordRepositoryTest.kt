@@ -75,6 +75,13 @@ class OfflineFirstRecordRepositoryTest {
         override suspend fun reconcile(accountId: Long, balance: Long) = com.rudnam.wallet.core.network.model.NetworkReconcileResult()
         override suspend fun setAccountOrder(ids: List<Long>) = Unit
         override suspend fun tags() = listOf(NetworkTag("trip", 3))
+        override suspend fun authOptions() = com.rudnam.wallet.core.network.model.NetworkAuthOptions()
+        override suspend fun login(email: String, password: String) = com.rudnam.wallet.core.network.model.NetworkMe(email, token = "t")
+        override suspend fun signup(email: String, password: String) = com.rudnam.wallet.core.network.model.NetworkMe(email, token = "t")
+        override suspend fun startDemo(zone: String) = com.rudnam.wallet.core.network.model.NetworkMe("demo@example.com", demo = true, token = "t")
+        override suspend fun forgotPassword(email: String) = Unit
+        override suspend fun appToken(code: String, verifier: String) = com.rudnam.wallet.core.network.model.NetworkMe("g@example.com", token = "t")
+        override suspend fun resendConfirmation() = Unit
         override suspend fun previewImport(source: String, csv: String, tzOffset: Int) = com.rudnam.wallet.core.network.model.NetworkImportPreview()
         override suspend fun import(source: String, body: com.rudnam.wallet.core.network.model.NetworkFileImport, tzOffset: Int) = com.rudnam.wallet.core.network.model.NetworkImportResult()
         override suspend fun previewICCard(body: com.rudnam.wallet.core.network.model.NetworkICCardImport) = com.rudnam.wallet.core.network.model.NetworkImportPreview()

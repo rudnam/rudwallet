@@ -150,7 +150,26 @@ data class NetworkMe(
     val email: String,
     @SerialName("has_password") val hasPassword: Boolean = true,
     val demo: Boolean = false,
+    @SerialName("confirm_email") val confirmEmail: Boolean = false,
+    /** A new session's token: in the answer to signing in (the app's X-Wallet-Client asks for it). */
+    val token: String? = null,
 )
+
+/** The ways the server offers to sign in. */
+@Serializable
+data class NetworkAuthOptions(val google: Boolean = false, val demo: Boolean = false, val reset: Boolean = false)
+
+@Serializable
+data class NetworkCredentials(val email: String, val password: String)
+
+@Serializable
+data class NetworkEmail(val email: String)
+
+@Serializable
+data class NetworkDemo(val tz: String)
+
+@Serializable
+data class NetworkAppCode(val code: String, val verifier: String)
 
 /** What deleting the account is confirmed with: the password, or for a Google-only account, the email. */
 @Serializable
@@ -306,7 +325,7 @@ fun NetworkBudget.asModel() = Budget(id, name, categoryId, amount)
 
 fun BudgetInput.asNetwork() = NetworkBudgetInput(name, categoryId, amount)
 
-fun NetworkMe.asModel() = Me(email, hasPassword, demo)
+fun NetworkMe.asModel() = Me(email, hasPassword, demo, confirmEmail)
 
 fun NetworkRules.asModel() = Rules(
     payees = payees.map { PayeeRule(it.key, it.payee.ifEmpty { it.key }, it.categoryId, it.records) },

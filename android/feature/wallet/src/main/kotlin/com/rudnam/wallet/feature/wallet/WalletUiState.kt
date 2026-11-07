@@ -3,6 +3,7 @@ package com.rudnam.wallet.feature.wallet
 import com.rudnam.wallet.core.model.Account
 import com.rudnam.wallet.core.model.AppUpdate
 import com.rudnam.wallet.core.model.Budget
+import com.rudnam.wallet.core.model.Me
 import com.rudnam.wallet.core.model.Transaction
 import com.rudnam.wallet.core.model.Wallet
 import com.rudnam.wallet.core.model.spent
@@ -28,7 +29,20 @@ sealed interface WalletUiState {
         val setup: SetupChecklist?,
         val update: AppUpdate?,
         val refreshing: Boolean,
+        /** Who's signed in: a demo, or an address still to confirm, says so. */
+        val me: Me? = null,
+        val confirmation: Confirmation = Confirmation.Idle,
     ) : WalletUiState
+}
+
+/** Sending the link to confirm the address again. */
+sealed interface Confirmation {
+    data object Idle : Confirmation
+    data object Sending : Confirmation
+    data object Sent : Confirmation
+
+    /** The server's reason, or empty for offline. */
+    data class Failed(val message: String) : Confirmation
 }
 
 /** The line under this month's spending: what the month means today. */

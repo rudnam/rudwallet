@@ -16,6 +16,7 @@ import com.rudnam.wallet.feature.activity.navigation.ActivityRoute
 import com.rudnam.wallet.feature.imports.navigation.CardRoute
 import com.rudnam.wallet.feature.imports.navigation.ImportRoute
 import com.rudnam.wallet.feature.insights.navigation.BudgetsRoute
+import com.rudnam.wallet.feature.signin.navigation.SignInRoute
 import com.rudnam.wallet.feature.insights.navigation.InsightsRoute
 import com.rudnam.wallet.feature.settings.navigation.SettingsRoute
 import com.rudnam.wallet.feature.settings.navigation.SettingsSectionRoute
@@ -57,6 +58,7 @@ class RudWalletAppStateTest {
                 composable<BudgetsRoute> {}
                 composable<ImportRoute> {}
                 composable<CardRoute> {}
+                composable<SignInRoute> {}
                 composable<SettingsRoute> {}
                 composable<SettingsSectionRoute> {}
             }
@@ -153,9 +155,15 @@ class RudWalletAppStateTest {
     @Test
     fun `signing out leaves only the sign-in page`() {
         compose.runOnIdle { state.openPath("records") }
-        compose.runOnIdle { state.showSignIn() }
+        compose.runOnIdle {
+            state.signUpNext = true
+            state.showSignIn()
+        }
         compose.runOnIdle {
             assertTrue(state.onSignIn)
+            // Leaving a demo: the page opens on creating an account, once.
+            assertEquals("sign-up", state.navController.currentBackStackEntry!!.toRoute<SignInRoute>().mode)
+            assertFalse(state.signUpNext)
             assertNull(tab)
             assertFalse(state.navController.popBackStack())
         }

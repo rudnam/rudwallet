@@ -53,6 +53,9 @@ class MainActivityViewModel @Inject constructor(
     /** Sign-outs made in the app's own Settings, for the web view to follow. */
     val signOuts: SharedFlow<SignOutReason> = sessionEvents.signedOut
 
+    /** Signing in on the app's sign-in page, for the web view to follow. */
+    val signIns: SharedFlow<Unit> = sessionEvents.signedIn
+
     /** The wallet's currency, for writing amounts in the snackbar. */
     val settings: StateFlow<WalletSettings?> = wallet.wallet.map { it?.settings }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)

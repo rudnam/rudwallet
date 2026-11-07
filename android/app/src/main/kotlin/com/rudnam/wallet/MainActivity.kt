@@ -10,6 +10,8 @@ import com.rudnam.wallet.core.data.ic.IcCardException
 import com.rudnam.wallet.core.data.ic.IcCardReader
 import com.rudnam.wallet.core.data.ic.IcCardTap
 import com.rudnam.wallet.core.data.ic.IcCards
+import com.rudnam.wallet.core.data.repository.GoogleReturn
+import com.rudnam.wallet.core.data.repository.GoogleReturns
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -29,23 +31,23 @@ import androidx.activity.compose.setContent
 import com.rudnam.wallet.core.datastore.Appearance
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
 import com.rudnam.wallet.ui.RudWalletApp
-import com.rudnam.wallet.web.WebPageFragment
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 
 /**
  * The app's one activity. It draws edge to edge, keeps the splash screen
- * until there's something to show, and routes what opens the app: pages
- * from the widgets and transit IC cards tapped to the phone to the app's
- * navigation, and Google sign-in coming back to the web view, which still
- * handles that.
+ * until the session is known, and routes what opens the app: pages from
+ * the widgets and transit IC cards tapped to the phone to the app's
+ * navigation, and Google sign-in coming back to the sign-in page.
  */
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
     private val viewModel: MainActivityViewModel by viewModels()
 
     @Inject lateinit var icCards: IcCards
+
+    @Inject lateinit var googleReturns: GoogleReturns
 
     /** Pages asked for by links (the widgets), for the app's navigation. */
     private val links = Channel<String>(Channel.BUFFERED)
@@ -56,11 +58,7 @@ class MainActivity : AppCompatActivity() {
         val start = SystemClock.uptimeMillis()
         // Until the session is known; signed out, until the sign-in page has drawn. Never more than 3 s.
         splash.setKeepOnScreenCondition {
-            val waiting = when (val s = viewModel.uiState.value) {
-                MainUiState.Loading -> true
-                is MainUiState.Ready -> !s.signedIn && !SplashPlugin.drawn
-            }
-            waiting && SystemClock.uptimeMillis() - start < 3_000
+            viewModel.uiState.value == MainUiState.Loading && SystemClock.uptimeMillis() - start < 3_000
         }
         enableEdgeToEdge()
         if (savedInstanceState == null) route(intent)
@@ -91,6 +89,7 @@ class MainActivity : AppCompatActivity() {
                     onUndo = viewModel::undo,
                     appearance = ready.appearance.key,
                     signOuts = viewModel.signOuts,
+                    signIns = viewModel.signIns,
                 )
             }
         }
@@ -132,8 +131,10 @@ class MainActivity : AppCompatActivity() {
             }
             return
         }
-        if (data?.scheme == packageName) {
-            supportFragmentManager.fragments.filterIsInstance<WebPageFragment>().firstOrNull()?.onNewIntent(intent)
+        // Google sign-in coming back from the browser: the sign-in page finishes it.
+        if (data?.scheme == packageName && data.host == "auth") {
+            googleReturns.send(GoogleReturn(data.getQueryParameter("code"), data.getQueryParameter("signin_error")))
+            intent.data = null // handled: not again if the activity is remade
         }
     }
 }
