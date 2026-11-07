@@ -1,15 +1,13 @@
 # Versions of everything the Android build uses, in one place.
 #
-# AGP and Kotlin stay on the versions Capacitor's own Gradle modules are
-# built for (AGP 8.13, see web/node_modules/@capacitor/android/capacitor/
-# build.gradle) for as long as the app still carries the web view; they move
-# to current once it's gone.
+# AGP 9 compiles Kotlin itself (built-in Kotlin), with the Kotlin Gradle
+# plugin of the version below; there's no org.jetbrains.kotlin.android plugin.
 [versions]
 androidxBrowser = "1.8.0"
-agp = "8.13.0"
-kotlin = "2.2.21"
-ksp = "2.3.4"
-hilt = "2.57.2"
+agp = "9.5.1"
+kotlin = "2.4.21"
+ksp = "2.3.13"
+hilt = "2.60.1"
 androidxHilt = "1.3.0"
 composeBom = "2025.12.01"
 activity = "1.11.0"
@@ -19,7 +17,7 @@ coreSplashscreen = "1.2.0"
 fragment = "1.8.9"
 lifecycle = "2.9.4"
 navigation = "2.9.8"
-room = "2.8.4"
+room = "2.8.5"
 datastore = "1.1.7"
 kotlinxCoroutines = "1.10.2"
 kotlinxSerialization = "1.9.0"
@@ -96,7 +94,6 @@ roborazzi-gradlePlugin = { module = "io.github.takahirom.roborazzi:roborazzi-gra
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
