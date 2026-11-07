@@ -16,28 +16,23 @@ val Project.libs: VersionCatalog
     get() = extensions.getByType<VersionCatalogsExtension>().named("libs")
 
 /** What every Android module shares: SDK levels and Java 21. */
-internal fun Project.configureKotlinAndroid(android: CommonExtension<*, *, *, *, *, *>) {
-    android.apply {
-        compileSdk = 36
-        defaultConfig {
-            minSdk = 24
-        }
-        compileOptions {
-            sourceCompatibility = JavaVersion.VERSION_21
-            targetCompatibility = JavaVersion.VERSION_21
-            // java.time and friends on Android 7 (minSdk 24).
-            isCoreLibraryDesugaringEnabled = true
-        }
-        lint {
-            abortOnError = true
-            // Versions are pinned on purpose (gradle/libs.versions.toml says why); updating them is a change of its own.
-            disable += setOf("GradleDependency", "NewerVersionAvailable", "AndroidGradlePluginVersion")
-        }
-        testOptions {
-            // Robolectric draws screens and reads resources on the JVM.
-            unitTests.isIncludeAndroidResources = true
-        }
+internal fun Project.configureKotlinAndroid(android: CommonExtension) {
+    // AGP 9's CommonExtension has properties, not configuration blocks.
+    android.compileSdk = 36
+    android.defaultConfig.minSdk = 24
+    android.compileOptions.apply {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+        // java.time and friends on Android 7 (minSdk 24).
+        isCoreLibraryDesugaringEnabled = true
     }
+    android.lint.apply {
+        abortOnError = true
+        // Versions are pinned on purpose (gradle/libs.versions.toml says why); updating them is a change of its own.
+        disable += setOf("GradleDependency", "NewerVersionAvailable", "AndroidGradlePluginVersion")
+    }
+    // Robolectric draws screens and reads resources on the JVM.
+    android.testOptions.unitTests.isIncludeAndroidResources = true
     dependencies.add("coreLibraryDesugaring", libs.findLibrary("android-desugarJdkLibs").get())
     extensions.configure<KotlinAndroidProjectExtension> {
         compilerOptions {

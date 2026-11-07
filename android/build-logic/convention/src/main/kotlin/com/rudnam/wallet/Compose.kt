@@ -5,7 +5,7 @@ import org.gradle.api.Project
 import org.gradle.kotlin.dsl.dependencies
 
 /** Compose, from the BOM, with previews in debug builds and Robolectric screenshot tests. */
-internal fun Project.configureCompose(android: CommonExtension<*, *, *, *, *, *>) {
+internal fun Project.configureCompose(android: CommonExtension) {
     android.buildFeatures.compose = true
     pluginManager.apply("io.github.takahirom.roborazzi")
     dependencies {
