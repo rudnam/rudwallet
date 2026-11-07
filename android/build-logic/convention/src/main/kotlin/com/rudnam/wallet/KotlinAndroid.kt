@@ -5,8 +5,10 @@ import org.gradle.api.JavaVersion
 import org.gradle.api.Project
 import org.gradle.api.artifacts.VersionCatalog
 import org.gradle.api.artifacts.VersionCatalogsExtension
+import org.gradle.api.tasks.testing.Test
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.getByType
+import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
@@ -33,6 +35,11 @@ internal fun Project.configureKotlinAndroid(android: CommonExtension) {
     }
     // Robolectric draws screens and reads resources on the JVM.
     android.testOptions.unitTests.isIncludeAndroidResources = true
+    // Gradle 9 fails a test task that finds no tests. Hilt's generated test sources make a
+    // module with no tests of its own look like it has some, so only those modules skip the check.
+    if (!file("src/test").exists()) {
+        tasks.withType<Test>().configureEach { failOnNoDiscoveredTests.set(false) }
+    }
     dependencies.add("coreLibraryDesugaring", libs.findLibrary("android-desugarJdkLibs").get())
     extensions.configure<KotlinAndroidProjectExtension> {
         compilerOptions {
