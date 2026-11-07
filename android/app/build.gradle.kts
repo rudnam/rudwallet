@@ -37,9 +37,8 @@ android {
     }
 
     buildTypes {
-        // A debug build installs beside the real app, as "RudWallet Preview" (src/debug), so a
-        // pull request's build (CI publishes it, android/README.md) can be tried without
-        // uninstalling anything. It talks to the same server.
+        // A debug build installs beside the real app, as "RudWallet Preview" (src/debug), so it
+        // can be tried without uninstalling anything. It talks to the same server.
         debug {
             applicationIdSuffix = ".preview"
         }
@@ -50,7 +49,19 @@ android {
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
+        // What CI publishes for a pull request (android/README.md): the release build, so it runs
+        // as fast as the real app (a debuggable Compose app is several times slower), installed
+        // beside it as "RudWallet Preview" like a debug build, and signed with the debug key.
+        create("preview") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".preview"
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += "release"
+        }
     }
+
+    // The preview's name and the rest of src/debug's resources.
+    sourceSets.getByName("preview").res.srcDir("src/debug/res")
 
     buildFeatures {
         compose = true

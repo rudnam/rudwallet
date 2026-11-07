@@ -61,6 +61,10 @@ import com.rudnam.wallet.feature.wallet.WalletNavigation
 import com.rudnam.wallet.feature.wallet.navigation.WalletRoute
 import com.rudnam.wallet.feature.wallet.navigation.walletScreen
 import com.rudnam.wallet.navigation.TopLevelDestination
+import com.rudnam.wallet.navigation.enter
+import com.rudnam.wallet.navigation.exit
+import com.rudnam.wallet.navigation.popEnter
+import com.rudnam.wallet.navigation.popExit
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import java.time.YearMonth
@@ -98,7 +102,14 @@ fun RudWalletApp(
         bottomBar = { if (tab != null) TabBar(tab, reviewCount, appState::navigateToTab) },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
-            NavHost(appState.navController, startDestination = WalletRoute) {
+            NavHost(
+                appState.navController,
+                startDestination = WalletRoute,
+                enterTransition = { enter() },
+                exitTransition = { exit() },
+                popEnterTransition = { popEnter() },
+                popExitTransition = { popExit() },
+            ) {
                 walletScreen(
                     navigation = object : WalletNavigation {
                         override fun openPage(path: String) = appState.openPath(path)

@@ -20,9 +20,9 @@ You need a JDK 21, the Android SDK (`JAVA_HOME` and `ANDROID_HOME`, or the paths
 
 It builds both and signs them with `android.keystore`, reading the passwords from `signing-key.txt`.
 
-CI builds a debug APK on every push and pull request (the `android` job in `.github/workflows/ci.yml`, kept for a week as the `android-debug-apk` artifact), so a change that breaks the native code fails there. It needs no signing key.
+CI builds the preview APK on every push and pull request (the `android` job in `.github/workflows/ci.yml`, kept for a week as the `android-preview-apk` artifact), so a change that breaks the native code, or R8's shrinking of it, fails there. It needs no signing key.
 
-A debug build is **RudWallet Preview** (`com.rudnam.wallet.preview`, `app/src/debug`): it installs beside the real app and talks to the same server. On a pull request, CI also publishes it as a pre-release, `android-pr-<number>`, and comments the download link, which opens on a phone (GitHub Mobile can't download artifacts). The repository is private, so the link needs the phone's browser signed in to GitHub; signed out, GitHub answers 404. It's rebuilt on every push, and deleted when the pull request closes (`android-preview-cleanup.yml`). Google sign-in returns to the real app (the server names its package), so sign in to the preview with email and password.
+The `preview` build type is **RudWallet Preview** (`com.rudnam.wallet.preview`, named in `app/src/debug`): the release build, with R8 and not debuggable, signed with the debug key. It installs beside the real app and talks to the same server. It's a release build because a debuggable Compose app runs several times slower and isn't a fair picture of the app; a debug build (`installDebug`) is also named RudWallet Preview, for Android Studio. On a pull request, CI also publishes the preview as a pre-release, `android-pr-<number>`, and comments the download link, which opens on a phone (GitHub Mobile can't download artifacts). The repository is private, so the link needs the phone's browser signed in to GitHub; signed out, GitHub answers 404. It's rebuilt on every push, and deleted when the pull request closes (`android-preview-cleanup.yml`). Google sign-in returns to the real app (the server names its package), so sign in to the preview with email and password.
 
 The version is chosen for you: `version.sh` gives one above the `versionCode` the site offers (`app/build.gradle.kts` holds only the floor), and the name is its `versionName` plus it, e.g. `2.1.5`. Set `WALLET_VERSION_CODE` or `WALLET_VERSION_NAME` to choose your own. For a Play Store release, upload `wallet.aab` in the Play Console. Versions 1 and 2 were the earlier Trusted Web Activity app, which this replaces under the same package and key, so it installs as an update.
 
@@ -54,7 +54,7 @@ The app tells people when a newer APK is out. When it starts, and when it comes 
 
 Builds from before this (`versionCode` 3 and older) don't check, and were signed with the old key, so those phones need to uninstall once and install the new build by hand.
 
-While working on the app, open `android/` in Android Studio, or `cd android && ./gradlew installDebug`. A debug build needs no signing key.
+While working on the app, open `android/` in Android Studio, or `cd android && ./gradlew installDebug`. A debug build needs no signing key. To judge how fast something is, install the preview build instead (`./gradlew installPreview`): debug builds are much slower.
 
 ## Native app
 
