@@ -35,6 +35,7 @@ import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Currency
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -96,10 +97,25 @@ class WidgetUpdater @Inject constructor(@ApplicationContext private val context:
 
     companion object {
         fun refresh(context: Context) {
-            val request = OneTimeWorkRequestBuilder<WidgetsWorker>().build()
-            WorkManager.getInstance(context).enqueueUniqueWork("widgets", ExistingWorkPolicy.REPLACE, request)
+            val work = WorkManager.getInstance(context)
+            // WorkManager turns a receiver of its own off when no work is left, and on again when
+            // work comes; each switch is a PACKAGE_CHANGED, on which the launcher reloads the
+            // widgets (drawing their layouts bare) and asks them to update, which enqueued work
+            // again: a loop, redrawing the widgets every second. Work that's always pending (as
+            // Glance does) keeps the receiver on, so there's no switch.
+            work.enqueueUniqueWork(
+                "widgets-keep-alive",
+                ExistingWorkPolicy.KEEP,
+                OneTimeWorkRequestBuilder<KeepAliveWorker>().setInitialDelay(3650, TimeUnit.DAYS).build(),
+            )
+            work.enqueueUniqueWork("widgets", ExistingWorkPolicy.REPLACE, OneTimeWorkRequestBuilder<WidgetsWorker>().build())
         }
     }
+}
+
+/** Never runs (see [WidgetUpdater.refresh]); if ten years pass, it does nothing. */
+class KeepAliveWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+    override suspend fun doWork() = Result.success()
 }
 
 /** Draws the widgets into their layouts (res/layout/widget_*.xml). */
