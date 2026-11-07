@@ -1,6 +1,8 @@
 # verify: on pull requests and pushes to main, ./verify.sh, with the browser
 #   tests' screenshots kept as the e2e-results artifact.
-# (Android releases: android-release.yml, run by hand.)
+# android: builds the Android app and runs its tests and lint.
+# (Android releases: android-release.yml, after a merged pull request labelled
+#   android-release, or by hand.)
 # deploy: on pushes to main, build the image, push it to ECR and run it on
 #   the AWS instance (rudnam/rudnam-infra). Also on demand from main: Actions
 #   → CI → Run workflow with a commit SHA redeploys that commit (a rollback);
@@ -127,6 +129,9 @@ jobs:
       ((github.event_name == 'push' && needs.verify.result == 'success') ||
        github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
+    # A build takes a few minutes; this stops a stuck SSM command from holding
+    # the deploy slot for GitHub's six-hour default.
+    timeout-minutes: 20
     # One deploy at a time; a newer one waits rather than cancelling one
     # that's halfway through.
     concurrency:
@@ -211,3 +216,17 @@ jobs:
             --query 'CommandInvocations[0].CommandPlugins[0].Output' --output text | tail -20
           echo "status: $status"
           [ "$status" = Success ]
+
+      # The instance reporting success isn't the app serving: check through
+      # CloudFront that /healthz answers with this commit (the image's
+      # VERSION). The query string keeps any cache out of it.
+      - name: Check the live app
+        run: |
+          for i in $(seq 30); do
+            got=$(curl -fsS --max-time 5 "https://wallet.rudnam.com/healthz?deploy=$SHA" \
+              | sed -n 's/.*"version":"\([^"]*\)".*/\1/p') || true
+            [ "$got" = "$SHA" ] && { echo "Live: $SHA"; exit 0; }
+            sleep 5
+          done
+          echo "::error::wallet.rudnam.com/healthz reports '${got:-no answer}', not $SHA"
+          exit 1
