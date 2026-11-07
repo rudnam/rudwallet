@@ -117,7 +117,17 @@ class InsightsViewModel @Inject constructor(
 
     private data class Reload(val count: Int, val userAsked: Boolean)
 
-    private val loaded: Flow<Loaded> = combine(selection, reloads, ::Pair).flatMapLatest { (sel, reload) -> load(sel, reload.userAsked) }
+    /** The last pull to refresh answered ([Reload.count]). */
+    private var answeredPull = 0
+
+    // A pull shows the spinner once. The last Reload stays in [reloads], and loading runs again
+    // with it when the period changes and when the page comes back (WhileSubscribed): those
+    // aren't the user asking, so they load quietly.
+    private val loaded: Flow<Loaded> = combine(selection, reloads, ::Pair).flatMapLatest { (sel, reload) ->
+        val asked = reload.userAsked && reload.count != answeredPull
+        if (asked) answeredPull = reload.count
+        load(sel, asked)
+    }
 
     val uiState: StateFlow<InsightsUiState> = combine(wallet.wallet, wallet.budgets, loaded) { w, budgets, l ->
         if (w == null) InsightsUiState.Loading else ready(w, budgets, l)
