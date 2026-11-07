@@ -6,6 +6,8 @@ import com.rudnam.wallet.core.data.repository.RecordEvent
 import com.rudnam.wallet.core.data.repository.RecordEvents
 import com.rudnam.wallet.core.data.repository.RecordHabits
 import com.rudnam.wallet.core.data.repository.SaveResult
+import com.rudnam.wallet.core.model.Category
+import com.rudnam.wallet.core.model.CategoryKind
 import com.rudnam.wallet.core.model.TransactionKind
 import com.rudnam.wallet.core.testing.MainDispatcherRule
 import com.rudnam.wallet.core.testing.SampleWallet
@@ -17,6 +19,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -60,6 +63,23 @@ class RecordViewModelTest {
         records.refreshed = RecordHabits(emptyMap(), mapOf(other to 50), emptyList())
         val vm = viewModel()
         assertEquals(13L, vm.ready().categories.first().id)
+    }
+
+    @Test
+    fun `with many categories, all of them open with a search that narrows them`() = runTest {
+        val many = SampleWallet.wallet.categories + (1..14).map { Category(100L + it, "Extra $it", CategoryKind.Expense, "other", "#7a7f7c") } +
+            Category(200, "Pets", CategoryKind.Expense, "pet", "#8a6d3b")
+        wallet.send(SampleWallet.wallet.copy(categories = many), SampleWallet.budgets, SampleWallet.records)
+        val vm = viewModel()
+        assertEquals(FEW_CATEGORIES, vm.ready().categories.size)
+        assertFalse(vm.ready().canSearchCategories)
+        vm.showAllCategories(true)
+        assertTrue(vm.ready().canSearchCategories)
+        vm.searchCategories("pet")
+        assertEquals(listOf("Pets"), vm.ready().categories.map { it.name })
+        vm.showAllCategories(false)
+        assertEquals("", vm.ready().categoryQuery)
+        assertEquals(FEW_CATEGORIES, vm.ready().categories.size)
     }
 
     @Test

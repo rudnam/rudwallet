@@ -90,12 +90,18 @@ object WalletIcons {
         "savings" to "M9 3.5h6M7 6.5h10l1 3V19a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9.5zM10 13.5h4",
         "kids" to "M12 4a3 3 0 1 0 0 6 3 3 0 1 0 0-6M6 21v-3a6 6 0 0 1 12 0v3",
         "pet" to "M5 14.5a7 5 0 0 0 14 0c0-2.5-3-5-7-5s-7 2.5-7 5zM6 8h.01M10 5h.01M14 5h.01M18 8h.01",
+        "clothes" to "M9 3.5L4 6l-1.5 4.5 3 1.2v8.8h13v-8.8l3-1.2L20 6l-5-2.5a3 3 0 0 1-6 0z",
+        "clean" to "M8.5 9h6l1.5 3v8.5H7V12zM10 9V5.5h4.5M14.5 5.5L17 4M18 7h2.5M17.5 9.5l1.8 1.2",
+        "repeat" to "M4 11V9.5A3.5 3.5 0 0 1 7.5 6H19M16 3l3 3-3 3M20 13v1.5a3.5 3.5 0 0 1-3.5 3.5H5M8 21l-3-3 3-3",
+        "shield" to "M12 3l7.5 3v5.5c0 4.6-3.2 8.2-7.5 9.5-4.3-1.3-7.5-4.9-7.5-9.5V6z",
+        "tag" to "M3.5 12.5V4h8.5l8.5 8.5-8.5 8.5zM8 8.5h.01",
+        "laptop" to "M5 5.5h14v10H5zM2.5 18.5h19",
     )
 
     /** Categories made before line icons stored an emoji; each maps to its closest glyph. */
     private val fromEmoji: Map<String, String> = mapOf(
         "🍜" to "food", "🍔" to "food", "🍽" to "food", "🍱" to "food", "🍣" to "food", "🍕" to "food",
-        "🛒" to "grocery", "🛍" to "shopping", "👕" to "shopping",
+        "🛒" to "grocery", "🛍" to "shopping", "👕" to "clothes", "👗" to "clothes",
         "🚆" to "transit", "🚃" to "transit", "🚌" to "transit", "🚇" to "transit", "🚕" to "car", "🚗" to "car", "⛽" to "car",
         "🏠" to "home", "🏡" to "home", "💡" to "bills", "🧾" to "bills", "💊" to "health", "🏥" to "health", "❤" to "health",
         "🎬" to "fun", "🎮" to "fun", "🎵" to "fun", "✈" to "travel", "🧳" to "travel", "📦" to "other",

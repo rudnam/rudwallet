@@ -636,8 +636,8 @@ func TestImportPayPayCategories(t *testing.T) {
 	if g := groups["JR東日本"]; g.CategoryID == nil || *g.CategoryID != categoryID(t, o, "Transport") {
 		t.Errorf("JR is suggested Transport: %+v", g)
 	}
-	if g := groups["ANTHROPIC* CLAUDE SUB"]; g.CategoryID != nil || g.NewName != "" {
-		t.Errorf("an unknown shop gets no suggestion: %+v", g)
+	if g := groups["ANTHROPIC* CLAUDE SUB"]; g.CategoryID == nil || *g.CategoryID != categoryID(t, o, "Subscriptions") {
+		t.Errorf("a subscription is suggested Subscriptions: %+v", g)
 	}
 	if g := groups["PayPay"]; g.Kind != "income" || g.CategoryID == nil || *g.CategoryID != rewards {
 		t.Errorf("points earned are suggested Rewards & Cashback: %+v", g)
@@ -648,7 +648,7 @@ func TestImportPayPayCategories(t *testing.T) {
 		"csv": csv,
 		"categories": []wallet.CategoryChoice{
 			{Name: "ローソン 渋谷店", Kind: "expense", CategoryID: groceries},
-			{Name: "ANTHROPIC* CLAUDE SUB", Kind: "expense", NewName: "Subscriptions"},
+			{Name: "ANTHROPIC* CLAUDE SUB", Kind: "expense", NewName: "AI tools"},
 			{Name: "JR東日本", Kind: "expense"},
 			{Name: "PayPay", Kind: "income", CategoryID: rewards},
 		},

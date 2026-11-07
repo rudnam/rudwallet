@@ -33,6 +33,9 @@ import javax.inject.Inject
 
 /** How many categories show before More, and how many recent payees are offered. */
 internal const val FEW_CATEGORIES = 7
+
+/** With more categories than this, all of them open with a search field. */
+internal const val SEARCH_CATEGORIES = 12
 internal const val FEW_PAYEES = 4
 
 /** Why the sheet can't do what was asked; each has words of its own. */
@@ -53,6 +56,9 @@ sealed interface RecordUiState {
         val categories: List<Category>,
         val canFoldCategories: Boolean,
         val showAllCategories: Boolean,
+        /** Shown above all the categories when there are many; [categories] are those matching [categoryQuery]. */
+        val canSearchCategories: Boolean = false,
+        val categoryQuery: String = "",
         /** Recent payees, offered while a new record has none yet. */
         val recentPayees: List<String>,
         /** Payees matching what's typed, for the field's suggestions. */
@@ -91,6 +97,7 @@ class RecordViewModel @Inject constructor(
         // categories open in their order and stay there.
         val habits: RecordHabits? = null,
         val showAllCategories: Boolean = false,
+        val categoryQuery: String = "",
         val showExtras: Boolean = false,
         val busy: Boolean = false,
         val problem: RecordProblem? = null,
@@ -152,7 +159,10 @@ class RecordViewModel @Inject constructor(
             .sortedByDescending { habits.categoryUse[it.id] ?: 0 }
         val folding = ofKind.size > FEW_CATEGORIES + 1
         val chosenHidden = ofKind.indexOfFirst { it.id == form.categoryId } >= FEW_CATEGORIES
+        val searching = folding && s.showAllCategories && ofKind.size > SEARCH_CATEGORIES
+        val query = if (searching) s.categoryQuery.trim() else ""
         val shown = when {
+            query.isNotEmpty() -> ofKind.filter { it.name.contains(query, ignoreCase = true) }
             !folding || s.showAllCategories -> ofKind
             // A chosen category from further down takes the last place, so More stays where it is.
             else -> ofKind.filterIndexed { i, c -> i < FEW_CATEGORIES - (if (chosenHidden) 1 else 0) || c.id == form.categoryId }
@@ -165,6 +175,8 @@ class RecordViewModel @Inject constructor(
             categories = shown,
             canFoldCategories = folding,
             showAllCategories = s.showAllCategories,
+            canSearchCategories = searching,
+            categoryQuery = if (searching) s.categoryQuery else "",
             recentPayees = if (s.record == null && typed.isEmpty()) habits.payees.keys.take(FEW_PAYEES) else emptyList(),
             payeeSuggestions = if (typed.isEmpty()) emptyList() else habits.payees.keys.filter { it.contains(typed, ignoreCase = true) && it != typed }.take(5),
             tagSuggestions = habits.tags.filter { t -> form.tags.none { it.equals(t, ignoreCase = true) } },
@@ -194,7 +206,9 @@ class RecordViewModel @Inject constructor(
     /** Choosing the chosen category again clears it. */
     fun chooseCategory(id: Long) = edit { it.copy(categoryId = if (it.categoryId == id) null else id) }
 
-    fun showAllCategories(show: Boolean) = sheet.update { it.copy(showAllCategories = show) }
+    fun showAllCategories(show: Boolean) = sheet.update { it.copy(showAllCategories = show, categoryQuery = "") }
+
+    fun searchCategories(query: String) = sheet.update { it.copy(categoryQuery = query) }
 
     /** A payee typed or picked; one paid before brings what was chosen there last (on a new record). */
     fun setPayee(payee: String) {

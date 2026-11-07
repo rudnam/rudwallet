@@ -29,6 +29,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -106,6 +107,7 @@ internal fun RecordSheetDestination(onDone: () -> Unit, viewModel: RecordViewMod
             override fun press(key: PadKey) { haptics.key(); viewModel.press(key) }
             override fun category(id: Long) { haptics.select(); viewModel.chooseCategory(id) }
             override fun allCategories(show: Boolean) = viewModel.showAllCategories(show)
+            override fun searchCategories(query: String) = viewModel.searchCategories(query)
             override fun payee(payee: String) = viewModel.setPayee(payee)
             override fun account(id: Long) { haptics.select(); viewModel.setAccount(id) }
             override fun toAccount(id: Long) { haptics.select(); viewModel.setToAccount(id) }
@@ -131,6 +133,7 @@ internal interface RecordActions {
     fun press(key: PadKey)
     fun category(id: Long)
     fun allCategories(show: Boolean)
+    fun searchCategories(query: String)
     fun payee(payee: String)
     fun account(id: Long)
     fun toAccount(id: Long)
@@ -304,6 +307,32 @@ private fun CategoryGrid(state: RecordUiState.Ready, actions: RecordActions) {
     val label = stringResource(R.string.feature_record_category)
     val tiles: List<Category?> = state.categories + if (state.canFoldCategories) listOf(null) else emptyList()
     Column(Modifier.semantics { contentDescription = label }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (state.canSearchCategories) {
+            OutlinedTextField(
+                value = state.categoryQuery,
+                onValueChange = actions::searchCategories,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                placeholder = { Text(stringResource(R.string.feature_record_find_category)) },
+                leadingIcon = { LineIcon(WalletIcons.search, contentDescription = null, tint = WalletTheme.colors.muted, size = 18.dp) },
+                trailingIcon = {
+                    if (state.categoryQuery.isNotEmpty()) {
+                        IconButton(onClick = { actions.searchCategories("") }) {
+                            LineIcon(WalletIcons.close, contentDescription = stringResource(R.string.feature_record_clear), size = 18.dp)
+                        }
+                    }
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            )
+            if (state.categories.isEmpty()) {
+                Text(
+                    stringResource(R.string.feature_record_no_category_match),
+                    Modifier.padding(vertical = 8.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = WalletTheme.colors.muted,
+                )
+            }
+        }
         for (row in tiles.chunked(4)) {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 for (c in row) {
