@@ -5,6 +5,10 @@ import com.rudnam.wallet.core.network.model.NetworkBudget
 import com.rudnam.wallet.core.network.model.NetworkCategory
 import com.rudnam.wallet.core.network.model.NetworkCategoryInput
 import com.rudnam.wallet.core.network.model.NetworkDeleteMe
+import com.rudnam.wallet.core.network.model.NetworkFileImport
+import com.rudnam.wallet.core.network.model.NetworkICCardImport
+import com.rudnam.wallet.core.network.model.NetworkImportPreview
+import com.rudnam.wallet.core.network.model.NetworkImportResult
 import com.rudnam.wallet.core.network.model.NetworkMcpToken
 import com.rudnam.wallet.core.network.model.NetworkMe
 import com.rudnam.wallet.core.network.model.NetworkRules
@@ -134,6 +138,20 @@ interface WalletNetworkDataSource {
     suspend fun createMcpToken(name: String): NetworkMcpToken
 
     suspend fun deleteMcpToken(id: Long)
+
+    /**
+     * What an import file holds, and where each part is suggested to go
+     * ([source]: paypay, mufg or budgetbakers). [tzOffset]: the phone's
+     * offset from UTC in minutes, west positive (BudgetBakers' times have none).
+     */
+    suspend fun previewImport(source: String, csv: String, tzOffset: Int): NetworkImportPreview
+
+    suspend fun import(source: String, body: NetworkFileImport, tzOffset: Int): NetworkImportResult
+
+    /** How a transit IC card's entries would be recorded ([body] without choices), or recording them. */
+    suspend fun previewICCard(body: NetworkICCardImport): NetworkImportPreview
+
+    suspend fun importICCard(body: NetworkICCardImport): NetworkImportResult
 }
 
 /** The server ended the session (401), or nobody is signed in. */

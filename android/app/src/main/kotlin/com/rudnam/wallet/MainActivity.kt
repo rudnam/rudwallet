@@ -3,6 +3,17 @@ package com.rudnam.wallet
 import android.content.Intent
 import android.graphics.Color
 import android.nfc.NfcAdapter
+import android.nfc.Tag
+import androidx.core.content.IntentCompat
+import androidx.lifecycle.lifecycleScope
+import com.rudnam.wallet.core.data.ic.IcCardException
+import com.rudnam.wallet.core.data.ic.IcCardReader
+import com.rudnam.wallet.core.data.ic.IcCardTap
+import com.rudnam.wallet.core.data.ic.IcCards
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import javax.inject.Inject
 import android.os.Bundle
 import android.os.SystemClock
 import androidx.activity.SystemBarStyle
@@ -25,13 +36,16 @@ import kotlinx.coroutines.flow.receiveAsFlow
 
 /**
  * The app's one activity. It draws edge to edge, keeps the splash screen
- * until there's something to show, and routes links into the app: pages
- * from the widgets to the app's navigation, and Google sign-in coming back
- * and transit IC cards to the web view, which still handles those.
+ * until there's something to show, and routes what opens the app: pages
+ * from the widgets and transit IC cards tapped to the phone to the app's
+ * navigation, and Google sign-in coming back to the web view, which still
+ * handles that.
  */
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
     private val viewModel: MainActivityViewModel by viewModels()
+
+    @Inject lateinit var icCards: IcCards
 
     /** Pages asked for by links (the widgets), for the app's navigation. */
     private val links = Channel<String>(Channel.BUFFERED)
@@ -89,9 +103,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * <package>://open/<page> (the widgets) opens that page; the web view
-     * handles <package>://auth (Google sign-in) and transit IC cards
-     * itself. At launch it reads them from the activity's own intent.
+     * <package>://open/<page> (the widgets) opens that page; a transit IC
+     * card tapped to the phone is read at once, while it's still there, and
+     * opens the card page; the web view handles <package>://auth (Google
+     * sign-in) itself. At launch it reads them from the activity's own intent.
      */
     private fun route(intent: Intent) {
         val data = intent.data
@@ -99,7 +114,25 @@ class MainActivity : AppCompatActivity() {
             links.trySend(data.path.orEmpty().trimStart('/') + (data.query?.let { "?$it" } ?: ""))
             return
         }
-        if (data?.scheme == packageName || intent.action == NfcAdapter.ACTION_TECH_DISCOVERED) {
+        if (intent.action == NfcAdapter.ACTION_TECH_DISCOVERED) {
+            val tag = IntentCompat.getParcelableExtra(intent, NfcAdapter.EXTRA_TAG, Tag::class.java)
+            intent.action = Intent.ACTION_MAIN // handled: not again if the activity is remade
+            if (tag != null) {
+                lifecycleScope.launch {
+                    val tap = withContext(Dispatchers.IO) {
+                        try {
+                            IcCardTap.Read(IcCardReader.read(tag))
+                        } catch (e: IcCardException) {
+                            IcCardTap.Failed(e.problem)
+                        }
+                    }
+                    icCards.tap(tap)
+                    links.trySend("card")
+                }
+            }
+            return
+        }
+        if (data?.scheme == packageName) {
             supportFragmentManager.fragments.filterIsInstance<WebPageFragment>().firstOrNull()?.onNewIntent(intent)
         }
     }

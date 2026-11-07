@@ -73,6 +73,7 @@ dependencies {
     implementation(project(":feature:account"))
     implementation(project(":feature:insights"))
     implementation(project(":feature:settings"))
+    implementation(project(":feature:imports"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.material3)

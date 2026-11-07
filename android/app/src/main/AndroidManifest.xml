@@ -34,7 +34,7 @@
             </intent-filter>
 
             <!-- A transit IC card tapped to the phone offers RudWallet, which
-                 opens on the IC card import with the card read (ICCardPlugin, in the web view). -->
+                 opens the card page with the card read (MainActivity, IcCardReader). -->
             <intent-filter>
                 <action android:name="android.nfc.action.TECH_DISCOVERED" />
             </intent-filter>
@@ -130,7 +130,7 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Reading transit IC cards (ICCardPlugin). Not required: phones
+    <!-- Reading transit IC cards (IcCardReader, in core/data). Not required: phones
          without NFC can still install the app. -->
     <uses-permission android:name="android.permission.NFC" />
     <uses-feature android:name="android.hardware.nfc" android:required="false" />

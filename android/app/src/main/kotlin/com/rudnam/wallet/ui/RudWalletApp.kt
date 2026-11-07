@@ -50,6 +50,11 @@ import com.rudnam.wallet.feature.account.navigation.accountScreen
 import com.rudnam.wallet.feature.activity.ActivityNavigation
 import com.rudnam.wallet.feature.activity.navigation.ActivityRoute
 import com.rudnam.wallet.feature.activity.navigation.activityScreen
+import com.rudnam.wallet.core.model.ImportSource
+import com.rudnam.wallet.feature.imports.ImportsNavigation
+import com.rudnam.wallet.feature.imports.navigation.CardRoute
+import com.rudnam.wallet.feature.imports.navigation.ImportReviewRoute
+import com.rudnam.wallet.feature.imports.navigation.importsScreens
 import com.rudnam.wallet.feature.insights.InsightsNavigation
 import com.rudnam.wallet.feature.insights.navigation.BudgetsRoute
 import com.rudnam.wallet.feature.insights.navigation.insightsScreen
@@ -152,6 +157,17 @@ fun RudWalletApp(
                         override fun back() {
                             appState.navController.popBackStack()
                         }
+                    },
+                    snackbar = snackbar,
+                )
+                importsScreens(
+                    navigation = object : ImportsNavigation {
+                        override fun back() {
+                            appState.navController.popBackStack()
+                        }
+                        override fun review(source: ImportSource, uri: String?) = appState.navController.navigate(ImportReviewRoute(source.key, uri))
+                        override fun card() = appState.navController.navigate(CardRoute)
+                        override fun open(path: String) = appState.openPath(path)
                     },
                     snackbar = snackbar,
                 )

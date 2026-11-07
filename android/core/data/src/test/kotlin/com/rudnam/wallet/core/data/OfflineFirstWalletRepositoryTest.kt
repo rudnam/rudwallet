@@ -94,6 +94,10 @@ class OfflineFirstWalletRepositoryTest {
         override suspend fun reconcile(accountId: Long, balance: Long) = com.rudnam.wallet.core.network.model.NetworkReconcileResult()
         override suspend fun setAccountOrder(ids: List<Long>) = Unit
         override suspend fun tags() = emptyList<com.rudnam.wallet.core.network.model.NetworkTag>()
+        override suspend fun previewImport(source: String, csv: String, tzOffset: Int) = com.rudnam.wallet.core.network.model.NetworkImportPreview()
+        override suspend fun import(source: String, body: com.rudnam.wallet.core.network.model.NetworkFileImport, tzOffset: Int) = com.rudnam.wallet.core.network.model.NetworkImportResult()
+        override suspend fun previewICCard(body: com.rudnam.wallet.core.network.model.NetworkICCardImport) = com.rudnam.wallet.core.network.model.NetworkImportPreview()
+        override suspend fun importICCard(body: com.rudnam.wallet.core.network.model.NetworkICCardImport) = com.rudnam.wallet.core.network.model.NetworkImportResult()
         val payees = mutableListOf(com.rudnam.wallet.core.network.model.NetworkPayeeRule("doutor", "Doutor", 10, 3))
         val cards = mutableListOf(com.rudnam.wallet.core.network.model.NetworkCardRule("PayPay Card", 1, 2))
         val tokens = mutableListOf<com.rudnam.wallet.core.network.model.NetworkMcpToken>()

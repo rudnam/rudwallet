@@ -8,6 +8,10 @@ import com.rudnam.wallet.core.network.model.NetworkCategory
 import com.rudnam.wallet.core.network.model.NetworkCategoryInput
 import com.rudnam.wallet.core.network.model.NetworkDeleteMe
 import com.rudnam.wallet.core.network.model.NetworkCardRuleInput
+import com.rudnam.wallet.core.network.model.NetworkFileImport
+import com.rudnam.wallet.core.network.model.NetworkICCardImport
+import com.rudnam.wallet.core.network.model.NetworkImportPreview
+import com.rudnam.wallet.core.network.model.NetworkImportResult
 import com.rudnam.wallet.core.network.model.NetworkMcpToken
 import com.rudnam.wallet.core.network.model.NetworkMe
 import com.rudnam.wallet.core.network.model.NetworkName
@@ -29,6 +33,9 @@ import com.rudnam.wallet.core.network.model.NetworkTag
 import com.rudnam.wallet.core.network.model.NetworkTransaction
 import com.rudnam.wallet.core.network.model.NetworkWallet
 import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.HttpException
 import retrofit2.Response
 import retrofit2.Retrofit
@@ -169,6 +176,18 @@ internal interface WalletApi {
 
     @DELETE("api/mcp/tokens/{id}")
     suspend fun deleteMcpToken(@Path("id") id: Long): Response<Unit>
+
+    @POST("api/import/{source}?preview=1")
+    suspend fun previewImport(@Path("source") source: String, @Body csv: RequestBody, @Query("tz_offset") tzOffset: Int): NetworkImportPreview
+
+    @POST("api/import/{source}")
+    suspend fun import(@Path("source") source: String, @Body body: NetworkFileImport, @Query("tz_offset") tzOffset: Int): NetworkImportResult
+
+    @POST("api/import/ic-card?preview=1")
+    suspend fun previewICCard(@Body body: NetworkICCardImport): NetworkImportPreview
+
+    @POST("api/import/ic-card")
+    suspend fun importICCard(@Body body: NetworkICCardImport): NetworkImportResult
 }
 
 @Singleton
@@ -251,6 +270,15 @@ internal class RetrofitWalletNetwork @Inject constructor(retrofit: Retrofit, pri
     override suspend fun createMcpToken(name: String) = call { api.createMcpToken(NetworkName(name)) }
 
     override suspend fun deleteMcpToken(id: Long) = call { api.deleteMcpToken(id).orThrow() }
+
+    override suspend fun previewImport(source: String, csv: String, tzOffset: Int) =
+        call { api.previewImport(source, csv.toRequestBody("text/csv; charset=utf-8".toMediaType()), tzOffset) }
+
+    override suspend fun import(source: String, body: NetworkFileImport, tzOffset: Int) = call { api.import(source, body, tzOffset) }
+
+    override suspend fun previewICCard(body: NetworkICCardImport) = call { api.previewICCard(body) }
+
+    override suspend fun importICCard(body: NetworkICCardImport) = call { api.importICCard(body) }
 
     override suspend fun downloads() = call { api.downloads() }
 

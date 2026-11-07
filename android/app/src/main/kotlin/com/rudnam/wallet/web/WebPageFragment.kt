@@ -12,7 +12,6 @@ import com.getcapacitor.JSObject
 import com.getcapacitor.Plugin
 import com.getcapacitor.PluginManager
 import com.rudnam.wallet.HapticsPlugin
-import com.rudnam.wallet.ICCardPlugin
 import com.rudnam.wallet.SplashPlugin
 import com.rudnam.wallet.UpdatesPlugin
 import com.rudnam.wallet.notify.NotificationsPlugin
@@ -45,7 +44,6 @@ class WebPageFragment : Fragment(com.getcapacitor.android.R.layout.capacitor_bri
             NotificationsPlugin::class.java,
             UpdatesPlugin::class.java,
             SplashPlugin::class.java,
-            ICCardPlugin::class.java,
             HapticsPlugin::class.java,
         )
         bridge = Bridge.Builder(this)

@@ -15,6 +15,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.rudnam.wallet.feature.account.navigation.AccountRoute
 import com.rudnam.wallet.feature.activity.navigation.ActivityRoute
+import com.rudnam.wallet.feature.imports.navigation.CardRoute
+import com.rudnam.wallet.feature.imports.navigation.ImportRoute
 import com.rudnam.wallet.feature.insights.navigation.BudgetsRoute
 import com.rudnam.wallet.feature.insights.navigation.InsightsRoute
 import com.rudnam.wallet.feature.settings.navigation.SettingsSectionRoute
@@ -92,7 +94,17 @@ class RudWalletAppState(val navController: NavHostController) {
             navController.navigate(BudgetsRoute)
             return
         }
-        // A settings page drawn natively; the others are still web pages.
+        // Importing records, and a transit IC card's page.
+        if (page == "settings" && PathParams.get(path, "section") == "import") {
+            navController.navigate(ImportRoute)
+            return
+        }
+        if (page == "card") {
+            // A card tapped while its page is open shows there.
+            if (navController.currentBackStackEntry?.destination?.hasRoute<CardRoute>() != true) navController.navigate(CardRoute)
+            return
+        }
+        // A settings page drawn natively.
         if (page == "settings") {
             val section = PathParams.get(path, "section")
             if (section in SettingsSectionRoute.NATIVE) {

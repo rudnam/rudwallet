@@ -13,6 +13,8 @@ import com.rudnam.wallet.feature.wallet.navigation.WalletRoute
 import com.rudnam.wallet.navigation.TopLevelDestination
 import com.rudnam.wallet.feature.account.navigation.AccountRoute
 import com.rudnam.wallet.feature.activity.navigation.ActivityRoute
+import com.rudnam.wallet.feature.imports.navigation.CardRoute
+import com.rudnam.wallet.feature.imports.navigation.ImportRoute
 import com.rudnam.wallet.feature.insights.navigation.BudgetsRoute
 import com.rudnam.wallet.feature.insights.navigation.InsightsRoute
 import com.rudnam.wallet.feature.settings.navigation.SettingsRoute
@@ -53,6 +55,8 @@ class RudWalletAppStateTest {
                 composable<AccountRoute> {}
                 composable<InsightsRoute> {}
                 composable<BudgetsRoute> {}
+                composable<ImportRoute> {}
+                composable<CardRoute> {}
                 composable<SettingsRoute> {}
                 composable<SettingsSectionRoute> {}
             }
@@ -90,12 +94,12 @@ class RudWalletAppStateTest {
         compose.runOnIdle {
             assertEquals(TopLevelDestination.Settings, tab)
             assertNull(currentWebPath())
-            state.openPath("settings?section=import")
+            state.openPath("connect?client=claude")
         }
         compose.runOnIdle {
             assertNull(tab)
-            assertEquals("settings?section=import", currentWebPath())
-            state.openPath("card", replace = true)
+            assertEquals("connect?client=claude", currentWebPath())
+            state.openPath("reset?token=x", replace = true)
         }
         compose.runOnIdle { assertTrue(state.navController.popBackStack()) }
         compose.runOnIdle { assertEquals(TopLevelDestination.Settings, tab) } // the replaced page isn't in between
@@ -103,17 +107,17 @@ class RudWalletAppStateTest {
 
     @Test
     fun `pages open one after another, each its own`() {
-        compose.runOnIdle { state.openPath("card") }
+        compose.runOnIdle { state.openPath("signin") }
         compose.runOnIdle { state.openPath("budgets") }
-        compose.runOnIdle { state.openPath("settings?section=import") }
+        compose.runOnIdle { state.openPath("connect?client=claude") }
         compose.runOnIdle {
-            assertEquals("settings?section=import", currentWebPath())
+            assertEquals("connect?client=claude", currentWebPath())
             assertTrue(state.navController.popBackStack())
             // The budgets are native, without the tabs.
             assertNull(currentWebPath())
             assertTrue(state.navController.currentBackStackEntry!!.destination.hasRoute<BudgetsRoute>())
             assertTrue(state.navController.popBackStack())
-            assertEquals("card", currentWebPath())
+            assertEquals("signin", currentWebPath())
         }
     }
 
@@ -163,8 +167,26 @@ class RudWalletAppStateTest {
         compose.runOnIdle {
             assertNull(webPath)
             assertEquals(SettingsSectionRoute("accounts"), state.navController.currentBackStackEntry!!.toRoute<SettingsSectionRoute>())
-            state.openPath("settings?section=import")
+            state.openPath("connect?client=claude")
         }
-        compose.runOnIdle { assertEquals("settings?section=import", currentWebPath()) }
+        compose.runOnIdle { assertEquals("connect?client=claude", currentWebPath()) }
+    }
+
+    @Test
+    fun `importing and a tapped card are native`() {
+        compose.runOnIdle { state.openPath("settings?section=import") }
+        compose.runOnIdle {
+            assertTrue(state.navController.currentBackStackEntry!!.destination.hasRoute<ImportRoute>())
+            state.openPath("card")
+        }
+        compose.runOnIdle {
+            assertTrue(state.navController.currentBackStackEntry!!.destination.hasRoute<CardRoute>())
+            // Another card tapped while its page is open shows there.
+            state.openPath("card")
+        }
+        compose.runOnIdle {
+            assertTrue(state.navController.popBackStack())
+            assertTrue(state.navController.currentBackStackEntry!!.destination.hasRoute<ImportRoute>())
+        }
     }
 }

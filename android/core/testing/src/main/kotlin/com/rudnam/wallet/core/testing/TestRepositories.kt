@@ -208,3 +208,20 @@ class TestUserRepository(me: com.rudnam.wallet.core.model.Me? = com.rudnam.walle
         if (it == com.rudnam.wallet.core.data.repository.ChangeResult.Saved) meFlow.value = null
     }
 }
+
+/** An [ImportRepository] that answers with [preview] and [result], and keeps what it's asked to import. */
+class TestImportRepository : com.rudnam.wallet.core.data.repository.ImportRepository {
+    var files: Map<String, String> = mapOf("content://paypay.csv" to "取引日,出金金額（円）\n")
+    var preview: com.rudnam.wallet.core.data.repository.Fetched<com.rudnam.wallet.core.model.ImportPreview>? = null
+    var result: com.rudnam.wallet.core.data.repository.Fetched<com.rudnam.wallet.core.model.ImportResult> =
+        com.rudnam.wallet.core.data.repository.Fetched.Done(com.rudnam.wallet.core.model.ImportResult(3, 0, 1, 0, 1, 0, emptyList()))
+    val imported = mutableListOf<Pair<com.rudnam.wallet.core.model.ImportSource, com.rudnam.wallet.core.model.ImportChoices>>()
+
+    override suspend fun readFile(uri: String) = files[uri]
+    override suspend fun preview(source: com.rudnam.wallet.core.model.ImportSource, csv: String) = preview!!
+    override suspend fun import(source: com.rudnam.wallet.core.model.ImportSource, csv: String, choices: com.rudnam.wallet.core.model.ImportChoices) =
+        result.also { imported += source to choices }
+    override suspend fun previewCard(card: com.rudnam.wallet.core.model.IcCardRead) = preview!!
+    override suspend fun importCard(card: com.rudnam.wallet.core.model.IcCardRead, choices: com.rudnam.wallet.core.model.ImportChoices) =
+        result.also { imported += com.rudnam.wallet.core.model.ImportSource.IcCard to choices }
+}

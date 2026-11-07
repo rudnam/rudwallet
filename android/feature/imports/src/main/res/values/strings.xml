@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Worded as the website words them; web/src/locales/ja.ts has the Japanese. -->
+<resources>
+    <string name="feature_imports_title">Import records</string>
+    <string name="feature_imports_back">Settings</string>
+    <string name="feature_imports_paypay_how">In the PayPay app, open 取引履歴 (transaction history), tap the download button, pick a period of up to a year, and save the CSV file. Payments already recorded from their emails are skipped, and importing an overlapping period adds each payment once.</string>
+    <string name="feature_imports_mufg_how">In 三菱UFJダイレクト, open 入出金明細, pick the period, and download the CSV file. Rows already imported, or already recorded from notifications, are skipped.</string>
+    <string name="feature_imports_budgetbakers_how">In BudgetBakers’ Wallet app, export your records as CSV (on the web app: Records → Export), then choose the file here. You can choose where its accounts and categories go before anything is imported. Importing the same file twice adds nothing new.</string>
+    <string name="feature_imports_ic_how">Hold a Suica, PASMO, ICOCA or other transit IC card to the back of the phone to import its train and bus fares, shop payments and top-ups. The card keeps only its last 20 entries, so read it every week or two. Mobile Suica on this phone can’t be read this way.</string>
+    <string name="feature_imports_choose_file">Choose the CSV file</string>
+    <string name="feature_imports_unreadable">Couldn’t read that file.</string>
+    <string name="feature_imports_no_payments">There are no payments in this file.</string>
+    <string name="feature_imports_no_records">There are no records in this file.</string>
+    <string name="feature_imports_choose_another">Choose another file</string>
+    <string name="feature_imports_reading_file">Reading the file…</string>
+    <string name="feature_imports_importing">Importing…</string>
+    <string name="feature_imports_import_rest">Import the rest</string>
+    <string name="feature_imports_cancel">Cancel</string>
+    <string name="feature_imports_done">Done</string>
+    <string name="feature_imports_paypay_categories">Choose a category for each shop. A shop’s category is remembered, so its next payments are sorted too.</string>
+    <string name="feature_imports_mufg_categories">Choose a category for each payee, such as your employer for salary. It is remembered for the next statement; payees left without one are imported without a category, to sort later.</string>
+    <string name="feature_imports_budgetbakers_categories">And where each category’s records go. Close matches are picked; BudgetBakers’ categories that fit none of yours can be added as they are.</string>
+    <string name="feature_imports_ic_categories">Choose a category for each kind of entry. It is remembered for the next time you read a card.</string>
+    <string name="feature_imports_problems">These rows can’t be read and will be left out:</string>
+    <string name="feature_imports_role_bank">The MUFG account this statement is for</string>
+    <string name="feature_imports_role_cash">Cash (ATM withdrawals)</string>
+    <string name="feature_imports_role_paypay_card">PayPay Card (monthly payment)</string>
+    <string name="feature_imports_role_smbc_card">SMBC card (monthly payment)</string>
+    <string name="feature_imports_role_paypay">PayPay balance (charges)</string>
+    <string name="feature_imports_role_card">The card</string>
+    <string name="feature_imports_role_top_up">Top-ups are paid from</string>
+    <string name="feature_imports_also_looks">Also looks like this account: %s</string>
+    <string name="feature_imports_statement_rows">Statement rows</string>
+    <string name="feature_imports_card_entries">Card entries</string>
+    <string name="feature_imports_already_imported">Already imported</string>
+    <string name="feature_imports_already_recorded_in">Already recorded in %s</string>
+    <string name="feature_imports_transfer">Transfer: %1$s → %2$s</string>
+    <string name="feature_imports_no_rule">No rule: needs a category</string>
+    <string name="feature_imports_already_recorded">Already recorded</string>
+    <string name="feature_imports_start_unknown">Start: amount unknown</string>
+    <string name="feature_imports_nothing_paid">Nothing paid</string>
+    <string name="feature_imports_top_up">Top-up</string>
+    <string name="feature_imports_expense">Expense</string>
+    <string name="feature_imports_income_kind">Income</string>
+    <string name="feature_imports_statement_balance">Statement balance on %1$s: %2$s. The account in the app: %3$s.</string>
+    <string name="feature_imports_they_match">They match.</string>
+    <string name="feature_imports_bank_adjusted">%1$s’s starting balance was changed by %2$s, to %3$s, so it matches the statement.</string>
+    <string name="feature_imports_bank_will_adjust">Importing changes %1$s’s starting balance by %2$s, to %3$s, for the records before %4$s that the app doesn’t have.</string>
+    <string name="feature_imports_bank_apart">They’re %1$s apart. If the account’s records before %2$s are incomplete, set its starting balance to %3$s (Settings › Accounts). Otherwise, look for a record in the wrong account.</string>
+    <string name="feature_imports_misplaced">Rows worth %1$s are already recorded in another account (marked below). Move those records to %2$s to match.</string>
+    <string name="feature_imports_match_bank">Update the bank account’s balance to match the statement</string>
+    <string name="feature_imports_match_card">Update the card’s account to match the card’s balance</string>
+    <string name="feature_imports_card_balance">On the card: %1$s. %2$s in the app: %3$s.</string>
+    <string name="feature_imports_card_adjusted">%1$s’s starting balance was changed by %2$s, to %3$s, so it matches the card.</string>
+    <string name="feature_imports_card_will_adjust">Importing changes %1$s’s starting balance by %2$s, to %3$s.</string>
+    <string name="feature_imports_apart">They’re %s apart.</string>
+    <string name="feature_imports_gap_review">The card was used more often than it keeps since it was last read, so some entries are lost. The difference shows in the balance below.</string>
+    <string name="feature_imports_new_account_named">New account: %s</string>
+    <string name="feature_imports_new_account">New account</string>
+    <string name="feature_imports_dont_import">Don’t import</string>
+    <string name="feature_imports_new_account_name">New account name</string>
+    <string name="feature_imports_existing_account">You already have an account named %s; its records go there.</string>
+    <string name="feature_imports_tick_shops">Tick shops to set several at once</string>
+    <string name="feature_imports_tick_categories">Tick categories to set several at once</string>
+    <string name="feature_imports_set_category">Set category</string>
+    <string name="feature_imports_no_category">No category</string>
+    <string name="feature_imports_your_categories">Your categories</string>
+    <string name="feature_imports_new_categories">New categories</string>
+    <string name="feature_imports_as_before">as before</string>
+    <string name="feature_imports_new_category">new category</string>
+    <string name="feature_imports_income_badge">income</string>
+    <string name="feature_imports_choose_named">Choose %s</string>
+    <string name="feature_imports_category_for">Category for %s</string>
+    <string name="feature_imports_sort_with_claude">Records without a category can be sorted by Claude.</string>
+    <string name="feature_imports_ic_card">IC card</string>
+    <string name="feature_imports_read_card">Read a card</string>
+    <string name="feature_imports_hold_card">Hold the card to the back of the phone…</string>
+    <string name="feature_imports_reading_card">Reading the card…</string>
+    <string name="feature_imports_nfc_off">NFC is turned off.</string>
+    <string name="feature_imports_turn_on_nfc">Turn on NFC</string>
+    <string name="feature_imports_no_nfc">This phone can’t read cards: it has no NFC.</string>
+    <string name="feature_imports_not_transit">That isn’t a transit IC card. Suica, PASMO, ICOCA and the other cards that work at ticket gates can be read.</string>
+    <string name="feature_imports_lost">The card was moved away too soon. Hold it still until the phone beeps.</string>
+    <string name="feature_imports_card_named">Card ••%s</string>
+    <string name="feature_imports_tap_card">Tap a transit IC card to the back of the phone to see its balance.</string>
+    <string name="feature_imports_balance_on_card">Balance on the card</string>
+    <string name="feature_imports_last_used">Last used %s</string>
+    <string name="feature_imports_checking">Checking for new entries…</string>
+    <string name="feature_imports_gap">The card was used more often than it keeps since it was last read, so some entries are lost.</string>
+    <string name="feature_imports_review_first">Review first</string>
+    <string name="feature_imports_all_imported">All of this card’s entries are imported.</string>
+    <string name="feature_imports_card_off">%1$s in the app is %2$s off the card’s balance.</string>
+    <string name="feature_imports_latest_entries">Latest entries</string>
+    <string name="feature_imports_status_new">New</string>
+    <string name="feature_imports_status_imported">Imported</string>
+    <string name="feature_imports_couldnt_check">Couldn’t check for new entries: %s</string>
+    <string name="feature_imports_offline">Can’t reach the server. Importing needs a connection.</string>
+    <string name="feature_imports_failed">Couldn’t read this import.</string>
+    <string name="feature_imports_try_again">Try again</string>
+    <plurals name="feature_imports_payments_range">
+        <item quantity="one">%1$d payment, %2$s to %3$s. Choose where each way of paying is recorded:</item>
+        <item quantity="other">%1$d payments, %2$s to %3$s. Choose where each way of paying is recorded:</item>
+    </plurals>
+    <plurals name="feature_imports_rows_range">
+        <item quantity="one">%1$d row, %2$s to %3$s. Choose the accounts:</item>
+        <item quantity="other">%1$d rows, %2$s to %3$s. Choose the accounts:</item>
+    </plurals>
+    <plurals name="feature_imports_records_range">
+        <item quantity="one">%1$d record, %2$s to %3$s. Choose where each account’s records go:</item>
+        <item quantity="other">%1$d records, %2$s to %3$s. Choose where each account’s records go:</item>
+    </plurals>
+    <plurals name="feature_imports_entries_range">
+        <item quantity="one">Card ••%4$s: %1$d entry, %2$s to %3$s. Choose the accounts:</item>
+        <item quantity="other">Card ••%4$s: %1$d entries, %2$s to %3$s. Choose the accounts:</item>
+    </plurals>
+    <plurals name="feature_imports_import_payments">
+        <item quantity="one">Import %d payment</item>
+        <item quantity="other">Import %d payments</item>
+    </plurals>
+    <plurals name="feature_imports_import_rows">
+        <item quantity="one">Import %d row</item>
+        <item quantity="other">Import %d rows</item>
+    </plurals>
+    <plurals name="feature_imports_import_records">
+        <item quantity="one">Import %d record</item>
+        <item quantity="other">Import %d records</item>
+    </plurals>
+    <plurals name="feature_imports_import_entries">
+        <item quantity="one">Import %d entry</item>
+        <item quantity="other">Import %d entries</item>
+    </plurals>
+    <plurals name="feature_imports_record_count">
+        <item quantity="one">%d record</item>
+        <item quantity="other">%d records</item>
+    </plurals>
+    <plurals name="feature_imports_imported">
+        <item quantity="one">Imported %d record</item>
+        <item quantity="other">Imported %d records</item>
+    </plurals>
+    <plurals name="feature_imports_created_accounts">
+        <item quantity="one">created %d account</item>
+        <item quantity="other">created %d accounts</item>
+    </plurals>
+    <plurals name="feature_imports_created_categories">
+        <item quantity="one">created %d category</item>
+        <item quantity="other">created %d categories</item>
+    </plurals>
+    <plurals name="feature_imports_new_since">
+        <item quantity="one">%d new entry since you last imported this card.</item>
+        <item quantity="other">%d new entries since you last imported this card.</item>
+    </plurals>
+    <plurals name="feature_imports_not_imported">
+        <item quantity="one">%d entry isn’t imported yet.</item>
+        <item quantity="other">%d entries aren’t imported yet.</item>
+    </plurals>
+    <plurals name="feature_imports_chosen">
+        <item quantity="one">%d chosen</item>
+        <item quantity="other">%d chosen</item>
+    </plurals>
+    <plurals name="feature_imports_show_all_shops">
+        <item quantity="one">Show all %d shops</item>
+        <item quantity="other">Show all %d shops</item>
+    </plurals>
+    <plurals name="feature_imports_show_all_categories">
+        <item quantity="one">Show all %d categories</item>
+        <item quantity="other">Show all %d categories</item>
+    </plurals>
+    <plurals name="feature_imports_skipped_imported">
+        <item quantity="one">skipped %d already imported</item>
+        <item quantity="other">skipped %d already imported</item>
+    </plurals>
+    <plurals name="feature_imports_skipped_matched">
+        <item quantity="one">skipped %d already recorded from notifications or by hand</item>
+        <item quantity="other">skipped %d already recorded from notifications or by hand</item>
+    </plurals>
+    <plurals name="feature_imports_left_out">
+        <item quantity="one">left out %d paid in ways not imported</item>
+        <item quantity="other">left out %d paid in ways not imported</item>
+    </plurals>
+</resources>
