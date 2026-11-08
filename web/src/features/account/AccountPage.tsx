@@ -16,7 +16,6 @@ import { useToast } from '../../toast';
 import { useRecords } from '../../useRecords';
 import { useWallet } from '../../wallet';
 import { accountKinds } from '../settings/SettingsPage';
-import { hapticSuccess } from '../../native';
 import { locale } from '../../language';
 
 export function AccountPage({ route }: { route: Route }) {
@@ -123,7 +122,6 @@ function CountCash({ id, onClose, onCounted }: { id: number; onClose: () => void
     try {
       const { transaction } = await api.reconcileAccount(id, minor);
       await w.refresh();
-      hapticSuccess();
       toast(transaction ? t('Counted: {amount}', { amount: w.money(minor) }) : t('Already right: {amount}', { amount: w.money(minor) }));
       onCounted();
       onClose();

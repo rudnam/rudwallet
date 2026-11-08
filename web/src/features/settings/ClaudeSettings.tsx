@@ -5,7 +5,6 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { api, errorMessage, type MCPToken } from '../../api';
 import { Icon, icons } from '../../components/Icon';
 import { formatDay } from '../../money';
-import { server } from '../../native';
 import { useWallet } from '../../wallet';
 import { t, t as tr, tx } from '../../i18n';
 
@@ -25,8 +24,8 @@ export function ClaudeSettings() {
   return <Connections />;
 }
 
-/** Where MCP clients connect: this site, or in the Android app, its server. */
-const mcpURL = `${server || location.origin}/mcp`;
+/** Where MCP clients connect: this site. */
+const mcpURL = `${location.origin}/mcp`;
 
 function Connections() {
   const [tokens, setTokens] = useState<MCPToken[] | null>(() => api.seen.mcpTokens() ?? null);

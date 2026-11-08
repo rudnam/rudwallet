@@ -12,7 +12,6 @@ import { Figure } from '../../components/Figure';
 import { AccountForm, accountKinds } from '../settings/SettingsPage';
 import { useRecords } from '../../useRecords';
 import { useWallet } from '../../wallet';
-import { hapticSelect, hapticThreshold } from '../../native';
 import { t, tx } from '../../i18n';
 import { locale } from '../../language';
 
@@ -297,7 +296,6 @@ function CardStack({ accounts }: { accounts: Account[] }) {
       stack.current?.setPointerCapture(p.pointer);
       slot.current = from;
       setDrag({ id, from, dy: 0 });
-      hapticThreshold();
     }, 400);
     press.current = p;
   }
@@ -314,7 +312,6 @@ function CardStack({ accounts }: { accounts: Account[] }) {
     const next = Math.max(0, Math.min(last, Math.round((drag.from * edge + dy) / edge)));
     if (next !== slot.current) {
       slot.current = next;
-      hapticSelect();
     }
     setDrag({ ...drag, dy });
   }

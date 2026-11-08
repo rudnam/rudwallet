@@ -2,7 +2,6 @@
 // device: it's how this screen looks, not part of the wallet. styles.css
 // reads html[data-theme]; with none, it follows prefers-color-scheme.
 import { useSyncExternalStore } from 'react';
-import { nativeSetAppearance } from './native';
 
 export type Appearance = 'auto' | 'light' | 'dark';
 
@@ -32,9 +31,7 @@ export function applyAppearance(): void {
   }
 }
 
-/** [fromApp]: the Android app said so (native.ts), so it isn't told again. */
-export function setAppearance(a: Appearance, fromApp = false): void {
-  if (!fromApp) nativeSetAppearance(a);
+export function setAppearance(a: Appearance): void {
   try {
     if (a === 'auto') localStorage.removeItem(key);
     else localStorage.setItem(key, a);

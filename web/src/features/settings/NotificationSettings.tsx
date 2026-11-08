@@ -5,7 +5,6 @@
 import { useEffect, useState } from 'react';
 import { api, errorMessage, type PaymentNotification } from '../../api';
 import { formatDay, formatTime } from '../../money';
-import { isApp, notificationAccess, openNotificationAccess } from '../../native';
 import { href } from '../../router';
 import { useWallet } from '../../wallet';
 import { serverText, t, tx, type Key } from '../../i18n';
@@ -19,7 +18,6 @@ const statusText: Record<PaymentNotification['status'], Key> = {
 
 export function NotificationSettings() {
   const w = useWallet();
-  const [access, setAccess] = useState<boolean | null>(null);
   // Shown at once; the server's answer follows.
   const [autoConfirm, setAutoConfirm] = useState(w.settings.auto_confirm);
   const [recent, setRecent] = useState<PaymentNotification[] | null>(() => api.seen.notifications()?.notifications ?? null);
@@ -27,14 +25,6 @@ export function NotificationSettings() {
 
   useEffect(() => {
     api.notifications().then((r) => setRecent(r.notifications), (err) => setError(errorMessage(err)));
-    if (!isApp) return;
-    // Check again on coming back from Android's settings.
-    const check = () => {
-      if (document.visibilityState === 'visible') notificationAccess().then(setAccess);
-    };
-    check();
-    document.addEventListener('visibilitychange', check);
-    return () => document.removeEventListener('visibilitychange', check);
   }, []);
 
   async function setSetting(changes: { auto_confirm?: boolean; default_account_id?: number | null }) {
@@ -48,14 +38,6 @@ export function NotificationSettings() {
     }
   }
 
-  async function open() {
-    try {
-      await openNotificationAccess();
-    } catch (err) {
-      setError(errorMessage(err));
-    }
-  }
-
   return (
     <div className="card stack">
       <p className="small">
@@ -64,36 +46,11 @@ export function NotificationSettings() {
         })}
       </p>
 
-      {!isApp ? (
-        <p className="notice small">
-          {tx("This works in the RudWallet app for Android, which reads your phone's payment notifications. Open {where} there to switch it on.", {
-            where: <strong>{t('Settings › Payment notifications')}</strong>,
-          })}
-        </p>
-      ) : access === null ? (
-        <p className="muted">{t('Checking…')}</p>
-      ) : (
-        <div className="stack tight">
-          <div className="row">
-            <span className="grow" data-testid="notification-access">
-              {access
-                ? tx("{on} RudWallet reads PayPay's and Google Wallet's notifications.", { on: <strong>{t('On.')}</strong> })
-                : tx('{off} RudWallet needs notification access to read them.', { off: <strong>{t('Off.')}</strong> })}
-            </span>
-            <button type="button" className={access ? 'link' : undefined} onClick={open}>
-              {access ? t('Turn off') : t('Allow access')}
-            </button>
-          </div>
-          {!access && (
-            <p className="muted small">
-              {tx('Android shows a list of apps: turn on {wallet}. If the switch is greyed out, open {where} for RudWallet, then try again.', {
-                wallet: <strong>RudWallet</strong>,
-                where: <strong>{t('App info › ⋮ › Allow restricted settings')}</strong>,
-              })}
-            </p>
-          )}
-        </div>
-      )}
+      <p className="notice small">
+        {tx("This works in the RudWallet app for Android, which reads your phone's payment notifications. Open {where} there to switch it on.", {
+          where: <strong>{t('Settings › Payment notifications')}</strong>,
+        })}
+      </p>
 
       <p className="muted small">{t("Only PayPay's and Google Wallet's notifications are read; nothing else leaves your phone.")}</p>
 

@@ -12,7 +12,6 @@ import { useRecords } from '../../useRecords';
 import { CategoryIcon, Icon, icons } from '../../components/Icon';
 import { useToast } from '../../toast';
 import { useWallet } from '../../wallet';
-import { hapticSuccess, hapticThreshold } from '../../native';
 import { t, t as tr, tn, tx } from '../../i18n';
 
 /**
@@ -61,7 +60,6 @@ export function ReviewPage({ compact = false }: { compact?: boolean }) {
       }
       for (const [category_id, ids] of changed) await api.bulkTransactions({ ids, action: 'categorize', category_id });
       const { changed: n } = await api.bulkTransactions({ ids: ready.map((t) => t.id), action: 'confirm' });
-      hapticSuccess();
       toast(tn(n, 'Confirmed {n} payment', 'Confirmed {n} payments'));
       setPicked({});
       await Promise.all([reload(), w.refresh()]);
@@ -193,7 +191,6 @@ function ReviewItem({
         ...(overriding ? { remember } : {}),
       });
       await w.refresh();
-      hapticSuccess();
       toast(tr('Confirmed {payee}', { payee: title }));
       onDone();
     } catch (err) {
@@ -351,7 +348,6 @@ function useSwipe(onConfirm: (() => void) | undefined) {
           setDx(d);
           if (d >= threshold !== past.current) {
             past.current = d >= threshold;
-            if (past.current) hapticThreshold();
           }
         },
         onPointerUp: () => {

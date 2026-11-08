@@ -10,7 +10,6 @@ import { amountInput, parseAmount } from '../../money';
 import { href, type Route } from '../../router';
 import { useToast } from '../../toast';
 import { useWallet } from '../../wallet';
-import { hapticSelect, isApp } from '../../native';
 import { setAppearance, useAppearance, type Appearance } from '../../appearance';
 import { WidgetSettings } from './WidgetSettings';
 import { NotificationSettings } from './NotificationSettings';
@@ -118,7 +117,7 @@ export function SettingsPage({
             <h2 className="section-label">{t(g)}</h2>
             <ul className="list flush card flush">
               {sections
-                .filter((s) => s.group === g && !s.hidden && (isApp || !s.app))
+                .filter((s) => s.group === g && !s.hidden && !s.app)
                 .map((s) => (
                   <li key={s.id}>
                     <a className="menu-row" href={s.page ? href(s.page) : href('settings', { section: s.id })}>
@@ -1296,7 +1295,6 @@ function AppearanceSettings() {
             checked={current === a}
             onChange={() => {
               setAppearance(a);
-              hapticSelect();
             }}
           />
           <span className="grow">

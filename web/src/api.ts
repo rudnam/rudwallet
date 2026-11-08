@@ -2,7 +2,6 @@
 // Amounts are whole minor units of the user's currency (see Settings).
 import { serverText, t as tr } from './i18n';
 import { language } from './language';
-import { appHeaders, saveSession, server } from './native';
 import { asRecord, newClientID, outbox } from './outbox';
 
 export interface Me {
@@ -13,8 +12,6 @@ export interface Me {
   confirm_email: boolean;
   /** A throwaway demo account full of sample data, deleted within a day. Absent from older servers. */
   demo?: boolean;
-  /** A new session's token, given to the Android app only (see native.ts). */
-  token?: string;
 }
 
 /** The ways this server offers to sign in. */
@@ -321,90 +318,6 @@ export interface MUFGResult extends ImportResult {
   balance: MUFGBalance;
 }
 
-/** What the phone read from a transit IC card: its IDm, and its history blocks in hex, newest first. */
-export interface ICCardRead {
-  idm: string;
-  history: string[];
-}
-
-/** A role in a card's history: the card itself, or where money put on it comes from. */
-export type ICRole = 'card' | 'top-up';
-
-/** One role in a card's history, and the account suggested for it (null: a new one). */
-export interface ICAccount {
-  role: ICRole;
-  count: number;
-  account_id: number | null;
-  new_name: string;
-  new_kind: AccountKind;
-}
-
-/** A station a fare started or ended at; name is missing when the station isn't in the server's list. */
-export interface ICStation {
-  /** Region, line and station codes, e.g. 0-25-0A. */
-  code: string;
-  company?: string;
-  line?: string;
-  name?: string;
-}
-
-/** How one entry on the card would be (or was) recorded. */
-export interface ICRow {
-  date: string;
-  /** A shop payment's time, HH:MM. */
-  time?: string;
-  seq: number;
-  balance: number;
-  /** The balance's change: negative for a payment. */
-  amount: number;
-  kind: 'expense' | 'income' | 'transfer';
-  /** The kind of entry its category is chosen for. */
-  group?: string;
-  /** The record's payee: a train fare's stations ("新宿 → 渋谷"), a bus company, or the group. */
-  payee?: string;
-  entry?: ICStation;
-  exit?: ICStation;
-  /** A bus fare's company. */
-  company?: string;
-  /** start: the oldest entry read, whose amount isn't known; none: no money moved. */
-  status: 'new' | 'imported' | 'matched' | 'start' | 'none';
-  matched_id?: number;
-}
-
-/** The card's account in the app, after the import, against the card's balance. */
-export interface ICBalance {
-  account_id: number | null;
-  card: number;
-  app: number;
-  /** card - app. */
-  difference: number;
-  initial_balance: number;
-  suggested_initial_balance: number;
-  /** How much the import changed the starting balance by (match_balance). */
-  adjusted: number;
-}
-
-export interface ICPreview {
-  /** The last four hex digits of the card's IDm. */
-  card: string;
-  from: string;
-  to: string;
-  records: number;
-  new: number;
-  accounts: ICAccount[];
-  categories: ImportCategory[];
-  new_categories: Category[];
-  rows: ICRow[];
-  balance: ICBalance;
-  /** The card was read before, but none of its entries now were: those in between are lost. */
-  gap: boolean;
-}
-
-export interface ICResult extends ImportResult {
-  rows: ICRow[];
-  balance: ICBalance;
-}
-
 /**
  * Records in an import file that share a category (BudgetBakers) or a shop
  * (PayPay), and where they're suggested to go: category_id, else a new
@@ -540,8 +453,7 @@ export const savedMe = {
   set(me: Me | null) {
     try {
       if (me) {
-        const { token: _, ...rest } = me; // the session token lives in native.ts, never here
-        localStorage.setItem(meKey, JSON.stringify(rest));
+        localStorage.setItem(meKey, JSON.stringify(me));
       } else {
         lastSeen.clear();
         localStorage.removeItem(meKey);
@@ -590,13 +502,12 @@ async function send<T>(method: string, path: string, body?: unknown, contentType
   }
   try {
     const raw = contentType !== undefined;
-    const res = await fetch(server + path, {
+    const res = await fetch(path, {
       method,
       headers: {
         ...(body === undefined ? {} : { 'Content-Type': contentType ?? 'application/json' }),
         // The language the app shows, which a new account's categories are named in.
         'Accept-Language': language(),
-        ...appHeaders(),
       },
       body: body === undefined ? undefined : raw ? (body as BodyInit) : JSON.stringify(body),
       signal,
@@ -679,45 +590,29 @@ function query(f: TransactionFilter): string {
   return s ? `?${s}` : '';
 }
 
-/** In the Android app, keeps the token a sign-in returned. */
-async function signedIn(me: Promise<Me>): Promise<Me> {
-  const m = await me;
-  if (m.token) await saveSession(m.token);
-  return m;
-}
-
 export const api = {
   me: () => request<Me>('GET', '/api/me'),
-  signUp: (email: string, password: string) => signedIn(request<Me>('POST', '/api/signup', { email, password })),
-  signIn: (email: string, password: string) => signedIn(request<Me>('POST', '/api/login', { email, password })),
-  /** Finishes Google sign-in in the Android app (see native.ts). */
-  appToken: (code: string, verifier: string) => signedIn(request<Me>('POST', '/api/auth/app-token', { code, verifier })),
+  signUp: (email: string, password: string) => request<Me>('POST', '/api/signup', { email, password }),
+  signIn: (email: string, password: string) => request<Me>('POST', '/api/login', { email, password }),
   signOut: async () => {
     const email = owner();
     await sendUnsent().catch(() => 0);
     await request<void>('POST', '/api/logout');
     outbox.forget(email);
-    await saveSession('');
-  },
-  /** Signed out by the Android app's own Settings, which has told the server: forgets the session here too. */
-  forgetSession: async () => {
-    outbox.forget(owner());
-    await saveSession('');
   },
   authOptions: () => request<AuthOptions>('GET', '/api/auth/options'),
   /** Signs in to a new demo account with sample data, named in the app's language and dated in this time zone. */
-  startDemo: () => signedIn(request<Me>('POST', '/api/demo', { tz: Intl.DateTimeFormat().resolvedOptions().timeZone })),
+  startDemo: () => request<Me>('POST', '/api/demo', { tz: Intl.DateTimeFormat().resolvedOptions().timeZone }),
   resendConfirmation: () => request<void>('POST', '/api/verify-email'),
   /** Emails a link to reset the password, if an account uses this address. Answers the same either way. */
   forgotPassword: (email: string) => request<void>('POST', '/api/password/forgot', { email }),
   /** Sets a new password with the token from the emailed link, and signs in. */
-  resetPassword: (token: string, password: string) => signedIn(request<Me>('POST', '/api/password/reset', { token, password })),
+  resetPassword: (token: string, password: string) => request<Me>('POST', '/api/password/reset', { token, password }),
   /** Deletes the account and everything in it. Confirm with the password, or for a Google-only account, the email. */
   deleteMe: async (confirm: { password: string } | { email: string }) => {
     const email = owner();
     await request<void>('DELETE', '/api/me', confirm);
     outbox.forget(email);
-    await saveSession('');
   },
 
   overview: () => request<Overview>('GET', '/api/wallet'),
@@ -829,15 +724,6 @@ export const api = {
   importMUFG: (csv: string, accounts: AccountChoice[], categories: CategoryChoice[], match_balance: boolean) =>
     request<MUFGResult>('POST', '/api/import/mufg', {
       csv,
-      accounts,
-      categories,
-      match_balance,
-    }),
-  previewICCard: (read: ICCardRead) => request<ICPreview>('POST', '/api/import/ic-card?preview=1', read),
-  /** accounts says which account each role is. */
-  importICCard: (read: ICCardRead, accounts: AccountChoice[], categories: CategoryChoice[], match_balance: boolean) =>
-    request<ICResult>('POST', '/api/import/ic-card', {
-      ...read,
       accounts,
       categories,
       match_balance,

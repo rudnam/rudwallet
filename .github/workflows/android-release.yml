@@ -1,7 +1,7 @@
 # Releases the Android app. It builds and signs the app with
 # android/build.sh, publishes the APK on wallet.rudnam.com with
 # android/publish.sh (phones on a build that checks are offered it, see
-# web/src/updates.ts), and keeps both files as a GitHub release,
+# android/core/data/…/UpdateRepository.kt), and keeps both files as a GitHub release,
 # android-<versionCode>, whose .aab goes to the Play Console by hand. The
 # versionCode is one above the published APK (android/version.sh).
 #

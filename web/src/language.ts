@@ -1,8 +1,6 @@
 // Which language the app and the introduction page speak: the one the
 // person picked (kept in this browser, so / and /app/ share it), or else
 // the device's. English unless the device prefers Japanese.
-import { nativeSetLanguage } from './native';
-
 export type Language = 'en' | 'ja';
 
 /** Each language under its own name, as a picker lists it. */
@@ -47,10 +45,9 @@ export function pickedLanguage(): Language | null {
 
 /**
  * Picks a language (null: follow the device) and redraws everything that
- * uses it. [fromApp]: the Android app said so (native.ts), so it isn't told again.
+ * uses it.
  */
-export function setLanguage(l: Language | null, fromApp = false) {
-  if (!fromApp) nativeSetLanguage(l);
+export function setLanguage(l: Language | null) {
   try {
     if (l) localStorage.setItem(storageKey, l);
     else localStorage.removeItem(storageKey);

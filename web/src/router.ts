@@ -2,7 +2,6 @@
 // support and survive reloads.
 import { useSyncExternalStore } from 'react';
 import { flushSync } from 'react-dom';
-import { embedded, nativeGo, onNativeShow } from './native';
 
 export interface Route {
   page: string;
@@ -89,32 +88,8 @@ function growCard(main: HTMLElement, id: string): boolean {
 let current = parse();
 const listeners = new Set<() => void>();
 
-/** The path of a route, as the app's navigation names pages: "records?account=3". */
-function pathOf(r: Route): string {
-  const qs = r.params.toString();
-  return `${r.page}${qs ? `?${qs}` : ''}`;
-}
-
-// Embedded in the Android app (native.ts), the app runs navigation: a change
-// of page here (a link, navigate()) is asked of the app instead, and this
-// stays on its page until the app says which to show.
-let fromApp = false;
-onNativeShow((path) => {
-  fromApp = true;
-  history.replaceState(null, '', `#/${path}`);
-  window.dispatchEvent(new HashChangeEvent('hashchange'));
-});
-
 function onHashChange() {
   const next = parse();
-  if (embedded && !fromApp) {
-    if (pathOf(next) !== pathOf(current)) {
-      history.replaceState(null, '', `#/${pathOf(current)}`);
-      nativeGo(pathOf(next));
-    }
-    return;
-  }
-  fromApp = false;
   const how = move(current, next);
   current = next;
   // Drawn now, so the new page is on screen in this same frame and can be animated.
@@ -158,10 +133,6 @@ export function navigate(page: string, params?: Record<string, string | number>)
 
 /** navigate, replacing the current history entry, e.g. to drop a used link's token. */
 export function replaceRoute(page: string, params?: Record<string, string | number>) {
-  if (embedded) {
-    nativeGo(href(page, params).slice(2), true);
-    return;
-  }
   history.replaceState(null, '', href(page, params));
   window.dispatchEvent(new HashChangeEvent('hashchange'));
 }
