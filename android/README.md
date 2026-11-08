@@ -11,7 +11,7 @@ It also does what the website can't: home screen widgets, reading payment notifi
 
 ## Build
 
-You need a JDK 21, the Android SDK (`JAVA_HOME` and `ANDROID_HOME`, or the paths in `~/.bubblewrap/config.json` on this machine).
+You need a JDK 21 (`JAVA_HOME`) and the Android SDK (`ANDROID_HOME`; `build.sh` uses `~/Android/Sdk` if it's unset) with platform 36. On this machine both are set in `~/.bashrc`, with `platform-tools` (adb) on the `PATH`. WSL has no KVM, so the emulator can't run here: install on a phone over USB, or use the emulator on Windows.
 
 ```sh
 ./android/build.sh            # android/wallet.aab (Play Store) and android/wallet.apk
