@@ -71,7 +71,7 @@ func TestImportICCard(t *testing.T) {
 	for _, g := range p.Categories {
 		groups[g.Name] = g
 	}
-	if g := groups["Train"]; g.CategoryID == nil || *g.CategoryID != category["Transport"] || g.Total != 210 {
+	if g := groups["Train"]; g.CategoryID == nil || *g.CategoryID != category["Public transport"] || g.Total != 210 {
 		t.Errorf("train fares are transport: %+v", g)
 	}
 	if g := groups["Refund"]; g.Kind != "income" || g.Total != 50 {
@@ -111,7 +111,7 @@ func TestImportICCard(t *testing.T) {
 	if r := got["transfer  2000"]; r.AccountID != cash || *r.ToAccountID != card {
 		t.Errorf("a top-up moves cash to the card: %+v", r)
 	}
-	if r := got["expense Bus 210"]; r.CategoryID == nil || *r.CategoryID != category["Transport"] {
+	if r := got["expense Bus 210"]; r.CategoryID == nil || *r.CategoryID != category["Public transport"] {
 		t.Errorf("bus fare: %+v", r)
 	}
 	if r := got["expense Shop payment 150"]; r.CategoryID == nil || *r.CategoryID != category["Shopping"] ||

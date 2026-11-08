@@ -35,8 +35,24 @@ func TestDefaultsInEitherLanguage(t *testing.T) {
 			t.Errorf("%q is offered in English to a Japanese wallet", c.Name)
 		}
 	}
-	if len(missing) != len(defaultCategories)-2 {
-		t.Errorf("%d missing, want %d", len(missing), len(defaultCategories)-2)
+	// Food & Drinks' subcategories are offered under 食費; the other main
+	// categories' wait until the wallet has those.
+	want := 0
+	for _, d := range defaultCategories {
+		if p := defaultParents[d.Name]; d.Name != "Food & Drinks" && d.Name != "Salary" && (p == "" || p == "Food & Drinks") {
+			want++
+		}
+	}
+	if len(missing) != want {
+		t.Errorf("%d missing, want %d", len(missing), want)
+	}
+	for _, c := range missing {
+		if c.Name == "外食" && (c.ParentID == nil || *c.ParentID != 1) {
+			t.Errorf("外食 isn't offered under 食費: %+v", c)
+		}
+		if c.Name == "家賃" {
+			t.Error("家賃 is offered though the wallet has no 住居費")
+		}
 	}
 }
 
@@ -50,6 +66,21 @@ func TestBroaderDefaults(t *testing.T) {
 	for narrow, broad := range broaderDefaults {
 		if kinds[narrow] == "" || kinds[narrow] != kinds[broad] {
 			t.Errorf("%q -> %q: not two defaults of one kind", narrow, broad)
+		}
+	}
+	// A subcategory comes after its main category, which is a main one of its kind.
+	seen := map[string]bool{}
+	for _, c := range defaultCategories {
+		if p, ok := defaultParents[c.Name]; ok {
+			if !seen[p] || kinds[p] != c.Kind || defaultParents[p] != "" {
+				t.Errorf("%q is under %q, which isn't a main category of its kind before it", c.Name, p)
+			}
+		}
+		seen[c.Name] = true
+	}
+	for sub := range defaultParents {
+		if kinds[sub] == "" {
+			t.Errorf("%q has a main category but isn't a default", sub)
 		}
 	}
 	old := []Category{{ID: 1, Name: "買い物", Kind: "expense"}, {ID: 2, Name: "Other income", Kind: "income"}}
@@ -70,6 +101,14 @@ func TestBroaderDefaults(t *testing.T) {
 	}
 	if got := guessCategory("expense", "UNIQLO 渋谷店", ""); got != "Clothing" {
 		t.Errorf("UNIQLO: %q", got)
+	}
+	if got := guessCategory("expense", "スターバックス 渋谷店", ""); got != "Cafés" {
+		t.Errorf("Starbucks: %q", got)
+	}
+	g = ImportCategory{Kind: "expense"}
+	suggestNamed([]Category{{ID: 3, Name: "Shopping", Kind: "expense"}}, &g, "Pets")
+	if g.CategoryID == nil || *g.CategoryID != 3 {
+		t.Errorf("Pets in a wallet without Family: %+v", g)
 	}
 	if got := guessCategory("expense", "NETFLIX.COM", ""); got != "Subscriptions" {
 		t.Errorf("Netflix: %q", got)

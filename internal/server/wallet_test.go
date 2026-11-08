@@ -281,13 +281,15 @@ func TestImportBudgetBakersChoices(t *testing.T) {
 	other.signup("b@example.com")
 	o := overview(t, c)
 	cash, food, salary := o.Accounts[0].ID, categoryID(t, o, "Food & Drinks"), categoryID(t, o, "Salary")
+	restaurants, housing := categoryID(t, o, "Restaurants"), categoryID(t, o, "Housing")
 	// As for a user who signed up before Phone & Internet was a default.
 	if code := c.do("DELETE", fmt.Sprintf("/api/categories/%d", categoryID(t, o, "Phone & Internet")), nil, nil); code != 204 {
 		t.Fatalf("delete category: %d", code)
 	}
 	var missing []wallet.Category
 	c.do("GET", "/api/categories/missing", nil, &missing)
-	if len(missing) != 1 || missing[0].Name != "Phone & Internet" || missing[0].Icon != "phone" {
+	if len(missing) != 1 || missing[0].Name != "Phone & Internet" || missing[0].Icon != "phone" ||
+		missing[0].ParentID == nil || *missing[0].ParentID != housing {
 		t.Errorf("missing defaults: %+v", missing)
 	}
 
@@ -311,11 +313,12 @@ func TestImportBudgetBakersChoices(t *testing.T) {
 	if p.Records != 6 || len(p.Categories) != 5 || len(p.Accounts) != 2 || p.Accounts[0].Name != "Wallet" || p.Accounts[0].NewKind != "cash" {
 		t.Errorf("preview %+v", p)
 	}
-	if g := groups["Restaurant, fast-food"]; g.CategoryID == nil || *g.CategoryID != food || g.Count != 2 || g.Total != 2000 {
-		t.Errorf("Restaurant, fast-food should go to Food & Drinks: %+v", g)
+	if g := groups["Restaurant, fast-food"]; g.CategoryID == nil || *g.CategoryID != restaurants || g.Count != 2 || g.Total != 2000 {
+		t.Errorf("Restaurant, fast-food should go to Restaurants: %+v", g)
 	}
-	if g := groups["Phone, cell phone"]; g.CategoryID != nil || g.NewName != "Phone & Internet" {
-		t.Errorf("Phone, cell phone should go to a new Phone & Internet: %+v", g)
+	// Without Phone & Internet, its main category holds it.
+	if g := groups["Phone, cell phone"]; g.CategoryID == nil || *g.CategoryID != housing {
+		t.Errorf("Phone, cell phone should go to Housing: %+v", g)
 	}
 	if g := groups["Coffee beans"]; g.CategoryID != nil || g.NewName != "Coffee beans" {
 		t.Errorf("an unknown category is suggested as itself: %+v", g)
@@ -359,7 +362,8 @@ func TestImportBudgetBakersChoices(t *testing.T) {
 	for _, cat := range o.Categories {
 		byName[cat.Name] = cat
 	}
-	if byName["Phone & Internet"].Icon != "phone" || byName["Restaurant, fast-food"].ID != 0 {
+	// Phone & Internet comes back under Housing.
+	if p := byName["Phone & Internet"]; p.Icon != "phone" || p.ParentID == nil || *p.ParentID != housing || byName["Restaurant, fast-food"].ID != 0 {
 		t.Errorf("categories after import: %+v", o.Categories)
 	}
 	var list []wallet.Transaction
@@ -633,8 +637,8 @@ func TestImportPayPayCategories(t *testing.T) {
 	if g := groups["ローソン 渋谷店"]; g.Count != 2 || g.Total != 1500 || g.CategoryID == nil || *g.CategoryID != categoryID(t, o, "Food & Drinks") {
 		t.Errorf("a konbini is suggested Food & Drinks: %+v", g)
 	}
-	if g := groups["JR東日本"]; g.CategoryID == nil || *g.CategoryID != categoryID(t, o, "Transport") {
-		t.Errorf("JR is suggested Transport: %+v", g)
+	if g := groups["JR東日本"]; g.CategoryID == nil || *g.CategoryID != categoryID(t, o, "Public transport") {
+		t.Errorf("JR is suggested Public transport: %+v", g)
 	}
 	if g := groups["ANTHROPIC* CLAUDE SUB"]; g.CategoryID == nil || *g.CategoryID != categoryID(t, o, "Subscriptions") {
 		t.Errorf("a subscription is suggested Subscriptions: %+v", g)

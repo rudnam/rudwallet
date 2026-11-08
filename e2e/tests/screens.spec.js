@@ -132,7 +132,7 @@ for (const [name, viewport] of [
     await expect(page.getByRole('button', { name: 'Confirm 2 with a category' })).toBeVisible();
     // A category other than the shop's rule asks whether to keep it. (The
     // notification's full-width dash is read as a plain one.)
-    await page.getByLabel('Category for セブン-イレブン').selectOption({ label: 'Groceries' });
+    await page.getByLabel('Category for セブン-イレブン').selectOption({ label: '\u00a0\u00a0\u00a0Groceries' }) // a subcategory, indented;
     await expect(page.getByLabel(/Use Groceries for セブン-イレブン from now on/)).toBeVisible();
     await shot('3-review');
 
@@ -167,8 +167,12 @@ for (const [name, viewport] of [
     await expect(add).toBeVisible();
     await shot('5-new-record');
     await add.getByRole('button', { name: 'More' }).click();
-    await add.getByRole('radio', { name: 'Travel' }).check();
     await shot('5-new-record-all-categories');
+    // A main category with subcategories opens: it first, then them, then Back.
+    await add.getByRole('radio', { name: 'Travel' }).check();
+    await expect(add.getByRole('radio', { name: 'Flights' })).toBeVisible();
+    await shot('5-new-record-subcategories');
+    await add.getByRole('button', { name: 'Back' }).click();
     await add.getByRole('button', { name: 'Fewer' }).click();
     // The chosen category stays in view when the rest fold away.
     await expect(add.getByRole('radio', { name: 'Travel' })).toBeChecked();

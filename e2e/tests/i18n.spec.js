@@ -40,7 +40,7 @@ test.describe('on a phone set to Japanese', () => {
     await page.getByLabel('English').click();
     await expect(page.getByRole('heading', { name: 'Language' })).toBeVisible();
     await page.goto('/app/#/settings?section=categories');
-    await expect(page.getByRole('button', { name: 'Edit category 食費' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Edit category 食費', exact: true })).toBeVisible();
 
     // Automatic follows the phone again.
     await page.goto('/app/#/settings?section=language');
