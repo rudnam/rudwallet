@@ -5,6 +5,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
+import com.rudnam.wallet.core.model.Category
+import com.rudnam.wallet.core.model.CategoryKind
 import com.rudnam.wallet.core.model.TransactionKind
 import com.rudnam.wallet.core.testing.SampleWallet
 import org.junit.Before
@@ -33,6 +35,7 @@ class RecordSheetScreenshotTest {
         override fun press(key: PadKey) {}
         override fun category(id: Long) {}
         override fun allCategories(show: Boolean) {}
+        override fun searchCategories(query: String) {}
         override fun payee(payee: String) {}
         override fun account(id: Long) {}
         override fun toAccount(id: Long) {}
@@ -95,6 +98,29 @@ class RecordSheetScreenshotTest {
     fun review() {
         val record = SampleWallet.records.first { it.id == 20L }.copy(sourceLabel = "PayPay")
         shot("review", state(RecordForm.from(record, 0), record, extras = true))
+    }
+
+    /** A new wallet's expense categories, all of them open, with the search above. */
+    @Test
+    @Config(qualifiers = "w411dp-h1300dp-xxhdpi")
+    fun allCategories() {
+        val defaults = listOf(
+            "Food & Drinks" to "food", "Groceries" to "grocery", "Shopping" to "shopping", "Clothing" to "clothes",
+            "Household" to "clean", "Transport" to "transit", "Car" to "car", "Housing" to "home",
+            "Bills & Utilities" to "bills", "Phone & Internet" to "phone", "Subscriptions" to "repeat", "Insurance" to "shield",
+            "Health" to "health", "Personal care" to "beauty", "Sport & Fitness" to "sport", "Entertainment" to "fun",
+            "Education" to "school", "Travel" to "travel", "Kids & Family" to "kids", "Pets" to "pet",
+            "Gifts & Donations" to "gift", "Taxes & Fees" to "bank", "Other" to "other",
+        ).mapIndexed { i, (name, icon) -> Category(100L + i, name, CategoryKind.Expense, icon, "#5f7387") }
+        shot(
+            "all-categories",
+            state(newRecord.copy(categoryId = 100)).copy(
+                categories = defaults,
+                canFoldCategories = true,
+                showAllCategories = true,
+                canSearchCategories = true,
+            ),
+        )
     }
 
     @Test

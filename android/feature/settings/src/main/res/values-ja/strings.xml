@@ -102,6 +102,12 @@
     <string name="feature_settings_glyph_savings">貯金</string>
     <string name="feature_settings_glyph_kids">子ども</string>
     <string name="feature_settings_glyph_pet">ペット</string>
+    <string name="feature_settings_glyph_clothes">服</string>
+    <string name="feature_settings_glyph_clean">日用品</string>
+    <string name="feature_settings_glyph_repeat">サブスク</string>
+    <string name="feature_settings_glyph_shield">保険</string>
+    <string name="feature_settings_glyph_tag">売却</string>
+    <string name="feature_settings_glyph_laptop">仕事</string>
     <string name="feature_settings_name_mufg">三菱UFJ銀行</string>
     <string name="feature_settings_name_smbc">三井住友銀行</string>
     <string name="feature_settings_name_mizuho">みずほ銀行</string>

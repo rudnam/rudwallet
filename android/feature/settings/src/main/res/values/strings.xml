@@ -103,6 +103,12 @@
     <string name="feature_settings_glyph_savings">Savings</string>
     <string name="feature_settings_glyph_kids">Kids</string>
     <string name="feature_settings_glyph_pet">Pets</string>
+    <string name="feature_settings_glyph_clothes">Clothes</string>
+    <string name="feature_settings_glyph_clean">Household</string>
+    <string name="feature_settings_glyph_repeat">Subscriptions</string>
+    <string name="feature_settings_glyph_shield">Insurance</string>
+    <string name="feature_settings_glyph_tag">Sale</string>
+    <string name="feature_settings_glyph_laptop">Work</string>
     <string name="feature_settings_name_mufg">MUFG</string>
     <string name="feature_settings_name_smbc">SMBC</string>
     <string name="feature_settings_name_mizuho">Mizuho</string>

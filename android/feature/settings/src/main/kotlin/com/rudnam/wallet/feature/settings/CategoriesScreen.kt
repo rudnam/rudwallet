@@ -71,6 +71,12 @@ private val glyphNames = mapOf(
     "beauty" to R.string.feature_settings_glyph_beauty, "card" to R.string.feature_settings_glyph_card,
     "bank" to R.string.feature_settings_glyph_bank, "savings" to R.string.feature_settings_glyph_savings,
     "kids" to R.string.feature_settings_glyph_kids, "pet" to R.string.feature_settings_glyph_pet,
+    "clothes" to R.string.feature_settings_glyph_clothes,
+    "clean" to R.string.feature_settings_glyph_clean,
+    "repeat" to R.string.feature_settings_glyph_repeat,
+    "shield" to R.string.feature_settings_glyph_shield,
+    "tag" to R.string.feature_settings_glyph_tag,
+    "laptop" to R.string.feature_settings_glyph_laptop,
 )
 
 @Composable

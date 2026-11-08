@@ -138,6 +138,12 @@ export const ja = {
   Savings: '貯金',
   Kids: '子ども',
   Pets: 'ペット',
+  Clothes: '服',
+  Household: '日用品',
+  Subscriptions: 'サブスク',
+  Insurance: '保険',
+  Sale: '売却',
+  Work: '仕事',
 
   // A record: adding, editing, reviewing, and the list
   'Enter an amount, like 1200.': '金額を入力してください（例: 1200）。',
