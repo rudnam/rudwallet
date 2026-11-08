@@ -27,24 +27,27 @@ test('a subcategory is made in Settings, picked under its main category, and cou
   expect(cafes.parent_id).toBe(foodId);
   expect((await page.request.post('/api/budgets', { data: { name: 'Eating out', category_id: foodId, amount: 1000 } })).status()).toBe(201);
 
-  // The grid shows main categories; picking Food & Drinks offers Cafés.
+  // The grid shows main categories. Tapping Food & Drinks chooses it and swaps
+  // the boxes for its own: Food & Drinks first, then Cafés, then Back.
   await page.goto('/app/#/');
   await page.getByRole('button', { name: 'Add record' }).click();
   const rec = page.getByRole('dialog', { name: 'New record' });
   await rec.getByLabel('Amount (JPY)').fill('600');
   await expect(rec.getByRole('radio', { name: 'Cafés' })).toHaveCount(0);
-  const subs = rec.getByRole('group', { name: 'Subcategories of Food & Drinks' });
-  await expect(subs).toHaveCount(0);
-  await rec.getByRole('radio', { name: 'Food & Drinks' }).check();
-  // Food & Drinks itself comes first, chosen: the record goes under it in general.
-  await expect(subs.getByRole('button')).toHaveText([/Food & Drinks/, /Cafés/]);
-  await expect(subs.getByRole('button', { name: 'Food & Drinks' })).toHaveAttribute('aria-pressed', 'true');
-  await subs.getByRole('button', { name: 'Cafés' }).click();
-  await expect(subs.getByRole('button', { name: 'Food & Drinks' })).toHaveAttribute('aria-pressed', 'false');
-  await expect(subs.getByRole('button', { name: 'Cafés' })).toHaveAttribute('aria-pressed', 'true');
+  await rec.getByRole('radio', { name: 'Food & Drinks' }).click();
+  const boxes = rec.getByRole('group', { name: 'Subcategories of Food & Drinks' });
+  await expect(boxes.getByRole('radio')).toHaveCount(2);
+  await expect(boxes.locator('.category-name')).toHaveText(['Food & Drinks', 'Cafés', 'Back']);
+  await expect(boxes.getByRole('radio', { name: 'Food & Drinks' })).toBeChecked();
+  await expect(rec.getByRole('radio', { name: 'Groceries' })).toHaveCount(0);
+  await boxes.getByRole('radio', { name: 'Cafés' }).click();
+  await expect(boxes.getByRole('radio', { name: 'Cafés' })).toBeChecked();
+  await page.screenshot({ path: test.info().outputPath('add-subcategory.png'), fullPage: true });
+  // Back: all the main categories again, Food & Drinks marked as holding the choice.
+  await boxes.getByRole('button', { name: 'Back' }).click();
+  await expect(rec.getByRole('radio', { name: 'Groceries' })).toBeVisible();
   await expect(rec.getByRole('radio', { name: 'Food & Drinks' })).toBeChecked();
   await rec.getByLabel('Payee').fill('Doutor');
-  await page.screenshot({ path: test.info().outputPath('add-subcategory.png'), fullPage: true });
   await rec.getByRole('button', { name: 'Save' }).click();
   await expect(rec).toBeHidden();
   const list = await (await page.request.get('/api/transactions')).json();

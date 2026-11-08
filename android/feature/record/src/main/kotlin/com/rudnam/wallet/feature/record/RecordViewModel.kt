@@ -56,12 +56,13 @@ sealed interface RecordUiState {
          * The main categories of the form's kind, the most used first (a main
          * category's use counts its subcategories'); [showAllCategories] or the
          * first few. While searching, every category that matches, subcategories too.
+         * With a main category opened ([openedMainId]): it, then its subcategories.
          */
         val categories: List<Category>,
         /** The main category chosen, or the one the chosen subcategory is under. */
         val chosenMainId: Long? = null,
-        /** The chosen main category's subcategories, offered under the grid. */
-        val subcategories: List<Category> = emptyList(),
+        /** The main category whose boxes the grid shows instead of all of them, with Back. */
+        val openedMainId: Long? = null,
         val canFoldCategories: Boolean,
         val showAllCategories: Boolean,
         /** Shown above all the categories when there are many; [categories] are those matching [categoryQuery]. */
@@ -106,6 +107,10 @@ class RecordViewModel @Inject constructor(
         val habits: RecordHabits? = null,
         val showAllCategories: Boolean = false,
         val categoryQuery: String = "",
+        // The main category opened (its subcategories shown), and whether Back was
+        // tapped, so a record already in a subcategory opens there until then.
+        val openedMain: Long? = null,
+        val leftMain: Boolean = false,
         val showExtras: Boolean = false,
         val busy: Boolean = false,
         val problem: RecordProblem? = null,
@@ -171,7 +176,15 @@ class RecordViewModel @Inject constructor(
         val chosenHidden = ofKind.indexOfFirst { it.id == chosenMain } >= FEW_CATEGORIES
         val searching = folding && s.showAllCategories && allOfKind.size > SEARCH_CATEGORIES
         val query = if (searching) s.categoryQuery.trim() else ""
+        val chosenIsSub = w.category(form.categoryId)?.let(w::isSubcategory) == true
+        val opened = when {
+            query.isNotEmpty() -> null
+            s.openedMain != null -> s.openedMain
+            chosenIsSub && !s.leftMain -> chosenMain
+            else -> null
+        }?.takeIf { id -> w.subcategories(id).isNotEmpty() && ofKind.any { it.id == id } }
         val shown = when {
+            opened != null -> listOf(w.category(opened)!!) + w.subcategories(opened)
             query.isNotEmpty() -> allOfKind.filter { it.name.contains(query, ignoreCase = true) }
             !folding || s.showAllCategories -> ofKind
             // A chosen category from further down takes the last place, so More stays where it is.
@@ -184,10 +197,10 @@ class RecordViewModel @Inject constructor(
             record = s.record,
             categories = shown,
             chosenMainId = chosenMain,
-            subcategories = if (query.isEmpty()) w.subcategories(chosenMain) else emptyList(),
-            canFoldCategories = folding,
+            openedMainId = opened,
+            canFoldCategories = folding && opened == null,
             showAllCategories = s.showAllCategories,
-            canSearchCategories = searching,
+            canSearchCategories = searching && opened == null,
             categoryQuery = if (searching) s.categoryQuery else "",
             recentPayees = if (s.record == null && typed.isEmpty()) habits.payees.keys.take(FEW_PAYEES) else emptyList(),
             payeeSuggestions = if (typed.isEmpty()) emptyList() else habits.payees.keys.filter { it.contains(typed, ignoreCase = true) && it != typed }.take(5),
@@ -205,9 +218,12 @@ class RecordViewModel @Inject constructor(
         sheet.update { s -> s.form?.let { s.copy(form = change(it), problem = null, serverMessage = null) } ?: s }
     }
 
-    fun setKind(kind: TransactionKind) = edit { f ->
-        val keep = (uiState.value as? RecordUiState.Ready)?.wallet?.category(f.categoryId)?.kind?.apiName == kind.apiName
-        f.copy(kind = kind, categoryId = if (keep) f.categoryId else null)
+    fun setKind(kind: TransactionKind) {
+        sheet.update { it.copy(openedMain = null, leftMain = false) }
+        edit { f ->
+            val keep = (uiState.value as? RecordUiState.Ready)?.wallet?.category(f.categoryId)?.kind?.apiName == kind.apiName
+            f.copy(kind = kind, categoryId = if (keep) f.categoryId else null)
+        }
     }
 
     fun press(key: PadKey) {
@@ -215,18 +231,31 @@ class RecordViewModel @Inject constructor(
         edit { it.copy(amount = pressKey(it.amount, key, exponent)) }
     }
 
-    /** Choosing the chosen category again clears it. */
-    fun chooseCategory(id: Long) = edit { it.copy(categoryId = if (it.categoryId == id) null else id) }
-
     /**
-     * A chip under a chosen main category: the main category itself, or one
-     * of its subcategories; choosing the chosen subcategory again goes back
-     * to its main category.
+     * A box tapped. A main category with subcategories is chosen and opened:
+     * the grid shows it first, then its subcategories. In there, the main
+     * category stays chosen when tapped again, and a chosen subcategory
+     * tapped again goes back to it. Elsewhere, choosing the chosen category
+     * again clears it.
      */
-    fun chooseSubcategory(id: Long) = edit { f ->
-        val main = (uiState.value as? RecordUiState.Ready)?.wallet?.category(id)?.parentId
-        f.copy(categoryId = if (f.categoryId == id && main != null) main else id)
+    fun chooseCategory(id: Long) {
+        val ready = uiState.value as? RecordUiState.Ready ?: return
+        val w = ready.wallet
+        when {
+            ready.openedMainId != null -> {
+                val parent = w.category(id)?.parentId
+                edit { it.copy(categoryId = if (it.categoryId == id && parent != null) parent else id) }
+            }
+            w.subcategories(id).isNotEmpty() -> {
+                sheet.update { it.copy(openedMain = id, leftMain = false) }
+                edit { it.copy(categoryId = if (w.mainCategoryId(it.categoryId) == id) it.categoryId else id) }
+            }
+            else -> edit { it.copy(categoryId = if (it.categoryId == id) null else id) }
+        }
     }
+
+    /** Back from a main category's boxes to all the main categories; what's chosen stays. */
+    fun leaveCategory() = sheet.update { it.copy(openedMain = null, leftMain = true) }
 
     fun showAllCategories(show: Boolean) = sheet.update { it.copy(showAllCategories = show, categoryQuery = "") }
 

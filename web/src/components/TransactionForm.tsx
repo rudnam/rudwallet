@@ -71,6 +71,10 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
   // How many recent records each category has, to show the most used first.
   const [use, setUse] = useState<Map<number, number>>(new Map());
   const [allCategories, setAllCategories] = useState(false);
+  // The main category whose boxes show instead of all of them, and whether
+  // Back was tapped (a record in a subcategory opens in its main one until then).
+  const [openedMain, setOpenedMain] = useState<number | null>(null);
+  const [leftMain, setLeftMain] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   // An edit waiting for the user to check what it changes.
@@ -105,17 +109,20 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
 
   // The main categories, the most used first (a main one's use counts its
   // subcategories'; sort keeps the rest in their order); a few show until the
-  // user asks for all, and the chosen one always shows. A chosen main
-  // category's subcategories are offered under them.
+  // user asks for all, and the chosen one always shows. Tapping a main
+  // category with subcategories opens it: its boxes, it first, then them.
   const ofKind = w.categories.filter((c) => c.kind === kind);
   const useOf = (id: number) => [...withSubcategories(id, ofKind)].reduce((n, x) => n + (use.get(x) ?? 0), 0);
   const categories = ofKind.filter((c) => !isSubcategory(c, ofKind)).sort((a, b) => useOf(b.id) - useOf(a.id));
   const chosenMain = mainCategoryId(categoryId, ofKind);
-  const subcategories = subcategoriesOf(chosenMain, ofKind);
-  const folding = categories.length > fewCategories + 1;
+  const chosenIsSub = chosenMain !== categoryId;
+  const openId = openedMain ?? (chosenIsSub && !leftMain ? chosenMain : null);
+  const opened = openId !== null && subcategoriesOf(openId, ofKind).length > 0 ? w.category(openId) : undefined;
+  const folding = !opened && categories.length > fewCategories + 1;
   const chosenHidden = categories.findIndex((c) => c.id === chosenMain) >= fewCategories;
-  const shownCategories =
-    !folding || allCategories
+  const shownCategories = opened
+    ? [opened, ...subcategoriesOf(opened.id, ofKind)]
+    : !folding || allCategories
       ? categories
       : // A chosen category from further down takes the last place, so More stays on the second row.
         categories.filter((c, i) => i < fewCategories - (chosenHidden ? 1 : 0) || c.id === chosenMain);
@@ -125,11 +132,33 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
     setKind(k);
     hapticSelect();
     if (w.category(categoryId)?.kind !== k) setCategoryId(null);
+    setOpenedMain(null);
+    setLeftMain(false);
   }
 
+  /**
+   * A box tapped. A main category with subcategories is chosen and opened.
+   * In there, it stays chosen when tapped again, and a chosen subcategory
+   * tapped again goes back to it. Elsewhere, the chosen one tapped again clears it.
+   */
   function chooseCategory(id: number) {
-    setCategoryId(id);
     hapticSelect();
+    if (opened) {
+      const parent = w.category(id)?.parent_id ?? null;
+      setCategoryId(categoryId === id && parent !== null ? parent : id);
+    } else if (subcategoriesOf(id, ofKind).length > 0) {
+      setOpenedMain(id);
+      setLeftMain(false);
+      if (chosenMain !== id) setCategoryId(id);
+    } else {
+      setCategoryId(categoryId === id ? null : id);
+    }
+  }
+
+  /** Back to all the main categories; what's chosen stays. */
+  function leaveCategory() {
+    setOpenedMain(null);
+    setLeftMain(true);
   }
 
   /** A key on the number pad: a digit, '000', the decimal point, or 'back'. */
@@ -413,21 +442,33 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
         </label>
         {kind !== 'transfer' && (
           <fieldset className="category-pick">
-            <legend className="sr-only">{t('Category')}</legend>
-            {shownCategories.map((c) => (
-              <label key={c.id} className={chosenMain === c.id ? 'on' : ''}>
-                <input
-                  type="radio"
-                  name="category"
-                  checked={chosenMain === c.id}
-                  onChange={() => chooseCategory(c.id)}
-                  // Tapping the chosen category again clears it; with a subcategory chosen, it goes back to the main one.
-                  onClick={() => categoryId === c.id && setCategoryId(null)}
-                />
-                <CategoryIcon icon={c.icon} name={c.name} color={c.color} />
-                <span className="category-name">{c.name}</span>
-              </label>
-            ))}
+            <legend className="sr-only">{opened ? t('Subcategories of {name}', { name: opened.name }) : t('Category')}</legend>
+            {shownCategories.map((c) => {
+              // In a main category's boxes, the one chosen; among all of them, the main one chosen or holding it.
+              const on = opened ? categoryId === c.id : chosenMain === c.id;
+              return (
+                <label key={c.id} className={on ? 'on' : ''}>
+                  <input
+                    type="radio"
+                    name="category"
+                    checked={on}
+                    // Clicks (arrow keys click too) do it all, the chosen box included.
+                    onChange={() => {}}
+                    onClick={() => chooseCategory(c.id)}
+                  />
+                  <CategoryIcon icon={c.icon} name={c.name} color={c.color} />
+                  <span className="category-name">{c.name}</span>
+                </label>
+              );
+            })}
+            {opened && (
+              <button type="button" className="category-more" onClick={leaveCategory}>
+                <span className="cat-icon" aria-hidden="true">
+                  <Icon d={icons.back} className="glyph" />
+                </span>
+                <span className="category-name">{t('Back')}</span>
+              </button>
+            )}
             {folding && (
               <button type="button" className="category-more" aria-expanded={allCategories} onClick={() => setAllCategories(!allCategories)}>
                 <span className="cat-icon" aria-hidden="true">
@@ -437,23 +478,6 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
               </button>
             )}
           </fieldset>
-        )}
-        {kind !== 'transfer' && subcategories.length > 0 && (
-          <div className="chips subcategory-pick" role="group" aria-label={t('Subcategories of {name}', { name: w.category(chosenMain)?.name ?? '' })}>
-            {/* The main category itself first (in general), then its subcategories. */}
-            {[w.category(chosenMain)!, ...subcategories].map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                className={categoryId === c.id ? 'chip on' : 'chip'}
-                aria-pressed={categoryId === c.id}
-                // Choosing the chosen subcategory again goes back to its main category.
-                onClick={() => chooseCategory(categoryId === c.id ? chosenMain! : c.id)}
-              >
-                <CategoryIcon icon={c.icon} name={c.name} color={c.color} size="small" /> {c.name}
-              </button>
-            ))}
-          </div>
         )}
         <div className="details">
           {kind === 'transfer' ? (
