@@ -66,6 +66,26 @@ class RecordViewModelTest {
     }
 
     @Test
+    fun `the grid shows main categories, and a chosen one offers its subcategories`() = runTest {
+        val cafes = Category(20, "Cafés", CategoryKind.Expense, "coffee", "#8a5a3c", parentId = 10)
+        wallet.send(SampleWallet.wallet.copy(categories = SampleWallet.wallet.categories + cafes), SampleWallet.budgets, SampleWallet.records)
+        // Cafés' use counts for Food & Drinks.
+        records.habits = RecordHabits(emptyMap(), mapOf(20L to 9, 13L to 5), emptyList())
+        val vm = viewModel()
+        assertEquals(10L, vm.ready().categories.first().id)
+        assertTrue(vm.ready().categories.none { it.id == 20L })
+        assertTrue(vm.ready().subcategories.isEmpty())
+        vm.chooseCategory(10)
+        assertEquals(listOf(20L), vm.ready().subcategories.map { it.id })
+        vm.chooseSubcategory(20)
+        assertEquals(20L, vm.ready().form.categoryId)
+        assertEquals(10L, vm.ready().chosenMainId)
+        // Choosing it again goes back to Food & Drinks.
+        vm.chooseSubcategory(20)
+        assertEquals(10L, vm.ready().form.categoryId)
+    }
+
+    @Test
     fun `with many categories, all of them open with a search that narrows them`() = runTest {
         val many = SampleWallet.wallet.categories + (1..14).map { Category(100L + it, "Extra $it", CategoryKind.Expense, "other", "#7a7f7c") } +
             Category(200, "Pets", CategoryKind.Expense, "pet", "#8a6d3b")

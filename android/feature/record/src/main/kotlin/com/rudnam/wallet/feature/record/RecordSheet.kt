@@ -106,6 +106,7 @@ internal fun RecordSheetDestination(onDone: () -> Unit, viewModel: RecordViewMod
             override fun kind(kind: TransactionKind) { haptics.select(); viewModel.setKind(kind) }
             override fun press(key: PadKey) { haptics.key(); viewModel.press(key) }
             override fun category(id: Long) { haptics.select(); viewModel.chooseCategory(id) }
+            override fun subcategory(id: Long) { haptics.select(); viewModel.chooseSubcategory(id) }
             override fun allCategories(show: Boolean) = viewModel.showAllCategories(show)
             override fun searchCategories(query: String) = viewModel.searchCategories(query)
             override fun payee(payee: String) = viewModel.setPayee(payee)
@@ -132,6 +133,7 @@ internal interface RecordActions {
     fun kind(kind: TransactionKind)
     fun press(key: PadKey)
     fun category(id: Long)
+    fun subcategory(id: Long)
     fun allCategories(show: Boolean)
     fun searchCategories(query: String)
     fun payee(payee: String)
@@ -340,12 +342,36 @@ private fun CategoryGrid(state: RecordUiState.Ready, actions: RecordActions) {
                         if (c == null) {
                             MoreTile(state.showAllCategories) { actions.allCategories(!state.showAllCategories) }
                         } else {
-                            CategoryTile(c, c.id == state.form.categoryId) { actions.category(c.id) }
+                            CategoryTile(c, c.id == state.form.categoryId || c.id == state.chosenMainId) { actions.category(c.id) }
                         }
                     }
                 }
                 repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
             }
+        }
+        if (state.subcategories.isNotEmpty()) Subcategories(state, actions)
+    }
+}
+
+/** The chosen main category's subcategories: none picked files the record under the main one. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun Subcategories(state: RecordUiState.Ready, actions: RecordActions) {
+    val main = state.wallet.category(state.chosenMainId) ?: return
+    val label = stringResource(R.string.feature_record_subcategories_of, main.name)
+    FlowRow(
+        Modifier.fillMaxWidth().padding(top = 4.dp).semantics { contentDescription = label },
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        for (c in state.subcategories) {
+            val hue = parseHexColor(c.color) ?: WalletTheme.colors.muted
+            FilterChip(
+                selected = c.id == state.form.categoryId,
+                onClick = { actions.subcategory(c.id) },
+                label = { Text(c.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                leadingIcon = { CategoryIcon(c, Modifier.size(20.dp)) },
+                colors = FilterChipDefaults.filterChipColors(selectedContainerColor = hue.mixedWith(WalletTheme.colors.surface, 0.16f)),
+            )
         }
     }
 }
@@ -668,7 +694,7 @@ private fun describe(v: Change.Value, wallet: Wallet, format: MoneyFormat): Stri
             },
         )
         is Change.Value.Money -> format.money(v.amount)
-        is Change.Value.Category -> wallet.category(v.id)?.name ?: none
+        is Change.Value.Category -> wallet.categoryPath(v.id) ?: none
         is Change.Value.Account -> wallet.account(v.id)?.name ?: none
         is Change.Value.Text -> v.text.ifEmpty { none }
         is Change.Value.Time -> format.dateTime(v.at)

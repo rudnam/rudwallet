@@ -27,6 +27,9 @@ import com.rudnam.wallet.core.model.Wallet
 import com.rudnam.wallet.core.model.WalletSettings
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
 import java.time.LocalDate
 import java.time.OffsetDateTime
 
@@ -68,6 +71,7 @@ data class NetworkCategory(
     val kind: String = "expense",
     val icon: String = "",
     val color: String = "",
+    @SerialName("parent_id") val parentId: Long? = null,
 )
 
 @Serializable
@@ -192,8 +196,18 @@ data class NetworkAccountInput(
     val archived: Boolean,
 )
 
+/**
+ * [parentId] is always sent, null as JSON null (explicitNulls is off for
+ * the rest): the server keeps a category where it is when it's left out.
+ */
 @Serializable
-data class NetworkCategoryInput(val name: String, val kind: String, val icon: String, val color: String)
+data class NetworkCategoryInput(
+    val name: String,
+    val kind: String,
+    val icon: String,
+    val color: String,
+    @SerialName("parent_id") val parentId: JsonElement,
+)
 
 /** A new budget, or a budget's new name, category or limit. */
 @Serializable
@@ -381,9 +395,9 @@ fun NetworkMcpToken.asModel() = McpToken(
 
 fun AccountInput.asNetwork() = NetworkAccountInput(name, kind.apiName, initialBalance, color, archived)
 
-fun CategoryInput.asNetwork() = NetworkCategoryInput(name, kind.apiName, icon, color)
+fun CategoryInput.asNetwork() = NetworkCategoryInput(name, kind.apiName, icon, color, parentId?.let { JsonPrimitive(it) } ?: JsonNull)
 
-fun NetworkCategory.asModel() = Category(id, name, CategoryKind.fromApi(kind), icon, color)
+fun NetworkCategory.asModel() = Category(id, name, CategoryKind.fromApi(kind), icon, color, parentId)
 
 fun NetworkStats.asModel() = Stats(
     spent = spent,

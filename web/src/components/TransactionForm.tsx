@@ -1,5 +1,6 @@
 // Add, edit, or review a record.
 import { useEffect, useState, type FormEvent } from 'react';
+import { isSubcategory, mainCategoryId, subcategoriesOf, withSubcategories } from '../categories';
 import { api, errorMessage, type Transaction, type TransactionInput, type TransactionKind } from '../api';
 import { t, type Key } from '../i18n';
 import { amountInput, currencySymbol, formatDay, formatTime, parseAmount, toLocalInput } from '../money';
@@ -102,18 +103,22 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
     api.tags().then((list) => setKnownTags(list.map((x) => x.name)), () => {});
   }, []);
 
-  // The most used categories first (sort keeps the rest in their order); a
-  // few show until the user asks for all, and the chosen one always shows.
-  const categories = w.categories
-    .filter((c) => c.kind === kind)
-    .sort((a, b) => (use.get(b.id) ?? 0) - (use.get(a.id) ?? 0));
+  // The main categories, the most used first (a main one's use counts its
+  // subcategories'; sort keeps the rest in their order); a few show until the
+  // user asks for all, and the chosen one always shows. A chosen main
+  // category's subcategories are offered under them.
+  const ofKind = w.categories.filter((c) => c.kind === kind);
+  const useOf = (id: number) => [...withSubcategories(id, ofKind)].reduce((n, x) => n + (use.get(x) ?? 0), 0);
+  const categories = ofKind.filter((c) => !isSubcategory(c, ofKind)).sort((a, b) => useOf(b.id) - useOf(a.id));
+  const chosenMain = mainCategoryId(categoryId, ofKind);
+  const subcategories = subcategoriesOf(chosenMain, ofKind);
   const folding = categories.length > fewCategories + 1;
-  const chosenHidden = categories.findIndex((c) => c.id === categoryId) >= fewCategories;
+  const chosenHidden = categories.findIndex((c) => c.id === chosenMain) >= fewCategories;
   const shownCategories =
     !folding || allCategories
       ? categories
       : // A chosen category from further down takes the last place, so More stays on the second row.
-        categories.filter((c, i) => i < fewCategories - (chosenHidden ? 1 : 0) || c.id === categoryId);
+        categories.filter((c, i) => i < fewCategories - (chosenHidden ? 1 : 0) || c.id === chosenMain);
   const duplicate = record?.duplicate_of_id ? record.duplicate_of_id : null;
 
   function changeKind(k: TransactionKind) {
@@ -410,13 +415,13 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
           <fieldset className="category-pick">
             <legend className="sr-only">{t('Category')}</legend>
             {shownCategories.map((c) => (
-              <label key={c.id} className={categoryId === c.id ? 'on' : ''}>
+              <label key={c.id} className={chosenMain === c.id ? 'on' : ''}>
                 <input
                   type="radio"
                   name="category"
-                  checked={categoryId === c.id}
+                  checked={chosenMain === c.id}
                   onChange={() => chooseCategory(c.id)}
-                  // Tapping the chosen category again clears it.
+                  // Tapping the chosen category again clears it; with a subcategory chosen, it goes back to the main one.
                   onClick={() => categoryId === c.id && setCategoryId(null)}
                 />
                 <CategoryIcon icon={c.icon} name={c.name} color={c.color} />
@@ -432,6 +437,22 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
               </button>
             )}
           </fieldset>
+        )}
+        {kind !== 'transfer' && subcategories.length > 0 && (
+          <div className="chips subcategory-pick" role="group" aria-label={t('Subcategories of {name}', { name: w.category(chosenMain)?.name ?? '' })}>
+            {subcategories.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                className={categoryId === c.id ? 'chip on' : 'chip'}
+                aria-pressed={categoryId === c.id}
+                // Choosing the chosen one again goes back to its main category.
+                onClick={() => chooseCategory(categoryId === c.id ? chosenMain! : c.id)}
+              >
+                <CategoryIcon icon={c.icon} name={c.name} color={c.color} size="small" /> {c.name}
+              </button>
+            ))}
+          </div>
         )}
         <div className="details">
           {kind === 'transfer' ? (

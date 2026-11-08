@@ -72,8 +72,8 @@ data class Transaction(
 }
 
 /** What a budget has spent among these records: its category's confirmed spending, or all of it. */
-fun Budget.spentIn(records: List<Transaction>): Long = records
-    .filter { it.kind == TransactionKind.Expense && it.confirmed && (categoryId == null || it.categoryId == categoryId) }
+fun Budget.spentIn(records: List<Transaction>, wallet: Wallet? = null): Long = records
+    .filter { it.kind == TransactionKind.Expense && it.confirmed && RecordFilter(categoryId = categoryId).matches(it, wallet) }
     .sumOf { it.amount }
 
 /** Confirmed spending among these records. */
@@ -131,10 +131,17 @@ data class RecordFilter(
     /** A search or a tag looks through every month. */
     val everyMonth: Boolean get() = query.isNotBlank() || tag.isNotBlank()
 
-    fun matches(t: Transaction): Boolean =
+    /** A main category takes in its subcategories' records, as the [wallet] has them. */
+    fun matches(t: Transaction, wallet: Wallet? = null): Boolean =
         (accountId == null || t.accountId == accountId || t.toAccountId == accountId) &&
-            (categoryId == null || (if (categoryId == NO_CATEGORY) t.categoryId == null && t.kind != TransactionKind.Transfer else t.categoryId == categoryId)) &&
+            inCategory(t, wallet) &&
             (tag.isBlank() || t.tags.any { it.equals(tag, ignoreCase = true) })
+
+    private fun inCategory(t: Transaction, wallet: Wallet?): Boolean = when (categoryId) {
+        null -> true
+        NO_CATEGORY -> t.categoryId == null && t.kind != TransactionKind.Transfer
+        else -> t.categoryId == categoryId || (t.categoryId != null && wallet?.category(t.categoryId)?.parentId == categoryId)
+    }
 
     companion object {
         const val NO_CATEGORY = -1L

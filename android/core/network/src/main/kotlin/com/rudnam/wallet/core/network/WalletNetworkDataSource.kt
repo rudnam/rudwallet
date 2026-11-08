@@ -91,6 +91,8 @@ interface WalletNetworkDataSource {
     suspend fun search(
         from: Instant? = null, to: Instant? = null, accountId: Long? = null, categoryId: String? = null,
         query: String? = null, tag: String? = null, status: String? = null,
+        /** [categoryId]'s subcategories' records too. */
+        withSubcategories: Boolean = false,
     ): List<NetworkTransaction>
 
     suspend fun bulk(change: NetworkBulkChange): NetworkBulkResult

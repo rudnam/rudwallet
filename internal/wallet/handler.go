@@ -406,6 +406,7 @@ func (h *Handler) listTransactions(w http.ResponseWriter, r *http.Request) error
 		f.Uncategorized = true
 	} else {
 		f.CategoryID = parseID("category_id")
+		f.WithSubcategories = q.Get("with_subcategories") == "true"
 	}
 	if err != nil {
 		return err

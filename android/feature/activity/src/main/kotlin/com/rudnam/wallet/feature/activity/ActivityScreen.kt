@@ -296,11 +296,11 @@ private fun Filters(state: ActivityUiState.Ready, actions: ActivityActions) {
                 label = when (f.categoryId) {
                     null -> stringResource(R.string.feature_activity_category)
                     RecordFilter.NO_CATEGORY -> stringResource(R.string.feature_activity_no_category)
-                    else -> state.wallet.category(f.categoryId)?.name ?: stringResource(R.string.feature_activity_category)
+                    else -> state.wallet.categoryPath(f.categoryId) ?: stringResource(R.string.feature_activity_category)
                 },
                 selected = f.categoryId != null,
                 options = listOf(null to stringResource(R.string.feature_activity_all_categories), RecordFilter.NO_CATEGORY to stringResource(R.string.feature_activity_no_category)) +
-                    state.wallet.categories.map { it.id to it.name },
+                    state.wallet.categoriesInOrder().map { it.id to (state.wallet.categoryPath(it.id) ?: it.name) },
                 onPick = { actions.setCategory(it) },
             )
         }

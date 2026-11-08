@@ -55,6 +55,8 @@ export interface Category {
   kind: CategoryKind;
   icon: string;
   color: string;
+  /** The main category a subcategory is under; null (or absent) for a main category. */
+  parent_id?: number | null;
 }
 
 export type TransactionKind = 'expense' | 'income' | 'transfer';
@@ -122,6 +124,8 @@ export interface TransactionFilter {
   account_id?: number;
   /** A category ID, or 'none' for uncategorised records. */
   category_id?: number | 'none';
+  /** category_id's subcategories' records too. */
+  with_subcategories?: boolean;
   q?: string;
   /** Records with this tag, ignoring case. */
   tag?: string;
@@ -667,6 +671,7 @@ function query(f: TransactionFilter): string {
   if (f.to) p.set('to', f.to.toISOString());
   if (f.account_id) p.set('account_id', String(f.account_id));
   if (f.category_id) p.set('category_id', String(f.category_id));
+  if (f.with_subcategories) p.set('with_subcategories', 'true');
   if (f.q) p.set('q', f.q);
   if (f.tag) p.set('tag', f.tag);
   if (f.status) p.set('status', f.status);

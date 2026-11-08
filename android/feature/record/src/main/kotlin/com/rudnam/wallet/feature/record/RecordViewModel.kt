@@ -52,8 +52,16 @@ sealed interface RecordUiState {
         val form: RecordForm,
         /** The record being changed, or null for a new one. */
         val record: Transaction?,
-        /** The categories of the form's kind, the most used first; [showAllCategories] or the first few. */
+        /**
+         * The main categories of the form's kind, the most used first (a main
+         * category's use counts its subcategories'); [showAllCategories] or the
+         * first few. While searching, every category that matches, subcategories too.
+         */
         val categories: List<Category>,
+        /** The main category chosen, or the one the chosen subcategory is under. */
+        val chosenMainId: Long? = null,
+        /** The chosen main category's subcategories, offered under the grid. */
+        val subcategories: List<Category> = emptyList(),
         val canFoldCategories: Boolean,
         val showAllCategories: Boolean,
         /** Shown above all the categories when there are many; [categories] are those matching [categoryQuery]. */
@@ -154,18 +162,20 @@ class RecordViewModel @Inject constructor(
     }
 
     private fun ready(w: Wallet, form: RecordForm, s: Sheet, habits: RecordHabits): RecordUiState.Ready {
-        val ofKind = w.categories
-            .filter { form.kind != TransactionKind.Transfer && it.kind.apiName == form.kind.apiName }
-            .sortedByDescending { habits.categoryUse[it.id] ?: 0 }
+        val allOfKind = w.categories.filter { form.kind != TransactionKind.Transfer && it.kind.apiName == form.kind.apiName }
+        fun use(c: Category) = w.withSubcategories(c.id).sumOf { habits.categoryUse[it] ?: 0 }
+        // A subcategory whose main category isn't on the phone (yet) shows as a main one.
+        val ofKind = allOfKind.filter { it.parentId == null || w.category(it.parentId) == null }.sortedByDescending(::use)
+        val chosenMain = w.mainCategoryId(form.categoryId)?.takeIf { id -> ofKind.any { it.id == id } } ?: form.categoryId
         val folding = ofKind.size > FEW_CATEGORIES + 1
-        val chosenHidden = ofKind.indexOfFirst { it.id == form.categoryId } >= FEW_CATEGORIES
-        val searching = folding && s.showAllCategories && ofKind.size > SEARCH_CATEGORIES
+        val chosenHidden = ofKind.indexOfFirst { it.id == chosenMain } >= FEW_CATEGORIES
+        val searching = folding && s.showAllCategories && allOfKind.size > SEARCH_CATEGORIES
         val query = if (searching) s.categoryQuery.trim() else ""
         val shown = when {
-            query.isNotEmpty() -> ofKind.filter { it.name.contains(query, ignoreCase = true) }
+            query.isNotEmpty() -> allOfKind.filter { it.name.contains(query, ignoreCase = true) }
             !folding || s.showAllCategories -> ofKind
             // A chosen category from further down takes the last place, so More stays where it is.
-            else -> ofKind.filterIndexed { i, c -> i < FEW_CATEGORIES - (if (chosenHidden) 1 else 0) || c.id == form.categoryId }
+            else -> ofKind.filterIndexed { i, c -> i < FEW_CATEGORIES - (if (chosenHidden) 1 else 0) || c.id == chosenMain }
         }
         val typed = form.payee.trim()
         return RecordUiState.Ready(
@@ -173,6 +183,8 @@ class RecordViewModel @Inject constructor(
             form = form,
             record = s.record,
             categories = shown,
+            chosenMainId = chosenMain,
+            subcategories = if (query.isEmpty()) w.subcategories(chosenMain) else emptyList(),
             canFoldCategories = folding,
             showAllCategories = s.showAllCategories,
             canSearchCategories = searching,
@@ -205,6 +217,12 @@ class RecordViewModel @Inject constructor(
 
     /** Choosing the chosen category again clears it. */
     fun chooseCategory(id: Long) = edit { it.copy(categoryId = if (it.categoryId == id) null else id) }
+
+    /** Choosing the chosen subcategory again goes back to its main category. */
+    fun chooseSubcategory(id: Long) = edit { f ->
+        val main = (uiState.value as? RecordUiState.Ready)?.wallet?.category(id)?.parentId
+        f.copy(categoryId = if (f.categoryId == id) main else id)
+    }
 
     fun showAllCategories(show: Boolean) = sheet.update { it.copy(showAllCategories = show, categoryQuery = "") }
 

@@ -16,7 +16,7 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun database(@ApplicationContext context: Context): WalletDatabase =
-        Room.databaseBuilder(context, WalletDatabase::class.java, "wallet.db").build()
+        Room.databaseBuilder(context, WalletDatabase::class.java, "wallet.db").addMigrations(WalletDatabase.MIGRATION_2_3).build()
 
     @Provides
     fun walletDao(db: WalletDatabase) = db.walletDao()

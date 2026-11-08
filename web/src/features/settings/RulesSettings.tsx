@@ -2,6 +2,7 @@
 // shop's category, each card's account), to check, correct or forget, and
 // shops to add by hand before their first payment.
 import { useEffect, useState, type FormEvent } from 'react';
+import { inOrder, optionLabel } from '../../categories';
 import { api, errorMessage, type Category, type Rules } from '../../api';
 import { href } from '../../router';
 import { useToast } from '../../toast';
@@ -164,19 +165,19 @@ function CategorySelect({
     <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>
       {value === '' && <option value="">{t('Pick a category')}</option>}
       <optgroup label={t('Expenses')}>
-        {categories.filter((c) => c.kind === 'expense').map(option)}
+        {inOrder(categories).filter((c) => c.kind === 'expense').map((c) => option(c, categories))}
       </optgroup>
       <optgroup label={t('Income')}>
-        {categories.filter((c) => c.kind === 'income').map(option)}
+        {inOrder(categories).filter((c) => c.kind === 'income').map((c) => option(c, categories))}
       </optgroup>
     </select>
   );
 }
 
-function option(c: Category) {
+function option(c: Category, all: Category[]) {
   return (
     <option key={c.id} value={c.id}>
-      {c.name}
+      {optionLabel(c, all)}
     </option>
   );
 }

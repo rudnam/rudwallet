@@ -34,6 +34,7 @@ class RecordSheetScreenshotTest {
         override fun kind(kind: TransactionKind) {}
         override fun press(key: PadKey) {}
         override fun category(id: Long) {}
+        override fun subcategory(id: Long) {}
         override fun allCategories(show: Boolean) {}
         override fun searchCategories(query: String) {}
         override fun payee(payee: String) {}

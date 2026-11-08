@@ -456,12 +456,13 @@ private fun CategoryMenu(
                 onChoose(null, CategoryValue.None)
             })
             for (kind in kinds) {
-                val existing = wallet.categories.filter { it.kind == kind }
+                val existing = wallet.categoriesInOrder().filter { it.kind == kind }
                 val fresh = newCategories.filter { it.kind == kind }.map { it.name }.toMutableList()
                 if (extra != null && extra !in fresh && existing.none { it.name.equals(extra, ignoreCase = true) }) fresh.add(0, extra)
                 MenuHeading(stringResource(R.string.feature_imports_your_categories))
                 for (c in existing) {
-                    DropdownMenuItem(text = { Text(c.name) }, leadingIcon = { CategoryIcon(c, Modifier.size(28.dp)) }, onClick = {
+                    val indent = if (wallet.isSubcategory(c)) 20.dp else 0.dp
+                    DropdownMenuItem(text = { Text(c.name) }, leadingIcon = { CategoryIcon(c, Modifier.padding(start = indent).size(28.dp)) }, onClick = {
                         open = false
                         onChoose(kind, CategoryValue.Existing(c.id))
                     })

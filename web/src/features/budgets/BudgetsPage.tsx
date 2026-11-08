@@ -1,5 +1,6 @@
 // Monthly spending limits, per category or for everything.
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { inOrder, optionLabel } from '../../categories';
 import { api, errorMessage, type Budget } from '../../api';
 import { Meter } from '../../components/charts';
 import { Dialog } from '../../components/Dialog';
@@ -79,7 +80,7 @@ export function BudgetsPage() {
                     {t('Edit')}
                   </button>
                 </div>
-                <Meter spent={budgetSpent(b, records ?? [])} limit={b.amount} format={(n) => w.money(n)} />
+                <Meter spent={budgetSpent(b, records ?? [], w.categories)} limit={b.amount} format={(n) => w.money(n)} />
               </li>
             );
           })}
@@ -141,11 +142,11 @@ function BudgetForm({ budget, onClose, onSaved }: { budget?: Budget; onClose: ()
           {t('Category')}
           <select value={categoryId ?? ''} onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : null)}>
             <option value="">{t('All spending')}</option>
-            {w.categories
+            {inOrder(w.categories)
               .filter((c) => c.kind === 'expense')
               .map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name}
+                  {optionLabel(c, w.categories)}
                 </option>
               ))}
           </select>

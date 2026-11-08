@@ -19,6 +19,8 @@ type Filter struct {
 	From, To   time.Time // To is exclusive
 	AccountID  int64
 	CategoryID int64
+	// WithSubcategories: CategoryID's subcategories' records too.
+	WithSubcategories bool
 	// Uncategorized lists only records without a category.
 	Uncategorized bool
 	Query         string
@@ -69,7 +71,9 @@ func (s *Store) List(ctx context.Context, userID int64, f Filter) ([]Transaction
 	if f.AccountID != 0 {
 		add("(account_id = $%[1]d OR to_account_id = $%[1]d)", f.AccountID)
 	}
-	if f.CategoryID != 0 {
+	if f.CategoryID != 0 && f.WithSubcategories {
+		add("(category_id = $%[1]d OR category_id IN (SELECT id FROM categories WHERE user_id = $1 AND parent_id = $%[1]d))", f.CategoryID)
+	} else if f.CategoryID != 0 {
 		add("category_id = $%d", f.CategoryID)
 	}
 	if f.Uncategorized {

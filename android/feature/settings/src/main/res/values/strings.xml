@@ -66,6 +66,12 @@
     <string name="feature_settings_icon">Icon</string>
     <string name="feature_settings_initial_only">Initial only</string>
     <string name="feature_settings_delete_category_question">Delete “%s”? Its records become uncategorised, and its budgets and the shops filed under it are forgotten.</string>
+    <string name="feature_settings_subcategories_of">Subcategories of %1$s</string>
+    <string name="feature_settings_add_subcategory">Add a subcategory</string>
+    <string name="feature_settings_under">Under</string>
+    <string name="feature_settings_main_category">None: a main category</string>
+    <string name="feature_settings_has_subcategories">It has subcategories, so it stays a main category.</string>
+    <string name="feature_settings_delete_category_subcategories">Its subcategories become main categories.</string>
     <string name="feature_settings_enter_name">Give it a name.</string>
     <string name="feature_settings_main_currency">Main currency</string>
     <string name="feature_settings_currency_detail">Pick it before adding records; it can’t change afterwards.</string>

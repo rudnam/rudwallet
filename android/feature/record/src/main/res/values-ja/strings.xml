@@ -12,6 +12,7 @@
     <string name="feature_record_category">カテゴリ</string>
     <string name="feature_record_more">もっと見る</string>
     <string name="feature_record_fewer">閉じる</string>
+    <string name="feature_record_subcategories_of">%1$sのサブカテゴリ</string>
     <string name="feature_record_clear">消去</string>
     <string name="feature_record_find_category">カテゴリを検索</string>
     <string name="feature_record_no_category_match">一致するカテゴリはありません</string>

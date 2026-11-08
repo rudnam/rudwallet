@@ -206,7 +206,8 @@ private fun BudgetCard(row: BudgetRow, wallet: Wallet, format: MoneyFormat, acti
 private fun BudgetSheet(wallet: Wallet, editor: BudgetEditor, actions: BudgetsActions) {
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val format = rememberMoneyFormat(wallet.settings)
-    val spending = wallet.categories.filter { it.kind == CategoryKind.Expense }
+    // Main categories, each followed by its subcategories (a main one's budget counts them).
+    val spending = wallet.categoriesInOrder().filter { it.kind == CategoryKind.Expense }
     val allSpending = stringResource(R.string.feature_insights_all_spending)
     val chosen = wallet.category(editor.categoryId)
     val defaultName = chosen?.name ?: allSpending
@@ -224,7 +225,7 @@ private fun BudgetSheet(wallet: Wallet, editor: BudgetEditor, actions: BudgetsAc
             var open by rememberSaveable { mutableStateOf(false) }
             ExposedDropdownMenuBox(expanded = open, onExpandedChange = { open = it }) {
                 OutlinedTextField(
-                    value = chosen?.name ?: allSpending,
+                    value = wallet.categoryPath(chosen?.id) ?: allSpending,
                     onValueChange = {},
                     readOnly = true,
                     label = { Text(stringResource(R.string.feature_insights_category)) },
@@ -243,9 +244,10 @@ private fun BudgetSheet(wallet: Wallet, editor: BudgetEditor, actions: BudgetsAc
                         },
                     )
                     for (c in spending) {
+                        val sub = wallet.isSubcategory(c)
                         DropdownMenuItem(
                             text = { Text(c.name) },
-                            leadingIcon = { BudgetMark(c, allSpending = false, size = 28.dp) },
+                            leadingIcon = { Box(Modifier.padding(start = if (sub) 20.dp else 0.dp)) { BudgetMark(c, allSpending = false, size = 28.dp) } },
                             onClick = {
                                 actions.setCategory(c.id)
                                 open = false

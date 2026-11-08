@@ -2,6 +2,7 @@
 // a way back. Payment notifications, what they learned, Claude, accounts,
 // categories, currency, and import.
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { categoryPath, inOrder, isSubcategory, subcategoriesOf } from '../../categories';
 import { api, errorMessage, type Me, type Account, type AccountKind, type Category, type ImportResult, type PayPayPreview, type BudgetBakersPreview, type MUFGPreview, type MUFGResult, type MUFGRole, type MUFGBalance, skipAccount } from '../../api';
 import { CategoryIcon, glyphKey, glyphs, Icon, icons, Plus } from '../../components/Icon';
 import { Dialog } from '../../components/Dialog';
@@ -522,10 +523,17 @@ function Categories() {
         <div key={kind} className="stack tight">
           <span className="muted small">{kind === 'expense' ? t('Expenses') : t('Income')}</span>
           <div className="chips">
-            {w.categories
+            {inOrder(w.categories)
               .filter((c) => c.kind === kind)
               .map((c) => (
-                <button key={c.id} type="button" className="chip" aria-label={t('Edit category {name}', { name: c.name })} onClick={() => setEditing(c)}>
+                <button
+                  key={c.id}
+                  type="button"
+                  // A subcategory sits after its main category, marked as under it.
+                  className={isSubcategory(c, w.categories) ? 'chip subcategory' : 'chip'}
+                  aria-label={t('Edit category {name}', { name: categoryPath(c.id, w.categories) ?? c.name })}
+                  onClick={() => setEditing(c)}
+                >
                   <CategoryIcon icon={c.icon} name={c.name} color={c.color} size="small" /> {c.name}
                 </button>
               ))}
@@ -561,13 +569,18 @@ function CategoryForm({ category, onClose }: { category?: Category; onClose: () 
   const [kind, setKind] = useState(category?.kind ?? 'expense');
   const [icon, setIcon] = useState(glyphKey(category?.icon) ?? '');
   const [color, setColor] = useState(category?.color ?? '#66706b');
+  const [parentId, setParentId] = useState<number | null>(category?.parent_id ?? null);
   const [error, setError] = useState('');
+  // One with subcategories stays a main category; the others can go under one of their kind.
+  const hasSubs = category ? subcategoriesOf(category.id, w.categories).length > 0 : false;
+  const mains = w.categories.filter((c) => c.kind === kind && !isSubcategory(c, w.categories) && c.id !== category?.id && c.parent_id == null);
 
   async function save(e: FormEvent) {
     e.preventDefault();
     try {
-      if (category) await api.updateCategory(category.id, { name, kind, icon, color });
-      else await api.createCategory({ name, kind, icon, color });
+      const input = { name, kind, icon, color, parent_id: parentId };
+      if (category) await api.updateCategory(category.id, input);
+      else await api.createCategory(input);
       await w.refresh();
       onClose();
     } catch (err) {
@@ -576,7 +589,8 @@ function CategoryForm({ category, onClose }: { category?: Category; onClose: () 
   }
 
   async function remove() {
-    if (!category || !confirm(t('Delete "{name}"? Its records become uncategorised, and its budgets and the shops filed under it are forgotten.', { name: category.name }))) return;
+    const question = t('Delete "{name}"? Its records become uncategorised, and its budgets and the shops filed under it are forgotten.', { name: category?.name ?? '' });
+    if (!category || !confirm(hasSubs ? `${question} ${t('Its subcategories become main categories.')}` : question)) return;
     try {
       await api.deleteCategory(category.id);
       await w.refresh();
@@ -596,11 +610,34 @@ function CategoryForm({ category, onClose }: { category?: Category; onClose: () 
         {!category && (
           <label className="field">
             {t('Type')}
-            <select value={kind} onChange={(e) => setKind(e.target.value as Category['kind'])}>
+            <select
+              value={kind}
+              onChange={(e) => {
+                setKind(e.target.value as Category['kind']);
+                setParentId(null);
+              }}
+            >
               <option value="expense">{t('Expense')}</option>
               <option value="income">{t('Income')}</option>
             </select>
           </label>
+        )}
+        {hasSubs ? (
+          <p className="muted small">{t('It has subcategories, so it stays a main category.')}</p>
+        ) : (
+          mains.length > 0 && (
+            <label className="field">
+              {t('Under')}
+              <select value={parentId ?? ''} onChange={(e) => setParentId(e.target.value ? Number(e.target.value) : null)}>
+                <option value="">{t('None: a main category')}</option>
+                {mains.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )
         )}
         <div className="grid2">
           <label className="field">

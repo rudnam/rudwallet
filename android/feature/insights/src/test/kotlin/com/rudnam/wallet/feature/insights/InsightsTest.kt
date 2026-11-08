@@ -1,10 +1,12 @@
 package com.rudnam.wallet.feature.insights
 
 import com.rudnam.wallet.core.model.Budget
+import com.rudnam.wallet.core.model.Category
 import com.rudnam.wallet.core.model.CategoryKind
 import com.rudnam.wallet.core.model.CategoryTotal
 import com.rudnam.wallet.core.model.DayTotal
 import com.rudnam.wallet.core.model.Stats
+import com.rudnam.wallet.core.testing.SampleWallet
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -78,7 +80,7 @@ class InsightsTest {
     @Test
     fun `the rest of the month says where it's heading and what each budget allows a day`() {
         val month = Period.at(Span.Month, today)
-        val ahead = monthAhead(stats(28_000, 10L to 9_000), listOf(Budget(1, "Everything", null, 60_000), Budget(2, "Eating out", 10, 8_000)), month, today)
+        val ahead = monthAhead(stats(28_000, 10L to 9_000), listOf(Budget(1, "Everything", null, 60_000), Budget(2, "Eating out", 10, 8_000)), month, today, SampleWallet.wallet)
         assertEquals(60_000, ahead.heading) // 28,000 over 14 days, for 30
         assertEquals(17, ahead.daysLeft) // today included
         val (everything, eating) = ahead.budgets
@@ -113,5 +115,18 @@ class InsightsTest {
         assertEquals(5_000L, niceMax(4_210))
         assertEquals(25_000L, niceMax(21_000))
         assertEquals(100_000L, niceMax(100_000))
+    }
+
+    @Test
+    fun `a main category takes in its subcategories, in budgets and in the totals`() {
+        val nested = SampleWallet.wallet.copy(
+            categories = SampleWallet.wallet.categories + Category(20, "Cafés", CategoryKind.Expense, "coffee", "#8a5a3c", parentId = 10),
+        )
+        val now = stats(12_000, 10L to 5_000, 20L to 3_000, 12L to 4_000)
+        val ahead = monthAhead(now, listOf(Budget(2, "Eating out", 10, 9_000), Budget(3, "Cafés", 20, 2_000)), Period.at(Span.Month, today), today, nested)
+        assertEquals(listOf(8_000L, 3_000L), ahead.budgets.map { it.spent })
+        val byMain = now.byMainCategory(nested).categories
+        assertEquals(listOf(10L to 8_000L, 12L to 4_000L), byMain.map { it.categoryId to it.amount })
+        assertEquals(2, byMain.first().count)
     }
 }

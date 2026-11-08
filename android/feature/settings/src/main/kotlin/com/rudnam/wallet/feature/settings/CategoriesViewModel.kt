@@ -30,6 +30,10 @@ data class CategoryEditor(
     val kind: CategoryKind,
     val icon: String,
     val color: String,
+    /** The main category it goes under; null: it's a main category. */
+    val parentId: Long? = null,
+    /** It has subcategories, so it stays a main category. */
+    val hasSubcategories: Boolean = false,
     val noName: Boolean = false,
     val refused: String? = null,
     val busy: Boolean = false,
@@ -39,11 +43,15 @@ data class CategoryEditor(
 /** What the categories page's controls do. */
 interface CategoriesActions {
     fun create()
+    /** Starts a new subcategory of [parent]. */
+    fun createUnder(parent: Category)
     fun edit(category: Category)
     /** Adds one of the default categories the user doesn't have. */
     fun addMissing(category: Category)
     fun setName(name: String)
     fun setKind(kind: CategoryKind)
+    /** Puts the category under a main category, or with null makes it a main one. */
+    fun setParent(parentId: Long?)
     fun setIcon(icon: String)
     fun setColor(color: String)
     fun save()
@@ -82,8 +90,19 @@ class CategoriesViewModel @Inject constructor(
         _editor.value = CategoryEditor(id = null, name = "", kind = CategoryKind.Expense, icon = "", color = DEFAULT_COLOR)
     }
 
+    override fun createUnder(parent: Category) {
+        _editor.value = CategoryEditor(
+            id = null, name = "", kind = parent.kind, icon = WalletIcons.glyphKey(parent.icon).orEmpty(),
+            color = parent.color.ifEmpty { DEFAULT_COLOR }, parentId = parent.id,
+        )
+    }
+
     override fun edit(category: Category) {
-        _editor.value = CategoryEditor(category.id, category.name, category.kind, WalletIcons.glyphKey(category.icon).orEmpty(), category.color.ifEmpty { DEFAULT_COLOR })
+        _editor.value = CategoryEditor(
+            category.id, category.name, category.kind, WalletIcons.glyphKey(category.icon).orEmpty(), category.color.ifEmpty { DEFAULT_COLOR },
+            parentId = category.parentId,
+            hasSubcategories = wallet.value?.subcategories(category.id)?.isNotEmpty() == true,
+        )
     }
 
     override fun addMissing(category: Category) {
@@ -94,7 +113,8 @@ class CategoriesViewModel @Inject constructor(
     }
 
     override fun setName(name: String) = _editor.update { it?.copy(name = name.take(60), noName = false, refused = null) }
-    override fun setKind(kind: CategoryKind) = _editor.update { it?.copy(kind = kind, refused = null) }
+    override fun setKind(kind: CategoryKind) = _editor.update { it?.copy(kind = kind, parentId = null, refused = null) }
+    override fun setParent(parentId: Long?) = _editor.update { it?.copy(parentId = parentId, refused = null) }
     override fun setIcon(icon: String) = _editor.update { it?.copy(icon = icon) }
     override fun setColor(color: String) = _editor.update { it?.copy(color = color) }
 
@@ -105,7 +125,7 @@ class CategoriesViewModel @Inject constructor(
         if (name.isEmpty()) return _editor.update { it?.copy(noName = true) }
         _editor.value = e.copy(busy = true)
         viewModelScope.launch {
-            finish(settings.saveCategory(e.id, CategoryInput(name, e.kind, e.icon, e.color)), if (e.id == null) ChangeMessage.Added(name) else ChangeMessage.Saved)
+            finish(settings.saveCategory(e.id, CategoryInput(name, e.kind, e.icon, e.color, e.parentId)), if (e.id == null) ChangeMessage.Added(name) else ChangeMessage.Saved)
         }
     }
 

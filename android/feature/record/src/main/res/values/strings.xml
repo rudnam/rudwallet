@@ -13,6 +13,7 @@
     <string name="feature_record_category">Category</string>
     <string name="feature_record_more">More</string>
     <string name="feature_record_fewer">Fewer</string>
+    <string name="feature_record_subcategories_of">Subcategories of %1$s</string>
     <string name="feature_record_clear">Clear</string>
     <string name="feature_record_find_category">Find a category</string>
     <string name="feature_record_no_category_match">No category matches</string>
