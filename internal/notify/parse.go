@@ -10,13 +10,17 @@ import (
 )
 
 // Apps whose notifications the server reads, by Android package. The app
-// sends only these (PaymentListener.java); add a package there too.
+// sends only these (PAYMENT_APPS in android/core/data); add a package there too.
 var apps = map[string]string{
 	"com.google.android.apps.walletnfcrel": "Google Wallet",
 	payPayApp:                              "PayPay",
+	vpassApp:                               "Vpass",
 }
 
-const payPayApp = "jp.ne.paypay.android.app"
+const (
+	payPayApp = "jp.ne.paypay.android.app"
+	vpassApp  = "com.smbc_card.vpass" // 三井住友カード's app, for its cards (the Amazon Mastercard among them)
+)
 
 // Read is what a notification turned out to be.
 type Read struct {
@@ -49,8 +53,11 @@ func Parse(pkg, title, text string) Read {
 		return Read{Status: "ignored", Detail: "Not from a payment app this server reads."}
 	}
 	title, text = halfWidth(strings.TrimSpace(title)), halfWidth(strings.TrimSpace(text))
-	if pkg == payPayApp {
+	switch pkg {
+	case payPayApp:
 		return payPay(title, text)
+	case vpassApp:
+		return vpass(title, text)
 	}
 	all := title + "\n" + text
 	m := amountRe.FindStringSubmatch(all)
@@ -167,6 +174,58 @@ func payPay(title, text string) Read {
 	}
 	if m[2] != "" {
 		p.Note = "Charged " + strings.TrimSpace(m[2]) + "."
+	}
+	return Read{Status: "payment", Payment: p}
+}
+
+var (
+	// 日時's value in a Vpass notification: "2026/11/08 10:22".
+	vpassTime = regexp.MustCompile(`^(\d{4})/(\d{1,2})/(\d{1,2})\s+(\d{1,2}):(\d{2})$`)
+	// A card that was refused, which Vpass also reports.
+	vpassDeclined = regexp.MustCompile(`いただけ|利用不可|不正`)
+)
+
+// vpass reads 三井住友カード's per-purchase alerts (ご利用通知サービス),
+// titled ご利用のお知らせ, with ◇-marked fields on one line, e.g.
+// "◇ご利用カード：Ａｍａｚｏｎマスター　◇日時：2026/11/08 10:22
+// ◇利用先：ＡＭＡＺＯＮ．ＣＯ．ＪＰ　◇金額：1,798円". The card's name is
+// the Source, so each card can go to its own account. Anything else Vpass
+// sends (bills, offers) has no such fields and is ignored.
+func vpass(title, text string) Read {
+	all := title + "\n" + text
+	fields := map[string]string{}
+	for _, part := range strings.Split(all, "◇") {
+		if k, v, ok := strings.Cut(part, ":"); ok {
+			fields[strings.TrimSpace(k)] = strings.TrimSpace(v)
+		}
+	}
+	amount, ok := fields["金額"]
+	switch {
+	case !ok && strings.Contains(title, "ご利用"):
+		return Read{Status: "unparsed", Detail: "No amount in the notification."}
+	case !ok:
+		return Read{Status: "ignored", Detail: "Not a card payment."}
+	case vpassDeclined.MatchString(all) || notPaymentRe.MatchString(title):
+		return Read{Status: "ignored", Detail: "Not a payment made (declined, a balance or a top-up)."}
+	}
+	m := payPayAmount.FindStringSubmatch(amount)
+	if m == nil {
+		return Read{Status: "unparsed", Detail: "Couldn't read the amount " + amount + "."}
+	}
+	p := wallet.Payment{Currency: "JPY", Merchant: fields["利用先"], Source: "Vpass",
+		Refund: refundRe.MatchString(all) || payPayCancel.MatchString(all)}
+	if card := fields["ご利用カード"]; card != "" {
+		p.Source = "Vpass · " + card
+	}
+	if p.Amount, ok = minorUnits(m[1], 0); !ok || p.Amount <= 0 {
+		return Read{Status: "unparsed", Detail: "Couldn't read the amount " + amount + "."}
+	}
+	if m[2] != "" {
+		p.Note = "Charged " + strings.TrimSpace(m[2]) + "."
+	}
+	if t := vpassTime.FindStringSubmatch(fields["日時"]); t != nil {
+		n := func(i int) int { v, _ := strconv.Atoi(t[i]); return v }
+		p.OccurredAt = time.Date(n(1), time.Month(n(2)), n(3), n(4), n(5), 0, 0, jst)
 	}
 	return Read{Status: "payment", Payment: p}
 }

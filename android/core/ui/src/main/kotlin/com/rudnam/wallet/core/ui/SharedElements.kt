@@ -2,8 +2,10 @@ package com.rudnam.wallet.core.ui
 
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.BoundsTransform
+import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -11,7 +13,11 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.graphicsLayer
 import com.rudnam.wallet.core.designsystem.theme.WalletMotion
+import com.rudnam.wallet.core.designsystem.theme.WalletMotion.EmphasizedDecelerate
+import com.rudnam.wallet.core.designsystem.theme.WalletMotion.FADE_OUT
+import com.rudnam.wallet.core.designsystem.theme.WalletMotion.PAGE
 
 /**
  * Shared elements between pages: a piece of one page that becomes a piece of the next, like an
@@ -43,7 +49,7 @@ private val PageBounds = BoundsTransform { _, _ -> tween(WalletMotion.PAGE, easi
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun Modifier.sharedBounds(key: Any, shape: Shape): Modifier {
+fun Modifier.sharedBounds(key: Any, shape: Shape, zIndexInOverlay: Float = 0f): Modifier {
     val shared = LocalSharedTransitionScope.current ?: return this
     val page = LocalPageAnimationScope.current ?: return this
     return with(shared) {
@@ -52,6 +58,40 @@ fun Modifier.sharedBounds(key: Any, shape: Shape): Modifier {
             page,
             boundsTransform = PageBounds,
             clipInOverlayDuringTransition = OverlayClip(shape),
+            zIndexInOverlay = zIndexInOverlay,
         )
+    }
+}
+
+/**
+ * [sharedBounds] for a piece in a stack (Wallet's cards), [zIndex] its place in it, the front
+ * one highest. A shared piece is drawn above both pages while it moves, so one coming back
+ * into the stack would cover the pieces in front of it until it landed, then drop behind
+ * them. So while its page comes back, the stack's other pieces are drawn above the pages
+ * too, each at its place, fading in as their page does.
+ */
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+fun Modifier.sharedBoundsInStack(key: Any, shape: Shape, zIndex: Float): Modifier {
+    val shared = LocalSharedTransitionScope.current ?: return this
+    val page = LocalPageAnimationScope.current ?: return this
+    val state = shared.rememberSharedContentState(key)
+    // As the page's own fade in (navigation's Motion.kt), which the pages above don't get.
+    val fade = page.transition.animateFloat(
+        transitionSpec = { tween(PAGE - FADE_OUT, delayMillis = FADE_OUT, easing = EmphasizedDecelerate) },
+        label = "stack",
+    ) { if (it == EnterExitState.Visible) 1f else 0f }
+    val above = { shared.isTransitionActive && page.transition.targetState == EnterExitState.Visible && !state.isMatchFound }
+    return with(shared) {
+        this@sharedBoundsInStack
+            .renderInSharedTransitionScopeOverlay(zIndexInOverlay = zIndex, renderInOverlay = above)
+            .graphicsLayer { alpha = if (above()) fade.value else 1f }
+            .sharedBounds(
+                state,
+                page,
+                boundsTransform = PageBounds,
+                clipInOverlayDuringTransition = OverlayClip(shape),
+                zIndexInOverlay = zIndex,
+            )
     }
 }

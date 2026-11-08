@@ -7,7 +7,6 @@ deploy
 docs
 android
 e2e
-scripts
 verify.sh
 preview.sh
 web/node_modules

@@ -12,6 +12,7 @@ import (
 const (
 	googleWallet = "com.google.android.apps.walletnfcrel"
 	payPay       = "jp.ne.paypay.android.app"
+	vpass        = "com.smbc_card.vpass"
 )
 
 type notifications struct {
@@ -349,5 +350,32 @@ func TestRestoreNotifiedRecord(t *testing.T) {
 	c.do("POST", "/api/transactions/restore", map[string]any{"ids": []int64{manual.ID}}, nil)
 	if d := review().DuplicateOfID; d == nil || *d != manual.ID {
 		t.Errorf("duplicate of %v, want %d", d, manual.ID)
+	}
+}
+
+// A Vpass alert (三井住友カード) is recorded at the time in its text, with
+// the card's name, so the card can be given its own account.
+func TestVpassNotification(t *testing.T) {
+	ts := newTestServer(t)
+	c := newClient(t, ts)
+	c.signup("a@example.com")
+	got := post(t, c,
+		notify.Incoming{Package: vpass, When: time.Date(2026, 11, 8, 1, 23, 10, 0, time.UTC).UnixMilli(),
+			Title: "ご利用のお知らせ", Text: "◇ご利用カード：Ａｍａｚｏｎマスター　◇日時：2026/11/08 10:22　◇利用先：ＡＭＡＺＯＮ．ＣＯ．ＪＰ　◇金額：1,798円"},
+		notify.Incoming{Package: vpass, When: time.Date(2026, 11, 8, 2, 0, 0, 0, time.UTC).UnixMilli(),
+			Title: "キャンペーン", Text: "最大10,000円キャッシュバック！"},
+	)
+	if got[0].Status != "payment" || got[1].Status != "ignored" || got[0].App != "Vpass" {
+		t.Fatalf("notifications %+v", got)
+	}
+	var r wallet.Transaction
+	for _, x := range records(t, c) {
+		if x.ID == *got[0].TransactionID {
+			r = x
+		}
+	}
+	if r.Payee != "AMAZON.CO.JP" || r.Amount != 1798 || r.Kind != "expense" || r.SourceLabel != "Vpass · Amazonマスター" ||
+		!r.OccurredAt.Equal(time.Date(2026, 11, 8, 1, 22, 0, 0, time.UTC)) {
+		t.Errorf("record %+v", r)
 	}
 }

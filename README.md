@@ -2,7 +2,7 @@
 
 **RudWallet** tracks your money: accounts, categories, records, budgets, a
 monthly overview, and stats over any period with trends. In the Android app,
-PayPay's and Google Wallet's payment notifications become records for you:
+PayPay's, Google Wallet's and Vpass's (三井住友カード) payment notifications become records for you:
 each one waits under *To review* with the shop, amount and time filled in.
 Confirming one teaches it the shop's category and the card's account, and a
 payment you already typed in is matched rather than counted twice. Claude can
@@ -17,7 +17,7 @@ A Go API, a React frontend, and PostgreSQL, shipped as one Docker image.
 - **Frontend:** React + TypeScript, bundled by Vite and embedded in the Go binary. Installable as a PWA.
 - **Database:** PostgreSQL. Migrations are embedded SQL files, applied on startup.
 - **Packaging:** one small, non-root Docker image (under 20 MB) with no shell.
-- **Android:** a native app (Kotlin, Jetpack Compose, Material 3), with home screen widgets (this month, budgets, and a New record button) and a reader for PayPay's and Google Wallet's payment notifications (see [android/README.md](android/README.md)).
+- **Android:** a native app (Kotlin, Jetpack Compose, Material 3), with home screen widgets (this month, budgets, and a New record button) and a reader for PayPay's, Google Wallet's and Vpass's payment notifications (see [android/README.md](android/README.md)).
 
 ## Quick start
 
@@ -131,7 +131,7 @@ The code is split by **feature**: each one owns its SQL, HTTP handlers and page.
 | `internal/account/` | Feature: sign-up, sign-in (password or Google), sessions, email confirmation, password reset, account deletion, and the `RequireUser` middleware. |
 | `internal/mailer/` | Sends the app's own emails over SMTP. |
 | `internal/wallet/` | Feature: accounts, categories, records (deleted ones kept a day so they can be restored), budgets, settings, reconciling an account's balance, the PayPay, MUFG (`importmufg.go`) and BudgetBakers CSV imports, and transit IC cards read by the phone (`importic.go`, naming stations and bus companies from the lists in `icstations/`). |
-| `internal/notify/` | Feature: payment notifications the Android app sends (PayPay, Google Wallet), read into records (`parse.go` knows the apps). A payment already recorded from an import or by hand is matched, not added. |
+| `internal/notify/` | Feature: payment notifications the Android app sends (PayPay, Google Wallet, Vpass), read into records (`parse.go` knows the apps). A payment already recorded from an import or by hand is matched, not added. |
 | `internal/mcp/` | Feature: the MCP server at `/mcp`, so Claude (as a connector, Claude Desktop or Claude Code) and other MCP clients can read and tidy a user's records, with access tokens made in Settings or got by signing in (OAuth 2.1, `oauth.go`). |
 | `internal/widget/` | Feature: the month summary the Android home screen widgets draw. |
 | `internal/demo/`, `internal/sample/` | Feature: the demo. `sample` makes months of believable records, accounts and budgets in English or Japanese; `demo` fills a visitor's demo wallet with them. The demo account itself is `internal/account/demo.go`. `e2e/seed` fills the preview account with the same sample (`-lang ja` for Japanese). |
