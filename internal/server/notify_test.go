@@ -15,6 +15,9 @@ const (
 	vpass        = "com.smbc_card.vpass"
 )
 
+// vpassAlert is a Vpass ご利用のお知らせ as the app words it.
+const vpassAlert = "◇ご利用カード：Ａｍａｚｏｎマスター　◇日時：2026/11/08 10:22　◇利用先：ＡＭＡＺＯＮ．ＣＯ．ＪＰ　◇金額：1,798円"
+
 type notifications struct {
 	Notifications []notify.Notification `json:"notifications"`
 }
@@ -361,7 +364,7 @@ func TestVpassNotification(t *testing.T) {
 	c.signup("a@example.com")
 	got := post(t, c,
 		notify.Incoming{Package: vpass, When: time.Date(2026, 11, 8, 1, 23, 10, 0, time.UTC).UnixMilli(),
-			Title: "ご利用のお知らせ", Text: "◇ご利用カード：Ａｍａｚｏｎマスター　◇日時：2026/11/08 10:22　◇利用先：ＡＭＡＺＯＮ．ＣＯ．ＪＰ　◇金額：1,798円"},
+			Title: "ご利用のお知らせ", Text: vpassAlert},
 		notify.Incoming{Package: vpass, When: time.Date(2026, 11, 8, 2, 0, 0, 0, time.UTC).UnixMilli(),
 			Title: "キャンペーン", Text: "最大10,000円キャッシュバック！"},
 	)
@@ -377,5 +380,88 @@ func TestVpassNotification(t *testing.T) {
 	if r.Payee != "AMAZON.CO.JP" || r.Amount != 1798 || r.Kind != "expense" || r.SourceLabel != "Vpass · Amazonマスター" ||
 		!r.OccurredAt.Equal(time.Date(2026, 11, 8, 1, 22, 0, 0, time.UTC)) {
 		t.Errorf("record %+v", r)
+	}
+}
+
+// A shop rule can point at an income category (rules have no kind). A
+// payment from that shop is still recorded, without the category, rather
+// than failing and leaving the notification unprocessed.
+func TestNotificationShopRuleWithIncomeCategory(t *testing.T) {
+	ts := newTestServer(t)
+	c := newClient(t, ts)
+	c.signup("a@example.com")
+	overview(t, c) // the wallet, with its default categories
+	var refunds wallet.Category
+	if code := c.do("POST", "/api/categories", map[string]any{"name": "Amazon refunds", "kind": "income"}, &refunds); code != 201 {
+		t.Fatalf("create category: %d", code)
+	}
+	if code := c.do("PUT", "/api/rules/payees", map[string]any{"payee": "AMAZON.CO.JP", "category_id": refunds.ID}, nil); code != 200 {
+		t.Fatalf("add rule: %d", code)
+	}
+	got := post(t, c, notify.Incoming{Package: vpass, When: time.Date(2026, 11, 8, 1, 23, 0, 0, time.UTC).UnixMilli(),
+		Title: "ご利用のお知らせ", Text: vpassAlert})
+	if got[0].Status != "payment" || got[0].TransactionID == nil {
+		t.Fatalf("notification %+v", got[0])
+	}
+	for _, r := range records(t, c) {
+		if r.ID == *got[0].TransactionID && (r.Kind != "expense" || r.Amount != 1798 || r.CategoryID != nil) {
+			t.Errorf("record %+v", r)
+		}
+	}
+}
+
+// A notification an error left unprocessed (claimed, never finished) is
+// processed again when the phone next sends notifications, and when it sends
+// that one again.
+func TestUnfinishedNotificationRetried(t *testing.T) {
+	ts, conn := newTestServerDB(t)
+	c := newClient(t, ts)
+	c.signup("a@example.com")
+	alert := notify.Incoming{Package: vpass, When: time.Date(2026, 11, 8, 1, 23, 0, 0, time.UTC).UnixMilli(),
+		Title: "ご利用のお知らせ", Text: vpassAlert}
+	first := post(t, c, alert)[0]
+	// As if recording it had failed: back to how it was claimed, without its record.
+	if _, err := conn.Exec(`UPDATE payment_notifications SET status = 'unparsed', detail = 'Could not be processed.',
+		transaction_id = NULL, created_at = now() - interval '5 minutes' WHERE id = $1`, first.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := conn.Exec(`DELETE FROM transactions WHERE id = $1`, *first.TransactionID); err != nil {
+		t.Fatal(err)
+	}
+
+	// Another notification arrives: the unfinished one is processed too.
+	post(t, c, notify.Incoming{Package: payPay, When: time.Date(2026, 11, 8, 3, 0, 0, 0, time.UTC).UnixMilli(),
+		Title: "PayPay", Text: "今だけ最大10%戻ってくる！"})
+	var recent notifications
+	c.do("GET", "/api/notifications", nil, &recent)
+	var retried *notify.Notification
+	for i := range recent.Notifications {
+		if recent.Notifications[i].ID == first.ID {
+			retried = &recent.Notifications[i]
+		}
+	}
+	if retried == nil || retried.Status != "payment" || retried.TransactionID == nil {
+		t.Fatalf("not retried: %+v", retried)
+	}
+
+	// Sent again while unfinished, it is processed rather than returned as seen.
+	if _, err := conn.Exec(`UPDATE payment_notifications SET status = 'unparsed', detail = 'Could not be processed.', transaction_id = NULL WHERE id = $1`, first.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := conn.Exec(`DELETE FROM transactions WHERE id = $1`, *retried.TransactionID); err != nil {
+		t.Fatal(err)
+	}
+	again := post(t, c, alert)[0]
+	if again.Duplicate || again.Status != "payment" || again.TransactionID == nil {
+		t.Errorf("sent again: %+v", again)
+	}
+	n := 0
+	for _, r := range records(t, c) {
+		if r.Amount == 1798 {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Errorf("%d records of the payment, want 1", n)
 	}
 }

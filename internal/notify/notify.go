@@ -15,6 +15,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
@@ -87,25 +88,54 @@ func (s *Store) Recent(ctx context.Context, userID int64, limit int) ([]Notifica
 	return out, rows.Err()
 }
 
+// unfinished is the detail of a notification claimed but not processed yet;
+// one left like this (an error while recording it) is processed again later.
+const unfinished = "Could not be processed."
+
 // claim records that a notification arrived, before it is processed. An
 // app may update a notification it already posted: one that wasn't read as
-// a payment is read again with its new text. ok is false if it was received
-// before and needs nothing more.
+// a payment is read again with its new text. One left unfinished is
+// processed again. ok is false if it was received before and needs nothing
+// more.
 func (s *Store) claim(ctx context.Context, userID int64, key string, in Incoming, at time.Time) (n Notification, ok bool, err error) {
 	n, err = scan(s.db.QueryRowContext(ctx,
 		`INSERT INTO payment_notifications (user_id, dedup_key, package, title, body, posted_at, status, detail)
-		 VALUES ($1, $2, $3, $4, $5, $6, 'unparsed', 'Could not be processed.')
+		 VALUES ($1, $2, $3, $4, $5, $6, 'unparsed', $7)
 		 ON CONFLICT (user_id, dedup_key) DO UPDATE SET title = EXCLUDED.title, body = EXCLUDED.body
 		   WHERE payment_notifications.status IN ('ignored', 'unparsed')
-		     AND (payment_notifications.title, payment_notifications.body) <> (EXCLUDED.title, EXCLUDED.body)
+		     AND ((payment_notifications.title, payment_notifications.body) <> (EXCLUDED.title, EXCLUDED.body)
+		       OR (payment_notifications.status = 'unparsed' AND payment_notifications.detail = $7))
 		 RETURNING `+columns,
-		userID, key, clip(in.Package, 200), clip(in.Title, 300), clip(in.Text, 1000), at))
+		userID, key, clip(in.Package, 200), clip(in.Title, 300), clip(in.Text, 1000), at, unfinished))
 	if errors.Is(err, sql.ErrNoRows) {
 		n, err = scan(s.db.QueryRowContext(ctx,
 			`SELECT `+columns+` FROM payment_notifications WHERE user_id = $1 AND dedup_key = $2`, userID, key))
 		return n, false, err
 	}
 	return n, true, err
+}
+
+// stuck returns the user's notifications left unfinished: claimed more than
+// a minute ago (so not one being processed now), in the last week.
+func (s *Store) stuck(ctx context.Context, userID int64, now time.Time, limit int) ([]Notification, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT `+columns+` FROM payment_notifications
+		 WHERE user_id = $1 AND status = 'unparsed' AND detail = $2
+		   AND created_at BETWEEN $3::timestamptz - interval '7 days' AND $3::timestamptz - interval '1 minute'
+		 ORDER BY created_at LIMIT $4`, userID, unfinished, now, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []Notification
+	for rows.Next() {
+		n, err := scan(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, n)
+	}
+	return out, rows.Err()
 }
 
 func (s *Store) finish(ctx context.Context, userID int64, n Notification) (Notification, error) {
@@ -153,8 +183,40 @@ func (s *Service) Receive(ctx context.Context, userID int64, in Incoming, now ti
 		n.Duplicate = !fresh
 		return n, err
 	}
+	return s.processOrLeave(ctx, userID, n, at), nil
+}
 
-	r := Parse(in.Package, in.Title, in.Text)
+// processOrLeave processes a claimed notification. If that fails, the error
+// is logged and the notification is left unfinished, to be tried again
+// (RetryStuck, or when the phone sends it again), rather than failing the
+// phone's whole batch: one notification that can't be recorded mustn't hold
+// up the others.
+func (s *Service) processOrLeave(ctx context.Context, userID int64, n Notification, at time.Time) Notification {
+	done, err := s.process(ctx, userID, n, at)
+	if err != nil {
+		slog.Error("payment notification not processed", "notification_id", n.ID, "user_id", userID, "package", n.Package, "err", err)
+		return n
+	}
+	return done
+}
+
+// RetryStuck processes again the user's notifications left unfinished by an
+// error (a few at a time), so they don't wait for the phone to send them
+// again, which it doesn't once the server has them.
+func (s *Service) RetryStuck(ctx context.Context, userID int64, now time.Time) {
+	ns, err := s.store.stuck(ctx, userID, now, 5)
+	if err != nil {
+		slog.Error("payment notifications: finding unfinished ones", "user_id", userID, "err", err)
+		return
+	}
+	for _, n := range ns {
+		s.processOrLeave(ctx, userID, n, n.PostedAt)
+	}
+}
+
+// process reads a claimed notification and records its payment, if it is one.
+func (s *Service) process(ctx context.Context, userID int64, n Notification, at time.Time) (Notification, error) {
+	r := Parse(n.Package, n.Title, n.Text)
 	n.Status, n.Detail = r.Status, r.Detail
 	if r.Status == "payment" {
 		p := r.Payment
@@ -231,6 +293,8 @@ func (h *Handler) receive(w http.ResponseWriter, r *http.Request) error {
 		}
 		out.Notifications = append(out.Notifications, n)
 	}
+	// The phone is online and sending: a good moment to try again any that an error left unfinished.
+	h.service.RetryStuck(r.Context(), userID, time.Now())
 	httpx.WriteJSON(w, http.StatusOK, out)
 	return nil
 }
