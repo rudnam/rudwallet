@@ -66,7 +66,7 @@ services:
   # Catches the app's outgoing email. Tests read it through its API;
   # preview.sh shows its inbox at http://localhost:8025.
   mail:
-    image: axllent/mailpit:v1.27
+    image: axllent/mailpit:v1.32
 
   # go vet plus every Go test, including the HTTP integration tests.
   gotest:
@@ -92,7 +92,7 @@ services:
   # golangci-lint, as configured in .golangci.yml. Its own image, pinned, so
   # the linter's many modules stay out of go.mod; Dependabot updates the tag.
   golint:
-    image: golangci/golangci-lint:v2.12.2-alpine
+    image: golangci/golangci-lint:v2.15.0-alpine
     profiles: [go]
     working_dir: /src
     volumes:
