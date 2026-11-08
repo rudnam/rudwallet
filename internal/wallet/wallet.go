@@ -44,6 +44,10 @@ type Category struct {
 	Kind  string `json:"kind"`
 	Icon  string `json:"icon"`
 	Color string `json:"color"`
+	// ParentID is the main category a subcategory is under; null for a main
+	// category. Categories are one level deep, and a subcategory has its
+	// main category's kind.
+	ParentID *int64 `json:"parent_id"`
 }
 
 type Transaction struct {

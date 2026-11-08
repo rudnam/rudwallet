@@ -1,6 +1,7 @@
 package wallet
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"mime"
@@ -268,6 +269,24 @@ type categoryInput struct {
 	Kind  string `json:"kind"`
 	Icon  string `json:"icon"`
 	Color string `json:"color"`
+	// ParentID: a main category's id, or null; left out, a category being
+	// changed stays where it is (apps that don't know subcategories).
+	ParentID json.RawMessage `json:"parent_id"`
+}
+
+// parent reads parent_id; set is false when it was left out.
+func (in categoryInput) parent() (id *int64, set bool, err error) {
+	if len(in.ParentID) == 0 {
+		return nil, false, nil
+	}
+	if string(in.ParentID) == "null" {
+		return nil, true, nil
+	}
+	var n int64
+	if json.Unmarshal(in.ParentID, &n) != nil || n <= 0 {
+		return nil, false, httpx.Errorf(http.StatusBadRequest, "parent_id must be a category's id, or null")
+	}
+	return &n, true, nil
 }
 
 func (in categoryInput) category() (Category, error) {
@@ -286,7 +305,11 @@ func (in categoryInput) category() (Category, error) {
 	if err != nil {
 		return Category{}, err
 	}
-	return Category{Name: n, Kind: in.Kind, Icon: icon, Color: c}, nil
+	parent, _, err := in.parent()
+	if err != nil {
+		return Category{}, err
+	}
+	return Category{Name: n, Kind: in.Kind, Icon: icon, Color: c, ParentID: parent}, nil
 }
 
 // missingCategories lists the default categories the user doesn't have.
@@ -330,7 +353,8 @@ func (h *Handler) updateCategory(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	c.ID = id
-	c, err = h.store.UpdateCategory(r.Context(), userID(r), c)
+	_, move, _ := in.parent()
+	c, err = h.store.UpdateCategory(r.Context(), userID(r), c, move)
 	if err := storeErr(err, "category"); err != nil {
 		return err
 	}

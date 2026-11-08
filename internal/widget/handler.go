@@ -76,11 +76,19 @@ func (h *Handler) summary(w http.ResponseWriter, r *http.Request) error {
 	for _, n := range spending {
 		s.Spent += n
 	}
+	// A main category's budget counts its subcategories too.
+	withSubs := map[int64]int64{}
+	for _, c := range o.Categories {
+		withSubs[c.ID] += spending[c.ID]
+		if c.ParentID != nil {
+			withSubs[*c.ParentID] += spending[c.ID]
+		}
+	}
 	s.Budgets = []Budget{}
 	for _, b := range budgets {
 		spent := s.Spent
 		if b.CategoryID != nil {
-			spent = spending[*b.CategoryID]
+			spent = withSubs[*b.CategoryID]
 		} else if s.Budget == nil {
 			s.Budget = &Budget{Name: b.Name, Amount: b.Amount, Spent: spent}
 		}

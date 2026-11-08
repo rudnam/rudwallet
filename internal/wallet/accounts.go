@@ -156,9 +156,11 @@ func rowsChanged(res sql.Result, err error) error {
 
 // ---------- Categories ----------
 
+// Categories lists the user's categories, main ones and subcategories
+// alike (a subcategory has a ParentID).
 func (s *Store) Categories(ctx context.Context, userID int64) ([]Category, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, name, kind, icon, color FROM categories WHERE user_id = $1 ORDER BY kind, id`, userID)
+		`SELECT `+categoryColumns+` FROM categories WHERE user_id = $1 ORDER BY kind, id`, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +168,7 @@ func (s *Store) Categories(ctx context.Context, userID int64) ([]Category, error
 	out := []Category{}
 	for rows.Next() {
 		var c Category
-		if err := rows.Scan(&c.ID, &c.Name, &c.Kind, &c.Icon, &c.Color); err != nil {
+		if err := scanCategory(rows, &c); err != nil {
 			return nil, err
 		}
 		out = append(out, c)
@@ -174,43 +176,142 @@ func (s *Store) Categories(ctx context.Context, userID int64) ([]Category, error
 	return out, rows.Err()
 }
 
+const categoryColumns = `id, name, kind, icon, color, parent_id`
+
+func scanCategory(row interface{ Scan(...any) error }, c *Category) error {
+	var parent sql.NullInt64
+	err := row.Scan(&c.ID, &c.Name, &c.Kind, &c.Icon, &c.Color, &parent)
+	c.ParentID = ptr(parent)
+	return err
+}
+
 func (s *Store) category(ctx context.Context, userID, id int64) (Category, error) {
 	var c Category
-	err := s.db.QueryRowContext(ctx,
-		`SELECT id, name, kind, icon, color FROM categories WHERE user_id = $1 AND id = $2`, userID, id).
-		Scan(&c.ID, &c.Name, &c.Kind, &c.Icon, &c.Color)
+	err := scanCategory(s.db.QueryRowContext(ctx,
+		`SELECT `+categoryColumns+` FROM categories WHERE user_id = $1 AND id = $2`, userID, id), &c)
 	if errors.Is(err, sql.ErrNoRows) {
 		return c, db.ErrNotFound
 	}
 	return c, err
 }
 
+// CreateCategory adds a main category, or a subcategory when c.ParentID is
+// set (see checkParent).
 func (s *Store) CreateCategory(ctx context.Context, userID int64, c Category) (Category, error) {
-	err := s.db.QueryRowContext(ctx,
-		`INSERT INTO categories (user_id, name, kind, icon, color) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-		userID, c.Name, c.Kind, c.Icon, c.Color).Scan(&c.ID)
+	tx, err := s.lockCategories(ctx, userID)
+	if err != nil {
+		return c, err
+	}
+	defer tx.Rollback()
+	if err := checkParent(ctx, tx, userID, 0, c.Kind, c.ParentID); err != nil {
+		return c, err
+	}
+	err = tx.QueryRowContext(ctx,
+		`INSERT INTO categories (user_id, name, kind, icon, color, parent_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+		userID, c.Name, c.Kind, c.Icon, c.Color, c.ParentID).Scan(&c.ID)
 	if db.IsUniqueViolation(err) {
 		return c, ErrDuplicateName
 	}
-	return c, err
+	if err != nil {
+		return c, err
+	}
+	return c, tx.Commit()
 }
 
 // UpdateCategory changes a category's name, icon and colour (not its kind,
-// which its records depend on).
-func (s *Store) UpdateCategory(ctx context.Context, userID int64, c Category) (Category, error) {
-	res, err := s.db.ExecContext(ctx,
-		`UPDATE categories SET name = $3, icon = $4, color = $5 WHERE user_id = $1 AND id = $2`,
-		userID, c.ID, c.Name, c.Icon, c.Color)
+// which its records depend on), and with move its main category to
+// c.ParentID (nil: it becomes a main one). Without move it stays where it
+// is, for apps that don't know subcategories.
+func (s *Store) UpdateCategory(ctx context.Context, userID int64, c Category, move bool) (Category, error) {
+	tx, err := s.lockCategories(ctx, userID)
+	if err != nil {
+		return c, err
+	}
+	defer tx.Rollback()
+	if move {
+		var kind string
+		err := tx.QueryRowContext(ctx, `SELECT kind FROM categories WHERE user_id = $1 AND id = $2`, userID, c.ID).Scan(&kind)
+		if errors.Is(err, sql.ErrNoRows) {
+			return c, db.ErrNotFound
+		}
+		if err != nil {
+			return c, err
+		}
+		if err := checkParent(ctx, tx, userID, c.ID, kind, c.ParentID); err != nil {
+			return c, err
+		}
+	}
+	res, err := tx.ExecContext(ctx,
+		`UPDATE categories SET name = $3, icon = $4, color = $5, parent_id = CASE WHEN $6 THEN $7 ELSE parent_id END
+		 WHERE user_id = $1 AND id = $2`,
+		userID, c.ID, c.Name, c.Icon, c.Color, move, c.ParentID)
 	if db.IsUniqueViolation(err) {
 		return c, ErrDuplicateName
 	}
 	if err := rowsChanged(res, err); err != nil {
 		return c, err
 	}
+	if err := tx.Commit(); err != nil {
+		return c, err
+	}
 	return s.category(ctx, userID, c.ID)
 }
 
-// DeleteCategory removes a category; its records become uncategorised.
+// lockCategories begins a transaction that holds the user's settings row,
+// so two changes can't together nest categories two levels deep.
+func (s *Store) lockCategories(ctx context.Context, userID int64) (*sql.Tx, error) {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := tx.ExecContext(ctx, `SELECT 1 FROM user_settings WHERE user_id = $1 FOR UPDATE`, userID); err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	return tx, nil
+}
+
+// checkParent checks that category id (0 for a new one) of the kind can go
+// under parent: one of the user's main categories of the same kind, and
+// that id has no subcategories of its own. Categories are one level deep.
+func checkParent(ctx context.Context, tx *sql.Tx, userID, id int64, kind string, parent *int64) error {
+	if parent == nil {
+		return nil
+	}
+	if *parent == id {
+		return invalid("a category can't be under itself")
+	}
+	var pKind string
+	var pParent sql.NullInt64
+	err := tx.QueryRowContext(ctx, `SELECT kind, parent_id FROM categories WHERE user_id = $1 AND id = $2`, userID, *parent).
+		Scan(&pKind, &pParent)
+	if errors.Is(err, sql.ErrNoRows) {
+		return invalid("no such category")
+	}
+	if err != nil {
+		return err
+	}
+	if pKind != kind {
+		return invalid("a subcategory must be the same type as its main category")
+	}
+	if pParent.Valid {
+		return invalid("a subcategory can't have subcategories of its own")
+	}
+	if id == 0 {
+		return nil
+	}
+	var has bool
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM categories WHERE user_id = $1 AND parent_id = $2)`, userID, id).Scan(&has); err != nil {
+		return err
+	}
+	if has {
+		return invalid("a category with subcategories can't go under another")
+	}
+	return nil
+}
+
+// DeleteCategory removes a category; its records become uncategorised, and
+// its subcategories become main categories.
 func (s *Store) DeleteCategory(ctx context.Context, userID, id int64) error {
 	return rowsChanged(s.db.ExecContext(ctx, `DELETE FROM categories WHERE user_id = $1 AND id = $2`, userID, id))
 }
