@@ -151,8 +151,13 @@ class InsightsViewModel @Inject constructor(
             accountId = l.selection.accountId,
             today = now,
             stats = stats,
-            trend = if (stats != null && l.past != null && days > 0) trend(stats, l.past) else null,
-            ahead = if (stats != null && period.span == Span.Month && period.ongoing(now) && l.selection.accountId == null) monthAhead(stats, budgets, period, now) else null,
+            // Categories that moved are main categories, their subcategories counted in.
+            trend = if (stats != null && l.past != null && days > 0) trend(stats.byMainCategory(w), l.past.map { it.byMainCategory(w) }) else null,
+            ahead = if (stats != null && period.span == Span.Month && period.ongoing(now) && l.selection.accountId == null) {
+                monthAhead(stats, budgets, period, now, w)
+            } else {
+                null
+            },
             series = stats?.let { series(period, it) },
             refreshing = l.refreshing,
             problem = l.problem,

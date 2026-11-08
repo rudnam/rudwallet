@@ -140,8 +140,11 @@ class ActivityViewModel @Inject constructor(
                 flowOf(((s as? SearchResult.Found)?.records) to s)
             } else {
                 val zone = clock.zone
-                wallet.transactions(m.atDay(1).atStartOfDay(zone).toInstant(), m.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant())
-                    .map { list -> list.filter(f::matches) to null }
+                // The wallet tells which categories are under the one filtered by.
+                combine(
+                    wallet.transactions(m.atDay(1).atStartOfDay(zone).toInstant(), m.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant()),
+                    wallet.wallet,
+                ) { list, w -> list.filter { f.matches(it, w) } to null }
             }
         }
 

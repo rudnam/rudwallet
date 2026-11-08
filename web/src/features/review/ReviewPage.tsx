@@ -3,6 +3,7 @@
 // category and the card's account), or fix them. A possible duplicate shows
 // the record it matches, and can be deleted in one tap.
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
+import { inOrder, optionLabel } from '../../categories';
 import { api, errorMessage, type Transaction } from '../../api';
 import { TransactionForm } from '../../components/TransactionForm';
 import { formatDay, formatTime } from '../../money';
@@ -256,11 +257,11 @@ function ReviewItem({
                 onChange={(e) => onPick(e.target.value ? Number(e.target.value) : null)}
               >
                 <option value="">{tr('Category')}</option>
-                {w.categories
+                {inOrder(w.categories)
                   .filter((c) => c.kind === t.kind)
                   .map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name}
+                      {optionLabel(c, w.categories)}
                     </option>
                   ))}
               </select>

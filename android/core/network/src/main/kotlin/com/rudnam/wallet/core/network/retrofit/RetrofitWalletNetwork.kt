@@ -76,6 +76,7 @@ internal interface WalletApi {
         @Query("category_id") categoryId: String? = null,
         @Query("q") query: String? = null,
         @Query("tag") tag: String? = null,
+        @Query("with_subcategories") withSubcategories: Boolean? = null,
     ): List<NetworkTransaction>
 
     @POST("api/transactions/bulk")
@@ -247,7 +248,8 @@ internal class RetrofitWalletNetwork @Inject constructor(retrofit: Retrofit, pri
 
     override suspend fun search(
         from: Instant?, to: Instant?, accountId: Long?, categoryId: String?, query: String?, tag: String?, status: String?,
-    ) = call { api.transactions(from?.let(::rfc3339), to?.let(::rfc3339), status, accountId, categoryId, query, tag) }
+        withSubcategories: Boolean,
+    ) = call { api.transactions(from?.let(::rfc3339), to?.let(::rfc3339), status, accountId, categoryId, query, tag, withSubcategories.takeIf { it }) }
 
     override suspend fun bulk(change: NetworkBulkChange) = call { api.bulk(change) }
 

@@ -60,6 +60,7 @@ internal class OfflineFirstActivityRepository @Inject constructor(
                 categoryId = filter.categoryId?.let { if (it == RecordFilter.NO_CATEGORY) "none" else it.toString() },
                 query = filter.query.trim().ifEmpty { null },
                 tag = filter.tag.ifEmpty { null },
+                withSubcategories = filter.categoryId != null && filter.categoryId != RecordFilter.NO_CATEGORY,
             ).map { it.asModel() }
             SearchResult.Found(found, capped = found.size >= MAX_RECORDS)
         } catch (e: CancellationException) {

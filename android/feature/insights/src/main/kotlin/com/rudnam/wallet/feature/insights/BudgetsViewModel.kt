@@ -83,7 +83,7 @@ class BudgetsViewModel @Inject constructor(
     private val to = month.plusMonths(1).atDay(1).atStartOfDay(clock.zone).toInstant()
 
     val uiState: StateFlow<BudgetsUiState> = combine(wallet.wallet, wallet.budgets, wallet.transactions(from, to)) { w, budgets, records ->
-        if (w == null) BudgetsUiState.Loading else BudgetsUiState.Ready(w, month, budgets.map { BudgetRow(it, it.spentIn(records)) })
+        if (w == null) BudgetsUiState.Loading else BudgetsUiState.Ready(w, month, budgets.map { BudgetRow(it, it.spentIn(records, w)) })
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), BudgetsUiState.Loading)
 
     private val _editor = MutableStateFlow<BudgetEditor?>(null)

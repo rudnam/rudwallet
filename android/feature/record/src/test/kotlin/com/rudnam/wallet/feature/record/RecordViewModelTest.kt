@@ -66,6 +66,53 @@ class RecordViewModelTest {
     }
 
     @Test
+    fun `the grid shows main categories, and tapping one opens its boxes, it first, then its subcategories`() = runTest {
+        val cafes = Category(20, "Cafés", CategoryKind.Expense, "coffee", "#8a5a3c", parentId = 10)
+        wallet.send(SampleWallet.wallet.copy(categories = SampleWallet.wallet.categories + cafes), SampleWallet.budgets, SampleWallet.records)
+        // Cafés' use counts for Food & Drinks.
+        records.habits = RecordHabits(emptyMap(), mapOf(20L to 9, 13L to 5), emptyList())
+        val vm = viewModel()
+        assertEquals(10L, vm.ready().categories.first().id)
+        assertTrue(vm.ready().categories.none { it.id == 20L })
+        assertEquals(null, vm.ready().openedMainId)
+
+        // Food & Drinks is chosen, and the boxes are it, then Cafés (with Back after them).
+        vm.chooseCategory(10)
+        assertEquals(10L, vm.ready().form.categoryId)
+        assertEquals(10L, vm.ready().openedMainId)
+        assertEquals(listOf(10L, 20L), vm.ready().categories.map { it.id })
+        assertFalse(vm.ready().canFoldCategories)
+        vm.chooseCategory(20)
+        assertEquals(20L, vm.ready().form.categoryId)
+        // Cafés again goes back to Food & Drinks, which stays chosen when tapped again.
+        vm.chooseCategory(20)
+        assertEquals(10L, vm.ready().form.categoryId)
+        vm.chooseCategory(10)
+        assertEquals(10L, vm.ready().form.categoryId)
+
+        // Back shows all the main categories, Food & Drinks still chosen.
+        vm.chooseCategory(20)
+        vm.leaveCategory()
+        assertEquals(null, vm.ready().openedMainId)
+        assertEquals(20L, vm.ready().form.categoryId)
+        assertEquals(10L, vm.ready().chosenMainId)
+        // Opening it again keeps Cafés.
+        vm.chooseCategory(10)
+        assertEquals(20L, vm.ready().form.categoryId)
+    }
+
+    @Test
+    fun `a record in a subcategory opens in its main category's boxes`() = runTest {
+        val cafes = Category(20, "Cafés", CategoryKind.Expense, "coffee", "#8a5a3c", parentId = 10)
+        wallet.send(SampleWallet.wallet.copy(categories = SampleWallet.wallet.categories + cafes), SampleWallet.budgets, SampleWallet.records)
+        records.habits = RecordHabits(mapOf("Doutor" to SampleWallet.records.first { it.payee == "Doutor" }.copy(categoryId = 20)), emptyMap(), emptyList())
+        val vm = viewModel()
+        vm.setPayee("Doutor")
+        assertEquals(20L, vm.ready().form.categoryId)
+        assertEquals(10L, vm.ready().openedMainId)
+    }
+
+    @Test
     fun `with many categories, all of them open with a search that narrows them`() = runTest {
         val many = SampleWallet.wallet.categories + (1..14).map { Category(100L + it, "Extra $it", CategoryKind.Expense, "other", "#7a7f7c") } +
             Category(200, "Pets", CategoryKind.Expense, "pet", "#8a6d3b")

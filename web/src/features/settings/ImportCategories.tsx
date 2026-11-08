@@ -2,6 +2,7 @@
 // row per category in the file (BudgetBakers) or shop (PayPay), with the
 // app's suggestion picked. Ticking rows sets several at once.
 import { useState } from "react";
+import { inOrder, optionLabel } from "../../categories";
 import type { Category, CategoryChoice, ImportCategory, ImportResult } from "../../api";
 import { CategoryIcon } from "../../components/Icon";
 import { useWallet } from "../../wallet";
@@ -75,7 +76,7 @@ export function ImportCategories({
 
   /** Existing categories of a kind, and new ones it could have: the missing defaults, and extra (the file's own name). */
   function names(kind: ImportCategory["kind"], extra?: string) {
-    const existing = w.categories.filter((c) => c.kind === kind);
+    const existing = inOrder(w.categories).filter((c) => c.kind === kind);
     const fresh = newCategories
       .filter((c) => c.kind === kind)
       .map((c) => c.name);
@@ -167,7 +168,7 @@ export function ImportCategories({
                   <optgroup key={k} label={title}>
                     {existing.map((c) => (
                       <option key={c.id} value={`${k}|c:${c.id}`}>
-                        {c.name}
+                        {optionLabel(c, w.categories)}
                       </option>
                     ))}
                   </optgroup>,
@@ -244,7 +245,7 @@ export function ImportCategories({
                 <optgroup label={t("Your categories")}>
                   {existing.map((c) => (
                     <option key={c.id} value={`c:${c.id}`}>
-                      {c.name}
+                      {optionLabel(c, w.categories)}
                     </option>
                   ))}
                 </optgroup>

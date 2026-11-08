@@ -34,6 +34,7 @@ class RecordSheetScreenshotTest {
         override fun kind(kind: TransactionKind) {}
         override fun press(key: PadKey) {}
         override fun category(id: Long) {}
+        override fun leaveCategory() {}
         override fun allCategories(show: Boolean) {}
         override fun searchCategories(query: String) {}
         override fun payee(payee: String) {}
@@ -119,6 +120,26 @@ class RecordSheetScreenshotTest {
                 canFoldCategories = true,
                 showAllCategories = true,
                 canSearchCategories = true,
+            ),
+        )
+    }
+
+    /** Food & Drinks opened: it first, then its subcategories, then Back; Cafés chosen. */
+    @Test
+    fun subcategories() {
+        val subs = listOf(
+            Category(20, "Cafés", CategoryKind.Expense, "coffee", "#8a5a3c", parentId = 10),
+            Category(21, "Restaurants", CategoryKind.Expense, "food", "#d9534f", parentId = 10),
+            Category(22, "Delivery", CategoryKind.Expense, "transit", "#d9534f", parentId = 10),
+        )
+        val wallet = SampleWallet.wallet.copy(categories = SampleWallet.wallet.categories + subs)
+        shot(
+            "subcategories",
+            state(newRecord.copy(categoryId = 20)).copy(
+                wallet = wallet,
+                categories = listOf(wallet.category(10)!!) + subs,
+                chosenMainId = 10,
+                openedMainId = 10,
             ),
         )
     }

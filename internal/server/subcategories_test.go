@@ -127,3 +127,32 @@ func TestSubcategoryBudget(t *testing.T) {
 		t.Errorf("budgets %+v, want %+v", s.Budgets, want)
 	}
 }
+
+// with_subcategories lists a main category's records with its subcategories'.
+func TestRecordsWithSubcategories(t *testing.T) {
+	ts := newTestServer(t)
+	c := newClient(t, ts)
+	c.signup("a@example.com")
+	o := overview(t, c)
+	cash, food := o.Accounts[0].ID, categoryID(t, o, "Food & Drinks")
+	var cafes wallet.Category
+	if code := c.do("POST", "/api/categories", map[string]any{"name": "Cafés", "kind": "expense", "parent_id": food}, &cafes); code != 201 {
+		t.Fatalf("create: %d", code)
+	}
+	for _, cat := range []int64{food, cafes.ID} {
+		body := map[string]any{"kind": "expense", "amount": 500, "account_id": cash, "category_id": cat, "occurred_at": time.Now()}
+		if code := c.do("POST", "/api/transactions", body, nil); code != 201 {
+			t.Fatalf("add record: %d", code)
+		}
+	}
+	for q, want := range map[string]int{
+		fmt.Sprintf("category_id=%d", food):                             1,
+		fmt.Sprintf("category_id=%d&with_subcategories=true", food):     2,
+		fmt.Sprintf("category_id=%d&with_subcategories=true", cafes.ID): 1,
+	} {
+		var list []wallet.Transaction
+		if code := c.do("GET", "/api/transactions?"+q, nil, &list); code != 200 || len(list) != want {
+			t.Errorf("%s: %d, %d records, want %d", q, code, len(list), want)
+		}
+	}
+}

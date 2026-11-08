@@ -106,6 +106,7 @@ internal fun RecordSheetDestination(onDone: () -> Unit, viewModel: RecordViewMod
             override fun kind(kind: TransactionKind) { haptics.select(); viewModel.setKind(kind) }
             override fun press(key: PadKey) { haptics.key(); viewModel.press(key) }
             override fun category(id: Long) { haptics.select(); viewModel.chooseCategory(id) }
+            override fun leaveCategory() = viewModel.leaveCategory()
             override fun allCategories(show: Boolean) = viewModel.showAllCategories(show)
             override fun searchCategories(query: String) = viewModel.searchCategories(query)
             override fun payee(payee: String) = viewModel.setPayee(payee)
@@ -132,6 +133,8 @@ internal interface RecordActions {
     fun kind(kind: TransactionKind)
     fun press(key: PadKey)
     fun category(id: Long)
+    /** Back from a main category's boxes to all of them. */
+    fun leaveCategory()
     fun allCategories(show: Boolean)
     fun searchCategories(query: String)
     fun payee(payee: String)
@@ -304,8 +307,10 @@ private fun Amount(state: RecordUiState.Ready, format: MoneyFormat) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CategoryGrid(state: RecordUiState.Ready, actions: RecordActions) {
-    val label = stringResource(R.string.feature_record_category)
-    val tiles: List<Category?> = state.categories + if (state.canFoldCategories) listOf(null) else emptyList()
+    val opened = state.wallet.category(state.openedMainId)
+    val label = opened?.let { stringResource(R.string.feature_record_subcategories_of, it.name) } ?: stringResource(R.string.feature_record_category)
+    // null is the last box: Back from a main category's boxes, or More.
+    val tiles: List<Category?> = state.categories + if (opened != null || state.canFoldCategories) listOf(null) else emptyList()
     Column(Modifier.semantics { contentDescription = label }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (state.canSearchCategories) {
             OutlinedTextField(
@@ -337,10 +342,14 @@ private fun CategoryGrid(state: RecordUiState.Ready, actions: RecordActions) {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 for (c in row) {
                     Box(Modifier.weight(1f)) {
-                        if (c == null) {
-                            MoreTile(state.showAllCategories) { actions.allCategories(!state.showAllCategories) }
-                        } else {
-                            CategoryTile(c, c.id == state.form.categoryId) { actions.category(c.id) }
+                        when {
+                            c == null && opened != null -> ActionTile(WalletIcons.back, stringResource(R.string.feature_record_back), actions::leaveCategory)
+                            c == null -> ActionTile(
+                                if (state.showAllCategories) WalletIcons.close else WalletIcons.more,
+                                stringResource(if (state.showAllCategories) R.string.feature_record_fewer else R.string.feature_record_more),
+                            ) { actions.allCategories(!state.showAllCategories) }
+                            // In a main category's boxes, the one chosen; among all of them, the main one chosen or holding it.
+                            else -> CategoryTile(c, c.id == state.form.categoryId || (opened == null && c.id == state.chosenMainId)) { actions.category(c.id) }
                         }
                     }
                 }
@@ -372,15 +381,16 @@ private fun CategoryTile(category: Category, picked: Boolean, onClick: () -> Uni
     }
 }
 
+/** The grid's last box when it does something else: More, Fewer or Back. */
 @Composable
-private fun MoreTile(all: Boolean, onClick: () -> Unit) {
+private fun ActionTile(icon: String, label: String, onClick: () -> Unit) {
     val colors = WalletTheme.colors
     Surface(onClick = onClick, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small, color = colors.surface) {
         Column(Modifier.padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
             Box(Modifier.size(40.dp).clip(MaterialTheme.shapes.small).background(colors.sunken), contentAlignment = Alignment.Center) {
-                LineIcon(if (all) WalletIcons.close else WalletIcons.more, contentDescription = null, tint = colors.muted, size = 20.dp)
+                LineIcon(icon, contentDescription = null, tint = colors.muted, size = 20.dp)
             }
-            Text(stringResource(if (all) R.string.feature_record_fewer else R.string.feature_record_more), style = MaterialTheme.typography.labelMedium)
+            Text(label, style = MaterialTheme.typography.labelMedium)
         }
     }
 }
@@ -668,7 +678,7 @@ private fun describe(v: Change.Value, wallet: Wallet, format: MoneyFormat): Stri
             },
         )
         is Change.Value.Money -> format.money(v.amount)
-        is Change.Value.Category -> wallet.category(v.id)?.name ?: none
+        is Change.Value.Category -> wallet.categoryPath(v.id) ?: none
         is Change.Value.Account -> wallet.account(v.id)?.name ?: none
         is Change.Value.Text -> v.text.ifEmpty { none }
         is Change.Value.Time -> format.dateTime(v.at)

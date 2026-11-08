@@ -60,10 +60,12 @@ class SettingsScreenshotTest {
     }
     private val categories = object : CategoriesActions {
         override fun create() {}
+        override fun createUnder(parent: Category) {}
         override fun edit(category: Category) {}
         override fun addMissing(category: Category) {}
         override fun setName(name: String) {}
         override fun setKind(kind: CategoryKind) {}
+        override fun setParent(parentId: Long?) {}
         override fun setIcon(icon: String) {}
         override fun setColor(color: String) {}
         override fun save() {}
@@ -104,6 +106,23 @@ class SettingsScreenshotTest {
     @Test
     fun categoryList() = shot("categories") {
         CategoriesScreen(SampleWallet.wallet, listOf(Category(0, "Pets", CategoryKind.Expense, "pet", "#8a6d3b")), null, categories, navigation)
+    }
+
+    /** Food & Drinks with Cafés and Lunch under it; the rest main categories. */
+    private val nested = SampleWallet.wallet.copy(
+        categories = SampleWallet.wallet.categories +
+            Category(20, "Cafés", CategoryKind.Expense, "coffee", "#8a5a3c", parentId = 10) +
+            Category(21, "Lunch", CategoryKind.Expense, "food", "#d9534f", parentId = 10),
+    )
+
+    @Test
+    fun subcategoryList() = shot("categories-nested") {
+        CategoriesScreen(nested, emptyList(), null, categories, navigation)
+    }
+
+    @Test
+    fun editSubcategory() = shot("subcategory-edit") {
+        CategoriesScreen(nested, emptyList(), CategoryEditor(20, "Cafés", CategoryKind.Expense, "coffee", "#8a5a3c", parentId = 10), categories, navigation)
     }
 
     @Test

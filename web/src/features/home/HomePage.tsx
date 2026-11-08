@@ -1,6 +1,7 @@
 // The overview: balances, this month's spending, budgets, latest records.
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
-import { api, type Account, type Budget, type Transaction } from '../../api';
+import { withSubcategories } from '../../categories';
+import { api, type Account, type Budget, type Category, type Transaction } from '../../api';
 import type { BarItem } from '../../components/charts';
 import { TransactionForm } from '../../components/TransactionForm';
 import { TransactionList } from '../../components/TransactionList';
@@ -240,9 +241,11 @@ export function spendingByCategory(list: Transaction[], w: ReturnType<typeof use
     .sort((a, b) => b.amount - a.amount);
 }
 
-export function budgetSpent(b: Budget, list: Transaction[]): number {
+/** A main category's budget counts its subcategories too ([categories]). */
+export function budgetSpent(b: Budget, list: Transaction[], categories: Category[] = []): number {
+  const ids = b.category_id === null ? null : withSubcategories(b.category_id, categories);
   return list
-    .filter((t) => t.kind === 'expense' && t.status === 'confirmed' && (b.category_id === null || t.category_id === b.category_id))
+    .filter((t) => t.kind === 'expense' && t.status === 'confirmed' && (ids === null || (t.category_id !== null && ids.has(t.category_id))))
     .reduce((s, t) => s + t.amount, 0);
 }
 

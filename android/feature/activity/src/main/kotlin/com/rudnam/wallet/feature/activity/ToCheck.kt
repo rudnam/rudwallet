@@ -217,11 +217,16 @@ private fun CategoryPicker(item: ReviewItem, state: ActivityUiState.Ready, actio
             },
         )
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            for (c in state.wallet.categories.filter { it.kind.apiName == t.kind.apiName }) {
-                DropdownMenuItem(text = { Text(c.name) }, leadingIcon = { CategoryIcon(c) }, onClick = {
-                    open = false
-                    actions.pickCategory(t.id, c.id)
-                })
+            for (c in state.wallet.categoriesInOrder().filter { it.kind.apiName == t.kind.apiName }) {
+                // Subcategories sit indented under their main category.
+                DropdownMenuItem(
+                    text = { Text(c.name) },
+                    leadingIcon = { CategoryIcon(c, Modifier.padding(start = if (state.wallet.isSubcategory(c)) 20.dp else 0.dp)) },
+                    onClick = {
+                        open = false
+                        actions.pickCategory(t.id, c.id)
+                    },
+                )
             }
         }
     }

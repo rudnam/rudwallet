@@ -15,6 +15,33 @@ data class Wallet(
 
     fun category(id: Long?): Category? = id?.let(categoriesById::get)
 
+    private val subsByParent: Map<Long, List<Category>> = categories.filter { it.parentId != null }.groupBy { it.parentId!! }
+
+    /** A main category's subcategories, in the user's order. */
+    fun subcategories(id: Long?): List<Category> = id?.let(subsByParent::get).orEmpty()
+
+    /** The main category [id] is, or is under; null for no category. */
+    fun mainCategoryId(id: Long?): Long? = category(id)?.let { it.parentId ?: it.id } ?: id
+
+    /** [id] and its subcategories' ids: what a main category's totals and records take in. */
+    fun withSubcategories(id: Long): Set<Long> = setOf(id) + subcategories(id).map { it.id }
+
+    /** Under a main category the phone has (else it's shown as a main one). */
+    fun isSubcategory(c: Category): Boolean = c.parentId != null && category(c.parentId) != null
+
+    /** Every category, each main one followed by its subcategories: the order lists of them show. */
+    fun categoriesInOrder(): List<Category> {
+        val mains = categories.filterNot(::isSubcategory)
+        return mains.flatMap { listOf(it) + subcategories(it.id) }
+    }
+
+    /** "Food & Drinks › Cafés" for a subcategory; a main category's own name. */
+    fun categoryPath(id: Long?): String? {
+        val c = category(id) ?: return null
+        val main = category(c.parentId) ?: return c.name
+        return "${main.name} › ${c.name}"
+    }
+
     /**
      * The wallet with records not on the server yet counted in, as the user
      * expects to see them: each changes its account's balance as it will
@@ -97,6 +124,8 @@ data class Category(
     val icon: String,
     /** #rrggbb. */
     val color: String,
+    /** The main category a subcategory is under (same kind, one level deep); null for a main category. */
+    val parentId: Long? = null,
 )
 
 data class Budget(

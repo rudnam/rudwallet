@@ -65,6 +65,12 @@
     <string name="feature_settings_icon">アイコン</string>
     <string name="feature_settings_initial_only">頭文字のみ</string>
     <string name="feature_settings_delete_category_question">「%s」を削除しますか？その記録はカテゴリなしになり、このカテゴリの予算と、覚えたお店の振り分けも削除されます。</string>
+    <string name="feature_settings_subcategories_of">%1$sのサブカテゴリ</string>
+    <string name="feature_settings_add_subcategory">サブカテゴリを追加</string>
+    <string name="feature_settings_under">親カテゴリ</string>
+    <string name="feature_settings_main_category">なし（メインカテゴリ）</string>
+    <string name="feature_settings_has_subcategories">サブカテゴリがあるため、メインカテゴリのままです。</string>
+    <string name="feature_settings_delete_category_subcategories">サブカテゴリはメインカテゴリになります。</string>
     <string name="feature_settings_enter_name">名前を入力してください。</string>
     <string name="feature_settings_main_currency">メインの通貨</string>
     <string name="feature_settings_currency_detail">記録を追加する前に選んでください。あとから変更できません。</string>

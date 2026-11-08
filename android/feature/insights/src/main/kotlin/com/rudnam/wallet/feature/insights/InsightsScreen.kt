@@ -320,8 +320,9 @@ private fun shareText(): (String, Int) -> String {
     return { what, percent -> String.format(pattern, what, percent) }
 }
 
+/** One bar per main category, its subcategories counted in; tapping one lists them all. */
 private fun bars(stats: Stats, kind: CategoryKind, wallet: Wallet, noCategory: String): List<BarItem> =
-    stats.categories.filter { it.kind == kind }.map { t ->
+    stats.byMainCategory(wallet).categories.filter { it.kind == kind }.map { t ->
         val c = wallet.category(t.categoryId)
         BarItem(t.categoryId, c, c?.name ?: noCategory, t.amount)
     }

@@ -25,7 +25,8 @@ data class AccountInput(
 )
 
 /** A new category, or a category's new details. [icon] is a glyph key, or empty for its initial. */
-data class CategoryInput(val name: String, val kind: CategoryKind, val icon: String, val color: String)
+/** A category to add or change; [parentId] puts it under a main category, null makes it a main one. */
+data class CategoryInput(val name: String, val kind: CategoryKind, val icon: String, val color: String, val parentId: Long? = null)
 
 /** What confirmed payments taught the app (GET /api/rules): each shop's category and each card's account. */
 data class Rules(val payees: List<PayeeRule>, val cards: List<CardRule>)

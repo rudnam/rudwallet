@@ -170,7 +170,7 @@ internal fun RulesScreen(wallet: Wallet?, rules: Loadable<Rules>, actions: Rules
                         records = rule.records,
                         onForget = { actions.forgetShop(rule.key, rule.payee) },
                     ) {
-                        CategoryChoice(wallet.categories, rule.categoryId, stringResource(R.string.feature_settings_category_for, rule.payee)) {
+                        CategoryChoice(wallet.categoriesInOrder(), rule.categoryId, stringResource(R.string.feature_settings_category_for, rule.payee)) {
                             actions.setShop(rule.key, rule.payee, it)
                         }
                     }
@@ -178,7 +178,7 @@ internal fun RulesScreen(wallet: Wallet?, rules: Loadable<Rules>, actions: Rules
                 }
             }
         }
-        item { AddShop(wallet.categories, actions::addShop) }
+        item { AddShop(wallet.categoriesInOrder(), actions::addShop) }
         item { Heading(stringResource(R.string.feature_settings_cards)) }
         item {
             WalletPanel(Modifier.fillMaxWidth()) {
@@ -237,9 +237,11 @@ private fun CategoryChoice(categories: List<Category>, chosen: Long?, label: Str
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
                 for (c in categories.filter { it.kind == kind }) {
+                    // In order: a subcategory follows its main category, indented.
+                    val indent = if (c.parentId != null && categories.any { it.id == c.parentId }) 20.dp else 0.dp
                     DropdownMenuItem(
                         text = { Text(c.name) },
-                        leadingIcon = { CategoryIcon(c, Modifier.size(28.dp)) },
+                        leadingIcon = { CategoryIcon(c, Modifier.padding(start = indent).size(28.dp)) },
                         onClick = {
                             open = false
                             onChoose(c.id)

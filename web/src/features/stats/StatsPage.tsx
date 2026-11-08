@@ -1,6 +1,7 @@
 // Spending and income over a week, a month, a year or any range, compared
 // with the period before.
 import { useEffect, useState } from 'react';
+import { byMainCategory, withSubcategories } from '../../categories';
 import { api, errorMessage, type Budget, type Stats } from '../../api';
 import { CategoryBars, DailyColumns, type BarItem } from '../../components/charts';
 import { CategoryIcon, Icon, icons } from '../../components/Icon';
@@ -381,9 +382,11 @@ const usualBand = 0.1;
  * Is this period's spending high? Compared with the average of the periods
  * before that have any records (up to three), each up to the same point.
  */
-function Trends({ now, past, period, days, ongoing }: { now: Stats; past: Stats[]; period: Period; days: number; ongoing: boolean }) {
+function Trends({ now: raw, past, period, days, ongoing }: { now: Stats; past: Stats[]; period: Period; days: number; ongoing: boolean }) {
   const w = useWallet();
-  const active = past.filter((s) => s.days.length > 0);
+  // Categories that move are main categories, their subcategories counted in.
+  const now = byMainCategory(raw, w.categories);
+  const active = past.filter((s) => s.days.length > 0).map((s) => byMainCategory(s, w.categories));
   const len = lengthInDays(period);
   // "by this point", put before or after the sentence as the language needs.
   const when = ongoing ? (period.span === 'year' || period.span === 'custom' ? t('by day {n}', { n: days }) : t('by this point')) : '';
@@ -474,7 +477,9 @@ function MonthAhead({ now, budgets, days, period }: { now: Stats; budgets: Budge
   const forBudget = (b: Budget) => (s: Stats) =>
     b.category_id === null
       ? s.spent
-      : s.categories.filter((c) => c.kind === 'expense' && c.category_id === b.category_id).reduce((sum, c) => sum + c.amount, 0);
+      : s.categories
+          .filter((c) => c.kind === 'expense' && c.category_id !== null && withSubcategories(b.category_id!, w.categories).has(c.category_id))
+          .reduce((sum, c) => sum + c.amount, 0);
   const title = t('Rest of {month}', { month: period.from.toLocaleDateString(locale(), { month: 'long' }) });
 
   return (
@@ -623,8 +628,9 @@ function buckets(p: Period, s: Stats): Series {
   };
 }
 
+/** One bar per main category, its subcategories counted in. */
 function categoryBars(s: Stats, kind: 'expense' | 'income', w: ReturnType<typeof useWallet>): BarItem[] {
-  return s.categories
+  return byMainCategory(s, w.categories).categories
     .filter((c) => c.kind === kind)
     .map((total) => {
       const c = total.category_id === null ? undefined : w.category(total.category_id);

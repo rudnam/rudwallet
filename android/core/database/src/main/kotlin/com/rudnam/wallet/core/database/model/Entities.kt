@@ -47,6 +47,8 @@ data class CategoryEntity(
     val kind: String,
     val icon: String,
     val color: String,
+    /** Since version 3: the main category a subcategory is under. */
+    val parentId: Long? = null,
 )
 
 @Entity(tableName = "transactions", indices = [Index("occurredAt")])
@@ -83,9 +85,9 @@ fun AccountEntity.asModel() = Account(id, name, AccountKind.fromApi(kind), initi
 
 fun Account.asEntity(position: Int) = AccountEntity(id, position, name, kind.apiName, initialBalance, balance, color, archived)
 
-fun CategoryEntity.asModel() = Category(id, name, CategoryKind.fromApi(kind), icon, color)
+fun CategoryEntity.asModel() = Category(id, name, CategoryKind.fromApi(kind), icon, color, parentId)
 
-fun Category.asEntity(position: Int) = CategoryEntity(id, position, name, kind.apiName, icon, color)
+fun Category.asEntity(position: Int) = CategoryEntity(id, position, name, kind.apiName, icon, color, parentId)
 
 fun BudgetEntity.asModel() = Budget(id, name, categoryId, amount)
 

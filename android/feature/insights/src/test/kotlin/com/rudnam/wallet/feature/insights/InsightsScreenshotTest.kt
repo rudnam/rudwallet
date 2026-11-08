@@ -98,7 +98,7 @@ class InsightsScreenshotTest {
             today = today,
             stats = november,
             trend = trend(november, listOf(before, before, before)),
-            ahead = monthAhead(november, SampleWallet.budgets, period, today),
+            ahead = monthAhead(november, SampleWallet.budgets, period, today, SampleWallet.wallet),
             series = series(period, november),
             refreshing = false,
             problem = null,

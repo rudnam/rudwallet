@@ -89,6 +89,7 @@ class OfflineFirstWalletRepositoryTest {
         override suspend fun restoreRecords(ids: List<Long>) = Unit
         override suspend fun search(
             from: Instant?, to: Instant?, accountId: Long?, categoryId: String?, query: String?, tag: String?, status: String?,
+            withSubcategories: Boolean,
         ) = emptyList<NetworkTransaction>()
         override suspend fun bulk(change: com.rudnam.wallet.core.network.model.NetworkBulkChange) =
             com.rudnam.wallet.core.network.model.NetworkBulkResult(change.ids.size, 0)

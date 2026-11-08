@@ -2,6 +2,7 @@
 // through every month. Records can be chosen to delete, categorise, move or
 // tag many at once.
 import { useEffect, useState, type ReactNode } from 'react';
+import { inOrder, optionLabel } from '../../categories';
 import { api, errorMessage, type BulkChange, type Tag, type Transaction, type TransactionFilter } from '../../api';
 import { cleanTag } from '../../components/TagField';
 import { TransactionForm } from '../../components/TransactionForm';
@@ -49,6 +50,8 @@ export function RecordsPage({
   const filter: TransactionFilter = {
     account_id: account,
     category_id: category,
+    // A main category lists its subcategories' records too.
+    with_subcategories: typeof category === 'number' || undefined,
     q: search || undefined,
     tag: tag || undefined,
   };
@@ -157,9 +160,9 @@ export function RecordsPage({
         <select aria-label={t('Category')} className={category ? 'set' : undefined} value={category ?? ''} onChange={(e) => set({ category: e.target.value })}>
           <option value="">{t('Category')}</option>
           <option value="none">{t('No category')}</option>
-          {w.categories.map((c) => (
+          {inOrder(w.categories).map((c) => (
             <option key={c.id} value={c.id}>
-              {c.name}
+              {optionLabel(c, w.categories)}
             </option>
           ))}
         </select>
@@ -303,8 +306,8 @@ function BulkBar({
     } else if (v.startsWith('add:')) apply({ ids, action: 'tag', tag: v.slice(4) });
     else if (v.startsWith('remove:')) apply({ ids, action: 'untag', tag: v.slice(7) });
   }
-  const expenseCats = w.categories.filter((c) => c.kind === 'expense');
-  const incomeCats = w.categories.filter((c) => c.kind === 'income');
+  const expenseCats = inOrder(w.categories).filter((c) => c.kind === 'expense');
+  const incomeCats = inOrder(w.categories).filter((c) => c.kind === 'income');
 
   return (
     <div className="card bulk-bar" role="region" aria-label={t('Chosen records')}>
@@ -330,14 +333,14 @@ function BulkBar({
             <optgroup label={t('Expenses')}>
               {expenseCats.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name}
+                  {optionLabel(c, w.categories)}
                 </option>
               ))}
             </optgroup>
             <optgroup label={t('Income')}>
               {incomeCats.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name}
+                  {optionLabel(c, w.categories)}
                 </option>
               ))}
             </optgroup>

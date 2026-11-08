@@ -3,6 +3,7 @@ package com.rudnam.wallet.feature.insights
 import com.rudnam.wallet.core.model.Budget
 import com.rudnam.wallet.core.model.CategoryKind
 import com.rudnam.wallet.core.model.Stats
+import com.rudnam.wallet.core.model.Wallet
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import kotlin.math.abs
@@ -99,8 +100,11 @@ data class BudgetPace(val budget: Budget, val spent: Long, val allowedPerDay: Lo
 /** The rest of the month still going: where its spending is heading, and each budget's pace. */
 data class MonthAhead(val heading: Long, val daysLeft: Int, val budgets: List<BudgetPace>)
 
-/** Where the month is heading at the same rate per day as so far, and what each budget allows a day. */
-fun monthAhead(now: Stats, budgets: List<Budget>, period: Period, today: LocalDate): MonthAhead {
+/**
+ * Where the month is heading at the same rate per day as so far, and what
+ * each budget allows a day. A main category's budget counts its subcategories.
+ */
+fun monthAhead(now: Stats, budgets: List<Budget>, period: Period, today: LocalDate, wallet: Wallet): MonthAhead {
     val days = period.elapsedDays(today)
     val len = period.lengthInDays
     val left = len - days + 1 // today included
@@ -108,7 +112,7 @@ fun monthAhead(now: Stats, budgets: List<Budget>, period: Period, today: LocalDa
         heading = (now.spent.toDouble() / days * len).roundToLong(),
         daysLeft = left,
         budgets = budgets.map { b ->
-            val spent = now.spentOn(b.categoryId)
+            val spent = now.spentOn(b.categoryId, wallet)
             BudgetPace(b, spent, floor((b.amount - spent).toDouble() / left).toLong(), (spent.toDouble() / days).roundToLong())
         },
     )
