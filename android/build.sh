@@ -5,8 +5,8 @@
 #   ./android/build.sh            -> android/wallet.aab and android/wallet.apk
 #   ./android/build.sh install    also installs the APK on the phone plugged in (adb)
 #
-# Needs a JDK and the Android SDK (JAVA_HOME and ANDROID_HOME, or the paths in
-# ~/.bubblewrap/config.json), and android.keystore with its passwords in
+# Needs a JDK 21 (JAVA_HOME) and the Android SDK (ANDROID_HOME, by default
+# ~/Android/Sdk), and android.keystore with its passwords in
 # signing-key.txt, next to this script. The version comes from version.sh,
 # or WALLET_VERSION_CODE and WALLET_VERSION_NAME if they're set. CI's
 # Android release workflow (.github/workflows/android-release.yml) runs this
@@ -14,10 +14,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-if [[ -f ~/.bubblewrap/config.json ]]; then
-  : "${JAVA_HOME:=$(sed -n 's/.*"jdkPath": *"\([^"]*\)".*/\1/p' ~/.bubblewrap/config.json)}"
-  : "${ANDROID_HOME:=$(sed -n 's/.*"androidSdkPath": *"\([^"]*\)".*/\1/p' ~/.bubblewrap/config.json)}"
-fi
+if [[ -z ${ANDROID_HOME:-} && -d ~/Android/Sdk ]]; then ANDROID_HOME=~/Android/Sdk; fi
 : "${JAVA_HOME:?set JAVA_HOME to a JDK 21}" "${ANDROID_HOME:?set ANDROID_HOME to the Android SDK}"
 export JAVA_HOME ANDROID_HOME
 

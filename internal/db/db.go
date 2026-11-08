@@ -94,14 +94,13 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 	if err != nil {
 		return err
 	}
-	sort.Strings(names)
+	migrations, err := parseMigrations(names)
+	if err != nil {
+		return err
+	}
 
-	for _, name := range names {
-		base := strings.TrimPrefix(name, "migrations/")
-		version, err := strconv.Atoi(strings.SplitN(base, "_", 2)[0])
-		if err != nil {
-			return fmt.Errorf("migration %s: file name must start with a number", base)
-		}
+	for _, m := range migrations {
+		name, base, version := m.path, m.base, m.version
 		var applied bool
 		if err := conn.QueryRowContext(ctx,
 			`SELECT EXISTS (SELECT 1 FROM schema_migrations WHERE version = $1)`, version).Scan(&applied); err != nil {
@@ -131,4 +130,41 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 		}
 	}
 	return nil
+}
+
+// retiredVersions are migration numbers that were used and then deleted. A
+// database that ran one has it in schema_migrations, so a new file with that
+// number would be skipped there without a word.
+var retiredVersions = map[int]bool{2: true}
+
+type migration struct {
+	path    string // in migrationFiles
+	base    string // file name, for messages
+	version int    // the number the file name starts with
+}
+
+// parseMigrations reads the version from each migration's file name and
+// returns them in version order. It refuses a name without a number, a
+// number two files share and a retired number: each would leave a migration
+// silently unapplied on some database.
+func parseMigrations(paths []string) ([]migration, error) {
+	out := make([]migration, 0, len(paths))
+	seen := map[int]string{}
+	for _, p := range paths {
+		base := p[strings.LastIndex(p, "/")+1:]
+		version, err := strconv.Atoi(strings.SplitN(base, "_", 2)[0])
+		if err != nil {
+			return nil, fmt.Errorf("migration %s: file name must start with a number", base)
+		}
+		if other, ok := seen[version]; ok {
+			return nil, fmt.Errorf("migrations %s and %s share version %d; renumber the newer one", other, base, version)
+		}
+		if retiredVersions[version] {
+			return nil, fmt.Errorf("migration %s: version %d was used before and deleted; use a new number", base, version)
+		}
+		seen[version] = base
+		out = append(out, migration{path: p, base: base, version: version})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].version < out[j].version })
+	return out, nil
 }

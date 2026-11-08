@@ -884,3 +884,20 @@ test.describe('with reduced motion', () => {
     expect(await page.evaluate(() => document.documentElement.dataset.nav ?? null)).toBeNull();
   });
 });
+
+test('with a mouse, every account chip on the record form is in reach', async ({ page }) => {
+  await signUp(page);
+  const names = ['Mizuho Everyday Banking', 'Rakuten Online Savings', 'Emergency Savings Account', 'Travel Fund'];
+  const created = await Promise.all(names.map((name) => page.request.post('/api/accounts', { data: { name, kind: 'bank' } })));
+  for (const res of created) expect(res.status()).toBe(201);
+  await page.reload();
+  await page.getByRole('button', { name: 'Add record' }).click();
+  const pick = page.getByRole('dialog', { name: 'New record' }).getByRole('radiogroup', { name: 'Account' });
+  // A mouse can't swipe the row sideways, so the chips wrap onto more lines rather than run off the edge.
+  const row = await pick.boundingBox();
+  const last = pick.locator('label').filter({ hasText: 'Travel Fund' });
+  const chip = await last.boundingBox();
+  expect(chip.x + chip.width).toBeLessThanOrEqual(row.x + row.width + 1);
+  await last.click();
+  await expect(pick.getByRole('radio', { name: 'Travel Fund' })).toBeChecked();
+});

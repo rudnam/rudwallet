@@ -8,7 +8,11 @@ import (
 const (
 	gw = "com.google.android.apps.walletnfcrel"
 	pp = "jp.ne.paypay.android.app"
+	vp = "com.smbc_card.vpass"
 )
+
+// vpassAlert is a Vpass ご利用のお知らせ as the app words it (full width, ideographic spaces).
+const vpassAlert = "◇ご利用カード：Ａｍａｚｏｎマスター　◇日時：2026/11/08 10:22　◇利用先：ＡＭＡＺＯＮ．ＣＯ．ＪＰ　◇金額：1,798円"
 
 func TestParse(t *testing.T) {
 	tests := []struct {
@@ -61,6 +65,22 @@ func TestParse(t *testing.T) {
 			status: "ignored"},
 		{name: "paypay without the amount", pkg: pp, title: "PayPay", text: "取引が完了しました。",
 			status: "unparsed"},
+
+		// Vpass (三井住友カード).
+		{name: "vpass", pkg: vp, title: "ご利用のお知らせ", text: vpassAlert,
+			status: "payment", amount: 1798, currency: "JPY", merchant: "AMAZON.CO.JP", source: "Vpass · Amazonマスター"},
+		{name: "vpass on lines", pkg: vp, title: "ご利用のお知らせ", text: "◇ご利用カード：三井住友カード\n◇日時：2026/11/08 12:05\n◇利用先：ローソン\n◇金額：550円",
+			status: "payment", amount: 550, currency: "JPY", merchant: "ローソン", source: "Vpass · 三井住友カード"},
+		{name: "vpass cancelled", pkg: vp, title: "ご利用取消のお知らせ", text: "◇ご利用カード：Ａｍａｚｏｎマスター　◇日時：2026/11/09 09:00　◇利用先：ＡＭＡＺＯＮ．ＣＯ．ＪＰ　◇金額：1,798円",
+			status: "payment", amount: 1798, currency: "JPY", merchant: "AMAZON.CO.JP", source: "Vpass · Amazonマスター", refund: true},
+		{name: "vpass declined", pkg: vp, title: "カードがご利用いただけませんでした", text: "◇ご利用カード：Ａｍａｚｏｎマスター　◇日時：2026/08/23 10:00　◇利用先：ＡＭＡＺＯＮ．ＣＯ．ＪＰ　◇金額：173円",
+			status: "ignored"},
+		{name: "vpass bill", pkg: vp, title: "お支払い金額確定のお知らせ", text: "11月26日のお支払い金額が確定しました。",
+			status: "ignored"},
+		{name: "vpass offer", pkg: vp, title: "キャンペーン", text: "最大10,000円キャッシュバック！",
+			status: "ignored"},
+		{name: "vpass without the amount", pkg: vp, title: "ご利用のお知らせ", text: "◇ご利用カード：Ａｍａｚｏｎマスター",
+			status: "unparsed"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -103,5 +123,13 @@ func TestParsePayPayDate(t *testing.T) {
 	}
 	if want := time.Date(2026, 10, 14, 15, 0, 0, 0, time.UTC); !r.Payment.Day.Equal(want) {
 		t.Errorf("day %v, want %v", r.Payment.Day, want)
+	}
+}
+
+// A Vpass alert carries its own time, in Japan time.
+func TestParseVpassTime(t *testing.T) {
+	r := Parse(vp, "ご利用のお知らせ", vpassAlert)
+	if want := time.Date(2026, 11, 8, 1, 22, 0, 0, time.UTC); !r.Payment.OccurredAt.Equal(want) {
+		t.Errorf("occurred at %v, want %v", r.Payment.OccurredAt, want)
 	}
 }

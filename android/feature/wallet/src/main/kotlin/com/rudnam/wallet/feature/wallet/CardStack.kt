@@ -35,7 +35,7 @@ import com.rudnam.wallet.core.ui.AccountCard
 import com.rudnam.wallet.core.ui.AccountCardHeight
 import com.rudnam.wallet.core.ui.MoneyFormat
 import com.rudnam.wallet.core.ui.accountCardKey
-import com.rudnam.wallet.core.ui.sharedBounds
+import com.rudnam.wallet.core.ui.sharedBoundsInStack
 import kotlin.math.roundToInt
 
 /** How much of each card behind the front one shows. */
@@ -85,8 +85,9 @@ internal fun CardStack(accounts: List<Account>, format: MoneyFormat, onOpen: (Ac
                         .zIndex(if (isLifted) order.size.toFloat() else i.toFloat())
                         .offset { if (isLifted) IntOffset(0, (from * edge + dragged).roundToInt()) else IntOffset(0, top.roundToPx()) }
                         .scale(if (isLifted) 1.03f else 1f)
-                        // Opening the account, the card grows into the one at the top of its page.
-                        .sharedBounds(accountCardKey(id), MaterialTheme.shapes.medium)
+                        // Opening the account, the card grows into the one at the top of its page;
+                        // closing it, it shrinks back into its place, behind the cards in front.
+                        .sharedBoundsInStack(accountCardKey(id), MaterialTheme.shapes.medium, i.toFloat())
                         .semantics {
                             role = Role.Button
                             onClick { onOpen(account); true }
