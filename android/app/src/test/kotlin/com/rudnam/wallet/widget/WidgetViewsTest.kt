@@ -41,6 +41,15 @@ class WidgetViewsTest {
     }
 
     @Test
+    fun `one row tall, it shows the figure, what it means today and payments to check`() {
+        val view = WidgetViews.month(context, WidgetData.Summary(summary), full = false).apply(context, FrameLayout(context))
+        assertEquals("¥19,570", view.text(R.id.spent))
+        assertEquals(View.VISIBLE, view.findViewById<View>(R.id.content).visibility)
+        assertTrue(view.text(R.id.detail).isNotEmpty())
+        assertTrue(view.text(R.id.review).contains("2"))
+    }
+
+    @Test
     fun `signed out, one line says so`() {
         val view = WidgetViews.month(context, WidgetData.SignedOut).apply(context, FrameLayout(context))
         assertEquals(View.GONE, view.findViewById<View>(R.id.content).visibility)

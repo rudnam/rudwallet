@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- This month, laid out like Wallet's month line: the label, the figure, the overall budget's meter,
-     and what it means today. The texts here are the widget picker's preview; Widgets.month() fills
-     in the real ones. -->
+     and what it means today. Widgets.month() fills it in. Until then the figures stay hidden: the
+     launcher shows this layout as it is whenever it reloads the widget, and the sample texts
+     (widget_month_preview.xml has them, for the widget picker) must never pass for real ones. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/root"
     android:layout_width="match_parent"
@@ -51,7 +52,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginEnd="4dp"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:visibility="invisible">
 
         <TextView
             android:id="@+id/spent"

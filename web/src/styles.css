@@ -749,6 +749,11 @@ li.record:hover:not(:disabled) { background: none; } /* a row to read, not to ta
 .account-pick label.on { background: var(--sunken); border-color: var(--text); font-weight: 600; }
 .account-pick input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .account-pick label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* With a mouse a row can't be swiped, and its wheel scrolls up and down, so the chips past the
+   edge were out of reach: there, the accounts and recent payees wrap onto more lines instead. */
+@media (hover: hover) and (pointer: fine) {
+  .account-pick, .payee-suggest .chips { flex-wrap: wrap; overflow-x: visible; }
+}
 .chip.when { justify-self: start; margin: 6px 0; font-variant-numeric: tabular-nums; }
 /* Recent payees: a row of chips under the payee, no label of its own. */
 .detail.payee-suggest { grid-template-columns: minmax(0, 1fr); min-height: 0; padding: 0 10px 10px 14px; border-top: 0; }
