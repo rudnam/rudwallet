@@ -31,6 +31,7 @@ import javax.inject.Singleton
 val PAYMENT_APPS = setOf(
     "com.google.android.apps.walletnfcrel", // Google Wallet
     "jp.ne.paypay.android.app", // PayPay
+    "com.smbc_card.vpass", // Vpass (三井住友カード, the Amazon Mastercard among them)
 )
 
 /**

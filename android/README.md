@@ -114,9 +114,9 @@ They read `GET /api/widget` with the app's session (`WidgetSummaries` in `core/d
 
 ## Payment notifications
 
-`app/src/main/kotlin/com/rudnam/wallet/notify` reads PayPay's and Google Wallet's payment notifications. The user turns it on in Settings › Payment notifications, which opens Android's notification access page; until then Android doesn't run it.
+`app/src/main/kotlin/com/rudnam/wallet/notify` reads PayPay's, Google Wallet's and Vpass's (三井住友カード's ご利用のお知らせ, which the user turns on in Vpass's ご利用通知サービス) payment notifications. The user turns it on in Settings › Payment notifications, which opens Android's notification access page; until then Android doesn't run it.
 
-- `PaymentListener` is a `NotificationListenerService`. It sees every notification but keeps only those from the apps in `PAYMENT_APPS` (`core/data`'s `notify`: Google Wallet and PayPay), so nothing else leaves the phone. To add an app, add its package there and a rule in `internal/notify/parse.go`.
+- `PaymentListener` is a `NotificationListenerService`. It sees every notification but keeps only those from the apps in `PAYMENT_APPS` (`core/data`'s `notify`: Google Wallet, PayPay and Vpass), so nothing else leaves the phone. To add an app, add its package there and a rule in `internal/notify/parse.go`.
 - `PaymentNotificationOutbox` keeps them in SharedPreferences and `PaymentNotificationsWorker` (WorkManager) sends them to `POST /api/notifications` with the app's session, as soon as there's a connection, and after signing in (up to 7 days, 200 notifications). Sending one twice is harmless.
 - The server reads the text (so a change in an app's wording needs only a server deploy) and records each payment once: a notification sent again is recognised by its app and time, a payment already recorded from an import or by hand is matched, not added, and so is PayPay's 支払いが完了しました when its 支払いを受け付けました came first.
 - An APK installed outside the Play Store gets *restricted settings* on Android 13+: the notification access switch is greyed out until App info › ⋮ › Allow restricted settings.
