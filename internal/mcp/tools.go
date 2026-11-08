@@ -226,10 +226,12 @@ var toolList = []*tool{
 	{
 		Name:        "create_category",
 		Title:       "Create a category",
-		Description: "Add a category. Check get_overview first: reuse a fitting category rather than adding a near-duplicate.",
+		Description: "Add a category. Check get_overview first: reuse a fitting category rather than adding a near-duplicate. " +
+			"With parent_id it is a subcategory of that main category (same kind; categories are one level deep).",
 		InputSchema: object(map[string]any{
-			"name": map[string]any{"type": "string", "description": "1 to 60 characters."},
-			"kind": kindArg,
+			"name":      map[string]any{"type": "string", "description": "1 to 60 characters."},
+			"kind":      kindArg,
+			"parent_id": map[string]any{"type": "integer", "description": "Optional: the main category to put it under."},
 		}, "name", "kind"),
 		Annotations: map[string]any{"readOnlyHint": false, "destructiveHint": false, "idempotentHint": false, "openWorldHint": false},
 		run:         createCategory,
@@ -237,7 +239,7 @@ var toolList = []*tool{
 	{
 		Name:  "delete_category",
 		Title: "Delete a category",
-		Description: "Delete a category. Its records become uncategorised, and its budgets and remembered payees are deleted with it. " +
+		Description: "Delete a category. Its records become uncategorised, its subcategories become main categories, and its budgets and remembered payees are deleted with it. " +
 			"It can't be undone: ask the user first.",
 		InputSchema: object(map[string]any{
 			"category_id": map[string]any{"type": "integer"},
@@ -299,7 +301,8 @@ var toolList = []*tool{
 	{
 		Name:        "spending_by_category",
 		Title:       "Spending by category",
-		Description: "Confirmed expenses in a period, summed by category, largest first.",
+		Description: "Confirmed expenses in a period, summed by category, largest first. " +
+			"A subcategory's row names its main category; a main category's own row leaves its subcategories out.",
 		InputSchema: object(map[string]any{
 			"from": dateArg("Start of the period."),
 			"to":   dateArg("End of the period (not included)."),
@@ -331,6 +334,8 @@ type outCategory struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`
 	Kind string `json:"kind"`
+	// ParentID: the main category a subcategory is under.
+	ParentID *int64 `json:"parent_id,omitempty"`
 }
 
 func overview(c *call, _ json.RawMessage) (any, error) {
@@ -355,7 +360,7 @@ func overview(c *call, _ json.RawMessage) (any, error) {
 	}
 	cats := []outCategory{}
 	for _, cat := range o.Categories {
-		cats = append(cats, outCategory{cat.ID, cat.Name, cat.Kind})
+		cats = append(cats, outCategory{cat.ID, cat.Name, cat.Kind, cat.ParentID})
 	}
 	return map[string]any{
 		"currency": o.Settings.Currency, "accounts": accounts, "categories": cats,
@@ -550,7 +555,10 @@ func reconcileAccount(c *call, args json.RawMessage) (any, error) {
 }
 
 func createCategory(c *call, args json.RawMessage) (any, error) {
-	var in struct{ Name, Kind string }
+	var in struct {
+		Name, Kind string
+		ParentID   *int64 `json:"parent_id"`
+	}
 	if err := decode(args, &in); err != nil {
 		return nil, err
 	}
@@ -561,11 +569,11 @@ func createCategory(c *call, args json.RawMessage) (any, error) {
 	if in.Kind != "expense" && in.Kind != "income" {
 		return nil, toolErrorf("kind must be expense or income")
 	}
-	cat, err := c.h.wallet.CreateCategory(c.r.Context(), c.userID, wallet.Category{Name: name, Kind: in.Kind, Color: "#66706b"})
+	cat, err := c.h.wallet.CreateCategory(c.r.Context(), c.userID, wallet.Category{Name: name, Kind: in.Kind, Color: "#66706b", ParentID: in.ParentID})
 	if err != nil {
 		return nil, walletErr(err, "category")
 	}
-	return outCategory{cat.ID, cat.Name, cat.Kind}, nil
+	return outCategory{cat.ID, cat.Name, cat.Kind, cat.ParentID}, nil
 }
 
 func deleteCategory(c *call, args json.RawMessage) (any, error) {
@@ -745,12 +753,17 @@ func spending(c *call, args json.RawMessage) (any, error) {
 		return nil, err
 	}
 	names := map[int64]string{0: "(no category)"}
+	parents := map[int64]int64{}
 	for _, cat := range cats {
 		names[cat.ID] = cat.Name
+		if cat.ParentID != nil {
+			parents[cat.ID] = *cat.ParentID
+		}
 	}
 	type row struct {
 		CategoryID int64  `json:"category_id"`
 		Category   string `json:"category"`
+		Parent     string `json:"main_category,omitempty"`
 		Amount     string `json:"amount"`
 		minor      int64
 	}
@@ -758,7 +771,11 @@ func spending(c *call, args json.RawMessage) (any, error) {
 	var total int64
 	for id, sum := range sums {
 		total += sum
-		rows = append(rows, row{CategoryID: id, Category: names[id], minor: sum})
+		r := row{CategoryID: id, Category: names[id], minor: sum}
+		if p, ok := parents[id]; ok {
+			r.Parent = names[p]
+		}
+		rows = append(rows, r)
 	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].minor > rows[j].minor })
 	for i := range rows {
