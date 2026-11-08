@@ -501,7 +501,7 @@ function Categories() {
   async function add(c: Category) {
     setError('');
     try {
-      await api.createCategory({ name: c.name, kind: c.kind, icon: c.icon, color: c.color });
+      await api.createCategory({ name: c.name, kind: c.kind, icon: c.icon, color: c.color, parent_id: c.parent_id ?? null });
       await w.refresh();
     } catch (err) {
       setError(errorMessage(err));
@@ -544,11 +544,16 @@ function Categories() {
         <div className="stack tight">
           <span className="muted small">{t('More categories')}</span>
           <div className="chips">
-            {missing.map((c) => (
-              <button key={`${c.kind}:${c.name}`} type="button" className="chip quiet" aria-label={t('Add category {name}', { name: c.name })} onClick={() => add(c)}>
-                <Plus /> {c.name}
-              </button>
-            ))}
+            {missing.map((c) => {
+              // A default subcategory goes under the main category the wallet has.
+              const main = c.parent_id != null ? w.category(c.parent_id) : undefined;
+              const name = main ? `${main.name} › ${c.name}` : c.name;
+              return (
+                <button key={`${c.kind}:${c.name}`} type="button" className="chip quiet" aria-label={t('Add category {name}', { name })} onClick={() => add(c)}>
+                  <Plus /> {name}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

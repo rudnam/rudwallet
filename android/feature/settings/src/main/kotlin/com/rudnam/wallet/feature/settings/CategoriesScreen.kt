@@ -128,10 +128,12 @@ internal fun CategoriesScreen(wallet: Wallet?, missing: List<Category>, editor: 
                         if (missing.isNotEmpty()) {
                             Group(stringResource(R.string.feature_settings_more_categories)) {
                                 for (c in missing) {
-                                    val add = stringResource(R.string.feature_settings_add_category_named, c.name)
+                                    // A default subcategory goes under the main category the wallet has.
+                                    val name = wallet.category(c.parentId)?.let { "${it.name} › ${c.name}" } ?: c.name
+                                    val add = stringResource(R.string.feature_settings_add_category_named, name)
                                     AssistChip(
                                         onClick = { actions.addMissing(c) },
-                                        label = { Text(c.name) },
+                                        label = { Text(name) },
                                         leadingIcon = { LineIcon(WalletIcons.plus, contentDescription = null, size = 16.dp) },
                                         colors = AssistChipDefaults.assistChipColors(labelColor = WalletTheme.colors.muted, leadingIconContentColor = WalletTheme.colors.muted),
                                         modifier = Modifier.semantics { contentDescription = add },

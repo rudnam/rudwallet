@@ -107,7 +107,7 @@ class CategoriesViewModel @Inject constructor(
 
     override fun addMissing(category: Category) {
         viewModelScope.launch {
-            val result = settings.saveCategory(null, CategoryInput(category.name, category.kind, category.icon, category.color))
+            val result = settings.saveCategory(null, CategoryInput(category.name, category.kind, category.icon, category.color, category.parentId))
             report(result, ChangeMessage.Added(category.name))
         }
     }
