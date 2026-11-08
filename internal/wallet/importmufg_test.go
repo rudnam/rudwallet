@@ -160,12 +160,12 @@ func TestClassifyMUFG(t *testing.T) {
 		kind, role, group string
 		rule              bool
 	}{
-		{"transfer", MUFGPayPay, "", true},        // 振込 from PayPay
-		{"transfer", MUFGPayPay, "", true},        // 口座振替 RTK ペイペイ: a charge
-		{"transfer", MUFGCash, "", true},          // カ－ド
-		{"transfer", MUFGCash, "", true},          // カード
-		{"transfer", MUFGCash, "", true},          // カードC1: a convenience-store ATM
-		{"expense", "", "ATM", true},              // 手数料
+		{"transfer", MUFGPayPay, "", true},   // 振込 from PayPay
+		{"transfer", MUFGPayPay, "", true},   // 口座振替 RTK ペイペイ: a charge
+		{"transfer", MUFGCash, "", true},     // カ－ド
+		{"transfer", MUFGCash, "", true},     // カード
+		{"transfer", MUFGCash, "", true},     // カードC1: a convenience-store ATM
+		{"expense", "", "ATM", true},         // 手数料
 		{"income", "", "シービーエステクノ(カ", false}, // a 振込 in: only the user knows it is salary
 		{"transfer", MUFGPayPayCard, "", true},
 		{"transfer", MUFGSMBCCard, "", true}, // ミツイスミトモカ－ド, with U+FF0D

@@ -1,0 +1,34 @@
+# golangci-lint (v2), run by ./verify.sh go: its standard linters (errcheck,
+# govet, ineffassign, staticcheck, unused), and gofmt.
+version: "2"
+
+linters:
+  settings:
+    errcheck:
+      # Errors nothing can act on: closing what was read, rolling back a
+      # transaction that already failed, registering a MIME type at start.
+      exclude-functions:
+        - (io.Closer).Close
+        - (*database/sql.Rows).Close
+        - (*database/sql.Stmt).Close
+        - (*database/sql.Conn).Close
+        - (*database/sql.DB).Close
+        - (*database/sql.Tx).Rollback
+        - (*os.File).Close
+        - (io/fs.File).Close
+        - (*archive/zip.ReadCloser).Close
+        - (net.Conn).Close
+        - (*net/smtp.Client).Close
+        - mime.AddExtensionType
+        # Writing a response: if the client has gone, there's no one to tell.
+        - (net/http.ResponseWriter).Write
+        - (*encoding/json.Encoder).Encode
+  exclusions:
+    rules:
+      # Tests fail on the assertion that follows; an unchecked decode there is fine.
+      - path: _test\.go
+        linters: [errcheck]
+
+formatters:
+  enable:
+    - gofmt

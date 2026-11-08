@@ -85,7 +85,21 @@ services:
       # instead of the volumes (CI keeps them between runs with actions/cache).
       - ${GO_MOD_CACHE:-gomod}:/go/pkg/mod
       - ${GO_BUILD_CACHE:-gobuild}:/root/.cache/go-build
-    command: ["sh", "-c", "go vet ./... && go test -p 1 -count=1 ./..."]
+    # govulncheck (a tool in go.mod) checks the code against known
+    # vulnerabilities, with this image's Go: the toolchain production is built with.
+    command: ["sh", "-c", "go vet ./... && go tool govulncheck ./... && go test -p 1 -count=1 ./..."]
+
+  # golangci-lint, as configured in .golangci.yml. Its own image, pinned, so
+  # the linter's many modules stay out of go.mod; Dependabot updates the tag.
+  golint:
+    image: golangci/golangci-lint:v2.12.2-alpine
+    profiles: [go]
+    working_dir: /src
+    volumes:
+      - ..:/src:ro
+      - ${GO_MOD_CACHE:-gomod}:/go/pkg/mod
+      - ${GO_BUILD_CACHE:-gobuild}:/root/.cache/go-build
+    command: ["golangci-lint", "run", "./..."]
 
   # Playwright browser tests against the app. The image tag comes from
   # @playwright/test's version in package.json (see verify.sh).
