@@ -129,16 +129,41 @@ func (s *Store) MissingDefaults(ctx context.Context, userID int64) ([]Category, 
 	return missingDefaults(cats), nil
 }
 
+// A default subcategory is offered under its main category (ParentID)
+// once the wallet has that as a main category; until then the main one is
+// offered. One the wallet has, even as a main category, isn't offered.
 func missingDefaults(cats []Category) []Category {
 	out := []Category{}
 	lang := walletLanguage(cats)
 	for _, d := range defaultCategories {
-		if findCategory(cats, d.Kind, d.Name) == nil {
-			d.Name = localName(d.Name, lang)
-			out = append(out, d)
+		if findCategory(cats, d.Kind, d.Name) != nil {
+			continue
 		}
+		if p, ok := defaultParents[d.Name]; ok {
+			parent := mainCategory(cats, d.Kind, p)
+			if parent == nil {
+				continue
+			}
+			d.ParentID = parent
+		}
+		d.Name = localName(d.Name, lang)
+		out = append(out, d)
 	}
 	return out
+}
+
+// mainCategory is findCategory, for a main category only.
+func mainCategory(cats []Category, kind, name string) *int64 {
+	id := findCategory(cats, kind, name)
+	if id == nil {
+		return nil
+	}
+	for _, c := range cats {
+		if c.ID == *id && c.ParentID == nil {
+			return id
+		}
+	}
+	return nil
 }
 
 // findCategory returns the ID of the category of the kind with the name,
@@ -153,24 +178,35 @@ func findCategory(cats []Category, kind, name string) *int64 {
 	return nil
 }
 
-// broaderDefaults are the defaults that held what a newer default holds,
-// before it was one: a wallet set up earlier files clothes under Shopping.
+// broaderDefaults are the defaults that held what a newer main default
+// holds, before it was one: a wallet set up earlier files insurance under
+// Taxes & Fees. A subcategory's broader one is its main category
+// (defaultParents).
 var broaderDefaults = map[string]string{
-	"Clothing": "Shopping", "Household": "Shopping", "Kids & Family": "Shopping", "Pets": "Shopping",
-	"Subscriptions": "Entertainment", "Insurance": "Taxes & Fees",
+	"Insurance": "Taxes & Fees", "Family": "Shopping",
 	"Side income": "Other income", "Sold items": "Other income", "Gifts received": "Other income",
 }
 
-// suggestNamed suggests the user's category with the name, else the broader
-// default a wallet set up before it existed uses instead, else a new one.
-func suggestNamed(cats []Category, g *ImportCategory, name string) {
-	if id := findCategory(cats, g.Kind, name); id != nil {
-		g.CategoryID = id
-	} else if id := findCategory(cats, g.Kind, broaderDefaults[name]); broaderDefaults[name] != "" && id != nil {
-		g.CategoryID = id
-	} else {
-		g.NewName = localName(name, walletLanguage(cats))
+// broaderDefault is what holds a default in a wallet without it: its main
+// category, else the default that held it before; "" for none.
+func broaderDefault(name string) string {
+	if p, ok := defaultParents[name]; ok {
+		return p
 	}
+	return broaderDefaults[name]
+}
+
+// suggestNamed suggests the user's category with the name, else the
+// broader default (and so on) that a wallet set up before it existed uses
+// instead, else a new one.
+func suggestNamed(cats []Category, g *ImportCategory, name string) {
+	for n := name; n != ""; n = broaderDefault(n) {
+		if id := findCategory(cats, g.Kind, n); id != nil {
+			g.CategoryID = id
+			return
+		}
+	}
+	g.NewName = localName(name, walletLanguage(cats))
 }
 
 // importCategories finds and creates categories during an import.
@@ -207,11 +243,15 @@ func (ic *importCategories) named(kind, name string) (int64, error) {
 		if d.Kind == kind && (strings.EqualFold(d.Name, name) || sameDefault(d.Name, name)) {
 			c = d
 			c.Name = name // as the person chose it, e.g. in Japanese
+			// A default subcategory goes under its main category, if the wallet has it as one.
+			if p, ok := defaultParents[d.Name]; ok {
+				c.ParentID = mainCategory(ic.cats, kind, p)
+			}
 		}
 	}
 	err := ic.tx.QueryRowContext(ic.ctx,
-		`INSERT INTO categories (user_id, name, kind, icon, color) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-		ic.userID, c.Name, c.Kind, c.Icon, c.Color).Scan(&c.ID)
+		`INSERT INTO categories (user_id, name, kind, icon, color, parent_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+		ic.userID, c.Name, c.Kind, c.Icon, c.Color, c.ParentID).Scan(&c.ID)
 	if err != nil {
 		return 0, err
 	}
@@ -259,31 +299,31 @@ func normName(s string) string {
 // fit. Income has its own names; a name in both is looked up by kind.
 var budgetBakersCategories = map[string]map[string]string{
 	"expense": {
-		"food drinks": "Food & Drinks", "food": "Food & Drinks", "restaurant fast food": "Food & Drinks",
-		"restaurant": "Food & Drinks", "bar cafe": "Food & Drinks", "groceries": "Groceries",
+		"food drinks": "Food & Drinks", "food": "Food & Drinks", "restaurant fast food": "Restaurants",
+		"restaurant": "Restaurants", "bar cafe": "Cafés", "groceries": "Groceries",
 		"alcohol tobacco": "Food & Drinks",
 
 		"shopping": "Shopping", "clothes shoes": "Clothing", "jewels accessories": "Clothing",
-		"kids": "Kids & Family", "home garden": "Household", "pets animals": "Pets",
-		"electronics accessories": "Shopping", "stationery tools": "Shopping",
-		"health and beauty": "Personal care", "drug store chemist": "Health", "gifts joy": "Gifts & Donations",
+		"kids": "Kids", "home garden": "Household", "pets animals": "Pets",
+		"electronics accessories": "Electronics", "stationery tools": "Shopping",
+		"health and beauty": "Personal care", "drug store chemist": "Pharmacy", "gifts joy": "Gifts & Donations",
 		"free time": "Entertainment",
 
-		"housing": "Housing", "rent": "Housing", "mortgage": "Housing", "maintenance repairs": "Housing",
+		"housing": "Housing", "rent": "Rent", "mortgage": "Housing", "maintenance repairs": "Housing",
 		"property insurance": "Insurance", "energy utilities": "Bills & Utilities", "services": "Bills & Utilities",
 
-		"transportation": "Transport", "transport": "Transport", "public transport": "Transport", "taxi": "Transport",
+		"transportation": "Transport", "transport": "Transport", "public transport": "Public transport", "taxi": "Taxi",
 		"long distance": "Travel", "business trips": "Travel",
 
 		"vehicle": "Car", "fuel": "Car", "parking": "Car", "vehicle maintenance": "Car", "rentals": "Car",
 		"vehicle insurance": "Insurance", "leasing": "Car",
 
-		"life entertainment": "Entertainment", "entertainment": "Entertainment", "culture sport events": "Entertainment",
-		"hobbies": "Entertainment", "books audio subscriptions": "Subscriptions", "tv streaming": "Subscriptions",
+		"life entertainment": "Entertainment", "entertainment": "Entertainment", "culture sport events": "Going out",
+		"hobbies": "Hobbies", "books audio subscriptions": "Subscriptions", "tv streaming": "Subscriptions",
 		"lottery gambling": "Entertainment", "software apps games": "Entertainment",
-		"health care doctor": "Health", "health": "Health", "wellness beauty": "Personal care",
+		"health care doctor": "Medical", "health": "Health", "wellness beauty": "Personal care",
 		"active sport fitness": "Sport & Fitness", "education development": "Education",
-		"holiday trips hotels": "Travel", "travel": "Travel", "charity gifts": "Gifts & Donations",
+		"holiday trips hotels": "Hotels", "travel": "Travel", "charity gifts": "Gifts & Donations",
 		"life events": "Other",
 
 		"communication pc": "Phone & Internet", "phone cell phone": "Phone & Internet", "internet": "Phone & Internet",
@@ -291,7 +331,7 @@ var budgetBakersCategories = map[string]map[string]string{
 
 		"financial expenses": "Taxes & Fees", "taxes": "Taxes & Fees", "insurances": "Insurance",
 		"loan interest": "Taxes & Fees", "fines": "Taxes & Fees", "advisory": "Taxes & Fees",
-		"charges fees": "Taxes & Fees", "child support": "Kids & Family",
+		"charges fees": "Taxes & Fees", "child support": "Kids",
 
 		"others": "Other", "other": "Other", "missing": "Other",
 	},
@@ -328,19 +368,24 @@ var shopCategories = []struct {
 	category string
 	words    []string
 }{
-	{"Food & Drinks", []string{"uber eats", "ubereats", "出前館", "wolt", "menu", "マクドナルド", "mcdonald", "スターバックス", "starbucks",
-		"ドトール", "doutor", "タリーズ", "tully", "コメダ", "すき家", "吉野家", "松屋", "なか卯", "ガスト", "サイゼリヤ", "ケンタッキー", "kfc",
+	{"Delivery", []string{"uber eats", "ubereats", "出前館", "wolt", "menu"}},
+	{"Cafés", []string{"スターバックス", "starbucks", "ドトール", "doutor", "タリーズ", "tully", "コメダ", "cafe", "カフェ", "ベーカリー", "bakery"}},
+	{"Restaurants", []string{"マクドナルド", "mcdonald", "すき家", "吉野家", "松屋", "なか卯", "ガスト", "サイゼリヤ", "ケンタッキー", "kfc",
 		"モスバーガー", "王将", "ココイチ", "coco壱", "丸亀製麺", "スシロー", "くら寿司", "はま寿司", "ラーメン", "らーめん", "寿司", "居酒屋",
-		"レストラン", "restaurant", "cafe", "カフェ", "食堂", "ベーカリー", "bakery",
-		"セブン-イレブン", "セブンイレブン", "seven-eleven", "7-eleven", "ファミリーマート", "ファミマ", "familymart", "ローソン", "lawson",
+		"レストラン", "restaurant", "食堂"}},
+	{"Food & Drinks", []string{"セブン-イレブン", "セブンイレブン", "seven-eleven", "7-eleven", "ファミリーマート", "ファミマ", "familymart", "ローソン", "lawson",
 		"ミニストップ", "デイリーヤマザキ", "ニューデイズ", "newdays"}},
 	{"Groceries", []string{"イオン", "aeon", "西友", "seiyu", "ライフ", "まいばすけっと", "業務スーパー", "オーケー", "イトーヨーカドー",
 		"ヨークマート", "ヨークベニマル", "マルエツ", "サミット", "成城石井", "ベルク", "ロピア", "コープ", "スーパー", "supermarket",
 		"コストコ", "costco"}},
-	{"Health", []string{"薬局", "ドラッグ", "drug", "マツモトキヨシ", "マツキヨ", "ウエルシア", "スギ薬局", "ツルハ", "サンドラッグ",
-		"ココカラ", "クリエイト", "クリニック", "clinic", "病院", "hospital", "歯科", "dental"}},
-	{"Transport", []string{"jr", "鉄道", "電鉄", "メトロ", "metro", "東急", "小田急", "京王", "西武", "東武", "京急", "京成", "阪急", "阪神",
-		"近鉄", "バス", "タクシー", "taxi", "go", "s.ride", "suica", "pasmo", "icoca", "uber", "ガソリン"}},
+	{"Pharmacy", []string{"薬局", "ドラッグ", "drug", "マツモトキヨシ", "マツキヨ", "ウエルシア", "スギ薬局", "ツルハ", "サンドラッグ",
+		"ココカラ", "クリエイト"}},
+	{"Medical", []string{"クリニック", "clinic", "病院", "hospital", "歯科", "dental"}},
+	{"Taxi", []string{"タクシー", "taxi", "go", "s.ride"}},
+	{"Car", []string{"ガソリン", "eneos", "出光", "コスモ石油", "駐車場", "パーキング", "parking"}},
+	{"Public transport", []string{"jr", "鉄道", "電鉄", "メトロ", "metro", "東急", "小田急", "京王", "西武", "東武", "京急", "京成", "阪急", "阪神",
+		"近鉄", "バス", "suica", "pasmo", "icoca"}},
+	{"Transport", []string{"uber"}},
 	{"Phone & Internet", []string{"ソフトバンク", "softbank", "ドコモ", "docomo", "au", "ワイモバイル", "ymobile", "楽天モバイル",
 		"linemo", "ahamo", "povo", "uqモバイル", "ntt", "nuro", "ビッグローブ", "biglobe"}},
 	{"Bills & Utilities", []string{"電力", "電気", "ガス", "水道", "東京電力", "関西電力", "東京ガス", "大阪ガス", "nhk", "郵便", "ヤマト運輸"}},
@@ -349,18 +394,19 @@ var shopCategories = []struct {
 		"dropbox", "nintendo switch online", "playstation plus"}},
 	{"Entertainment", []string{"youtube", "disney", "steam", "nintendo", "任天堂", "playstation", "映画", "シネマ", "cinema", "toho", "カラオケ", "karaoke",
 		"google play", "app store", "apple.com"}},
-	{"Travel", []string{"ホテル", "hotel", "旅館", "airbnb", "agoda", "booking.com", "expedia", "楽天トラベル", "じゃらん",
-		"ana", "jal", "peach", "jetstar", "ジェットスター", "スカイマーク"}},
+	{"Hotels", []string{"ホテル", "hotel", "旅館", "airbnb", "agoda", "booking.com", "expedia", "楽天トラベル", "じゃらん"}},
+	{"Flights", []string{"ana", "jal", "peach", "jetstar", "ジェットスター", "スカイマーク"}},
 	{"Sport & Fitness", []string{"ジム", "gym", "fitness", "フィットネス", "エニタイム", "anytime", "chocozap", "ちょこざっぷ", "ゴールドジム"}},
 	{"Personal care", []string{"美容", "ヘアサロン", "サロン", "salon", "理容", "qb house", "hair"}},
 	{"Education", []string{"書店", "紀伊國屋", "ブックオフ", "udemy", "塾", "スクール", "school", "英会話"}},
 	{"Clothing", []string{"ユニクロ", "uniqlo", "gu", "zara", "しまむら", "zozotown", "abcマート", "abc-mart", "ワークマン", "workman"}},
 	{"Household", []string{"ダイソー", "daiso", "セリア", "seria", "キャンドゥ", "ニトリ", "nitori", "ikea", "カインズ", "cainz",
 		"コーナン", "ホームセンター", "dcm", "無印", "muji"}},
+	{"Electronics", []string{"ヨドバシ", "yodobashi", "ビックカメラ", "bic camera", "ヤマダ電機", "エディオン", "ケーズデンキ"}},
 	{"Pets", []string{"ペット", "pet", "動物病院", "トリミング"}},
 	{"Insurance", []string{"保険", "insurance", "共済", "損保"}},
 	{"Shopping", []string{"amazon", "アマゾン", "yahoo!ショッピング", "ヤフーショッピング", "楽天市場", "rakuten", "ドン・キホーテ", "ドンキ", "ヨドバシ", "yodobashi",
-		"ビックカメラ", "bic camera", "ヤマダ電機", "メルカリ", "mercari", "ロフト", "loft", "東急ハンズ", "ハンズ", "アップル",
+		"メルカリ", "mercari", "ロフト", "loft", "東急ハンズ", "ハンズ", "アップル",
 		"apple store", "qoo10", "shein", "temu"}},
 }
 

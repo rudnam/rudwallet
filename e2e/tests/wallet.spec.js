@@ -206,7 +206,7 @@ test('import records exported from Wallet by BudgetBakers', async ({ page }) => 
   await expect(page.getByText('You already have an account named Cash; its records go there.')).toBeVisible();
   await page.getByLabel('New account name').fill('Rakuten Savings');
   // BudgetBakers' categories are matched to the closest of the user's.
-  await expect(page.getByLabel('Category for Bar, cafe').locator('option:checked')).toHaveText('Food & Drinks');
+  await expect(page.getByLabel('Category for Bar, cafe').locator('option:checked')).toHaveText('Cafés');
   await expect(page.getByLabel('Category for Salary').locator('option:checked')).toHaveText('Salary');
   await expect(page.getByLabel('Category for Coffee beans').locator('option:checked')).toHaveText('Coffee beans');
 
@@ -214,7 +214,8 @@ test('import records exported from Wallet by BudgetBakers', async ({ page }) => 
   await page.getByLabel('Choose Bar, cafe').check();
   await page.getByLabel('Choose Coffee beans').check();
   await expect(page.getByRole('region', { name: 'Chosen categories' })).toContainText('2 chosen');
-  await page.getByLabel('Set category for chosen').selectOption({ label: 'Groceries' });
+  // Groceries is a subcategory, indented under Food & Drinks.
+  await page.getByLabel('Set category for chosen').selectOption({ label: '\u00a0\u00a0\u00a0Groceries' });
   await expect(page.getByLabel('Category for Coffee beans').locator('option:checked')).toHaveText('Groceries');
   await expect(page.getByLabel('Category for Bar, cafe').locator('option:checked')).toHaveText('Groceries');
   await expect(page.getByLabel('Choose Bar, cafe')).not.toBeChecked();
@@ -242,16 +243,17 @@ test('add a default category the user is missing', async ({ page }) => {
   await signUp(page);
   await page.goto('/app/#/settings?section=categories');
   // Deleting one says what goes with it.
-  await page.getByRole('button', { name: 'Edit category Car' }).click();
+  await page.getByRole('button', { name: 'Edit category Transport › Car' }).click();
   const confirm = page.waitForEvent('dialog');
   const deleting = page.getByRole('dialog', { name: 'Edit category' }).getByRole('button', { name: 'Delete' }).click();
   const d = await confirm;
   expect(d.message()).toBe('Delete "Car"? Its records become uncategorised, and its budgets and the shops filed under it are forgotten.');
   await d.accept();
   await deleting;
-  await page.getByRole('button', { name: 'Add category Car' }).click();
-  await expect(page.getByRole('button', { name: 'Edit category Car' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Add category Car' })).toHaveCount(0);
+  // It's offered back under Transport.
+  await page.getByRole('button', { name: 'Add category Transport › Car' }).click();
+  await expect(page.getByRole('button', { name: 'Edit category Transport › Car' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add category Transport › Car' })).toHaveCount(0);
   await expect(page.getByText('More categories')).toHaveCount(0);
 });
 
@@ -306,10 +308,10 @@ test('categories wear line icons, and a new one can pick its own', async ({ page
   await page.goto('/app/#/settings?section=categories');
   await page.getByRole('button', { name: 'Add category' }).click();
   const dialog = page.getByRole('dialog', { name: 'New category' });
-  await dialog.getByLabel('Name').fill('Cafés');
+  await dialog.getByLabel('Name').fill('Tea houses');
   await dialog.getByRole('radio', { name: 'Coffee' }).check();
   await dialog.getByRole('button', { name: 'Save' }).click();
-  const chip = page.getByRole('button', { name: 'Edit category Cafés' });
+  const chip = page.getByRole('button', { name: 'Edit category Tea houses' });
   await expect(chip.locator('svg')).toHaveCount(1);
   // No emoji anywhere on the page.
   expect(await page.locator('main').innerText()).not.toMatch(/\p{Extended_Pictographic}/u);

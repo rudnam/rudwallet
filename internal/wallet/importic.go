@@ -443,7 +443,7 @@ func suggestIC(cats []Category, learned map[string]int64, rec icRecord, name str
 		return g
 	}
 	if rec.group == icTrain || rec.group == icBus {
-		suggestNamed(cats, &g, "Transport")
+		suggestNamed(cats, &g, "Public transport")
 	}
 	return g
 }

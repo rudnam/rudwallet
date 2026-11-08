@@ -89,31 +89,47 @@ type Overview struct {
 var (
 	accountKinds = []string{"cash", "bank", "credit_card", "e_money", "savings", "other"}
 
-	// defaultCategories are every new user's categories. Icons are glyph keys
+	// defaultCategories are every new user's categories, each main one
+	// followed by its subcategories (defaultParents). Icons are glyph keys
 	// (web/src/components/Icon.tsx); older users' defaults store emoji, which
-	// the app shows as the same glyphs. Users who signed up before one was
-	// added can add it later (MissingDefaults).
+	// the app shows as the same glyphs. A subcategory wears its main
+	// category's colour. Users who signed up before one was added can add it
+	// later (MissingDefaults).
 	defaultCategories = []Category{
 		{Name: "Food & Drinks", Kind: "expense", Icon: "food", Color: "#d9534f"},
-		{Name: "Groceries", Kind: "expense", Icon: "grocery", Color: "#e8833a"},
+		{Name: "Groceries", Kind: "expense", Icon: "grocery", Color: "#d9534f"},
+		{Name: "Restaurants", Kind: "expense", Icon: "food", Color: "#d9534f"},
+		{Name: "Cafés", Kind: "expense", Icon: "coffee", Color: "#d9534f"},
+		{Name: "Delivery", Kind: "expense", Icon: "other", Color: "#d9534f"},
 		{Name: "Shopping", Kind: "expense", Icon: "shopping", Color: "#c9a227"},
-		{Name: "Clothing", Kind: "expense", Icon: "clothes", Color: "#b5675a"},
-		{Name: "Household", Kind: "expense", Icon: "clean", Color: "#7d9a3c"},
-		{Name: "Transport", Kind: "expense", Icon: "transit", Color: "#3b82c4"},
-		{Name: "Car", Kind: "expense", Icon: "car", Color: "#5f7387"},
+		{Name: "Clothing", Kind: "expense", Icon: "clothes", Color: "#c9a227"},
+		{Name: "Household", Kind: "expense", Icon: "clean", Color: "#c9a227"},
+		{Name: "Electronics", Kind: "expense", Icon: "laptop", Color: "#c9a227"},
 		{Name: "Housing", Kind: "expense", Icon: "home", Color: "#8a5cc2"},
-		{Name: "Bills & Utilities", Kind: "expense", Icon: "bills", Color: "#5b6ee1"},
-		{Name: "Phone & Internet", Kind: "expense", Icon: "phone", Color: "#2a8a8a"},
-		{Name: "Subscriptions", Kind: "expense", Icon: "repeat", Color: "#6b5bd6"},
-		{Name: "Insurance", Kind: "expense", Icon: "shield", Color: "#4a6f8a"},
+		{Name: "Rent", Kind: "expense", Icon: "home", Color: "#8a5cc2"},
+		{Name: "Bills & Utilities", Kind: "expense", Icon: "bills", Color: "#8a5cc2"},
+		{Name: "Phone & Internet", Kind: "expense", Icon: "phone", Color: "#8a5cc2"},
+		{Name: "Transport", Kind: "expense", Icon: "transit", Color: "#3b82c4"},
+		{Name: "Public transport", Kind: "expense", Icon: "transit", Color: "#3b82c4"},
+		{Name: "Taxi", Kind: "expense", Icon: "car", Color: "#3b82c4"},
+		{Name: "Car", Kind: "expense", Icon: "car", Color: "#3b82c4"},
 		{Name: "Health", Kind: "expense", Icon: "health", Color: "#2aa198"},
-		{Name: "Personal care", Kind: "expense", Icon: "beauty", Color: "#a8508a"},
-		{Name: "Sport & Fitness", Kind: "expense", Icon: "sport", Color: "#4f8a4c"},
+		{Name: "Medical", Kind: "expense", Icon: "health", Color: "#2aa198"},
+		{Name: "Pharmacy", Kind: "expense", Icon: "shield", Color: "#2aa198"},
+		{Name: "Personal care", Kind: "expense", Icon: "beauty", Color: "#2aa198"},
+		{Name: "Sport & Fitness", Kind: "expense", Icon: "sport", Color: "#2aa198"},
 		{Name: "Entertainment", Kind: "expense", Icon: "fun", Color: "#d6619b"},
-		{Name: "Education", Kind: "expense", Icon: "school", Color: "#5b4a8a"},
+		{Name: "Subscriptions", Kind: "expense", Icon: "repeat", Color: "#d6619b"},
+		{Name: "Hobbies", Kind: "expense", Icon: "beauty", Color: "#d6619b"},
+		{Name: "Going out", Kind: "expense", Icon: "coffee", Color: "#d6619b"},
 		{Name: "Travel", Kind: "expense", Icon: "travel", Color: "#1f9bd1"},
-		{Name: "Kids & Family", Kind: "expense", Icon: "kids", Color: "#d99a2b"},
-		{Name: "Pets", Kind: "expense", Icon: "pet", Color: "#8a6d3b"},
+		{Name: "Flights", Kind: "expense", Icon: "travel", Color: "#1f9bd1"},
+		{Name: "Hotels", Kind: "expense", Icon: "home", Color: "#1f9bd1"},
+		{Name: "Family", Kind: "expense", Icon: "kids", Color: "#d99a2b"},
+		{Name: "Kids", Kind: "expense", Icon: "kids", Color: "#d99a2b"},
+		{Name: "Pets", Kind: "expense", Icon: "pet", Color: "#d99a2b"},
+		{Name: "Education", Kind: "expense", Icon: "school", Color: "#5b4a8a"},
+		{Name: "Insurance", Kind: "expense", Icon: "shield", Color: "#4a6f8a"},
 		{Name: "Gifts & Donations", Kind: "expense", Icon: "gift", Color: "#c96442"},
 		{Name: "Taxes & Fees", Kind: "expense", Icon: "bank", Color: "#8c7b5e"},
 		{Name: "Other", Kind: "expense", Icon: "other", Color: "#7a7f7c"},
@@ -127,18 +143,36 @@ var (
 		{Name: "Other income", Kind: "income", Icon: "money", Color: "#5aa469"},
 	}
 
+	// defaultParents are the default subcategories' main categories, by
+	// English name. A main category comes before its subcategories above.
+	defaultParents = map[string]string{
+		"Groceries": "Food & Drinks", "Restaurants": "Food & Drinks", "Cafés": "Food & Drinks", "Delivery": "Food & Drinks",
+		"Clothing": "Shopping", "Household": "Shopping", "Electronics": "Shopping",
+		"Rent": "Housing", "Bills & Utilities": "Housing", "Phone & Internet": "Housing",
+		"Public transport": "Transport", "Taxi": "Transport", "Car": "Transport",
+		"Medical": "Health", "Pharmacy": "Health", "Personal care": "Health", "Sport & Fitness": "Health",
+		"Subscriptions": "Entertainment", "Hobbies": "Entertainment", "Going out": "Entertainment",
+		"Flights": "Travel", "Hotels": "Travel",
+		"Kids": "Family", "Pets": "Family",
+	}
+
 	// japaneseNames are the defaults' names in a wallet set up in Japanese,
 	// by English name. Every default needs one (TestJapaneseNames).
 	japaneseNames = map[string]string{
-		"Food & Drinks": "食費", "Groceries": "食料品", "Shopping": "買い物", "Transport": "交通費", "Car": "車",
-		"Housing": "住居費", "Bills & Utilities": "水道光熱費", "Phone & Internet": "通信費", "Health": "医療費",
-		"Personal care": "美容・身だしなみ", "Sport & Fitness": "スポーツ・フィットネス", "Entertainment": "娯楽",
-		"Education": "教育・教養", "Travel": "旅行", "Gifts & Donations": "贈り物・寄付", "Taxes & Fees": "税金・手数料",
-		"Other": "その他", "Salary": "給与", "Rewards & Cashback": "ポイント・還元", "Refunds": "返金",
-		"Interest & Dividends": "利息・配当", "Other income": "その他の収入",
-		"Clothing": "衣服", "Household": "日用品", "Subscriptions": "サブスク", "Insurance": "保険",
-		"Kids & Family": "子ども・家族", "Pets": "ペット", "Side income": "副業",
-		"Sold items": "売却・フリマ", "Gifts received": "お祝い・贈与",
+		"Food & Drinks": "食費", "Groceries": "食料品", "Restaurants": "外食", "Cafés": "カフェ", "Delivery": "デリバリー",
+		"Shopping": "買い物", "Clothing": "衣服", "Household": "日用品", "Electronics": "家電・ガジェット",
+		"Housing": "住居費", "Rent": "家賃", "Bills & Utilities": "水道光熱費", "Phone & Internet": "通信費",
+		"Transport": "交通費", "Public transport": "電車・バス", "Taxi": "タクシー", "Car": "車",
+		"Health": "医療費", "Medical": "病院", "Pharmacy": "薬・ドラッグストア", "Personal care": "美容・身だしなみ",
+		"Sport & Fitness": "スポーツ・フィットネス",
+		"Entertainment": "娯楽", "Subscriptions": "サブスク", "Hobbies": "趣味", "Going out": "交際費",
+		"Travel": "旅行", "Flights": "航空券", "Hotels": "宿泊",
+		"Family": "家族", "Kids": "子ども", "Pets": "ペット",
+		"Education": "教育・教養", "Insurance": "保険", "Gifts & Donations": "贈り物・寄付", "Taxes & Fees": "税金・手数料",
+		"Other": "その他",
+		"Salary": "給与", "Side income": "副業", "Rewards & Cashback": "ポイント・還元", "Refunds": "返金",
+		"Sold items": "売却・フリマ", "Gifts received": "お祝い・贈与", "Interest & Dividends": "利息・配当",
+		"Other income": "その他の収入",
 	}
 )
 
@@ -209,13 +243,20 @@ func (s *Store) SetUp(ctx context.Context, userID int64, lang string) error {
 	if n, _ := res.RowsAffected(); n == 0 {
 		return nil // already set up
 	}
+	ids := map[string]int64{} // by English name
 	for _, c := range defaultCategories {
-		c.Name = localName(c.Name, lang)
-		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO categories (user_id, name, kind, icon, color) VALUES ($1, $2, $3, $4, $5)`,
-			userID, c.Name, c.Kind, c.Icon, c.Color); err != nil {
+		var parent *int64
+		if p, ok := defaultParents[c.Name]; ok {
+			id := ids[p]
+			parent = &id
+		}
+		var id int64
+		if err := tx.QueryRowContext(ctx,
+			`INSERT INTO categories (user_id, name, kind, icon, color, parent_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+			userID, localName(c.Name, lang), c.Kind, c.Icon, c.Color, parent).Scan(&id); err != nil {
 			return err
 		}
+		ids[c.Name] = id
 	}
 	cash, ok := cashName[lang]
 	if !ok {

@@ -22,12 +22,12 @@ func TestSubcategories(t *testing.T) {
 	bobs := categoryID(t, overview(t, bob), "Food & Drinks")
 
 	var cafes wallet.Category
-	if code := c.do("POST", "/api/categories", map[string]any{"name": "Cafés", "kind": "expense", "icon": "coffee", "parent_id": food}, &cafes); code != 201 ||
+	if code := c.do("POST", "/api/categories", map[string]any{"name": "Tea houses", "kind": "expense", "icon": "coffee", "parent_id": food}, &cafes); code != 201 ||
 		cafes.ParentID == nil || *cafes.ParentID != food {
 		t.Fatalf("create a subcategory: %d %+v", code, cafes)
 	}
 	var top wallet.Category
-	if code := c.do("POST", "/api/categories", map[string]any{"name": "Hobbies", "kind": "expense"}, &top); code != 201 || top.ParentID != nil {
+	if code := c.do("POST", "/api/categories", map[string]any{"name": "Crafts", "kind": "expense"}, &top); code != 201 || top.ParentID != nil {
 		t.Fatalf("create a main category: %d %+v", code, top)
 	}
 	for _, cat := range overview(t, c).Categories {
@@ -47,7 +47,7 @@ func TestSubcategories(t *testing.T) {
 		{"under another user's category", "POST", "/api/categories", map[string]any{"name": "Snacks", "kind": "expense", "parent_id": bobs}},
 		{"under a missing category", "POST", "/api/categories", map[string]any{"name": "Snacks", "kind": "expense", "parent_id": 1 << 40}},
 		{"not an id", "POST", "/api/categories", map[string]any{"name": "Snacks", "kind": "expense", "parent_id": "food"}},
-		{"under itself", "PUT", fmt.Sprintf("/api/categories/%d", top.ID), map[string]any{"name": "Hobbies", "kind": "expense", "parent_id": top.ID}},
+		{"under itself", "PUT", fmt.Sprintf("/api/categories/%d", top.ID), map[string]any{"name": "Crafts", "kind": "expense", "parent_id": top.ID}},
 		{"a main category with subcategories, under another", "PUT", fmt.Sprintf("/api/categories/%d", food),
 			map[string]any{"name": "Food & Drinks", "kind": "expense", "parent_id": shopping}},
 	}
@@ -99,7 +99,7 @@ func TestSubcategoryBudget(t *testing.T) {
 	o := overview(t, alice)
 	cash, food := o.Accounts[0].ID, categoryID(t, o, "Food & Drinks")
 	var cafes wallet.Category
-	if code := alice.do("POST", "/api/categories", map[string]any{"name": "Cafés", "kind": "expense", "parent_id": food}, &cafes); code != 201 {
+	if code := alice.do("POST", "/api/categories", map[string]any{"name": "Tea houses", "kind": "expense", "parent_id": food}, &cafes); code != 201 {
 		t.Fatalf("create: %d", code)
 	}
 	now := time.Now()
@@ -113,7 +113,7 @@ func TestSubcategoryBudget(t *testing.T) {
 		}
 	}
 	alice.do("POST", "/api/budgets", map[string]any{"name": "Food", "category_id": food, "amount": 3000}, nil)
-	alice.do("POST", "/api/budgets", map[string]any{"name": "Cafés", "category_id": cafes.ID, "amount": 1000}, nil)
+	alice.do("POST", "/api/budgets", map[string]any{"name": "Tea houses", "category_id": cafes.ID, "amount": 1000}, nil)
 
 	app := appClient(t, ts.URL)
 	signInApp(t, app, "alice@example.com")
@@ -122,7 +122,7 @@ func TestSubcategoryBudget(t *testing.T) {
 	if code := app.do("GET", "/api/widget?"+q.Encode(), nil, &s); code != 200 {
 		t.Fatalf("summary: %d", code)
 	}
-	want := []widget.Budget{{Name: "Food", Amount: 3000, Spent: 1650}, {Name: "Cafés", Amount: 1000, Spent: 450}}
+	want := []widget.Budget{{Name: "Food", Amount: 3000, Spent: 1650}, {Name: "Tea houses", Amount: 1000, Spent: 450}}
 	if fmt.Sprint(s.Budgets) != fmt.Sprint(want) {
 		t.Errorf("budgets %+v, want %+v", s.Budgets, want)
 	}
@@ -136,7 +136,7 @@ func TestRecordsWithSubcategories(t *testing.T) {
 	o := overview(t, c)
 	cash, food := o.Accounts[0].ID, categoryID(t, o, "Food & Drinks")
 	var cafes wallet.Category
-	if code := c.do("POST", "/api/categories", map[string]any{"name": "Cafés", "kind": "expense", "parent_id": food}, &cafes); code != 201 {
+	if code := c.do("POST", "/api/categories", map[string]any{"name": "Tea houses", "kind": "expense", "parent_id": food}, &cafes); code != 201 {
 		t.Fatalf("create: %d", code)
 	}
 	for _, cat := range []int64{food, cafes.ID} {
