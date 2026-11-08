@@ -477,9 +477,11 @@ func (s *Store) defaultAccount(ctx context.Context, userID int64, st Settings) (
 	return id, err
 }
 
-// ruleCategory finds the category learned for a merchant: an exact match,
-// else the longest learned name the merchant starts with (so a chain's
-// branches share one rule).
+// ruleCategory finds the expense category learned for a merchant: an exact
+// match, else the longest learned name the merchant starts with (so a
+// chain's branches share one rule). Rules have no kind of their own, so one
+// can point at an income category (chosen by hand, or a category whose kind
+// changed); that rule is passed over, as an expense can't take it.
 func (s *Store) ruleCategory(ctx context.Context, userID int64, merchant string) (*int64, error) {
 	key := PayeeKey(merchant)
 	if key == "" {
@@ -487,9 +489,9 @@ func (s *Store) ruleCategory(ctx context.Context, userID int64, merchant string)
 	}
 	var id int64
 	err := s.db.QueryRowContext(ctx,
-		`SELECT category_id FROM payee_rules
-		 WHERE user_id = $1 AND (payee_key = $2 OR (char_length(payee_key) >= 3 AND left($2, char_length(payee_key)) = payee_key))
-		 ORDER BY char_length(payee_key) DESC LIMIT 1`, userID, key).Scan(&id)
+		`SELECT r.category_id FROM payee_rules r JOIN categories c ON c.id = r.category_id AND c.kind = 'expense'
+		 WHERE r.user_id = $1 AND (r.payee_key = $2 OR (char_length(r.payee_key) >= 3 AND left($2, char_length(r.payee_key)) = r.payee_key))
+		 ORDER BY char_length(r.payee_key) DESC LIMIT 1`, userID, key).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
