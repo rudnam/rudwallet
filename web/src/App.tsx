@@ -9,20 +9,15 @@ import { BudgetsPage } from './features/budgets/BudgetsPage';
 import { ConnectPage, rememberConnect, resumeConnect } from './features/settings/ConnectPage';
 import { HomePage } from './features/home/HomePage';
 import { ActivityPage } from './features/records/ActivityPage';
-import { CardPage } from './features/card/CardPage';
 import { AccountPage } from './features/account/AccountPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 import { prefetchStats, StatsPage } from './features/stats/StatsPage';
 import { addMonths, monthStart } from './money';
-import { appDrawn, embedded, nativeConfig, nativeSetAppearance, nativeSetLanguage, onAppLinks, onNativeAppearance, onNativeSignedIn, onNativeSignedOut } from './native';
-import { appearance, setAppearance } from './appearance';
-import { pickedLanguage, setLanguage } from './language';
-import { initialNotice, signinErrors, type Notice } from './notice';
+import { initialNotice, type Notice } from './notice';
 import { href, navigate, replaceRoute, useRoute } from './router';
 import { t, tx, type Key } from './i18n';
 import { LanguagePicker } from './features/settings/LanguageSettings';
 import { ToastProvider, useToast } from './toast';
-import { useUpdate } from './updates';
 import { useWallet, WalletProvider } from './wallet';
 
 /** The app's name, shown in the sidebar and on the sign-in screen. Also in index.html and the manifest. */
@@ -56,54 +51,6 @@ export function App() {
     return me ? { status: 'signed-in', me } : { status: 'loading' };
   });
   const route = useRoute();
-
-  // Embedded in the Android app (native.ts), the app owns Appearance and
-  // Language: this follows what it says. A choice made here before the app
-  // had its own goes to the app once.
-  useEffect(() => {
-    nativeConfig().then((app) => {
-      if (!app) return;
-      if (app.appearance !== 'auto') setAppearance(app.appearance, true);
-      else if (appearance() !== 'auto') nativeSetAppearance(appearance());
-      if (app.language === 'en' || app.language === 'ja') setLanguage(app.language, true);
-      else if (pickedLanguage()) nativeSetLanguage(pickedLanguage());
-    });
-  }, []);
-
-  // Embedded, signing out and Appearance are in the app's own Settings: this follows.
-  useEffect(() => {
-    onNativeSignedOut((deleted) => {
-      void api.forgetSession().then(() => signedOut(deleted ? { message: t('Your account and everything in it were deleted.'), ok: true } : undefined));
-    });
-    onNativeAppearance((a) => setAppearance(a, true));
-    onNativeSignedIn(() => {
-      api.me().then(
-        (me) => setSession({ status: 'signed-in', me }),
-        () => {},
-      );
-    });
-  }, []);
-
-  // In the Android app: Google sign-in coming back from the browser, and
-  // widgets opening a page.
-  useEffect(
-    () =>
-      onAppLinks({
-        onAuth: (result) => {
-          if ('error' in result) {
-            setSession({ status: 'signed-out', notice: { message: t(signinErrors[result.error] ?? signinErrors.failed), ok: false } });
-            return;
-          }
-          api.appToken(result.code, result.verifier).then(
-            (me) => setSession({ status: 'signed-in', me }),
-            (err) => setSession({ status: 'signed-out', notice: { message: errorMessage(err), ok: false } }),
-          );
-        },
-        onOpen: (page) => navigate(page),
-        onICCard: () => navigate('card'),
-      }),
-    [],
-  );
 
   useEffect(() => {
     api
@@ -140,12 +87,6 @@ export function App() {
   }, [signedInMe]);
   useEffect(() => {
     if (session.status === 'signed-out') savedMe.set(null);
-  }, [session.status]);
-
-  // In the Android app, the splash screen stays until there's a page to see
-  // (signed in, WalletProvider says when the wallet is drawn).
-  useEffect(() => {
-    if (session.status === 'signed-out' || session.status === 'error') appDrawn();
   }, [session.status]);
 
   // Signing in with Google comes back to /app/, without the Connect request.
@@ -323,8 +264,7 @@ function Shell({
   const current = pages.some((p) => p.page === route.page) || route.page in subpages ? route.page : 'home';
   const navPage = subpages[current] ?? current;
 
-  // The Android widget's New record button opens #/add. (Embedded in the
-  // app, native.ts, the app opens its own record sheet for #/add instead.)
+  // #/add opens the record sheet, e.g. from a link or a bookmark.
   useEffect(() => {
     if (route.page !== 'add') return;
     history.replaceState(null, '', href('home'));
@@ -375,9 +315,6 @@ function Shell({
     case 'budgets':
       page = <BudgetsPage />;
       break;
-    case 'card':
-      page = <CardPage />;
-      break;
     case 'account':
       page = <AccountPage route={route} />;
       break;
@@ -420,8 +357,6 @@ function Shell({
       </nav>
       <main className="page" key={`${route.page}-${version}`}>
         {me.demo && <DemoBanner onCreateAccount={onCreateAccount} />}
-        {/* Embedded, the app offers its own updates. */}
-        {!embedded && <UpdateBanner />}
         {me.confirm_email && <ConfirmEmail email={me.email} />}
         {page}
       </main>
@@ -445,28 +380,6 @@ function DemoBanner({ onCreateAccount }: { onCreateAccount: () => void }) {
       <button type="button" className="secondary" onClick={onCreateAccount}>
         {t('Create your account')}
       </button>
-    </div>
-  );
-}
-
-/** In the Android app, when the server has a newer build (updates.ts). */
-function UpdateBanner() {
-  const { update, install, later } = useUpdate();
-  if (!update) return null;
-  return (
-    <div className="notice update-banner" role="note">
-      <Icon d={icons.download} className="inline-icon" />
-      <span className="grow">
-        {update.name ? t('RudWallet {version} is available.', { version: update.name }) : t('A new version of RudWallet is available.')}
-      </span>
-      <span className="update-actions">
-        <button type="button" className="link" onClick={later}>
-          {t('Later')}
-        </button>
-        <button type="button" onClick={install}>
-          {t('Update')}
-        </button>
-      </span>
     </div>
   );
 }

@@ -9,7 +9,6 @@ import { useWallet } from '../wallet';
 import { Dialog } from './Dialog';
 import { addTag, TagField } from './TagField';
 import { CategoryIcon, Icon, icons } from './Icon';
-import { hapticError, hapticKey, hapticSelect, hapticSuccess } from '../native';
 
 interface Props {
   /** The record to edit; omit to add a new one. */
@@ -130,7 +129,6 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
 
   function changeKind(k: TransactionKind) {
     setKind(k);
-    hapticSelect();
     if (w.category(categoryId)?.kind !== k) setCategoryId(null);
     setOpenedMain(null);
     setLeftMain(false);
@@ -142,7 +140,6 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
    * tapped again goes back to it. Elsewhere, the chosen one tapped again clears it.
    */
   function chooseCategory(id: number) {
-    hapticSelect();
     if (opened) {
       const parent = w.category(id)?.parent_id ?? null;
       setCategoryId(categoryId === id && parent !== null ? parent : id);
@@ -163,7 +160,6 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
 
   /** A key on the number pad: a digit, '000', the decimal point, or 'back'. */
   function press(key: string) {
-    hapticKey();
     setAmount((a) => {
       if (key === 'back') return grouped(a.replace(/,/g, '').slice(0, -1));
       const plain = a.replace(/,/g, '');
@@ -190,7 +186,6 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
     e.preventDefault();
     const minor = parseAmount(amount, exp);
     if (minor === null || minor <= 0) {
-      hapticError();
       setError(exp === 0 ? t('Enter an amount, like 1200.') : t('Enter an amount, like 12.50.'));
       return;
     }
@@ -231,7 +226,6 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
       // Kept on the phone for now: don't hold the form open waiting for the network.
       if (saved.unsent) void w.refresh();
       else await w.refresh();
-      hapticSuccess();
       if (record && !reviewing) toast(t('Saved'), { label: t('Undo'), run: () => undo(record) });
       else if (saved.unsent) toast(t('Saved on this phone. It’s sent when you’re online.'));
       else toast(reviewing ? t('Confirmed') : t('Added {amount}', { amount: w.money(input.amount) }));
@@ -341,7 +335,6 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
               checked={value === a.id}
               onChange={() => {
                 set(a.id);
-                hapticSelect();
               }}
             />
             <span className="swatch" style={{ background: a.color }} aria-hidden="true" />

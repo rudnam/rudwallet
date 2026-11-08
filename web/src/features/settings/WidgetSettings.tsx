@@ -1,6 +1,5 @@
 // Settings › Home screen widgets: what the Android app's widgets show, and
 // how to add one. They use the app's own sign-in, so there's nothing to set up.
-import { isApp } from '../../native';
 import { t, tx, type Key } from '../../i18n';
 
 const widgets: { name: Key; about: Key }[] = [
@@ -13,7 +12,7 @@ export function WidgetSettings() {
   return (
     <>
       <p className="muted lede">
-        {isApp ? t('Keep this month in view from your home screen.') : t('The RudWallet app for Android keeps this month in view from your home screen.')}{' '}
+        {t('The RudWallet app for Android keeps this month in view from your home screen.')}{' '}
         {tx('Touch and hold an empty part of the home screen, tap {widgets}, and find {wallet}:', {
           widgets: <strong>{t('Widgets')}</strong>,
           wallet: <strong>RudWallet</strong>,

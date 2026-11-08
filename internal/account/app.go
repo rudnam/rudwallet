@@ -1,7 +1,8 @@
 package account
 
-// The Android app (android/, Capacitor) runs the web app from its own files,
-// so its requests to the API are cross-site and carry no cookie. Instead it
+// The Android app (android/) isn't a browser (and builds from before the
+// native app ran the web app from their own files), so its requests to the
+// API are cross-site and carry no cookie. Instead it
 // sends the X-Wallet-Client header when signing in, gets the session token
 // in the JSON answer, and sends it back as "Authorization: Bearer <token>".
 // Bearer tokens are never sent by a browser on its own, so these requests

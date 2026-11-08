@@ -1,7 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, errorMessage, type Me } from '../api';
 import { t } from '../i18n';
-import { isApp, startGoogleSignIn } from '../native';
 import type { Notice } from '../notice';
 
 type Mode = 'sign-in' | 'sign-up' | 'forgot';
@@ -108,11 +107,6 @@ export function AuthForm({
           <a
             className="button secondary google"
             href="/api/auth/google"
-            onClick={(e) => {
-              if (!isApp) return;
-              e.preventDefault();
-              startGoogleSignIn().catch((err) => setError(errorMessage(err)));
-            }}
           >
             <GoogleMark />
             {t('Continue with Google')}

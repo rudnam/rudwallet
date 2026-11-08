@@ -1,12 +1,6 @@
 import { useEffect, useRef, type PointerEvent, type ReactNode } from 'react';
 import { Icon, icons } from './Icon';
 import { t } from '../i18n';
-import { nativeOverlay, onNativeBack } from '../native';
-
-// Open dialogs, the newest last. In the Android app, its back gesture closes
-// the newest (native.ts): the app is told whenever one is open.
-const open: { close: () => void }[] = [];
-onNativeBack(() => open[open.length - 1]?.close());
 
 // On phones the dialog is a bottom sheet: dragging its top (the grabber and
 // title bar) down far enough, or flicking it, closes it.
@@ -22,19 +16,6 @@ const FLICK_WINDOW = 100; // ms
 export function Dialog({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null);
   const drag = useRef<{ id: number; y: number; dy: number; moves: { t: number; dy: number }[] } | null>(null);
-
-  // The newest onClose, for the app's back gesture.
-  const closing = useRef(onClose);
-  closing.current = onClose;
-  useEffect(() => {
-    const entry = { close: () => closing.current() };
-    open.push(entry);
-    nativeOverlay(true);
-    return () => {
-      open.splice(open.indexOf(entry), 1);
-      nativeOverlay(open.length > 0);
-    };
-  }, []);
 
   useEffect(() => {
     const d = ref.current;

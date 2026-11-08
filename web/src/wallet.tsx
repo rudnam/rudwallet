@@ -6,7 +6,6 @@ import { api, errorMessage, type Account, type Category, type Me, type Overview 
 import { Splash } from './components/Splash';
 import { t } from './i18n';
 import { formatMoney } from './money';
-import { appDrawn } from './native';
 import { balanceChange, outbox, useUnsent } from './outbox';
 
 interface WalletState extends Overview {
@@ -40,10 +39,6 @@ export function WalletProvider({ me, children }: { me: Me; children: ReactNode }
   // Sent records leave the outbox once the balances that count them are here.
   useEffect(() => outbox.onSent(refresh), [refresh]);
   const unsent = useUnsent(me.email);
-  const drawn = overview !== null || error !== '';
-  useEffect(() => {
-    if (drawn) appDrawn();
-  }, [drawn]);
 
   if (error && !overview) {
     return (

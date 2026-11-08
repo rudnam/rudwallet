@@ -2,7 +2,8 @@
 # Prints the versionCode for the next release: one above the APK that
 # wallet.rudnam.com offers (GET /api/downloads), and never below the floor in
 # app/build.gradle.kts. The app offers a build with a higher versionCode as an
-# update (web/src/updates.ts), so every release must raise it; this does.
+# update (core/data/…/UpdateRepository.kt), so every release must raise it;
+# this does.
 #
 #   ./android/version.sh     -> e.g. 7
 #

@@ -44,7 +44,8 @@ func SecurityHeaders(next http.Handler) http.Handler {
 	})
 }
 
-// AppOrigin is where the Android app (Capacitor) runs the web app from.
+// AppOrigin is where Android app builds from before the native app ran their
+// bundled copy of the web app (Capacitor). Phones not updated yet still do.
 const AppOrigin = "https://localhost"
 
 // AllowApp lets the Android app call the API across origins (CORS). It
