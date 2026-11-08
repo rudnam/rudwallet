@@ -173,13 +173,13 @@
     <string name="feature_settings_status_matched">Already recorded</string>
     <string name="feature_settings_status_ignored">Not a payment</string>
     <string name="feature_settings_status_unparsed">Needs you</string>
-    <string name="feature_settings_notifications_intro">Pay with PayPay or Google Wallet, and the payment appears in Activity moments later.</string>
-    <string name="feature_settings_access_on">On. RudWallet reads PayPay’s and Google Wallet’s notifications.</string>
+    <string name="feature_settings_notifications_intro">Pay with PayPay, Google Wallet or a 三井住友カード card (Vpass), and the payment appears in Activity moments later.</string>
+    <string name="feature_settings_access_on">On. RudWallet reads PayPay’s, Google Wallet’s and Vpass’s notifications.</string>
     <string name="feature_settings_access_off">Off. RudWallet needs notification access to read them.</string>
     <string name="feature_settings_turn_off">Turn off</string>
     <string name="feature_settings_allow_access">Allow access</string>
     <string name="feature_settings_access_help">Android shows a list of apps: turn on RudWallet. If the switch is greyed out, open App info › ⋮ › Allow restricted settings for RudWallet, then try again.</string>
-    <string name="feature_settings_only_payments">Only PayPay’s and Google Wallet’s notifications are read; nothing else leaves your phone.</string>
+    <string name="feature_settings_only_payments">Only PayPay’s, Google Wallet’s and Vpass’s notifications are read; nothing else leaves your phone.</string>
     <string name="feature_settings_confirm_known">Confirm known shops</string>
     <string name="feature_settings_confirm_known_detail">No check when the shop already has a category</string>
     <string name="feature_settings_payments_go_to">Payments go to</string>

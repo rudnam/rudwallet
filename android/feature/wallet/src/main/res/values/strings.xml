@@ -30,7 +30,7 @@
     <string name="feature_wallet_setup_accounts_detail">Your bank, cards and e-money, with what’s in them today.</string>
     <string name="feature_wallet_setup_accounts_action">Add account</string>
     <string name="feature_wallet_setup_notifications">Turn on payment notifications</string>
-    <string name="feature_wallet_setup_notifications_detail">PayPay and Google Wallet payments become records by themselves.</string>
+    <string name="feature_wallet_setup_notifications_detail">PayPay, Google Wallet and Vpass (三井住友カード) payments become records by themselves.</string>
     <string name="feature_wallet_setup_notifications_action">Set up</string>
     <string name="feature_wallet_setup_budget">Set a monthly budget</string>
     <string name="feature_wallet_setup_budget_detail">See at a glance how much is left.</string>
