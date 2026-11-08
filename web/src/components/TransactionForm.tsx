@@ -440,13 +440,14 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
         )}
         {kind !== 'transfer' && subcategories.length > 0 && (
           <div className="chips subcategory-pick" role="group" aria-label={t('Subcategories of {name}', { name: w.category(chosenMain)?.name ?? '' })}>
-            {subcategories.map((c) => (
+            {/* The main category itself first (in general), then its subcategories. */}
+            {[w.category(chosenMain)!, ...subcategories].map((c) => (
               <button
                 key={c.id}
                 type="button"
                 className={categoryId === c.id ? 'chip on' : 'chip'}
                 aria-pressed={categoryId === c.id}
-                // Choosing the chosen one again goes back to its main category.
+                // Choosing the chosen subcategory again goes back to its main category.
                 onClick={() => chooseCategory(categoryId === c.id ? chosenMain! : c.id)}
               >
                 <CategoryIcon icon={c.icon} name={c.name} color={c.color} size="small" /> {c.name}

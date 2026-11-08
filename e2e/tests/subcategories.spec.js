@@ -36,7 +36,11 @@ test('a subcategory is made in Settings, picked under its main category, and cou
   const subs = rec.getByRole('group', { name: 'Subcategories of Food & Drinks' });
   await expect(subs).toHaveCount(0);
   await rec.getByRole('radio', { name: 'Food & Drinks' }).check();
+  // Food & Drinks itself comes first, chosen: the record goes under it in general.
+  await expect(subs.getByRole('button')).toHaveText([/Food & Drinks/, /Cafés/]);
+  await expect(subs.getByRole('button', { name: 'Food & Drinks' })).toHaveAttribute('aria-pressed', 'true');
   await subs.getByRole('button', { name: 'Cafés' }).click();
+  await expect(subs.getByRole('button', { name: 'Food & Drinks' })).toHaveAttribute('aria-pressed', 'false');
   await expect(subs.getByRole('button', { name: 'Cafés' })).toHaveAttribute('aria-pressed', 'true');
   await expect(rec.getByRole('radio', { name: 'Food & Drinks' })).toBeChecked();
   await rec.getByLabel('Payee').fill('Doutor');

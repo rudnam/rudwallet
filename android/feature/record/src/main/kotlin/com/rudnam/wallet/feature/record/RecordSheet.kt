@@ -353,7 +353,10 @@ private fun CategoryGrid(state: RecordUiState.Ready, actions: RecordActions) {
     }
 }
 
-/** The chosen main category's subcategories: none picked files the record under the main one. */
+/**
+ * What a chosen main category holds: the main category itself first (the
+ * record filed under it in general), then its subcategories.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Subcategories(state: RecordUiState.Ready, actions: RecordActions) {
@@ -363,7 +366,7 @@ private fun Subcategories(state: RecordUiState.Ready, actions: RecordActions) {
         Modifier.fillMaxWidth().padding(top = 4.dp).semantics { contentDescription = label },
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        for (c in state.subcategories) {
+        for (c in listOf(main) + state.subcategories) {
             val hue = parseHexColor(c.color) ?: WalletTheme.colors.muted
             FilterChip(
                 selected = c.id == state.form.categoryId,

@@ -218,10 +218,14 @@ class RecordViewModel @Inject constructor(
     /** Choosing the chosen category again clears it. */
     fun chooseCategory(id: Long) = edit { it.copy(categoryId = if (it.categoryId == id) null else id) }
 
-    /** Choosing the chosen subcategory again goes back to its main category. */
+    /**
+     * A chip under a chosen main category: the main category itself, or one
+     * of its subcategories; choosing the chosen subcategory again goes back
+     * to its main category.
+     */
     fun chooseSubcategory(id: Long) = edit { f ->
         val main = (uiState.value as? RecordUiState.Ready)?.wallet?.category(id)?.parentId
-        f.copy(categoryId = if (f.categoryId == id) main else id)
+        f.copy(categoryId = if (f.categoryId == id && main != null) main else id)
     }
 
     fun showAllCategories(show: Boolean) = sheet.update { it.copy(showAllCategories = show, categoryQuery = "") }

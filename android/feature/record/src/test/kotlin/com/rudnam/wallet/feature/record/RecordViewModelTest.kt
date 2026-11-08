@@ -80,8 +80,13 @@ class RecordViewModelTest {
         vm.chooseSubcategory(20)
         assertEquals(20L, vm.ready().form.categoryId)
         assertEquals(10L, vm.ready().chosenMainId)
-        // Choosing it again goes back to Food & Drinks.
+        // Choosing it again goes back to Food & Drinks, as does its own chip, first in the row.
         vm.chooseSubcategory(20)
+        assertEquals(10L, vm.ready().form.categoryId)
+        vm.chooseSubcategory(20)
+        vm.chooseSubcategory(10)
+        assertEquals(10L, vm.ready().form.categoryId)
+        vm.chooseSubcategory(10)
         assertEquals(10L, vm.ready().form.categoryId)
     }
 
