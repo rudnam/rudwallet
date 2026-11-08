@@ -132,7 +132,7 @@ func (c *client) must(method, path string, body, out any) {
 	defer res.Body.Close()
 	if res.StatusCode >= 300 {
 		var e struct{ Error string }
-		json.NewDecoder(res.Body).Decode(&e)
+		_ = json.NewDecoder(res.Body).Decode(&e) // no JSON error: the status alone
 		fmt.Fprintf(os.Stderr, "%s %s: %d %s\n", method, path, res.StatusCode, e.Error)
 		os.Exit(1)
 	}

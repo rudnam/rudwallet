@@ -5,7 +5,7 @@ Go API (`internal/`, one package per feature), PostgreSQL, and a React + TypeScr
 ## Verify your work before calling it done
 
 ```sh
-./verify.sh                 # everything: go vet, all Go tests, browser tests
+./verify.sh                 # everything: Go lint, vet, govulncheck and tests, browser tests
 ./verify.sh go              # Go only
 ./verify.sh e2e -g wallet   # browser tests only; extra args go to `playwright test`
 ```

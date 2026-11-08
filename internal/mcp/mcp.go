@@ -222,7 +222,7 @@ func (h *Handler) dispatch(r *http.Request, userID int64, req rpcRequest) (any, 
 		var p struct {
 			ProtocolVersion string `json:"protocolVersion"`
 		}
-		json.Unmarshal(req.Params, &p)
+		_ = json.Unmarshal(req.Params, &p) // none or unreadable: the newest version below
 		version := protocolVersions[0]
 		if slices.Contains(protocolVersions, p.ProtocolVersion) {
 			version = p.ProtocolVersion

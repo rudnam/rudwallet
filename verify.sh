@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Verifies the working tree end to end, in Docker, against a throwaway database:
 #
-#   ./verify.sh                  everything: go vet, Go tests, browser tests
-#   ./verify.sh go               go vet and Go tests only (unit + HTTP integration)
+#   ./verify.sh                  everything: Go checks and tests, browser tests
+#   ./verify.sh go               Go only: golangci-lint, go vet, govulncheck, and
+#                                the Go tests (unit + HTTP integration)
 #   ./verify.sh e2e [args...]    browser tests only; args go to `playwright test`,
 #                                e.g. ./verify.sh e2e -g wallet
 #
@@ -60,17 +61,26 @@ fi
 
 status=0
 step() { printf '\n\033[1m== %s\033[0m\n' "$*"; }
-gostep="Go: vet and tests (with integration tests)"
+gostep="Go: lint, vet, vulnerabilities and tests (with integration tests)"
+# The tests (after vet and govulncheck), then the linter, which runs even if
+# the tests failed, so one run reports both.
+gochecks() {
+  local s=0
+  dc --profile go run --rm gotest || s=1
+  printf '\n-- golangci-lint\n'
+  dc --profile go run --rm golint && echo "golangci-lint: no issues" || s=1
+  return $s
+}
 
 if [[ $mode == go ]]; then
   step "$gostep"
-  dc --profile go run --rm gotest || status=1
+  gochecks || status=1
 elif [[ $mode == all ]]; then
   # The Go tests use their own database (app_test), so they run while the app
   # builds and the browser tests run. Their output is shown when they finish.
   dc up -d --wait db >/dev/null 2>&1 || true
   golog=$(mktemp)
-  dc --profile go run --rm gotest >"$golog" 2>&1 & gopid=$!
+  gochecks >"$golog" 2>&1 & gopid=$!
 fi
 
 if [[ $mode == all || $mode == e2e ]]; then

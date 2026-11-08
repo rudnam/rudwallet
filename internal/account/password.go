@@ -29,9 +29,9 @@ var iterations = func() int {
 }()
 
 const (
-	saltLen    = 16
-	keyLen     = 32
-	scheme     = "pbkdf2-sha256"
+	saltLen = 16
+	keyLen  = 32
+	scheme  = "pbkdf2-sha256"
 
 	MinPasswordLen = 10
 	MaxPasswordLen = 256 // bounds the hashing cost of one request

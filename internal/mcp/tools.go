@@ -224,8 +224,8 @@ var toolList = []*tool{
 		run:         setAccount,
 	},
 	{
-		Name:        "create_category",
-		Title:       "Create a category",
+		Name:  "create_category",
+		Title: "Create a category",
 		Description: "Add a category. Check get_overview first: reuse a fitting category rather than adding a near-duplicate. " +
 			"With parent_id it is a subcategory of that main category (same kind; categories are one level deep).",
 		InputSchema: object(map[string]any{
@@ -299,8 +299,8 @@ var toolList = []*tool{
 		run:         updateAccount,
 	},
 	{
-		Name:        "spending_by_category",
-		Title:       "Spending by category",
+		Name:  "spending_by_category",
+		Title: "Spending by category",
 		Description: "Confirmed expenses in a period, summed by category, largest first. " +
 			"A subcategory's row names its main category; a main category's own row leaves its subcategories out.",
 		InputSchema: object(map[string]any{

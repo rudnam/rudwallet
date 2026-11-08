@@ -82,7 +82,7 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 	if _, err := conn.ExecContext(ctx, `SELECT pg_advisory_lock($1)`, lockID); err != nil {
 		return fmt.Errorf("acquire migration lock: %w", err)
 	}
-	defer conn.ExecContext(context.Background(), `SELECT pg_advisory_unlock($1)`, lockID)
+	defer func() { _, _ = conn.ExecContext(context.Background(), `SELECT pg_advisory_unlock($1)`, lockID) }()
 
 	if _, err := conn.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations (
 		version    INTEGER PRIMARY KEY,

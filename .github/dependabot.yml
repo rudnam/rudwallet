@@ -36,10 +36,13 @@ updates:
       docker:
         patterns: ["*"]
 
-  # The images in docker-compose.yml (PostgreSQL), which the docker entry
-  # above, reading only the Dockerfile, doesn't see.
+  # The images in docker-compose.yml (PostgreSQL) and e2e/compose.yml (the
+  # golangci-lint that verify.sh runs), which the docker entry above, reading
+  # only the Dockerfile, doesn't see.
   - package-ecosystem: docker-compose
-    directory: /
+    directories:
+      - /
+      - /e2e
     schedule:
       interval: monthly
     groups:
