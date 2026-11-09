@@ -170,13 +170,13 @@
     <string name="feature_settings_status_matched">記録済みと照合</string>
     <string name="feature_settings_status_ignored">支払いではない</string>
     <string name="feature_settings_status_unparsed">要確認</string>
-    <string name="feature_settings_notifications_intro">PayPayやGoogleウォレットで支払うと、すぐに明細に届きます。</string>
-    <string name="feature_settings_access_on">オン。RudWalletがPayPayとGoogleウォレットの通知を読み取ります。</string>
+    <string name="feature_settings_notifications_intro">PayPay、Googleウォレット、三井住友カード（Vpass）で支払うと、すぐに明細に届きます。</string>
+    <string name="feature_settings_access_on">オン。RudWalletがPayPay、Googleウォレット、Vpassの通知を読み取ります。</string>
     <string name="feature_settings_access_off">オフ。読み取るには、RudWalletに通知へのアクセスを許可してください。</string>
     <string name="feature_settings_turn_off">オフにする</string>
     <string name="feature_settings_allow_access">アクセスを許可</string>
     <string name="feature_settings_access_help">アプリの一覧が表示されたらRudWalletをオンにします。スイッチがグレーで押せない場合は、RudWalletのアプリ情報 › ⋮ › 制限付き設定を許可を開いてからもう一度お試しください。</string>
-    <string name="feature_settings_only_payments">読み取るのはPayPayとGoogleウォレットの通知だけで、それ以外はスマホから出ません。</string>
+    <string name="feature_settings_only_payments">読み取るのはPayPay、Googleウォレット、Vpassの通知だけで、それ以外はスマホから出ません。</string>
     <string name="feature_settings_confirm_known">知っているお店は自動で確定</string>
     <string name="feature_settings_confirm_known_detail">カテゴリが決まっているお店は確認なしで記録</string>
     <string name="feature_settings_payments_go_to">支払いの記録先</string>

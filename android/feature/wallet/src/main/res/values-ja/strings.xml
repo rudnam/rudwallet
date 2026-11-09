@@ -29,7 +29,7 @@
     <string name="feature_wallet_setup_accounts_detail">銀行、カード、電子マネーを、今日の残高とあわせて。</string>
     <string name="feature_wallet_setup_accounts_action">口座を追加</string>
     <string name="feature_wallet_setup_notifications">決済通知をオンにする</string>
-    <string name="feature_wallet_setup_notifications_detail">PayPayやGoogleウォレットの支払いが自動で記録になります。</string>
+    <string name="feature_wallet_setup_notifications_detail">PayPay、Googleウォレット、Vpass（三井住友カード）の支払いが自動で記録になります。</string>
     <string name="feature_wallet_setup_notifications_action">設定する</string>
     <string name="feature_wallet_setup_budget">月の予算を決める</string>
     <string name="feature_wallet_setup_budget_detail">残りがひと目でわかります。</string>
