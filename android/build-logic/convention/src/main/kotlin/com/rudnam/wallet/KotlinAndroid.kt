@@ -20,7 +20,9 @@ val Project.libs: VersionCatalog
 /** What every Android module shares: SDK levels and Java 21. */
 internal fun Project.configureKotlinAndroid(android: CommonExtension) {
     // AGP 9's CommonExtension has properties, not configuration blocks.
-    android.compileSdk = 36
+    // The SDK compiled against; newer AndroidX releases require the newest one.
+    // targetSdk (AndroidApplicationConventionPlugin) is what changes runtime behaviour.
+    android.compileSdk = 37
     android.defaultConfig.minSdk = 24
     android.compileOptions.apply {
         sourceCompatibility = JavaVersion.VERSION_21
