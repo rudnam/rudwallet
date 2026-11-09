@@ -42,13 +42,17 @@ jobs:
         env:
           GO_MOD_CACHE: ${{ runner.temp }}/go-mod
           GO_BUILD_CACHE: ${{ runner.temp }}/go-build
+      # Uploads never fail the job: a full artifact store (GitHub's quota) would
+      # otherwise fail verify and so skip the deploy of a change that passed.
       - name: Upload screenshots and failure traces
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-results
           path: e2e/test-results/
           if-no-files-found: ignore
+          retention-days: 7
 
   # Builds the Android app (android/README.md) as its preview build, which
   # needs no signing key, so its native code is checked on every change. Releases
@@ -104,12 +108,14 @@ jobs:
             gh pr comment "$PR" --body "📱 **Android preview:** [rudwallet-preview.apk]($url). Open it on the phone to install \"RudWallet Preview\" beside the real app; it's rebuilt on every push. Google sign-in returns to the real app, so sign in with email and password. (The repository is private: the link needs the browser signed in to GitHub, or it answers 404.)"
           fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        continue-on-error: true
         if: always()
         with:
           name: native-screenshots
           path: android/**/build/outputs/roborazzi/
           retention-days: 7
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        continue-on-error: true
         if: ${{ !cancelled() && hashFiles('android/app/build/outputs/apk/preview/app-preview.apk') != '' }}
         with:
           name: android-preview-apk
