@@ -146,7 +146,10 @@ internal object WidgetViews {
             month(c, data, full = height == 0 || height >= FULL_DP)
         }
 
-    /** Says what Wallet's month line says: spent so far, the overall budget's meter and what it means today, else the total balance. */
+    /**
+     * Says what Wallet's month line says: spent so far, the overall budget's meter and what it means today, else the total balance.
+     * One row tall, only the figure (red when over budget) and payments to check.
+     */
     internal fun month(c: Context, data: WidgetData, full: Boolean): RemoteViews {
         val v = RemoteViews(c.packageName, if (full) R.layout.widget_month else R.layout.widget_month_row)
         v.setOnClickPendingIntent(R.id.add, open(c, "add"))
@@ -156,9 +159,12 @@ internal object WidgetViews {
         v.setOnClickPendingIntent(R.id.root, open(c, "home"))
         v.setTextViewText(R.id.spent, money(s, s.spent))
         val budget = s.budget
-        if (budget != null) {
-            // One row tall, there's no meter: the line under the figure says it.
-            val state = if (full) meter(v, R.id.meter, R.id.meter_warn, R.id.meter_over, s.spent, budget.amount) else meterState(s.spent, budget.amount)
+        if (!full) {
+            // One row tall, there's only the figure: it turns red when over budget.
+            val over = budget != null && meterState(s.spent, budget.amount) == Meter.Over
+            v.setTextColor(R.id.spent, c.getColor(if (over) R.color.widget_danger else R.color.widget_text))
+        } else if (budget != null) {
+            val state = meter(v, R.id.meter, R.id.meter_warn, R.id.meter_over, s.spent, budget.amount)
             v.setTextColor(R.id.detail, c.getColor(if (state == Meter.Over) R.color.widget_danger else R.color.widget_muted))
             v.setTextViewText(
                 R.id.detail,
@@ -169,7 +175,7 @@ internal object WidgetViews {
                 },
             )
         } else {
-            if (full) listOf(R.id.meter, R.id.meter_warn, R.id.meter_over).forEach { v.setViewVisibility(it, View.GONE) }
+            listOf(R.id.meter, R.id.meter_warn, R.id.meter_over).forEach { v.setViewVisibility(it, View.GONE) }
             v.setTextColor(R.id.detail, c.getColor(R.color.widget_muted))
             v.setTextViewText(R.id.detail, c.getString(R.string.widget_balance, money(s, s.balance)))
         }
