@@ -37,6 +37,21 @@ internal fun Project.configureKotlinAndroid(android: CommonExtension) {
     }
     // Robolectric draws screens and reads resources on the JVM.
     android.testOptions.unitTests.isIncludeAndroidResources = true
+    // On JDK 17+ Robolectric reaches into OpenJDK internals (since 4.17, jdk.internal.access
+    // for every test's file descriptors); these are the flags its getting-started page lists.
+    tasks.withType<Test>().configureEach {
+        jvmArgs(
+            "--add-opens=java.base/java.lang=ALL-UNNAMED",
+            "--add-opens=java.base/java.util=ALL-UNNAMED",
+            "--add-opens=java.base/java.io=ALL-UNNAMED",
+            "--add-opens=java.base/java.net=ALL-UNNAMED",
+            "--add-opens=java.base/java.security=ALL-UNNAMED",
+            "--add-opens=java.base/java.text=ALL-UNNAMED",
+            "--add-opens=java.base/jdk.internal.access=ALL-UNNAMED",
+            "--add-opens=java.desktop/java.awt.font=ALL-UNNAMED",
+            "--add-opens=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
+        )
+    }
     // Gradle 9 fails a test task that finds no tests. Hilt's generated test sources make a
     // module with no tests of its own look like it has some, so only those modules skip the check.
     if (!file("src/test").exists()) {

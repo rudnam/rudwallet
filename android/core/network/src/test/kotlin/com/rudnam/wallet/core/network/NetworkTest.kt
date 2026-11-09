@@ -10,14 +10,15 @@ import com.rudnam.wallet.core.network.model.NetworkWallet
 import com.rudnam.wallet.core.network.model.asModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.serialization.json.Json
+import mockwebserver3.MockResponse
+import mockwebserver3.MockWebServer
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.mockwebserver.MockResponse
-import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
+import org.junit.Before
 import org.junit.Test
 import java.time.Instant
 
@@ -25,8 +26,11 @@ class NetworkTest {
     private val json = Json { ignoreUnknownKeys = true; explicitNulls = false; coerceInputValues = true }
     private val server = MockWebServer()
 
+    @Before
+    fun start() = server.start()
+
     @After
-    fun stop() = server.shutdown()
+    fun stop() = server.close()
 
     @Test
     fun `the wallet and records read as the server writes them, extra fields and all`() {
@@ -65,18 +69,18 @@ class NetworkTest {
 
     @Test
     fun `requests are signed in as the Android app`() {
-        server.enqueue(MockResponse().setBody("{}"))
+        server.enqueue(MockResponse(body = "{}"))
         client(FakeSession("t0k3n")).newCall(Request.Builder().url(server.url("/api/wallet")).build()).execute().close()
         val sent = server.takeRequest()
-        assertEquals("Bearer t0k3n", sent.getHeader("Authorization"))
-        assertEquals("android", sent.getHeader("X-Wallet-Client"))
-        assertEquals("ja", sent.getHeader("Accept-Language"))
+        assertEquals("Bearer t0k3n", sent.headers["Authorization"])
+        assertEquals("android", sent.headers["X-Wallet-Client"])
+        assertEquals("ja", sent.headers["Accept-Language"])
     }
 
     @Test
     fun `a 401 ends the session`() {
         val session = FakeSession("old")
-        server.enqueue(MockResponse().setResponseCode(401))
+        server.enqueue(MockResponse(code = 401))
         assertThrows(SignedOutException::class.java) {
             client(session).newCall(Request.Builder().url(server.url("/api/wallet")).build()).execute()
         }
@@ -86,7 +90,7 @@ class NetworkTest {
     @Test
     fun `signing in with a wrong password is a refusal, not a session ending`() {
         val session = FakeSession(null)
-        server.enqueue(MockResponse().setResponseCode(401).setBody("""{"error":"email or password is incorrect"}"""))
+        server.enqueue(MockResponse(code = 401, body = """{"error":"email or password is incorrect"}"""))
         client(session).newCall(Request.Builder().url(server.url("/api/login")).build()).execute().use { assertEquals(401, it.code) }
     }
 }

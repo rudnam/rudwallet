@@ -1,6 +1,6 @@
 package com.rudnam.wallet.feature.settings
 
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
