@@ -1,6 +1,8 @@
 package com.rudnam.wallet.widget
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
 import android.view.View
 import android.view.ViewGroup
@@ -48,10 +50,13 @@ class WidgetScreenshotTest {
         add(WidgetData.Summary(summary), full = false, heightDp = 64)
         add(WidgetData.Summary(over), full = false, heightDp = 64)
         add(WidgetData.Summary(summary), full = true, heightDp = 150)
-        val width = context.resources.displayMetrics.widthPixels
+        val width = (411 * dp).toInt()
         column.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
         column.layout(0, 0, column.measuredWidth, column.measuredHeight)
-        column.captureRoboImage("build/outputs/roborazzi/widget-$name.png")
+        // Not attached to a window, so draw it into a bitmap and capture that.
+        val bitmap = Bitmap.createBitmap(column.width, column.height, Bitmap.Config.ARGB_8888)
+        column.draw(Canvas(bitmap))
+        bitmap.captureRoboImage("build/outputs/roborazzi/widget-$name.png")
     }
 
     @Test
