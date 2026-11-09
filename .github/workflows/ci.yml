@@ -105,7 +105,7 @@ jobs:
             gh release edit "$tag" --notes "$notes Last built from $SHA."
           else
             gh release create "$tag" rudwallet-preview.apk --prerelease --latest=false --target "$SHA" --title "Android preview for #$PR" --notes "$notes Last built from $SHA."
-            gh pr comment "$PR" --body "📱 **Android preview:** [rudwallet-preview.apk]($url). Open it on the phone to install \"RudWallet Preview\" beside the real app; it's rebuilt on every push. Google sign-in returns to the real app, so sign in with email and password. (The repository is private: the link needs the browser signed in to GitHub, or it answers 404.)"
+            gh pr comment "$PR" --body "📱 **Android preview:** [rudwallet-preview.apk]($url). Open it on the phone to install \"RudWallet Preview\" beside the real app; it's rebuilt on every push. Google sign-in returns to the real app, so sign in with email and password."
           fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         continue-on-error: true

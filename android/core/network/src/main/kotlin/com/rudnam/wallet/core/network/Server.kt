@@ -3,7 +3,7 @@ package com.rudnam.wallet.core.network
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** The server the app talks to (VITE_SERVER in web/.env.android). */
+/** The server the app talks to (rudwallet.server in android/gradle.properties). */
 @Singleton
 class Server @Inject constructor() {
     val base: String = BuildConfig.SERVER
