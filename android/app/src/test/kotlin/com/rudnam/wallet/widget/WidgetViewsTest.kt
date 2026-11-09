@@ -42,11 +42,12 @@ class WidgetViewsTest {
     }
 
     @Test
-    fun `one row tall, it shows only the figure and payments to check`() {
+    fun `one row tall, it shows only the figure and payments to check, no add button`() {
         val view = WidgetViews.month(context, WidgetData.Summary(summary), full = false).apply(context, FrameLayout(context))
         assertEquals("¥19,570", view.text(R.id.spent))
         assertEquals(View.VISIBLE, view.findViewById<View>(R.id.content).visibility)
         assertNull(view.findViewById<View>(R.id.detail))
+        assertNull(view.findViewById<View>(R.id.add))
         assertEquals(context.getColor(R.color.widget_text), view.findViewById<TextView>(R.id.spent).currentTextColor)
         assertTrue(view.text(R.id.review).contains("2"))
     }

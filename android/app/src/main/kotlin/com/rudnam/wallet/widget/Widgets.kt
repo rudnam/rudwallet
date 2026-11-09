@@ -148,11 +148,11 @@ internal object WidgetViews {
 
     /**
      * Says what Wallet's month line says: spent so far, the overall budget's meter and what it means today, else the total balance.
-     * One row tall, only the figure (red when over budget) and payments to check.
+     * One row tall, only the figure (red when over budget) and payments to check: no add button.
      */
     internal fun month(c: Context, data: WidgetData, full: Boolean): RemoteViews {
         val v = RemoteViews(c.packageName, if (full) R.layout.widget_month else R.layout.widget_month_row)
-        v.setOnClickPendingIntent(R.id.add, open(c, "add"))
+        if (full) v.setOnClickPendingIntent(R.id.add, open(c, "add"))
         val s = (data as? WidgetData.Summary)?.summary ?: return v.also { message(it, c, data) }
         v.setViewVisibility(R.id.content, View.VISIBLE)
         v.setViewVisibility(R.id.message, View.GONE)

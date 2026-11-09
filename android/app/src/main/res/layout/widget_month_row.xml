@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The month widget one row tall (widget_month.xml is the full one): the figure, payments to
-     check, and the add button, side by side. The same ids, so Widgets.month() fills in either.
-     No meter and no line under the figure: there's no room for them; the figure turns red when
-     over budget instead. Hidden until drawn, as widget_month.xml explains. -->
+<!-- The month widget one row tall (widget_month.xml is the full one): the figure and payments to
+     check, side by side. The same ids, so Widgets.month() fills in either. No meter, no line under
+     the figure and no add button: it's for reading at a glance (a tap opens the app, and the New
+     record widget adds); the figure turns red when over budget. Hidden until drawn, as
+     widget_month.xml explains. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/root"
     android:layout_width="match_parent"
@@ -11,7 +12,7 @@
     android:gravity="center_vertical"
     android:orientation="horizontal"
     android:paddingStart="18dp"
-    android:paddingEnd="8dp">
+    android:paddingEnd="18dp">
 
     <LinearLayout
         android:id="@+id/content"
@@ -61,14 +62,4 @@
         android:textColor="@color/widget_text"
         android:textSize="14sp"
         android:visibility="gone" />
-
-    <ImageView
-        android:id="@+id/add"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
-        android:layout_marginStart="10dp"
-        android:background="@drawable/widget_add_circle"
-        android:contentDescription="@string/widget_add"
-        android:padding="9dp"
-        android:src="@drawable/widget_plus" />
 </LinearLayout>
