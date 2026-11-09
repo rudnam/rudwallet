@@ -44,11 +44,15 @@ jobs:
           GO_BUILD_CACHE: ${{ runner.temp }}/go-build
       - name: Upload screenshots and failure traces
         if: always()
+        # Screenshots are for reading, not a check: a full artifact store
+        # (GitHub's storage quota) mustn't fail the job and hold back the deploy.
+        continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-results
           path: e2e/test-results/
           if-no-files-found: ignore
+          retention-days: 7
 
   # Builds the Android app (android/README.md) as its preview build, which
   # needs no signing key, so its native code is checked on every change. Releases
@@ -105,12 +109,14 @@ jobs:
           fi
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
+        continue-on-error: true
         with:
           name: native-screenshots
           path: android/**/build/outputs/roborazzi/
           retention-days: 7
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: ${{ !cancelled() && hashFiles('android/app/build/outputs/apk/preview/app-preview.apk') != '' }}
+        continue-on-error: true
         with:
           name: android-preview-apk
           path: android/app/build/outputs/apk/preview/app-preview.apk
