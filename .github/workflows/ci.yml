@@ -49,6 +49,7 @@ jobs:
           name: e2e-results
           path: e2e/test-results/
           if-no-files-found: ignore
+          retention-days: 7
 
   # Builds the Android app (android/README.md) as its preview build, which
   # needs no signing key, so its native code is checked on every change. Releases
