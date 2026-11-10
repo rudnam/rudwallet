@@ -6,8 +6,7 @@ import android.icu.util.DateInterval
 import android.icu.util.TimeZone
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.core.os.ConfigurationCompat
+import androidx.compose.ui.platform.LocalLocale
 import com.rudnam.wallet.core.model.WalletSettings
 import java.math.BigDecimal
 import java.text.NumberFormat
@@ -105,7 +104,7 @@ class MoneyFormat(
 /** A [MoneyFormat] in the language the screen is drawn in. */
 @Composable
 fun rememberMoneyFormat(settings: WalletSettings): MoneyFormat {
-    val configuration = LocalConfiguration.current
-    val locale = ConfigurationCompat.getLocales(configuration)[0] ?: Locale.getDefault()
+    // Observable: a change of language (Android's per-app language included) redraws with the new one.
+    val locale = LocalLocale.current.platformLocale
     return remember(locale, settings) { MoneyFormat(locale, settings) }
 }

@@ -41,6 +41,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -53,7 +54,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.os.LocaleListCompat
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rudnam.wallet.core.designsystem.component.WalletPanel
 import com.rudnam.wallet.core.designsystem.component.rememberHaptics
@@ -348,13 +349,18 @@ internal fun AppearanceScreen(appearance: Appearance, onChoose: (Appearance) -> 
 /** The app's own language, or null to follow the phone's: Android's per-app language. */
 internal fun currentLanguage(): String? = AppCompatDelegate.getApplicationLocales().toLanguageTags().substringBefore('-').ifEmpty { null }
 
+/**
+ * The phone's own language, which Automatic follows. Not the screen's language (LocalLocale),
+ * which is the app's own once one is chosen; Compose has no observable source for the phone's.
+ */
+private fun phoneLanguage(): String = LocaleListCompat.getAdjustedDefault()[0]?.language ?: Locale.getDefault().language
+
 /** A language's name in that language, so it can be found from either. */
 private fun languageName(code: String) = if (code == "ja") "日本語" else "English"
 
 @Composable
 internal fun LanguageDestination(navigation: SettingsNavigation) {
-    // The phone's own language, which Automatic follows.
-    val phone = LocaleListCompat.getAdjustedDefault()[0]?.language ?: Locale.getDefault().language
+    val phone = phoneLanguage()
     LanguageScreen(
         chosen = currentLanguage(),
         phone = if (phone == "ja") "ja" else "en",
@@ -390,8 +396,9 @@ internal fun CurrencyDestination(navigation: SettingsNavigation, snackbar: Snack
 /** The main currency: only until the first record (Wallet's checklist links here; it's not in the menu). */
 @Composable
 internal fun CurrencyScreen(currency: String?, onChoose: (String) -> Unit, navigation: SettingsNavigation) {
+    val locale = LocalLocale.current.platformLocale
     val list = if (currency == null || currency in currencies) currencies else listOf(currency) + currencies
-    val options = list.map { code -> code to (runCatching { java.util.Currency.getInstance(code).getDisplayName(Locale.getDefault()) }.getOrNull()?.let { "$code · $it" } ?: code) }
+    val options = list.map { code -> code to (runCatching { java.util.Currency.getInstance(code).getDisplayName(locale) }.getOrNull()?.let { "$code · $it" } ?: code) }
     SettingsPage(stringResource(R.string.feature_settings_currency), navigation) {
         item { Text(stringResource(R.string.feature_settings_currency_detail), style = MaterialTheme.typography.bodyMedium, color = WalletTheme.colors.muted, modifier = Modifier.padding(horizontal = 4.dp)) }
         if (currency != null) item { Choices(options, currency, onChoose) }
