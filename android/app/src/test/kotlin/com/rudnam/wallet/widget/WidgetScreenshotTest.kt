@@ -38,6 +38,7 @@ class WidgetScreenshotTest {
     private companion object {
         const val WIDTH_DP = 217
         const val ROW_DP = 96
+        const val SHORT_ROW_DP = 64
         const val TWO_ROWS_DP = 204
     }
 
@@ -51,13 +52,14 @@ class WidgetScreenshotTest {
             val pad = (16 * dp).toInt()
             setPadding(pad, pad, pad, pad)
         }
-        fun add(data: WidgetData, full: Boolean, heightDp: Int) {
+        fun add(data: WidgetData, full: Boolean, heightDp: Int, labelled: Boolean = heightDp >= 80) {
             val frame = FrameLayout(context)
-            frame.addView(WidgetViews.month(context, data, full).apply(context, frame), ViewGroup.LayoutParams(-1, -1))
+            frame.addView(WidgetViews.month(context, data, full, labelled).apply(context, frame), ViewGroup.LayoutParams(-1, -1))
             column.addView(frame, LinearLayout.LayoutParams((WIDTH_DP * dp).toInt(), (heightDp * dp).toInt()).apply { bottomMargin = (16 * dp).toInt() })
         }
         add(WidgetData.Summary(summary), full = false, heightDp = ROW_DP)
         add(WidgetData.Summary(over), full = false, heightDp = ROW_DP)
+        add(WidgetData.Summary(summary), full = false, heightDp = SHORT_ROW_DP)
         add(WidgetData.Summary(summary), full = true, heightDp = TWO_ROWS_DP)
         val width = ((WIDTH_DP + 32) * dp).toInt()
         column.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))

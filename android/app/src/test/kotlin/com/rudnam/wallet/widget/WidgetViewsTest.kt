@@ -54,6 +54,14 @@ class WidgetViewsTest {
     }
 
     @Test
+    fun `one row tall, the label shows only when there's room for it`() {
+        val short = WidgetViews.month(context, WidgetData.Summary(summary), full = false).apply(context, FrameLayout(context))
+        assertEquals(View.GONE, short.findViewById<View>(R.id.eyebrow).visibility)
+        val tall = WidgetViews.month(context, WidgetData.Summary(summary), full = false, labelled = true).apply(context, FrameLayout(context))
+        assertEquals(View.VISIBLE, tall.findViewById<View>(R.id.eyebrow).visibility)
+    }
+
+    @Test
     fun `one row tall and over budget, the figure turns red`() {
         val over = summary.copy(spent = 61_000, budget = WidgetBudget("Everything", 60_000, 61_000))
         val view = WidgetViews.month(context, WidgetData.Summary(over), full = false).apply(context, FrameLayout(context))

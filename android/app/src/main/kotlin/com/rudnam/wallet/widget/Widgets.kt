@@ -134,23 +134,33 @@ internal object WidgetViews {
     /** From this height (dp) the month widget is drawn in full; below it, in one row (widget_month_row.xml). */
     private const val FULL_DP = 100
 
+    /** From this height (dp) the one-row widget has room for its label ("Spent this month") above the figure. */
+    private const val LABELLED_DP = 80
+
     /**
-     * The month widget at the size it is ([options]). From Android 12 it carries both layouts and
+     * The month widget at the size it is ([options]). From Android 12 it carries every layout and
      * the launcher shows the one that fits, as it's resized; before, it's drawn for its height.
      */
     fun month(c: Context, data: WidgetData, options: Bundle? = null): RemoteViews =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            RemoteViews(mapOf(SizeF(0f, 0f) to month(c, data, full = false), SizeF(0f, FULL_DP.toFloat()) to month(c, data, full = true)))
+            RemoteViews(
+                mapOf(
+                    SizeF(0f, 0f) to month(c, data, full = false),
+                    SizeF(0f, LABELLED_DP.toFloat()) to month(c, data, full = false, labelled = true),
+                    SizeF(0f, FULL_DP.toFloat()) to month(c, data, full = true),
+                ),
+            )
         } else {
             val height = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT) ?: 0
-            month(c, data, full = height == 0 || height >= FULL_DP)
+            month(c, data, full = height == 0 || height >= FULL_DP, labelled = height >= LABELLED_DP)
         }
 
     /**
      * Says what Wallet's month line says: spent so far, the overall budget's meter and what it means today, else the total balance.
-     * One row tall, the figure (red when over budget), payments to check and the meter: no line under it, no add button.
+     * One row tall, the figure (red when over budget), payments to check and the meter: no line under it, no add button;
+     * [labelled], with the label above the figure too.
      */
-    internal fun month(c: Context, data: WidgetData, full: Boolean): RemoteViews {
+    internal fun month(c: Context, data: WidgetData, full: Boolean, labelled: Boolean = false): RemoteViews {
         val v = RemoteViews(c.packageName, if (full) R.layout.widget_month else R.layout.widget_month_row)
         if (full) v.setOnClickPendingIntent(R.id.add, open(c, "add"))
         val s = (data as? WidgetData.Summary)?.summary ?: return v.also { message(it, c, data) }
@@ -158,6 +168,7 @@ internal object WidgetViews {
         v.setViewVisibility(R.id.message, View.GONE)
         v.setOnClickPendingIntent(R.id.root, open(c, "home"))
         v.setTextViewText(R.id.spent, money(s, s.spent))
+        if (!full && labelled) v.setViewVisibility(R.id.eyebrow, View.VISIBLE)
         val budget = s.budget
         if (!full) {
             // One row tall, there's the figure and the meter, no line: the figure turns red when over budget.

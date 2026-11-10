@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- The month widget one row tall (widget_month.xml is the full one): the figure and payments to
-     check, and the overall budget's meter under them. The same ids, so Widgets.month() fills in
+     check, and the overall budget's meter under them; from 80dp tall, the label above. The same ids, so Widgets.month() fills in
      either. No line under the figure and no add button: it's for reading at a glance (a tap opens
      the app, and the New record widget adds); the figure turns red when over budget. Hidden until
      drawn, as widget_month.xml explains. -->
@@ -21,6 +21,19 @@
         android:layout_weight="1"
         android:orientation="vertical"
         android:visibility="invisible">
+
+        <!-- Shown from 80dp tall (Widgets.month), where there's room for it. -->
+        <TextView
+            android:id="@+id/eyebrow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="6dp"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:text="@string/widget_spent_this_month"
+            android:textColor="@color/widget_muted"
+            android:textSize="12sp"
+            android:visibility="gone" />
 
         <LinearLayout
             android:layout_width="match_parent"
