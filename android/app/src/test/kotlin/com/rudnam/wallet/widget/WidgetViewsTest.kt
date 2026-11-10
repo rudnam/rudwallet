@@ -12,6 +12,7 @@ import com.rudnam.wallet.core.data.widget.WidgetData
 import com.rudnam.wallet.core.model.WidgetBudget
 import com.rudnam.wallet.core.model.WidgetSummary
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -41,12 +42,31 @@ class WidgetViewsTest {
     }
 
     @Test
-    fun `one row tall, it shows the figure, what it means today and payments to check`() {
+    fun `one row tall, it shows the figure, payments to check and the meter, no line or add button`() {
         val view = WidgetViews.month(context, WidgetData.Summary(summary), full = false).apply(context, FrameLayout(context))
         assertEquals("¥19,570", view.text(R.id.spent))
         assertEquals(View.VISIBLE, view.findViewById<View>(R.id.content).visibility)
-        assertTrue(view.text(R.id.detail).isNotEmpty())
+        assertNull(view.findViewById<View>(R.id.detail))
+        assertNull(view.findViewById<View>(R.id.add))
+        assertEquals(View.VISIBLE, view.findViewById<View>(R.id.meter).visibility)
+        assertEquals(context.getColor(R.color.widget_text), view.findViewById<TextView>(R.id.spent).currentTextColor)
         assertTrue(view.text(R.id.review).contains("2"))
+    }
+
+    @Test
+    fun `one row tall, the label shows only when there's room for it`() {
+        val short = WidgetViews.month(context, WidgetData.Summary(summary), full = false).apply(context, FrameLayout(context))
+        assertEquals(View.GONE, short.findViewById<View>(R.id.eyebrow).visibility)
+        val tall = WidgetViews.month(context, WidgetData.Summary(summary), full = false, labelled = true).apply(context, FrameLayout(context))
+        assertEquals(View.VISIBLE, tall.findViewById<View>(R.id.eyebrow).visibility)
+    }
+
+    @Test
+    fun `one row tall and over budget, the figure turns red`() {
+        val over = summary.copy(spent = 61_000, budget = WidgetBudget("Everything", 60_000, 61_000))
+        val view = WidgetViews.month(context, WidgetData.Summary(over), full = false).apply(context, FrameLayout(context))
+        assertEquals(context.getColor(R.color.widget_danger), view.findViewById<TextView>(R.id.spent).currentTextColor)
+        assertEquals(View.VISIBLE, view.findViewById<View>(R.id.meter_over).visibility)
     }
 
     @Test

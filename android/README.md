@@ -106,7 +106,7 @@ The app signs in with a bearer token rather than the website's cookie: it sends 
 
 Three widgets, in `app/src/main/kotlin/com/rudnam/wallet/widget` (RemoteViews, drawn from `res/layout/widget_*.xml`):
 
-- **This month**: what Wallet's month line says: spent this month, the meter of the budget for all expenses, and what a day can take to stay within it (or how far over it is; the total balance if there's no such budget), and how many payments there are to check. Its plus opens the new record form.
+- **This month**: what Wallet's month line says: spent this month, the meter of the budget for all expenses, and what a day can take to stay within it (or how far over it is; the total balance if there's no such budget), and how many payments there are to check. Its plus opens the new record form. One row tall, it shows the figure (red when over budget), payments to check and the meter, with "Spent this month" above when the row is 80dp or taller; a tap opens the app.
 - **Budgets**: each monthly budget with a meter, as many as the widget is tall enough for. Meters turn orange at 80% and red when over, as in the app.
 - **New record**: one tap opens the new record form.
 
