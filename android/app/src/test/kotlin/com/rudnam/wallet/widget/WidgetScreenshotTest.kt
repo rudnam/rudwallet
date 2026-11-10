@@ -19,7 +19,10 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** The month widget one row tall and in full, into build/outputs/roborazzi (CI's native-screenshots). */
+/**
+ * The month widget one row tall and in full, into build/outputs/roborazzi (CI's native-screenshots).
+ * Drawn at the sizes a Pixel launcher gives it (half the screen wide; one and two rows tall).
+ */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [36], qualifiers = "en-w411dp-h891dp-xxhdpi")
@@ -31,6 +34,12 @@ class WidgetScreenshotTest {
         reviewCount = 2,
     )
     private val over = summary.copy(spent = 61_000, budget = WidgetBudget("Everything", 60_000, 61_000), reviewCount = 0)
+
+    private companion object {
+        const val WIDTH_DP = 217
+        const val ROW_DP = 96
+        const val TWO_ROWS_DP = 204
+    }
 
     /** Draws both sizes on a home-screen-ish backdrop, one under the other. */
     private fun shot(name: String) {
@@ -45,12 +54,12 @@ class WidgetScreenshotTest {
         fun add(data: WidgetData, full: Boolean, heightDp: Int) {
             val frame = FrameLayout(context)
             frame.addView(WidgetViews.month(context, data, full).apply(context, frame), ViewGroup.LayoutParams(-1, -1))
-            column.addView(frame, LinearLayout.LayoutParams(-1, (heightDp * dp).toInt()).apply { bottomMargin = (16 * dp).toInt() })
+            column.addView(frame, LinearLayout.LayoutParams((WIDTH_DP * dp).toInt(), (heightDp * dp).toInt()).apply { bottomMargin = (16 * dp).toInt() })
         }
-        add(WidgetData.Summary(summary), full = false, heightDp = 64)
-        add(WidgetData.Summary(over), full = false, heightDp = 64)
-        add(WidgetData.Summary(summary), full = true, heightDp = 150)
-        val width = (411 * dp).toInt()
+        add(WidgetData.Summary(summary), full = false, heightDp = ROW_DP)
+        add(WidgetData.Summary(over), full = false, heightDp = ROW_DP)
+        add(WidgetData.Summary(summary), full = true, heightDp = TWO_ROWS_DP)
+        val width = ((WIDTH_DP + 32) * dp).toInt()
         column.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED))
         column.layout(0, 0, column.measuredWidth, column.measuredHeight)
         // Not attached to a window, so draw it into a bitmap and capture that.
