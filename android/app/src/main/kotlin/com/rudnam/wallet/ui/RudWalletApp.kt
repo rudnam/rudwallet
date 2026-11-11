@@ -7,7 +7,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -32,7 +31,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import com.rudnam.wallet.core.designsystem.theme.WalletMotion
@@ -80,6 +78,7 @@ import com.rudnam.wallet.navigation.enter
 import com.rudnam.wallet.navigation.exit
 import com.rudnam.wallet.navigation.popEnter
 import com.rudnam.wallet.navigation.popExit
+import com.rudnam.wallet.navigation.predictivePopExit
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import java.time.YearMonth
@@ -118,9 +117,7 @@ fun RudWalletApp(
         bottomBar = { AnimatedTabBar(tab, reviewCount, appState::navigateToTab) },
     ) { padding ->
         // Pages can share elements as they change (an account's card grows into its page).
-        // Behind them all, black: a page that another slides over fades partly out over it,
-        // into shade (navigation's Motion.kt). Every page draws its own ground over it.
-        SharedTransitionLayout(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).background(Color.Black)) {
+        SharedTransitionLayout(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
             CompositionLocalProvider(LocalSharedTransitionScope provides this) {
                 NavHost(
                     appState.navController,
@@ -129,11 +126,12 @@ fun RudWalletApp(
                     exitTransition = { exit() },
                     popEnterTransition = { popEnter() },
                     popExitTransition = { popExit() },
-                    // The back gesture plays the same ones as it's dragged. Left out, Navigation
+                    // The back gesture plays the same ones as it's dragged, the closing page going
+                    // the way the finger does. Left out, Navigation
                     // (2.10) uses its own: the closing page shrinks to 70% as it fades, all of it
                     // around an account's card as the card shrinks back into Wallet.
                     predictivePopEnterTransition = { popEnter() },
-                    predictivePopExitTransition = { popExit() },
+                    predictivePopExitTransition = { swipeEdge -> predictivePopExit(swipeEdge) },
                 ) {
                     walletScreen(
                         navigation = object : WalletNavigation {
