@@ -66,6 +66,8 @@ import com.rudnam.wallet.core.model.BulkChange
 import com.rudnam.wallet.core.model.CategoryKind
 import com.rudnam.wallet.core.model.RecordFilter
 import com.rudnam.wallet.core.model.Transaction
+import com.rudnam.wallet.core.ui.CategoryPickerExtra
+import com.rudnam.wallet.core.ui.CategoryPickerSheet
 import com.rudnam.wallet.core.ui.MoneyFormat
 import com.rudnam.wallet.core.ui.recordDays
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
@@ -292,18 +294,45 @@ private fun Filters(state: ActivityUiState.Ready, actions: ActivityActions) {
                 options = listOf(null to stringResource(R.string.feature_activity_all_accounts)) + state.wallet.accounts.map { it.id to it.name },
                 onPick = { actions.setAccount(it) },
             )
-            MenuChip(
-                label = when (f.categoryId) {
+            CategoryFilterChip(state, f.categoryId, actions)
+        }
+    }
+}
+
+/** The category filter: the picker, with "All categories" and "No category" above the categories. */
+@Composable
+private fun CategoryFilterChip(state: ActivityUiState.Ready, categoryId: Long?, actions: ActivityActions) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    FilterChip(
+        selected = categoryId != null,
+        onClick = { open = true },
+        label = {
+            Text(
+                when (categoryId) {
                     null -> stringResource(R.string.feature_activity_category)
                     RecordFilter.NO_CATEGORY -> stringResource(R.string.feature_activity_no_category)
-                    else -> state.wallet.categoryPath(f.categoryId) ?: stringResource(R.string.feature_activity_category)
+                    else -> state.wallet.categoryPath(categoryId) ?: stringResource(R.string.feature_activity_category)
                 },
-                selected = f.categoryId != null,
-                options = listOf(null to stringResource(R.string.feature_activity_all_categories), RecordFilter.NO_CATEGORY to stringResource(R.string.feature_activity_no_category)) +
-                    state.wallet.categoriesInOrder().map { it.id to (state.wallet.categoryPath(it.id) ?: it.name) },
-                onPick = { actions.setCategory(it) },
+                maxLines = 1,
             )
-        }
+        },
+        trailingIcon = { LineIcon(WalletIcons.expand, contentDescription = null, size = 16.dp) },
+    )
+    if (open) {
+        CategoryPickerSheet(
+            wallet = state.wallet,
+            kind = null,
+            selectedId = categoryId,
+            onPick = { actions.setCategory(it.id) },
+            onDismiss = { open = false },
+            title = stringResource(R.string.feature_activity_category),
+            extras = listOf(
+                CategoryPickerExtra(stringResource(R.string.feature_activity_all_categories), categoryId == null) { actions.setCategory(null) },
+                CategoryPickerExtra(stringResource(R.string.feature_activity_no_category), categoryId == RecordFilter.NO_CATEGORY) {
+                    actions.setCategory(RecordFilter.NO_CATEGORY)
+                },
+            ),
+        )
     }
 }
 
@@ -351,6 +380,7 @@ private fun BulkBar(state: ActivityUiState.Ready, actions: ActivityActions) {
     val ids = chosen.toList()
     var deleting by rememberSaveable { mutableStateOf(false) }
     var tagging by rememberSaveable { mutableStateOf(false) }
+    var categorizing by rememberSaveable { mutableStateOf(false) }
     Surface(color = WalletTheme.colors.surface, shape = MaterialTheme.shapes.medium, shadowElevation = 6.dp, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -367,11 +397,7 @@ private fun BulkBar(state: ActivityUiState.Ready, actions: ActivityActions) {
             if (chosen.isNotEmpty()) {
                 HorizontalDivider(color = WalletTheme.colors.border)
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    val expense = state.wallet.categories.filter { it.kind == CategoryKind.Expense }
-                    val income = state.wallet.categories.filter { it.kind == CategoryKind.Income }
-                    MenuButton(stringResource(R.string.feature_activity_set_category), listOf(RecordFilter.NO_CATEGORY to stringResource(R.string.feature_activity_no_category)) + (expense + income).map { it.id to it.name }) {
-                        actions.bulk(BulkChange.Categorize(ids, it.takeUnless { id -> id == RecordFilter.NO_CATEGORY }))
-                    }
+                    TextButton(onClick = { categorizing = true }, enabled = !state.busy) { Text(stringResource(R.string.feature_activity_set_category)) }
                     MenuButton(stringResource(R.string.feature_activity_move), state.wallet.activeAccounts.map { it.id to it.name }) {
                         actions.bulk(BulkChange.Move(ids, it))
                     }
@@ -401,6 +427,19 @@ private fun BulkBar(state: ActivityUiState.Ready, actions: ActivityActions) {
             tagging = false
             actions.bulk(change)
         }
+    }
+    if (categorizing) {
+        // The chosen records' kind's categories, when they're all of one kind.
+        val kinds = all.filter { it.id in chosen }.map { it.kind.apiName }.toSet()
+        CategoryPickerSheet(
+            wallet = state.wallet,
+            kind = CategoryKind.entries.firstOrNull { k -> kinds == setOf(k.apiName) },
+            selectedId = null,
+            onPick = { actions.bulk(BulkChange.Categorize(ids, it.id)) },
+            onDismiss = { categorizing = false },
+            title = stringResource(R.string.feature_activity_set_category),
+            extras = listOf(CategoryPickerExtra(stringResource(R.string.feature_activity_no_category), false) { actions.bulk(BulkChange.Categorize(ids, null)) }),
+        )
     }
 }
 

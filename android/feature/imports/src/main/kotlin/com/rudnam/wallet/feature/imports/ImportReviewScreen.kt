@@ -19,7 +19,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -72,6 +71,8 @@ import com.rudnam.wallet.core.model.ImportRowStatus
 import com.rudnam.wallet.core.model.ImportSource
 import com.rudnam.wallet.core.model.TransactionKind
 import com.rudnam.wallet.core.model.Wallet
+import com.rudnam.wallet.core.ui.CategoryPickerSheet
+import com.rudnam.wallet.core.ui.CategoryPickerExtra
 import com.rudnam.wallet.core.ui.CategoryIcon
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
 import com.rudnam.wallet.core.ui.serverText
@@ -448,42 +449,27 @@ private fun CategoryMenu(
     anchor: @Composable (open: () -> Unit) -> Unit,
 ) {
     var open by remember { mutableStateOf(false) }
-    Box {
-        anchor { open = true }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(text = { Text(stringResource(R.string.feature_imports_no_category)) }, onClick = {
-                open = false
-                onChoose(null, CategoryValue.None)
-            })
-            for (kind in kinds) {
-                val existing = wallet.categoriesInOrder().filter { it.kind == kind }
-                val fresh = newCategories.filter { it.kind == kind }.map { it.name }.toMutableList()
-                if (extra != null && extra !in fresh && existing.none { it.name.equals(extra, ignoreCase = true) }) fresh.add(0, extra)
-                MenuHeading(stringResource(R.string.feature_imports_your_categories))
-                for (c in existing) {
-                    val indent = if (wallet.isSubcategory(c)) 20.dp else 0.dp
-                    DropdownMenuItem(text = { Text(c.name) }, leadingIcon = { CategoryIcon(c, Modifier.padding(start = indent).size(28.dp)) }, onClick = {
-                        open = false
-                        onChoose(kind, CategoryValue.Existing(c.id))
-                    })
-                }
-                if (fresh.isNotEmpty()) {
-                    MenuHeading(stringResource(R.string.feature_imports_new_categories))
-                    for (n in fresh) {
-                        DropdownMenuItem(text = { Text(n) }, leadingIcon = { LineIcon(WalletIcons.plus, contentDescription = null, size = 18.dp) }, onClick = {
-                            open = false
-                            onChoose(kind, CategoryValue.New(n))
-                        })
-                    }
-                }
-            }
+    anchor { open = true }
+    if (open) {
+        // Above the categories: none, and the new ones the import would make, each for its kind.
+        val fresh = kinds.flatMap { kind ->
+            val names = newCategories.filter { it.kind == kind }.map { it.name }.toMutableList()
+            val taken = wallet.categories.any { it.kind == kind && it.name.equals(extra, ignoreCase = true) }
+            if (extra != null && extra !in names && !taken) names.add(0, extra)
+            names.map { kind to it }
         }
+        CategoryPickerSheet(
+            wallet = wallet,
+            kind = kinds.singleOrNull(),
+            selectedId = null,
+            onPick = { onChoose(it.kind, CategoryValue.Existing(it.id)) },
+            onDismiss = { open = false },
+            extras = listOf(CategoryPickerExtra(stringResource(R.string.feature_imports_no_category), false) { onChoose(null, CategoryValue.None) }) +
+                fresh.map { (kind, name) ->
+                    CategoryPickerExtra(stringResource(R.string.feature_imports_new_category_named, name), false) { onChoose(kind, CategoryValue.New(name)) }
+                },
+        )
     }
-}
-
-@Composable
-private fun MenuHeading(text: String) {
-    Text(text, style = MaterialTheme.typography.labelMedium, color = WalletTheme.colors.muted, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
 }
 
 /** An account's name as the review names it: chosen, or a new one by its name. */

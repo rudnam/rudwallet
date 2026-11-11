@@ -46,10 +46,12 @@ interface CategoriesActions {
     /** Starts a new subcategory of [parent]. */
     fun createUnder(parent: Category)
     fun edit(category: Category)
-    /** Adds one of the default categories the user doesn't have. */
-    fun addMissing(category: Category)
-    /** Puts the offered categories under their main category, as new wallets have them. */
-    fun regroup()
+    /**
+     * Matches the defaults a new wallet starts with: moves the offered
+     * categories in [moves] under their main category, then adds [adds],
+     * default categories the user doesn't have.
+     */
+    fun matchDefaults(moves: List<Long>, adds: List<Category>)
     fun setName(name: String)
     fun setKind(kind: CategoryKind)
     /** Puts the category under a main category, or with null makes it a main one. */
@@ -112,17 +114,19 @@ class CategoriesViewModel @Inject constructor(
         )
     }
 
-    override fun addMissing(category: Category) {
+    override fun matchDefaults(moves: List<Long>, adds: List<Category>) {
+        if (moves.isEmpty() && adds.isEmpty()) return
         viewModelScope.launch {
-            val result = settings.saveCategory(null, CategoryInput(category.name, category.kind, category.icon, category.color, category.parentId))
-            report(result, ChangeMessage.Added(category.name))
+            if (moves.isNotEmpty()) {
+                val moved = settings.regroup(moves)
+                if (moved != ChangeResult.Saved) return@launch report(moved, ChangeMessage.Saved)
+            }
+            for (c in adds) {
+                val added = settings.saveCategory(null, CategoryInput(c.name, c.kind, c.icon, c.color, c.parentId))
+                if (added != ChangeResult.Saved) return@launch report(added, ChangeMessage.Saved)
+            }
+            report(ChangeResult.Saved, ChangeMessage.Saved)
         }
-    }
-
-    override fun regroup() {
-        val ids = _regroup.value.map { it.id }
-        if (ids.isEmpty()) return
-        viewModelScope.launch { report(settings.regroup(ids), ChangeMessage.Saved) }
     }
 
     override fun setName(name: String) = _editor.update { it?.copy(name = name.take(60), noName = false, refused = null) }

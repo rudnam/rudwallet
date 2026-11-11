@@ -57,20 +57,20 @@
     <string name="feature_settings_expenses">支出</string>
     <string name="feature_settings_income">収入</string>
     <string name="feature_settings_edit_category_named">カテゴリ「%s」を編集</string>
-    <string name="feature_settings_more_categories">ほかのカテゴリ</string>
-    <string name="feature_settings_add_category_named">カテゴリ「%s」を追加</string>
-    <string name="feature_settings_regroup_title">カテゴリをまとめる</string>
-    <string name="feature_settings_regroup_intro">新しく始めたウォレットでは、これらはメインカテゴリの下にあります。同じようにまとめますか?</string>
     <string name="feature_settings_regroup_move">%1$s → %2$sの下へ</string>
+    <string name="feature_settings_defaults_title">新しい標準カテゴリに合わせる</string>
+    <string name="feature_settings_defaults_intro">新しいウォレットはこれらで始まります。使いたいものにチェックしてください。ほかのカテゴリはそのままです。</string>
+    <string name="feature_settings_defaults_move">まとめる</string>
+    <string name="feature_settings_defaults_add">追加</string>
+    <string name="feature_settings_apply">適用</string>
+    <string name="feature_settings_add_subcategory_to">%sにサブカテゴリを追加</string>
     <string name="feature_settings_regroup_note">メインカテゴリの予算と集計に、サブカテゴリの分も含まれるようになります。</string>
-    <string name="feature_settings_regroup">まとめる</string>
     <string name="feature_settings_edit_category">カテゴリを編集</string>
     <string name="feature_settings_new_category">新しいカテゴリ</string>
     <string name="feature_settings_expense">支出</string>
     <string name="feature_settings_icon">アイコン</string>
     <string name="feature_settings_initial_only">頭文字のみ</string>
     <string name="feature_settings_delete_category_question">「%s」を削除しますか？その記録はカテゴリなしになり、このカテゴリの予算と、覚えたお店の振り分けも削除されます。</string>
-    <string name="feature_settings_subcategories_of">%1$sのサブカテゴリ</string>
     <string name="feature_settings_add_subcategory">サブカテゴリを追加</string>
     <string name="feature_settings_under">親カテゴリ</string>
     <string name="feature_settings_main_category">なし（メインカテゴリ）</string>
@@ -213,5 +213,8 @@
     <string name="feature_settings_try_again">再試行</string>
     <plurals name="feature_settings_record_count">
         <item quantity="other">%d件</item>
+    </plurals>
+    <plurals name="feature_settings_defaults_count">
+        <item quantity="other">%d件の提案</item>
     </plurals>
 </resources>

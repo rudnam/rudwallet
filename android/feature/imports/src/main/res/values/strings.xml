@@ -64,8 +64,7 @@
     <string name="feature_imports_tick_categories">Tick categories to set several at once</string>
     <string name="feature_imports_set_category">Set category</string>
     <string name="feature_imports_no_category">No category</string>
-    <string name="feature_imports_your_categories">Your categories</string>
-    <string name="feature_imports_new_categories">New categories</string>
+    <string name="feature_imports_new_category_named">New category: %s</string>
     <string name="feature_imports_as_before">as before</string>
     <string name="feature_imports_new_category">new category</string>
     <string name="feature_imports_income_badge">income</string>

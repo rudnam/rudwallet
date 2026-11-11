@@ -105,7 +105,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `a category needs a name, and the missing ones add with a tap`() = runTest {
+    fun `a category needs a name, and the missing defaults add`() = runTest {
         val vm = CategoriesViewModel(wallet, settings)
         assertEquals("Pets", vm.missing.first { it.isNotEmpty() }.single().name)
         vm.create()
@@ -121,7 +121,7 @@ class SettingsViewModelTest {
         assertEquals("coffee", vm.editor.value!!.icon)
         vm.close()
 
-        vm.addMissing(settings.missing.single())
+        vm.matchDefaults(emptyList(), listOf(settings.missing.single()))
         assertEquals("Pets", settings.categories.last().second.name)
 
         settings.result = ChangeResult.Offline
@@ -133,11 +133,11 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `an old wallet's categories group like a new one's with a tap`() = runTest {
+    fun `an old wallet's categories group like a new one's`() = runTest {
         settings.regroupOffer = listOf(SampleWallet.wallet.category(11)!!.copy(parentId = 10))
         val vm = CategoriesViewModel(wallet, settings)
         assertEquals(listOf(11L), vm.regroup.first { it.isNotEmpty() }.map { it.id })
-        vm.regroup()
+        vm.matchDefaults(listOf(11L), emptyList())
         assertEquals(listOf(listOf(11L)), settings.regrouped)
         assertEquals(ChangeMessage.Saved, vm.messages.value.last())
     }

@@ -63,8 +63,7 @@
     <string name="feature_imports_tick_categories">カテゴリにチェックを入れると、まとめて設定できます</string>
     <string name="feature_imports_set_category">カテゴリを設定</string>
     <string name="feature_imports_no_category">カテゴリなし</string>
-    <string name="feature_imports_your_categories">あなたのカテゴリ</string>
-    <string name="feature_imports_new_categories">新しいカテゴリ</string>
+    <string name="feature_imports_new_category_named">新しいカテゴリ: %s</string>
     <string name="feature_imports_as_before">前回と同じ</string>
     <string name="feature_imports_new_category">新しいカテゴリ</string>
     <string name="feature_imports_income_badge">収入</string>

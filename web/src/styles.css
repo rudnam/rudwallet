@@ -646,6 +646,18 @@ li.record:hover:not(:disabled) { background: none; } /* a row to read, not to ta
   font-size: 0.75rem; line-height: 1.25; text-align: center; overflow-wrap: anywhere;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
+/* Under a subcategory's name, its main category's, small; an empty line for a main one keeps the rows even. */
+.category-main { font-size: 0.65rem; line-height: 1.2; min-height: 1.2em; color: var(--muted); text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* The category picker: a row per category, a subcategory indented under its main one. */
+.picker-list { list-style: none; margin: 0; padding: 0; }
+.picker-list button {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 6px 10px;
+  border: 0; border-radius: 10px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.picker-list button:hover { background: var(--sunken); }
+.picker-list button.sub { padding-left: 44px; }
+.picker-list button.on { background: var(--sunken); font-weight: 600; }
 
 /* The rest of a record: one box, a row per detail, label beside the value. */
 .details { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
@@ -996,3 +1008,22 @@ button.wide .nav-icon { width: 18px; height: 18px; }
 /* Pages slide in from the side as they open (router.ts): what's off the edge for that
    moment is cut off, not scrolled to. (On body it would pass to the viewport.) */
 .shell { overflow-x: clip; }
+
+/* Settings → Categories: a row per category, each main one followed by its subcategories, indented. */
+.category-list { list-style: none; margin: 0; padding: 4px 0; }
+.category-group + .category-group { border-top: 1px solid var(--border); }
+.category-row { display: flex; align-items: center; gap: 8px; padding: 0 8px 0 0; }
+.category-row > button:first-child {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 16px;
+  background: none; color: var(--text); border: 0; border-radius: 0; font: inherit; text-align: left; cursor: pointer;
+}
+.category-row > button:first-child:hover:not(:disabled) { background: var(--sunken); }
+.category-row.sub > button:first-child { padding-left: 50px; min-height: 42px; font-size: 0.95rem; }
+.category-row .icon-button.quiet { width: 34px; height: 34px; border-color: transparent; color: var(--muted); }
+.category-row .icon-button.quiet:hover:not(:disabled) { background: var(--sunken); }
+/* A card that opens something: its text, and › at the end. */
+.row-link {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%;
+  background: var(--surface); color: var(--text); text-align: left; font: inherit;
+}
+.row-link:hover:not(:disabled) { background: var(--sunken); }

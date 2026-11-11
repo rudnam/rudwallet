@@ -251,10 +251,12 @@ test('add a default category the user is missing', async ({ page }) => {
   await d.accept();
   await deleting;
   // It's offered back under Transport.
-  await page.getByRole('button', { name: 'Add category Transport › Car' }).click();
+  await page.getByRole('button', { name: /Match the new default categories/ }).click();
+  const offer = page.getByRole('dialog', { name: 'Match the new default categories' });
+  await expect(offer.getByRole('checkbox', { name: 'Transport › Car' })).toBeChecked();
+  await offer.getByRole('button', { name: 'Apply' }).click();
   await expect(page.getByRole('button', { name: 'Edit category Transport › Car' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Add category Transport › Car' })).toHaveCount(0);
-  await expect(page.getByText('More categories')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Match the new default categories/ })).toHaveCount(0);
 });
 
 test('a new user is walked through setting up, and daily adding remembers things', async ({ page }) => {

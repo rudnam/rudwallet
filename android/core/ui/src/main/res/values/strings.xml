@@ -9,6 +9,10 @@
     <string name="core_ui_expense">Expense</string>
     <string name="core_ui_no_category">No category</string>
     <string name="core_ui_choose_category">Choose a category</string>
+    <string name="core_ui_expenses">Expenses</string>
+    <string name="core_ui_find_category">Find a category</string>
+    <string name="core_ui_clear">Clear</string>
+    <string name="core_ui_no_category_match">No category matches</string>
     <string name="core_ui_amount_unknown">Amount?</string>
     <string name="core_ui_not_sent">Not sent yet</string>
     <string name="core_ui_refused">Couldn’t send</string>

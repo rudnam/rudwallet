@@ -1,11 +1,12 @@
 // Add, edit, or review a record.
 import { useEffect, useState, type FormEvent } from 'react';
-import { isSubcategory, mainCategoryId, subcategoriesOf, withSubcategories } from '../categories';
+import { inOrder, isSubcategory } from '../categories';
 import { api, errorMessage, type Transaction, type TransactionInput, type TransactionKind } from '../api';
 import { t, type Key } from '../i18n';
 import { amountInput, currencySymbol, formatDay, formatTime, parseAmount, toLocalInput } from '../money';
 import { useToast } from '../toast';
 import { useWallet } from '../wallet';
+import { CategoryPicker } from './CategoryPicker';
 import { Dialog } from './Dialog';
 import { addTag, TagField } from './TagField';
 import { CategoryIcon, Icon, icons } from './Icon';
@@ -29,7 +30,7 @@ type Habit = { category_id: number | null; account_id: number; kind: Transaction
 /** One field an edit changes, as the user reads it. */
 type Change = { field: string; from: string; to: string };
 
-/** How many categories show before More. */
+/** How many categories the form offers before All. */
 const fewCategories = 7;
 
 /** How many recent payees are offered as one-tap chips on a new record. */
@@ -69,11 +70,7 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
   const [habits, setHabits] = useState<Map<string, Habit>>(new Map());
   // How many recent records each category has, to show the most used first.
   const [use, setUse] = useState<Map<number, number>>(new Map());
-  const [allCategories, setAllCategories] = useState(false);
-  // The main category whose boxes show instead of all of them, and whether
-  // Back was tapped (a record in a subcategory opens in its main one until then).
-  const [openedMain, setOpenedMain] = useState<number | null>(null);
-  const [leftMain, setLeftMain] = useState(false);
+  const [picking, setPicking] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   // An edit waiting for the user to check what it changes.
@@ -106,56 +103,29 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
     api.tags().then((list) => setKnownTags(list.map((x) => x.name)), () => {});
   }, []);
 
-  // The main categories, the most used first (a main one's use counts its
-  // subcategories'; sort keeps the rest in their order); a few show until the
-  // user asks for all, and the chosen one always shows. Tapping a main
-  // category with subcategories opens it: its boxes, it first, then them.
-  const ofKind = w.categories.filter((c) => c.kind === kind);
-  const useOf = (id: number) => [...withSubcategories(id, ofKind)].reduce((n, x) => n + (use.get(x) ?? 0), 0);
-  const categories = ofKind.filter((c) => !isSubcategory(c, ofKind)).sort((a, b) => useOf(b.id) - useOf(a.id));
-  const chosenMain = mainCategoryId(categoryId, ofKind);
-  const chosenIsSub = chosenMain !== categoryId;
-  const openId = openedMain ?? (chosenIsSub && !leftMain ? chosenMain : null);
-  const opened = openId !== null && subcategoriesOf(openId, ofKind).length > 0 ? w.category(openId) : undefined;
-  const folding = !opened && categories.length > fewCategories + 1;
-  const chosenHidden = categories.findIndex((c) => c.id === chosenMain) >= fewCategories;
-  const shownCategories = opened
-    ? [opened, ...subcategoriesOf(opened.id, ofKind)]
-    : !folding || allCategories
-      ? categories
-      : // A chosen category from further down takes the last place, so More stays on the second row.
-        categories.filter((c, i) => i < fewCategories - (chosenHidden ? 1 : 0) || c.id === chosenMain);
+  // The boxes: the most used categories, main ones and subcategories alike
+  // (each counts its own records), so the usual one is a tap away; unused ones
+  // in the list's order, main categories first. All opens the picker with
+  // every category; one picked there takes the last box.
+  const ofKind = inOrder(w.categories).filter((c) => c.kind === kind);
+  const ranked = ofKind
+    .map((c, i) => ({ c, i, sub: isSubcategory(c, w.categories) ? 1 : 0, n: use.get(c.id) ?? 0 }))
+    .sort((a, b) => b.n - a.n || a.sub - b.sub || a.i - b.i)
+    .map((x) => x.c);
+  const roomy = ranked.length <= fewCategories + 1;
+  const few = roomy ? ranked : ranked.slice(0, fewCategories);
+  const chosen = ofKind.find((c) => c.id === categoryId);
+  const shownCategories = !chosen || few.includes(chosen) ? few : [...few.slice(0, -1), chosen];
   const duplicate = record?.duplicate_of_id ? record.duplicate_of_id : null;
 
   function changeKind(k: TransactionKind) {
     setKind(k);
     if (w.category(categoryId)?.kind !== k) setCategoryId(null);
-    setOpenedMain(null);
-    setLeftMain(false);
   }
 
-  /**
-   * A box tapped. A main category with subcategories is chosen and opened.
-   * In there, it stays chosen when tapped again, and a chosen subcategory
-   * tapped again goes back to it. Elsewhere, the chosen one tapped again clears it.
-   */
+  /** A box tapped: it's chosen, or, tapped again, no category is. */
   function chooseCategory(id: number) {
-    if (opened) {
-      const parent = w.category(id)?.parent_id ?? null;
-      setCategoryId(categoryId === id && parent !== null ? parent : id);
-    } else if (subcategoriesOf(id, ofKind).length > 0) {
-      setOpenedMain(id);
-      setLeftMain(false);
-      if (chosenMain !== id) setCategoryId(id);
-    } else {
-      setCategoryId(categoryId === id ? null : id);
-    }
-  }
-
-  /** Back to all the main categories; what's chosen stays. */
-  function leaveCategory() {
-    setOpenedMain(null);
-    setLeftMain(true);
+    setCategoryId(categoryId === id ? null : id);
   }
 
   /** A key on the number pad: a digit, '000', the decimal point, or 'back'. */
@@ -435,10 +405,10 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
         </label>
         {kind !== 'transfer' && (
           <fieldset className="category-pick">
-            <legend className="sr-only">{opened ? t('Subcategories of {name}', { name: opened.name }) : t('Category')}</legend>
+            <legend className="sr-only">{t('Category')}</legend>
             {shownCategories.map((c) => {
-              // In a main category's boxes, the one chosen; among all of them, the main one chosen or holding it.
-              const on = opened ? categoryId === c.id : chosenMain === c.id;
+              const on = categoryId === c.id;
+              const main = isSubcategory(c, w.categories) ? w.category(c.parent_id ?? null) : undefined;
               return (
                 <label key={c.id} className={on ? 'on' : ''}>
                   <input
@@ -451,26 +421,34 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
                   />
                   <CategoryIcon icon={c.icon} name={c.name} color={c.color} />
                   <span className="category-name">{c.name}</span>
+                  {/* A subcategory says which main category it's under. */}
+                  <span className="category-main" aria-hidden="true">
+                    {main?.name ?? ''}
+                  </span>
                 </label>
               );
             })}
-            {opened && (
-              <button type="button" className="category-more" onClick={leaveCategory}>
+            {!roomy && (
+              <button type="button" className="category-more" onClick={() => setPicking(true)}>
                 <span className="cat-icon" aria-hidden="true">
-                  <Icon d={icons.back} className="glyph" />
+                  <Icon d={icons.more} className="glyph" />
                 </span>
-                <span className="category-name">{t('Back')}</span>
-              </button>
-            )}
-            {folding && (
-              <button type="button" className="category-more" aria-expanded={allCategories} onClick={() => setAllCategories(!allCategories)}>
-                <span className="cat-icon" aria-hidden="true">
-                  <Icon d={allCategories ? icons.close : icons.more} className="glyph" />
-                </span>
-                <span className="category-name">{allCategories ? t('Fewer') : t('More')}</span>
+                <span className="category-name">{t('All')}</span>
               </button>
             )}
           </fieldset>
+        )}
+        {picking && (
+          <CategoryPicker
+            categories={w.categories}
+            kind={kind === 'transfer' ? undefined : kind}
+            selected={categoryId}
+            onPick={(c) => {
+              setCategoryId(c.id);
+              setPicking(false);
+            }}
+            onClose={() => setPicking(false)}
+          />
         )}
         <div className="details">
           {kind === 'transfer' ? (

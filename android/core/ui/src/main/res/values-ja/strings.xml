@@ -8,6 +8,10 @@
     <string name="core_ui_expense">支出</string>
     <string name="core_ui_no_category">カテゴリなし</string>
     <string name="core_ui_choose_category">カテゴリを選んでください</string>
+    <string name="core_ui_expenses">支出</string>
+    <string name="core_ui_find_category">カテゴリを検索</string>
+    <string name="core_ui_clear">クリア</string>
+    <string name="core_ui_no_category_match">一致するカテゴリはありません</string>
     <string name="core_ui_amount_unknown">金額不明</string>
     <string name="core_ui_not_sent">未送信</string>
     <string name="core_ui_refused">送信できませんでした</string>

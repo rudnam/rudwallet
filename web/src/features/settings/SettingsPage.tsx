@@ -489,35 +489,19 @@ export function AccountForm({ account, onClose }: { account?: Account; onClose: 
 
 function Categories() {
   const w = useWallet();
-  const [editing, setEditing] = useState<Category | 'new' | null>(null);
+  // The category being changed, or a new one ('new', or under a main category).
+  const [editing, setEditing] = useState<Category | 'new' | { under: Category } | null>(null);
   const [missing, setMissing] = useState<Category[]>([]);
   const [regroup, setRegroup] = useState<Category[]>([]);
+  const [matching, setMatching] = useState(false);
   const [error, setError] = useState('');
   const names = w.categories.map((c) => `${c.kind}:${c.name}:${c.parent_id ?? ''}`).join('|');
   useEffect(() => {
     api.missingCategories().then(setMissing, () => setMissing([]));
     api.regroupOffer().then(setRegroup, () => setRegroup([]));
   }, [names]);
+  const suggestions = missing.length + regroup.length;
 
-  async function group() {
-    setError('');
-    try {
-      await api.regroup(regroup.map((c) => c.id));
-      await w.refresh();
-    } catch (err) {
-      setError(errorMessage(err));
-    }
-  }
-
-  async function add(c: Category) {
-    setError('');
-    try {
-      await api.createCategory({ name: c.name, kind: c.kind, icon: c.icon, color: c.color, parent_id: c.parent_id ?? null });
-      await w.refresh();
-    } catch (err) {
-      setError(errorMessage(err));
-    }
-  }
   return (
     <>
       <Intro
@@ -529,81 +513,157 @@ function Categories() {
       >
         {t('What you spend on and earn from. Tap one to rename it or change its icon.')}
       </Intro>
-      {regroup.length > 0 && (
-        // A wallet from before the defaults had subcategories: offer to group them like a new one's.
-        <section className="card stack tight" aria-label={t('Group your categories')}>
-          <strong>{t('Group your categories')}</strong>
-          <p className="small">{t('New wallets keep these under a main category. Put yours there too?')}</p>
-          <ul className="small regroup">
-            {regroup.map((c) => (
-              <li key={c.id}>{t('{name} under {main}', { name: c.name, main: w.category(c.parent_id!)?.name ?? '' })}</li>
-            ))}
-          </ul>
-          <p className="muted small">{t("A main category's budgets and totals then include its subcategories.")}</p>
-          <div>
-            <button type="button" onClick={group}>
-              {t('Group them')}
-            </button>
-          </div>
-        </section>
-      )}
-      <div className="card stack">
-      {(['expense', 'income'] as const).map((kind) => (
-        <div key={kind} className="stack tight">
-          <span className="muted small">{kind === 'expense' ? t('Expenses') : t('Income')}</span>
-          <div className="chips">
-            {inOrder(w.categories)
-              .filter((c) => c.kind === kind)
-              .map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  // A subcategory sits after its main category, marked as under it.
-                  className={isSubcategory(c, w.categories) ? 'chip subcategory' : 'chip'}
-                  aria-label={t('Edit category {name}', { name: categoryPath(c.id, w.categories) ?? c.name })}
-                  onClick={() => setEditing(c)}
-                >
-                  <CategoryIcon icon={c.icon} name={c.name} color={c.color} size="small" /> {c.name}
-                </button>
+      {(['expense', 'income'] as const).map((kind) => {
+        const mains = inOrder(w.categories).filter((c) => c.kind === kind && !isSubcategory(c, w.categories));
+        const title = kind === 'expense' ? t('Expenses') : t('Income');
+        return (
+          <section key={kind} className="stack tight" aria-label={title}>
+            <span className="muted small">{title}</span>
+            {/* A row per category: a main one, then its subcategories, indented. */}
+            <ul className="card category-list" role="list">
+              {mains.map((m) => (
+                <li key={m.id} className="category-group">
+                  <div className="category-row">
+                    <button type="button" aria-label={t('Edit category {name}', { name: m.name })} onClick={() => setEditing(m)}>
+                      <CategoryIcon icon={m.icon} name={m.name} color={m.color} size="small" /> {m.name}
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-button quiet"
+                      aria-label={t('Add a subcategory to {name}', { name: m.name })}
+                      onClick={() => setEditing({ under: m })}
+                    >
+                      <Plus />
+                    </button>
+                  </div>
+                  {subcategoriesOf(m.id, w.categories).map((c) => (
+                    <div key={c.id} className="category-row sub">
+                      <button type="button" aria-label={t('Edit category {name}', { name: categoryPath(c.id, w.categories) ?? c.name })} onClick={() => setEditing(c)}>
+                        <CategoryIcon icon={c.icon} name={c.name} color={c.color} size="small" /> {c.name}
+                      </button>
+                    </div>
+                  ))}
+                </li>
               ))}
-          </div>
-        </div>
-      ))}
-      {missing.length > 0 && (
-        <div className="stack tight">
-          <span className="muted small">{t('More categories')}</span>
-          <div className="chips">
-            {missing.map((c) => {
-              // A default subcategory goes under the main category the wallet has.
-              const main = c.parent_id != null ? w.category(c.parent_id) : undefined;
-              const name = main ? `${main.name} › ${c.name}` : c.name;
-              return (
-                <button key={`${c.kind}:${c.name}`} type="button" className="chip quiet" aria-label={t('Add category {name}', { name })} onClick={() => add(c)}>
-                  <Plus /> {name}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+            </ul>
+          </section>
+        );
+      })}
+      {suggestions > 0 && (
+        <button type="button" className="card row-link" onClick={() => setMatching(true)}>
+          <span className="stack tight">
+            <strong>{t('Match the new default categories')}</strong>
+            <span className="muted small">{tn(suggestions, '{n} suggestion', '{n} suggestions')}</span>
+          </span>
+          <span aria-hidden="true">›</span>
+        </button>
       )}
       {error && (
         <p role="alert" className="error small">
           {error}
         </p>
       )}
-      </div>
-      {editing && <CategoryForm category={editing === 'new' ? undefined : editing} onClose={() => setEditing(null)} />}
+      {editing && (
+        <CategoryForm
+          category={editing === 'new' || 'under' in editing ? undefined : editing}
+          under={editing !== 'new' && 'under' in editing ? editing.under : undefined}
+          onClose={() => setEditing(null)}
+        />
+      )}
+      {matching && (
+        <DefaultsDialog
+          missing={missing}
+          regroup={regroup}
+          onError={setError}
+          onClose={() => setMatching(false)}
+        />
+      )}
     </>
   );
 }
 
-function CategoryForm({ category, onClose }: { category?: Category; onClose: () => void }) {
+/**
+ * Matching the defaults a new wallet starts with: moving the categories it
+ * keeps under a main category there, and adding the ones this wallet doesn't
+ * have. All ticked to start with; Apply does the ticked ones.
+ */
+function DefaultsDialog({ missing, regroup, onError, onClose }: { missing: Category[]; regroup: Category[]; onError: (e: string) => void; onClose: () => void }) {
   const w = useWallet();
+  const [moves, setMoves] = useState(() => new Set(regroup.map((c) => c.id)));
+  const [adds, setAdds] = useState(() => new Set(missing.map((c) => `${c.kind}:${c.name}`)));
+  const [busy, setBusy] = useState(false);
+  const toggle = <T,>(set: Set<T>, v: T, on: boolean) => {
+    const next = new Set(set);
+    if (on) next.add(v);
+    else next.delete(v);
+    return next;
+  };
+
+  async function apply(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    onError('');
+    try {
+      if (moves.size > 0) await api.regroup([...moves]);
+      for (const c of missing.filter((x) => adds.has(`${x.kind}:${x.name}`))) {
+        await api.createCategory({ name: c.name, kind: c.kind, icon: c.icon, color: c.color, parent_id: c.parent_id ?? null });
+      }
+      await w.refresh();
+      onClose();
+    } catch (err) {
+      onError(errorMessage(err));
+      onClose();
+    }
+  }
+
+  return (
+    <Dialog title={t('Match the new default categories')} onClose={onClose}>
+      <form className="stack" onSubmit={apply}>
+        <p className="small">{t('New wallets start with these. Tick what you want; your other categories stay as they are.')}</p>
+        {regroup.length > 0 && (
+          <fieldset className="stack tight">
+            <legend className="muted small">{t('Group')}</legend>
+            {regroup.map((c) => (
+              <label key={c.id} className="check">
+                <input type="checkbox" checked={moves.has(c.id)} onChange={(e) => setMoves(toggle(moves, c.id, e.target.checked))} />
+                {t('{name} under {main}', { name: c.name, main: w.category(c.parent_id ?? null)?.name ?? '' })}
+              </label>
+            ))}
+            <p className="muted small">{t("A main category's budgets and totals then include its subcategories.")}</p>
+          </fieldset>
+        )}
+        {missing.length > 0 && (
+          <fieldset className="stack tight">
+            <legend className="muted small">{t('Add')}</legend>
+            {missing.map((c) => {
+              const key = `${c.kind}:${c.name}`;
+              // A default subcategory goes under the main category the wallet has.
+              const main = c.parent_id != null ? w.category(c.parent_id) : undefined;
+              return (
+                <label key={key} className="check">
+                  <input type="checkbox" checked={adds.has(key)} onChange={(e) => setAdds(toggle(adds, key, e.target.checked))} />
+                  {main ? `${main.name} › ${c.name}` : c.name}
+                </label>
+              );
+            })}
+          </fieldset>
+        )}
+        <button type="submit" disabled={busy || (moves.size === 0 && adds.size === 0)}>
+          {t('Apply')}
+        </button>
+      </form>
+    </Dialog>
+  );
+}
+
+function CategoryForm({ category, under, onClose }: { category?: Category; under?: Category; onClose: () => void }) {
+  const w = useWallet();
+  // A new subcategory starts with its main category's kind, icon and colour.
   const [name, setName] = useState(category?.name ?? '');
-  const [kind, setKind] = useState(category?.kind ?? 'expense');
-  const [icon, setIcon] = useState(glyphKey(category?.icon) ?? '');
-  const [color, setColor] = useState(category?.color ?? '#66706b');
-  const [parentId, setParentId] = useState<number | null>(category?.parent_id ?? null);
+  const [kind, setKind] = useState(category?.kind ?? under?.kind ?? 'expense');
+  const [icon, setIcon] = useState(glyphKey(category?.icon ?? under?.icon) ?? '');
+  const [color, setColor] = useState(category?.color ?? under?.color ?? '#66706b');
+  const [parentId, setParentId] = useState<number | null>(category?.parent_id ?? under?.id ?? null);
   const [error, setError] = useState('');
   // One with subcategories stays a main category; the others can go under one of their kind.
   const hasSubs = category ? subcategoriesOf(category.id, w.categories).length > 0 : false;

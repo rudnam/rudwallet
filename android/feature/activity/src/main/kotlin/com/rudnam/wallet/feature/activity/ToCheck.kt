@@ -18,8 +18,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -51,8 +49,10 @@ import com.rudnam.wallet.core.designsystem.icon.LineIcon
 import com.rudnam.wallet.core.designsystem.icon.WalletIcons
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
 import com.rudnam.wallet.core.designsystem.theme.figures
+import com.rudnam.wallet.core.model.CategoryKind
 import com.rudnam.wallet.core.model.TransactionKind
 import com.rudnam.wallet.core.ui.CategoryIcon
+import com.rudnam.wallet.core.ui.CategoryPickerSheet
 import com.rudnam.wallet.core.ui.MoneyFormat
 import java.time.Instant
 
@@ -213,26 +213,21 @@ private fun CategoryPicker(item: ReviewItem, state: ActivityUiState.Ready, actio
     val category = state.wallet.category(item.categoryId)
     val label = if (category == null) stringResource(R.string.feature_activity_choose_category)
     else stringResource(R.string.feature_activity_change_category, category.name)
-    Box {
-        Box(
-            Modifier.size(48.dp).clip(MaterialTheme.shapes.small)
-                .clickable(role = Role.Button) { open = true }
-                .semantics { contentDescription = label },
-            contentAlignment = Alignment.Center,
-        ) { CategoryIcon(category, waiting = category == null) }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            for (c in state.wallet.categoriesInOrder().filter { it.kind.apiName == t.kind.apiName }) {
-                // Subcategories sit indented under their main category.
-                DropdownMenuItem(
-                    text = { Text(c.name) },
-                    leadingIcon = { CategoryIcon(c, Modifier.padding(start = if (state.wallet.isSubcategory(c)) 20.dp else 0.dp)) },
-                    onClick = {
-                        open = false
-                        actions.pickCategory(t.id, c.id)
-                    },
-                )
-            }
-        }
+    Box(
+        Modifier.size(48.dp).clip(MaterialTheme.shapes.small)
+            .clickable(role = Role.Button) { open = true }
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) { CategoryIcon(category, waiting = category == null) }
+    if (open) {
+        CategoryPickerSheet(
+            wallet = state.wallet,
+            kind = CategoryKind.entries.firstOrNull { it.apiName == t.kind.apiName },
+            selectedId = item.categoryId,
+            onPick = { actions.pickCategory(t.id, it.id) },
+            onDismiss = { open = false },
+            title = stringResource(R.string.feature_activity_category_for, t.payee.ifEmpty { stringResource(R.string.feature_activity_payment) }),
+        )
     }
 }
 
