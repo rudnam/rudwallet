@@ -74,9 +74,10 @@ func (s *Store) Restore(ctx context.Context, userID int64, ids []int64) (int, er
 		OVERRIDING SYSTEM VALUE
 		SELECT d.id, d.user_id, d.kind, d.amount, d.account_id, d.to_account_id, d.category_id,
 			d.occurred_at, d.payee, d.note, d.status, d.source, d.source_label,
-			(SELECT t.id FROM transactions t WHERE t.user_id = $1 AND t.id = d.duplicate_of_id), d.import_key, d.created_at, d.tags
+			CASE WHEN NOT d.set_aside THEN (SELECT t.id FROM transactions t WHERE t.user_id = $1 AND t.id = d.duplicate_of_id) END,
+			d.import_key, d.created_at, d.tags
 		FROM deleted_transactions d
-		WHERE d.user_id = $1 AND d.id = ANY($2::bigint[]) AND d.deleted_at >= now() - interval '`+trashKeep+`'
+		WHERE d.user_id = $1 AND d.id = ANY($2::bigint[]) AND `+kept+`
 		ON CONFLICT DO NOTHING
 		RETURNING id`,
 		userID, pq.Array(ids))
