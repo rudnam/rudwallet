@@ -578,7 +578,9 @@ li.record:hover:not(:disabled) { background: none; } /* a row to read, not to ta
 }
 .dialog[open] { animation: pop 0.32s cubic-bezier(0.32, 0.72, 0, 1); }
 .dialog-grab { display: none; }
-.dialog::backdrop { background: rgb(20 18 15 / 0.45); backdrop-filter: blur(2px); }
+/* No blur: blurring the whole page behind a dialog redraws it on every change
+   inside, which made forms drop to about 20 frames a second on a PC. */
+.dialog::backdrop { background: rgb(20 18 15 / 0.5); }
 @keyframes pop { from { opacity: 0; transform: translateY(12px) scale(0.98); } }
 @media (max-width: 560px) {
   .dialog {
