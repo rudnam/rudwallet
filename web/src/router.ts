@@ -95,11 +95,12 @@ function shrinkCard(main: HTMLElement, id: string, from: DOMRect | undefined): b
   if (!to.width || !to.height) return false;
   const dx = from.left - to.left;
   const dy = from.top - to.top;
-  // Above the cards stacked over it until it has landed.
+  // On its own layer throughout, so it slides under the cards stacked over it as they
+  // fade in, rather than landing on top of them and then dropping behind.
   card.animate(
     [
-      { zIndex: 1000, transformOrigin: 'top left', transform: `translate(${dx}px, ${dy}px) scale(${from.width / to.width}, ${from.height / to.height})` },
-      { zIndex: 1000, transformOrigin: 'top left', transform: 'none' },
+      { transformOrigin: 'top left', transform: `translate(${dx}px, ${dy}px) scale(${from.width / to.width}, ${from.height / to.height})` },
+      { transformOrigin: 'top left', transform: 'none' },
     ],
     { duration: 240, easing: ease },
   );
