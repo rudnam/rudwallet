@@ -126,6 +126,11 @@ fun RudWalletApp(
                     exitTransition = { exit() },
                     popEnterTransition = { popEnter() },
                     popExitTransition = { popExit() },
+                    // The back gesture plays the same ones as it's dragged. Left out, Navigation
+                    // (2.10) uses its own: the closing page shrinks to 70% as it fades, all of it
+                    // around an account's card as the card shrinks back into Wallet.
+                    predictivePopEnterTransition = { popEnter() },
+                    predictivePopExitTransition = { popExit() },
                 ) {
                     walletScreen(
                         navigation = object : WalletNavigation {
