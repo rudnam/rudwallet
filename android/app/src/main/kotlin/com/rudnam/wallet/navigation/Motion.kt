@@ -3,6 +3,8 @@ package com.rudnam.wallet.navigation
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -11,90 +13,98 @@ import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hasRoute
 import com.rudnam.wallet.core.designsystem.theme.WalletMotion
 import com.rudnam.wallet.feature.account.navigation.AccountRoute
-import com.rudnam.wallet.feature.signin.navigation.SignInRoute
 import com.rudnam.wallet.feature.wallet.navigation.WalletRoute
 
-// How pages change. The pages are sheets of paper on a stack, and they move on springs:
+// How pages change. One thing moves at a time, and not far, so going around the app is calm:
 //
-// - A page opened on top of another slides in over it from the right, at full width; the one
-//   under it drifts back a little the other way and dims, as if it went into shade. Closing
-//   it does the reverse. The back gesture plays the closing one under your finger
-//   (predictive back), so the page you drag shows the one under it coming out of the shade.
-// - Between the tabs, the pages lie side by side in the tab bar's order: the new one slides in
-//   from the side its tab is on, pushing the old one out the other way.
-// - An account's page opens around its card, which grows out of Wallet (SharedElements.kt):
-//   the page fades in over Wallet rather than sliding, so the card is what moves.
-// - The sign-in page and the app fade into each other.
+// - A page opened on top of another comes in over it: it slides a short way in from the right
+//   as it fades in, and the page underneath stays where it is. Closing it, it slides the same
+//   short way back and fades, uncovering the page underneath, still where it was. The back
+//   gesture plays the closing under your finger (predictive back), only that short way.
+//   It goes the way the finger does: swiped from the right edge, it slides to the left.
+// - Between the tabs, the old one fades quickly and the new one fades in. Tabs aren't places
+//   side by side, so nothing slides.
+// - An account's page opens around its card, which grows out of Wallet (core/ui's
+//   SharedElements.kt): the page only fades, so the card is what moves.
 //
-// The dimming is the page under fading partly out over the black that the NavHost draws
-// behind all the pages (RudWalletApp.kt). Each page draws its own ground (core/ui's Page), so
-// in every other case that black is covered.
+// Every page draws its own ground (core/ui's Page), so a page fading in over another covers it.
 
-/** How far the page underneath drifts back, as a share of the screen's width. */
-private const val DRIFT = 0.3f
+/** How far a page slides, as a share of the screen's width. */
+private const val SLIDE_SHARE = 6
 
-/** How much of the page underneath still shows through the shade. */
-private const val SHADE = 0.75f
+/** How quickly the old tab fades, and then the new one comes in. */
+private const val TAB_OUT = 90
+private const val TAB_IN = 210
 
-private fun NavBackStackEntry.tab(): Int = TopLevelDestination.entries.indexOfFirst { destination.hasRoute(it.route::class) }
+private fun NavBackStackEntry.isTab() = TopLevelDestination.entries.any { destination.hasRoute(it.route::class) }
 
 private fun NavBackStackEntry.isAccount() = destination.hasRoute(AccountRoute::class)
 
 private fun NavBackStackEntry.isWallet() = destination.hasRoute(WalletRoute::class)
 
-private fun NavBackStackEntry.isSignIn() = destination.hasRoute(SignInRoute::class)
-
-private enum class Kind { Tabs, Stack, OverCard, Fade }
+private enum class Kind { Tabs, Stack, OverCard }
 
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.kind(): Kind = when {
-    initialState.isSignIn() || targetState.isSignIn() -> Kind.Fade
     (initialState.isWallet() && targetState.isAccount()) || (initialState.isAccount() && targetState.isWallet()) -> Kind.OverCard
-    initialState.tab() >= 0 && targetState.tab() >= 0 -> Kind.Tabs
+    initialState.isTab() && targetState.isTab() -> Kind.Tabs
     else -> Kind.Stack
 }
 
-/** Between tabs: true when the new tab is to the right of the old one. */
-private fun AnimatedContentTransitionScope<NavBackStackEntry>.toTheRight() = targetState.tab() > initialState.tab()
+// A page on top, coming in over the one underneath and going away from it.
+private val coverIn =
+    slideInHorizontally(WalletMotion.pageSpring()) { it / SLIDE_SHARE } + fadeIn(WalletMotion.pageSpring())
+private val coverOut =
+    slideOutHorizontally(WalletMotion.pageSpring()) { it / SLIDE_SHARE } + fadeOut(WalletMotion.pageSpring())
 
-private fun drift(width: Int) = (width * DRIFT).toInt()
+// Under the back gesture, the transition follows the finger: how far it's dragged is how far
+// along the transition is. So there it runs evenly (a spring, or an easing, would play most of
+// it in the first part of the drag), and the page goes the way the finger does.
+private const val DRAGGED = 300
 
-// A page on top, sliding over the one underneath.
-private val coverIn = slideInHorizontally(WalletMotion.pageSpring()) { it }
-private val coverOut = slideOutHorizontally(WalletMotion.pageSpring()) { it }
+private fun <T> dragged() = tween<T>(DRAGGED, easing = LinearEasing)
 
-// The page underneath, drifting back into the shade and out of it.
-private val shadeOut = slideOutHorizontally(WalletMotion.pageSpring()) { -drift(it) } + fadeOut(WalletMotion.pageSpring(), targetAlpha = SHADE)
-private val shadeIn = slideInHorizontally(WalletMotion.pageSpring()) { -drift(it) } + fadeIn(WalletMotion.pageSpring(), initialAlpha = SHADE)
+private fun coverDragged(toLeft: Boolean) =
+    slideOutHorizontally(dragged()) { (if (toLeft) -it else it) / SLIDE_SHARE } + fadeOut(dragged())
 
-// Tabs, side by side.
-private fun tabIn(fromRight: Boolean) = slideInHorizontally(WalletMotion.pageSpring()) { if (fromRight) it else -it }
-private fun tabOut(toLeft: Boolean) = slideOutHorizontally(WalletMotion.pageSpring()) { if (toLeft) -it else it }
+private val fadeDragged = fadeOut(dragged())
 
-// One page fading in over another, which stays as it is until it's covered (and the
-// reverse: the page on top fading away from the one underneath).
+// An account's page, around its card.
 private val fadeOver = fadeIn(WalletMotion.fadeIn())
 private val fadeAway = fadeOut(WalletMotion.fadeOut())
 
+private val tabIn = fadeIn(tween(TAB_IN, delayMillis = TAB_OUT, easing = WalletMotion.EmphasizedDecelerate))
+private val tabOut = fadeOut(tween(TAB_OUT, easing = WalletMotion.EmphasizedAccelerate))
+
 internal fun AnimatedContentTransitionScope<NavBackStackEntry>.enter(): EnterTransition = when (kind()) {
-    Kind.Tabs -> tabIn(fromRight = toTheRight())
+    Kind.Tabs -> tabIn
     Kind.Stack -> coverIn
-    Kind.OverCard, Kind.Fade -> fadeOver
+    Kind.OverCard -> fadeOver
 }
 
+// The page underneath stays as it is, under the one coming in, till that one has covered it.
 internal fun AnimatedContentTransitionScope<NavBackStackEntry>.exit(): ExitTransition = when (kind()) {
-    Kind.Tabs -> tabOut(toLeft = toTheRight())
-    Kind.Stack -> shadeOut
-    Kind.OverCard, Kind.Fade -> ExitTransition.KeepUntilTransitionsFinished
+    Kind.Tabs -> tabOut
+    Kind.Stack, Kind.OverCard -> ExitTransition.KeepUntilTransitionsFinished
 }
 
+// The page underneath is already in place as the one above goes.
 internal fun AnimatedContentTransitionScope<NavBackStackEntry>.popEnter(): EnterTransition = when (kind()) {
-    Kind.Tabs -> tabIn(fromRight = toTheRight())
-    Kind.Stack -> shadeIn
-    Kind.OverCard, Kind.Fade -> EnterTransition.None
+    Kind.Tabs -> tabIn
+    Kind.Stack, Kind.OverCard -> EnterTransition.None
 }
 
 internal fun AnimatedContentTransitionScope<NavBackStackEntry>.popExit(): ExitTransition = when (kind()) {
-    Kind.Tabs -> tabOut(toLeft = toTheRight())
+    Kind.Tabs -> tabOut
     Kind.Stack -> coverOut
-    Kind.OverCard, Kind.Fade -> fadeAway
+    Kind.OverCard -> fadeAway
+}
+
+/** Navigation's swipe edge for a back gesture from the right edge of the screen. */
+private const val EDGE_RIGHT = 1
+
+/** [popExit] under the back gesture, [swipeEdge] the edge it started from. */
+internal fun AnimatedContentTransitionScope<NavBackStackEntry>.predictivePopExit(swipeEdge: Int): ExitTransition = when (kind()) {
+    Kind.Tabs -> tabOut
+    Kind.Stack -> coverDragged(toLeft = swipeEdge == EDGE_RIGHT)
+    Kind.OverCard -> fadeDragged
 }
