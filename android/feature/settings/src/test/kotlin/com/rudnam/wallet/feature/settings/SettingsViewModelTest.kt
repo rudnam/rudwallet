@@ -131,4 +131,14 @@ class SettingsViewModelTest {
         assertEquals(ChangeMessage.Offline, vm.messages.value.last())
         assertTrue(vm.editor.value != null) // kept, to try again
     }
+
+    @Test
+    fun `an old wallet's categories group like a new one's with a tap`() = runTest {
+        settings.regroupOffer = listOf(SampleWallet.wallet.category(11)!!.copy(parentId = 10))
+        val vm = CategoriesViewModel(wallet, settings)
+        assertEquals(listOf(11L), vm.regroup.first { it.isNotEmpty() }.map { it.id })
+        vm.regroup()
+        assertEquals(listOf(listOf(11L)), settings.regrouped)
+        assertEquals(ChangeMessage.Saved, vm.messages.value.last())
+    }
 }

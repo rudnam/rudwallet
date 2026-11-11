@@ -209,6 +209,10 @@ data class NetworkCategoryInput(
     @SerialName("parent_id") val parentId: JsonElement,
 )
 
+/** The categories to group as new wallets have them (GET api/categories/regroup). */
+@Serializable
+data class NetworkRegroupInput(val ids: List<Long>)
+
 /** A new budget, or a budget's new name, category or limit. */
 @Serializable
 data class NetworkBudgetInput(

@@ -491,11 +491,23 @@ function Categories() {
   const w = useWallet();
   const [editing, setEditing] = useState<Category | 'new' | null>(null);
   const [missing, setMissing] = useState<Category[]>([]);
+  const [regroup, setRegroup] = useState<Category[]>([]);
   const [error, setError] = useState('');
-  const names = w.categories.map((c) => `${c.kind}:${c.name}`).join('|');
+  const names = w.categories.map((c) => `${c.kind}:${c.name}:${c.parent_id ?? ''}`).join('|');
   useEffect(() => {
     api.missingCategories().then(setMissing, () => setMissing([]));
+    api.regroupOffer().then(setRegroup, () => setRegroup([]));
   }, [names]);
+
+  async function group() {
+    setError('');
+    try {
+      await api.regroup(regroup.map((c) => c.id));
+      await w.refresh();
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
 
   async function add(c: Category) {
     setError('');
@@ -517,6 +529,24 @@ function Categories() {
       >
         {t('What you spend on and earn from. Tap one to rename it or change its icon.')}
       </Intro>
+      {regroup.length > 0 && (
+        // A wallet from before the defaults had subcategories: offer to group them like a new one's.
+        <section className="card stack tight" aria-label={t('Group your categories')}>
+          <strong>{t('Group your categories')}</strong>
+          <p className="small">{t('New wallets keep these under a main category. Put yours there too?')}</p>
+          <ul className="small regroup">
+            {regroup.map((c) => (
+              <li key={c.id}>{t('{name} under {main}', { name: c.name, main: w.category(c.parent_id!)?.name ?? '' })}</li>
+            ))}
+          </ul>
+          <p className="muted small">{t("A main category's budgets and totals then include its subcategories.")}</p>
+          <div>
+            <button type="button" onClick={group}>
+              {t('Group them')}
+            </button>
+          </div>
+        </section>
+      )}
       <div className="card stack">
       {(['expense', 'income'] as const).map((kind) => (
         <div key={kind} className="stack tight">

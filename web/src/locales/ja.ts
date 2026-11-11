@@ -510,6 +510,11 @@ export const ja = {
   'Add category': 'カテゴリを追加',
   'More categories': 'ほかのカテゴリ',
   'Add category {name}': 'カテゴリ「{name}」を追加',
+  'Group your categories': 'カテゴリをまとめる',
+  'New wallets keep these under a main category. Put yours there too?': '新しく始めたウォレットでは、これらはメインカテゴリの下にあります。同じようにまとめますか?',
+  '{name} under {main}': '{name} → {main}の下へ',
+  "A main category's budgets and totals then include its subcategories.": 'メインカテゴリの予算と集計に、サブカテゴリの分も含まれるようになります。',
+  'Group them': 'まとめる',
   'What you spend on and earn from. Tap one to rename it or change its icon.': '支出と収入の分類です。タップすると名前やアイコンを変更できます。',
   'Edit category {name}': 'カテゴリ「{name}」を編集',
   'Delete "{name}"? Its records become uncategorised, and its budgets and the shops filed under it are forgotten.':

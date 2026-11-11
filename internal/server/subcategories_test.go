@@ -156,3 +156,60 @@ func TestRecordsWithSubcategories(t *testing.T) {
 		}
 	}
 }
+
+// A wallet from before the defaults had subcategories is offered to group
+// them like a new wallet's, and only the moves it agrees to are made.
+func TestRegroup(t *testing.T) {
+	ts := newTestServer(t)
+	c, bob := newClient(t, ts), newClient(t, ts)
+	c.signup("a@example.com")
+	bob.signup("b@example.com")
+	o := overview(t, c)
+	food, housing := categoryID(t, o, "Food & Drinks"), categoryID(t, o, "Housing")
+	groceries, bills := categoryID(t, o, "Groceries"), categoryID(t, o, "Bills & Utilities")
+	offer := func(cl *client) map[int64]int64 {
+		t.Helper()
+		var cats []wallet.Category
+		if code := cl.do("GET", "/api/categories/regroup", nil, &cats); code != 200 {
+			t.Fatalf("offer: %d", code)
+		}
+		out := map[int64]int64{}
+		for _, cat := range cats {
+			out[cat.ID] = *cat.ParentID
+		}
+		return out
+	}
+	if got := offer(c); len(got) != 0 {
+		t.Errorf("a new wallet is offered %v", got)
+	}
+	// As an old wallet has them: main categories.
+	for _, cat := range o.Categories {
+		if cat.ID == groceries || cat.ID == bills {
+			if code := c.do("PUT", fmt.Sprintf("/api/categories/%d", cat.ID), map[string]any{"name": cat.Name, "kind": cat.Kind, "parent_id": nil}, nil); code != 200 {
+				t.Fatalf("flatten %s: %d", cat.Name, code)
+			}
+		}
+	}
+	if got, want := offer(c), map[int64]int64{groceries: food, bills: housing}; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("offer %v, want %v", got, want)
+	}
+
+	// Bob can't move Alice's categories.
+	var moved []wallet.Category
+	if code := bob.do("POST", "/api/categories/regroup", map[string]any{"ids": []int64{groceries}}, &moved); code != 200 || len(moved) != 0 {
+		t.Errorf("another user's: %d %+v", code, moved)
+	}
+	// Only Groceries, and Food & Drinks, which isn't offered, stays put.
+	if code := c.do("POST", "/api/categories/regroup", map[string]any{"ids": []int64{groceries, food}}, &moved); code != 200 ||
+		len(moved) != 1 || moved[0].ID != groceries || *moved[0].ParentID != food {
+		t.Fatalf("regroup: %d %+v", code, moved)
+	}
+	for _, cat := range overview(t, c).Categories {
+		if cat.ID == groceries && (cat.ParentID == nil || *cat.ParentID != food) {
+			t.Errorf("after regrouping: %+v", cat)
+		}
+	}
+	if got, want := offer(c), map[int64]int64{bills: housing}; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("offer afterwards %v, want %v", got, want)
+	}
+}

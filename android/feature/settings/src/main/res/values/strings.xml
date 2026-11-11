@@ -60,6 +60,11 @@
     <string name="feature_settings_edit_category_named">Edit category %s</string>
     <string name="feature_settings_more_categories">More categories</string>
     <string name="feature_settings_add_category_named">Add category %s</string>
+    <string name="feature_settings_regroup_title">Group your categories</string>
+    <string name="feature_settings_regroup_intro">New wallets keep these under a main category. Put yours there too?</string>
+    <string name="feature_settings_regroup_move">%1$s under %2$s</string>
+    <string name="feature_settings_regroup_note">A main category’s budgets and totals then include its subcategories.</string>
+    <string name="feature_settings_regroup">Group them</string>
     <string name="feature_settings_edit_category">Edit category</string>
     <string name="feature_settings_new_category">New category</string>
     <string name="feature_settings_expense">Expense</string>

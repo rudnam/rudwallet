@@ -22,6 +22,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -87,16 +88,24 @@ private val glyphNames = mapOf(
 internal fun CategoriesDestination(navigation: SettingsNavigation, snackbar: SnackbarHostState, viewModel: CategoriesViewModel = hiltViewModel()) {
     val wallet by viewModel.wallet.collectAsStateWithLifecycle()
     val missing by viewModel.missing.collectAsStateWithLifecycle()
+    val regroup by viewModel.regroup.collectAsStateWithLifecycle()
     val editor by viewModel.editor.collectAsStateWithLifecycle()
     val messages by viewModel.messages.collectAsStateWithLifecycle()
     ChangeMessages(messages, viewModel::messageShown, snackbar)
-    CategoriesScreen(wallet, missing, editor, viewModel, navigation)
+    CategoriesScreen(wallet, missing, editor, viewModel, navigation, regroup)
 }
 
 /** What the money is spent on and earned from: chips by kind, and the defaults not added yet. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun CategoriesScreen(wallet: Wallet?, missing: List<Category>, editor: CategoryEditor?, actions: CategoriesActions, navigation: SettingsNavigation) {
+internal fun CategoriesScreen(
+    wallet: Wallet?,
+    missing: List<Category>,
+    editor: CategoryEditor?,
+    actions: CategoriesActions,
+    navigation: SettingsNavigation,
+    regroup: List<Category> = emptyList(),
+) {
     SettingsPage(
         stringResource(R.string.feature_settings_categories),
         navigation,
@@ -113,6 +122,7 @@ internal fun CategoriesScreen(wallet: Wallet?, missing: List<Category>, editor: 
         },
     ) {
         item { Intro(stringResource(R.string.feature_settings_categories_intro)) }
+        if (wallet != null && regroup.isNotEmpty()) item { RegroupOffer(wallet, regroup, actions) }
         if (wallet != null) {
             item {
                 WalletPanel(Modifier.fillMaxWidth()) {
@@ -147,6 +157,26 @@ internal fun CategoriesScreen(wallet: Wallet?, missing: List<Category>, editor: 
         }
     }
     if (editor != null) CategorySheet(editor, wallet, actions)
+}
+
+/** A wallet from before the defaults had subcategories: offers to group them as a new wallet has them. */
+@Composable
+private fun RegroupOffer(wallet: Wallet, regroup: List<Category>, actions: CategoriesActions) {
+    val colors = WalletTheme.colors
+    WalletPanel(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.feature_settings_regroup_title), style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() })
+            Text(stringResource(R.string.feature_settings_regroup_intro), style = MaterialTheme.typography.bodyMedium)
+            for (c in regroup) {
+                Text(
+                    stringResource(R.string.feature_settings_regroup_move, c.name, wallet.category(c.parentId)?.name.orEmpty()),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+            Text(stringResource(R.string.feature_settings_regroup_note), style = MaterialTheme.typography.bodySmall, color = colors.muted)
+            FilledTonalButton(onClick = actions::regroup) { Text(stringResource(R.string.feature_settings_regroup)) }
+        }
+    }
 }
 
 /**

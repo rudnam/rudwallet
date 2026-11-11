@@ -59,6 +59,11 @@
     <string name="feature_settings_edit_category_named">カテゴリ「%s」を編集</string>
     <string name="feature_settings_more_categories">ほかのカテゴリ</string>
     <string name="feature_settings_add_category_named">カテゴリ「%s」を追加</string>
+    <string name="feature_settings_regroup_title">カテゴリをまとめる</string>
+    <string name="feature_settings_regroup_intro">新しく始めたウォレットでは、これらはメインカテゴリの下にあります。同じようにまとめますか?</string>
+    <string name="feature_settings_regroup_move">%1$s → %2$sの下へ</string>
+    <string name="feature_settings_regroup_note">メインカテゴリの予算と集計に、サブカテゴリの分も含まれるようになります。</string>
+    <string name="feature_settings_regroup">まとめる</string>
     <string name="feature_settings_edit_category">カテゴリを編集</string>
     <string name="feature_settings_new_category">新しいカテゴリ</string>
     <string name="feature_settings_expense">支出</string>

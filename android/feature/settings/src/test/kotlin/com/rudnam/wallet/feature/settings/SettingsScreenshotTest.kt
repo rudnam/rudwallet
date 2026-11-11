@@ -63,6 +63,7 @@ class SettingsScreenshotTest {
         override fun createUnder(parent: Category) {}
         override fun edit(category: Category) {}
         override fun addMissing(category: Category) {}
+        override fun regroup() {}
         override fun setName(name: String) {}
         override fun setKind(kind: CategoryKind) {}
         override fun setParent(parentId: Long?) {}
@@ -106,6 +107,12 @@ class SettingsScreenshotTest {
     @Test
     fun categoryList() = shot("categories") {
         CategoriesScreen(SampleWallet.wallet, listOf(Category(0, "Pets", CategoryKind.Expense, "pet", "#8a6d3b")), null, categories, navigation)
+    }
+
+    /** An old wallet: Groceries beside Food & Drinks, offered to go under it. */
+    @Test
+    fun regroupOffer() = shot("categories-regroup") {
+        CategoriesScreen(SampleWallet.wallet, emptyList(), null, categories, navigation, regroup = listOf(SampleWallet.wallet.category(11)!!.copy(parentId = 10)))
     }
 
     /** Food & Drinks with Cafés and Lunch under it; the rest main categories. */

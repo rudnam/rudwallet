@@ -62,3 +62,23 @@ test('a subcategory is made in Settings, picked under its main category, and cou
   await page.goto(`/app/#/records?category=${foodId}`);
   await expect(page.getByRole('button', { name: /Doutor, −¥600/ })).toBeVisible();
 });
+
+// A wallet from before the defaults had subcategories is offered to group
+// them like a new one's.
+test('an old wallet groups its categories like a new one', async ({ page }) => {
+  await signUp(page);
+  // As an old wallet has them: Groceries and Bills & Utilities as main categories.
+  const { categories } = await (await page.request.get('/api/wallet')).json();
+  for (const name of ['Groceries', 'Bills & Utilities']) {
+    const c = categories.find((x) => x.name === name);
+    expect((await page.request.put(`/api/categories/${c.id}`, { data: { name: c.name, kind: c.kind, icon: c.icon, color: c.color, parent_id: null } })).status()).toBe(200);
+  }
+  await page.goto('/app/#/settings?section=categories');
+  const offer = page.getByRole('region', { name: 'Group your categories' });
+  await expect(offer.getByRole('listitem')).toHaveText(['Groceries under Food & Drinks', 'Bills & Utilities under Housing']);
+  await page.screenshot({ path: test.info().outputPath('regroup-offer.png'), fullPage: true });
+  await offer.getByRole('button', { name: 'Group them' }).click();
+  await expect(offer).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Edit category Food & Drinks › Groceries' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Edit category Housing › Bills & Utilities' })).toBeVisible();
+});

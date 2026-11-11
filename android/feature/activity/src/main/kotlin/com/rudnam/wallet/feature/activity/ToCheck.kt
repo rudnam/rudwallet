@@ -21,8 +21,6 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -41,6 +39,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -139,10 +139,10 @@ private fun ReviewRow(
             },
         ) {
             Row(
-                Modifier.fillMaxWidth().background(colors.surface).padding(horizontal = 16.dp, vertical = 12.dp),
+                Modifier.fillMaxWidth().background(colors.surface).padding(start = 12.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                CategoryIcon(state.wallet.category(item.categoryId), waiting = item.categoryId == null)
+                CategoryPicker(item, state, actions)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
                         title,
@@ -151,7 +151,15 @@ private fun ReviewRow(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Text(format.dateTime(t.occurredAt, today, yesterday, now), style = MaterialTheme.typography.bodySmall, color = colors.muted)
+                    // The category the tile picks, by name; until there is one, that it's wanted.
+                    val category = state.wallet.category(item.categoryId)?.name
+                    Text(
+                        listOf(category ?: stringResource(R.string.feature_activity_no_category), format.dateTime(t.occurredAt, today, yesterday, now)).joinToString(" · "),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (category == null) colors.attention else colors.muted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
@@ -167,23 +175,21 @@ private fun ReviewRow(
                 }
             }
         }
-        // The category and Confirm on a line of their own, so neither is squeezed by the amount.
+        // Confirm on a line of its own, so it isn't squeezed by the amount.
         Row(
-            Modifier.fillMaxWidth().padding(start = 68.dp, end = 16.dp, bottom = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            Modifier.fillMaxWidth().padding(start = 72.dp, end = 16.dp, bottom = 12.dp),
+            horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            CategoryPicker(item, state, actions)
-            Spacer(Modifier.weight(1f))
             FilledTonalButton(
                 onClick = { if (t.amount > 0) actions.confirm(item) else navigation.openRecord(t) },
                 enabled = !state.busy && item.record.duplicateOfId == null && item.categoryId != null,
             ) { Text(stringResource(R.string.feature_activity_confirm), maxLines = 1) }
         }
-        if (t.note.isNotEmpty()) Text(t.note, Modifier.padding(start = 68.dp, end = 16.dp, bottom = 8.dp), style = MaterialTheme.typography.bodySmall, color = colors.muted)
+        if (t.note.isNotEmpty()) Text(t.note, Modifier.padding(start = 72.dp, end = 16.dp, bottom = 8.dp), style = MaterialTheme.typography.bodySmall, color = colors.muted)
         if (t.duplicateOfId != null) Duplicate(item, state, format, actions)
         if (item.overriding) {
-            Row(Modifier.padding(start = 56.dp, end = 16.dp, bottom = 8.dp).clickable { actions.setRemember(t.id, !item.remember) }, verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.padding(start = 60.dp, end = 16.dp, bottom = 8.dp).clickable { actions.setRemember(t.id, !item.remember) }, verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = item.remember, onCheckedChange = { actions.setRemember(t.id, it) })
                 Text(
                     stringResource(
@@ -199,23 +205,21 @@ private fun ReviewRow(
     }
 }
 
+/** The card's category tile, which picks the category: a dashed question mark until there is one. */
 @Composable
 private fun CategoryPicker(item: ReviewItem, state: ActivityUiState.Ready, actions: ActivityActions) {
     var open by rememberSaveable { mutableStateOf(false) }
     val t = item.record
-    val name = state.wallet.category(item.categoryId)?.name
+    val category = state.wallet.category(item.categoryId)
+    val label = if (category == null) stringResource(R.string.feature_activity_choose_category)
+    else stringResource(R.string.feature_activity_change_category, category.name)
     Box {
-        FilterChip(
-            selected = name != null,
-            onClick = { open = true },
-            label = { Text(name ?: stringResource(R.string.feature_activity_category), maxLines = 1) },
-            trailingIcon = { LineIcon(WalletIcons.expand, contentDescription = null, size = 16.dp) },
-            colors = if (name == null) {
-                FilterChipDefaults.filterChipColors(labelColor = WalletTheme.colors.attention)
-            } else {
-                FilterChipDefaults.filterChipColors()
-            },
-        )
+        Box(
+            Modifier.size(48.dp).clip(MaterialTheme.shapes.small)
+                .clickable(role = Role.Button) { open = true }
+                .semantics { contentDescription = label },
+            contentAlignment = Alignment.Center,
+        ) { CategoryIcon(category, waiting = category == null) }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             for (c in state.wallet.categoriesInOrder().filter { it.kind.apiName == t.kind.apiName }) {
                 // Subcategories sit indented under their main category.

@@ -844,6 +844,7 @@ button.chip.on { background: var(--accent-soft); border-color: var(--accent); fo
 .chip.quiet { border-style: dashed; color: var(--muted); background: transparent; }
 .chip.subcategory { padding-left: 10px; background: var(--sunken); border-color: transparent; }
 .chip.subcategory::before { content: '\21b3'; color: var(--muted); margin-right: 4px; }
+.regroup { margin: 0; padding-left: 20px; }
 .chip.quiet svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; }
 .chip.quiet:hover { color: var(--text); border-color: var(--accent); }
 .icon-pick label, .chip-pick label { position: relative; }

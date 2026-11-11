@@ -159,7 +159,14 @@ func rowsChanged(res sql.Result, err error) error {
 // Categories lists the user's categories, main ones and subcategories
 // alike (a subcategory has a ParentID).
 func (s *Store) Categories(ctx context.Context, userID int64) ([]Category, error) {
-	rows, err := s.db.QueryContext(ctx,
+	return categoriesOf(ctx, s.db, userID)
+}
+
+// categoriesOf is Categories, in a transaction or not.
+func categoriesOf(ctx context.Context, q interface {
+	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
+}, userID int64) ([]Category, error) {
+	rows, err := q.QueryContext(ctx,
 		`SELECT `+categoryColumns+` FROM categories WHERE user_id = $1 ORDER BY kind, id`, userID)
 	if err != nil {
 		return nil, err

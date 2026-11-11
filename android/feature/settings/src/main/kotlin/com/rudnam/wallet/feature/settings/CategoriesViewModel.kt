@@ -48,6 +48,8 @@ interface CategoriesActions {
     fun edit(category: Category)
     /** Adds one of the default categories the user doesn't have. */
     fun addMissing(category: Category)
+    /** Puts the offered categories under their main category, as new wallets have them. */
+    fun regroup()
     fun setName(name: String)
     fun setKind(kind: CategoryKind)
     /** Puts the category under a main category, or with null makes it a main one. */
@@ -71,6 +73,10 @@ class CategoriesViewModel @Inject constructor(
     private val _missing = MutableStateFlow<List<Category>>(emptyList())
     val missing: StateFlow<List<Category>> = _missing.asStateFlow()
 
+    /** The user's categories that new wallets have under a main category, each with the parentId it would get. */
+    private val _regroup = MutableStateFlow<List<Category>>(emptyList())
+    val regroup: StateFlow<List<Category>> = _regroup.asStateFlow()
+
     private val _editor = MutableStateFlow<CategoryEditor?>(null)
     val editor: StateFlow<CategoryEditor?> = _editor.asStateFlow()
 
@@ -78,10 +84,11 @@ class CategoriesViewModel @Inject constructor(
     val messages: StateFlow<List<ChangeMessage>> = _messages.asStateFlow()
 
     init {
-        // Asked again whenever the categories change: one added or deleted changes what's missing.
+        // Asked again whenever the categories change: one added, deleted or moved changes what's offered.
         viewModelScope.launch {
-            wallet.wallet.filterNotNull().map { w -> w.categories.map { it.kind to it.name } }.distinctUntilChanged().collect {
+            wallet.wallet.filterNotNull().map { w -> w.categories.map { Triple(it.kind, it.name, it.parentId) } }.distinctUntilChanged().collect {
                 _missing.value = settings.missingCategories()
+                _regroup.value = settings.regroupOffer()
             }
         }
     }
@@ -110,6 +117,12 @@ class CategoriesViewModel @Inject constructor(
             val result = settings.saveCategory(null, CategoryInput(category.name, category.kind, category.icon, category.color, category.parentId))
             report(result, ChangeMessage.Added(category.name))
         }
+    }
+
+    override fun regroup() {
+        val ids = _regroup.value.map { it.id }
+        if (ids.isEmpty()) return
+        viewModelScope.launch { report(settings.regroup(ids), ChangeMessage.Saved) }
     }
 
     override fun setName(name: String) = _editor.update { it?.copy(name = name.take(60), noName = false, refused = null) }
