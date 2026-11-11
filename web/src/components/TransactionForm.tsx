@@ -96,7 +96,13 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
 
   // Suggest payees from the last few months; picking one fills in its category.
   useEffect(() => {
-    api.transactions({ from: new Date(Date.now() - 120 * 86_400_000), status: 'confirmed' }).then(
+    // From the start of a day, so every opening that day asks for the same
+    // thing: the answer kept on the device is replaced, not added to (a new
+    // one each time pushed out the months the Records page opens on).
+    const from = new Date();
+    from.setHours(0, 0, 0, 0);
+    from.setDate(from.getDate() - 120);
+    api.transactions({ from, status: 'confirmed' }).then(
       (list) => {
         const m = new Map<string, Habit>();
         const counts = new Map<number, number>();
