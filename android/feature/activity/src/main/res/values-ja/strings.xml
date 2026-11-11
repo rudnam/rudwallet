@@ -62,4 +62,17 @@
     <plurals name="feature_activity_confirm_ready"><item quantity="other">カテゴリのある%d件を確定</item></plurals>
     <plurals name="feature_activity_chosen"><item quantity="other">%d件を選択中</item></plurals>
     <plurals name="feature_activity_didnt_fit"><item quantity="other">%d件は対象外のため、そのままです。</item></plurals>
+    <string name="feature_activity_duplicates_title">検出された重複</string>
+    <string name="feature_activity_duplicates_about">通知から読み取った支払いのうち、すでにある記録と同じ金額で1日以内のものは「確認待ち」に入れず、ここに分けておきます。60日間保管されます。別の支払いだった場合は元に戻してください。</string>
+    <string name="feature_activity_duplicates_none">最近検出された重複はありません。</string>
+    <string name="feature_activity_duplicates_offline">サーバーに接続できません。検出された重複の表示には接続が必要です。</string>
+    <string name="feature_activity_duplicates_failed">検出された重複を読み込めませんでした。</string>
+    <string name="feature_activity_try_again">再試行</string>
+    <string name="feature_activity_back">戻る</string>
+    <string name="feature_activity_looked_like">すでにある次の記録と同じに見えました:</string>
+    <string name="feature_activity_match_gone">同じに見えた記録はその後削除されました。</string>
+    <string name="feature_activity_not_duplicate">重複ではない</string>
+    <string name="feature_activity_brought_back">%1$sを「確認待ち」に戻しました。</string>
+    <plurals name="feature_activity_caught"><item quantity="other">重複の可能性がある%d件を自動で分けました。</item></plurals>
+    <string name="feature_activity_review_caught">確認</string>
 </resources>

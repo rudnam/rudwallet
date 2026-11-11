@@ -3,6 +3,7 @@ package com.rudnam.wallet.core.data.repository
 import com.rudnam.wallet.core.model.BulkChange
 import com.rudnam.wallet.core.model.BulkResult
 import com.rudnam.wallet.core.model.RecordFilter
+import com.rudnam.wallet.core.model.SetAsideRecord
 import com.rudnam.wallet.core.model.Tag
 import com.rudnam.wallet.core.model.Transaction
 import kotlinx.coroutines.flow.Flow
@@ -16,6 +17,15 @@ sealed interface SearchResult {
     data object Offline : SearchResult
 
     data object Failed : SearchResult
+}
+
+/** The possible duplicates the server set aside, or why they can't be shown. */
+sealed interface SetAsideResult {
+    data class Found(val records: List<SetAsideRecord>) : SetAsideResult
+
+    data object Offline : SetAsideResult
+
+    data object Failed : SetAsideResult
 }
 
 /** How a change to many records went. */
@@ -45,8 +55,11 @@ interface ActivityRepository {
 
     suspend fun bulk(change: BulkChange): BulkOutcome
 
-    /** Brings back records deleted in the last day. */
+    /** Brings back records deleted in the last day, or possible duplicates set aside. */
     suspend fun restore(ids: List<Long>): BulkOutcome
+
+    /** Possible duplicates the server set aside rather than adding them to "to check"; needs the server. */
+    suspend fun setAside(): SetAsideResult
 
     /** The tags in use, the most used first. */
     suspend fun tags(): List<Tag>

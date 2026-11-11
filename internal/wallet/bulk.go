@@ -24,7 +24,7 @@ type BulkResult struct {
 
 // BulkDelete deletes the user's records among ids; Restore can undo it.
 func (s *Store) BulkDelete(ctx context.Context, userID int64, ids []int64) (int, error) {
-	return s.trash(ctx, userID, ids)
+	return s.trash(ctx, userID, ids, false)
 }
 
 // BulkCategorize gives the user's records among ids a category, or none

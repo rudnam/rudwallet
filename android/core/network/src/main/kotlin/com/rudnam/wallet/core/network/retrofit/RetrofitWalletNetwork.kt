@@ -37,6 +37,7 @@ import com.rudnam.wallet.core.network.model.NetworkReconcile
 import com.rudnam.wallet.core.network.model.NetworkReconcileResult
 import com.rudnam.wallet.core.network.model.NetworkRecordInput
 import com.rudnam.wallet.core.network.model.NetworkStats
+import com.rudnam.wallet.core.network.model.NetworkSetAsideList
 import com.rudnam.wallet.core.network.model.NetworkTag
 import com.rudnam.wallet.core.network.model.NetworkTransaction
 import com.rudnam.wallet.core.network.model.NetworkWallet
@@ -99,6 +100,9 @@ internal interface WalletApi {
 
     @POST("api/transactions/restore")
     suspend fun restoreTransactions(@Body ids: NetworkIds): Response<Unit>
+
+    @GET("api/transactions/duplicates")
+    suspend fun setAside(): NetworkSetAsideList
 
     @GET("api/tags")
     suspend fun tags(): List<NetworkTag>
@@ -243,6 +247,8 @@ internal class RetrofitWalletNetwork @Inject constructor(retrofit: Retrofit, pri
     override suspend fun deleteRecord(id: Long) = call { api.deleteTransaction(id).orThrow() }
 
     override suspend fun restoreRecords(ids: List<Long>) = call { api.restoreTransactions(NetworkIds(ids)).orThrow() }
+
+    override suspend fun setAside() = call { api.setAside() }
 
     override suspend fun tags() = call { api.tags() }
 

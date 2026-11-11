@@ -9,6 +9,7 @@ import com.rudnam.wallet.core.data.repository.BulkOutcome
 import com.rudnam.wallet.core.data.repository.RecordRepository
 import com.rudnam.wallet.core.data.repository.SaveResult
 import com.rudnam.wallet.core.data.repository.SearchResult
+import com.rudnam.wallet.core.data.repository.SetAsideResult
 import com.rudnam.wallet.core.data.repository.WalletRepository
 import com.rudnam.wallet.core.model.BulkChange
 import com.rudnam.wallet.core.model.RecordFilter
@@ -71,6 +72,8 @@ sealed interface ActivityUiState {
         val selected: Set<Long>?,
         val refreshing: Boolean,
         val busy: Boolean,
+        /** Possible duplicates the server set aside lately, rather than adding them to "to check". */
+        val caught: Int = 0,
     ) : ActivityUiState {
         val ready: List<ReviewItem> get() = toReview.filter { it.ready }
     }
@@ -129,6 +132,7 @@ class ActivityViewModel @Inject constructor(
     private val selected = MutableStateFlow<Set<Long>?>(null)
     private val refreshing = MutableStateFlow(false)
     private val busy = MutableStateFlow(false)
+    private val caught = MutableStateFlow(0)
 
     private val _messages = MutableStateFlow<List<ActivityMessage>>(emptyList())
     val messages: StateFlow<List<ActivityMessage>> = _messages.asStateFlow()
@@ -168,7 +172,11 @@ class ActivityViewModel @Inject constructor(
         val tags: List<Tag>, val review: List<ReviewItem>,
     )
 
-    val uiState: StateFlow<ActivityUiState> = combine(wallet.wallet, view, selected, refreshing, busy) { w, v, sel, ref, b ->
+    private val flags = combine(selected, refreshing, busy, caught) { sel, ref, b, c -> Flags(sel, ref, b, c) }
+
+    private data class Flags(val selected: Set<Long>?, val refreshing: Boolean, val busy: Boolean, val caught: Int)
+
+    val uiState: StateFlow<ActivityUiState> = combine(wallet.wallet, view, flags) { w, v, (sel, ref, b, c) ->
         if (w == null) return@combine ActivityUiState.Loading
         // Records to review are in "to check", above the list.
         val list = v.records?.filter { it.status != TransactionStatus.Review }
@@ -187,6 +195,7 @@ class ActivityViewModel @Inject constructor(
             selected = sel?.let { s -> list.orEmpty().map { it.id }.filter { it in s }.toSet() },
             refreshing = ref,
             busy = b,
+            caught = c,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ActivityUiState.Loading)
 
@@ -212,6 +221,7 @@ class ActivityViewModel @Inject constructor(
             activity.refreshReview()
             if (filter.value.everyMonth) search.value = activity.search(filter.value)
             tags.value = activity.tags()
+            (activity.setAside() as? SetAsideResult.Found)?.let { caught.value = it.records.size }
             refreshing.value = false
             if (userAsked && sync == com.rudnam.wallet.core.data.repository.SyncResult.Offline) post(ActivityMessage.Offline)
         }

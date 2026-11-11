@@ -86,6 +86,20 @@ internal class OfflineFirstActivityRepository @Inject constructor(
         BulkResult(ids.size, 0)
     }
 
+    override suspend fun setAside(): SetAsideResult = withContext(io) {
+        try {
+            SetAsideResult.Found(network.setAside().duplicates.map { it.asModel() })
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IOException) {
+            SetAsideResult.Offline
+        } catch (e: ApiException) {
+            SetAsideResult.Failed
+        } catch (e: SerializationException) {
+            SetAsideResult.Failed
+        }
+    }
+
     override suspend fun tags(): List<Tag> = withContext(io) {
         runCatching { network.tags().map { Tag(it.name, it.count) } }.getOrElse {
             // Offline: the tags on the records the phone has.

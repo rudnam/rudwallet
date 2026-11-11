@@ -263,7 +263,7 @@ func (s *Store) learn(ctx context.Context, userID int64, t Transaction, category
 }
 
 func (s *Store) Delete(ctx context.Context, userID, id int64) error {
-	n, err := s.trash(ctx, userID, []int64{id})
+	n, err := s.trash(ctx, userID, []int64{id}, false)
 	if err == nil && n == 0 {
 		return db.ErrNotFound
 	}

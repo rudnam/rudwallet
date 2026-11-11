@@ -84,6 +84,9 @@ type Overview struct {
 	Accounts    []Account  `json:"accounts"`
 	Categories  []Category `json:"categories"`
 	ReviewCount int        `json:"review_count"`
+	// SetAsideCount is how many possible duplicates are set aside
+	// (GET /api/transactions/duplicates).
+	SetAsideCount int `json:"set_aside_count"`
 }
 
 var (
@@ -288,6 +291,10 @@ func (s *Store) Overview(ctx context.Context, userID int64) (Overview, error) {
 	}
 	err = s.db.QueryRowContext(ctx,
 		`SELECT count(*) FROM transactions WHERE user_id = $1 AND status = 'review'`, userID).Scan(&o.ReviewCount)
+	if err != nil {
+		return o, err
+	}
+	o.SetAsideCount, err = s.SetAsideCount(ctx, userID)
 	return o, err
 }
 

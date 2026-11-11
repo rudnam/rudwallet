@@ -104,6 +104,8 @@ export interface Overview {
   accounts: Account[];
   categories: Category[];
   review_count: number;
+  /** Possible duplicates set aside lately (GET /api/transactions/duplicates). */
+  set_aside_count?: number;
 }
 
 export interface Budget {
@@ -169,6 +171,12 @@ export interface CardRule {
 export interface BulkResult {
   changed: number;
   skipped: number;
+}
+
+/** A payment set aside as a possible duplicate: the record as it would be, and the one it looked like. */
+export interface SetAsideRecord extends Transaction {
+  set_aside_at: string;
+  duplicate_of: Transaction | null;
 }
 
 export interface RestoreResult {
@@ -664,6 +672,8 @@ export const api = {
   tags: () => request<Tag[]>('GET', '/api/tags'),
   /** Brings back records deleted in the last day. */
   restoreTransactions: (ids: number[]) => request<RestoreResult>('POST', '/api/transactions/restore', { ids }),
+  /** Possible duplicates set aside from notifications; restoreTransactions brings one back to review. */
+  setAside: () => request<{ duplicates: SetAsideRecord[] }>('GET', '/api/transactions/duplicates'),
 
   stats: (from: Date, to: Date, accountId?: number) => request<Stats>('GET', statsPath(from, to, accountId)),
 

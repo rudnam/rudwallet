@@ -118,6 +118,7 @@ class OfflineFirstRecordRepositoryTest {
         override suspend fun stats(from: Instant, to: Instant, zone: String, accountId: Long?) = com.rudnam.wallet.core.network.model.NetworkStats()
         override suspend fun deleteRecord(id: Long) = check()
         override suspend fun restoreRecords(ids: List<Long>) = check()
+        override suspend fun setAside() = com.rudnam.wallet.core.network.model.NetworkSetAsideList()
 
         override suspend fun createRecord(input: NetworkRecordInput): NetworkTransaction {
             check()
