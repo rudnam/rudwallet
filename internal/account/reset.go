@@ -47,11 +47,11 @@ func (h *Handler) forgotPassword(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	ctx, lang := context.WithoutCancel(r.Context()), httpx.Language(r)
-	go func() {
+	h.bg.Go(func() {
 		if err := h.sendReset(ctx, email, lang); err != nil {
 			slog.ErrorContext(ctx, "send password reset email", "err", err)
 		}
-	}()
+	})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
