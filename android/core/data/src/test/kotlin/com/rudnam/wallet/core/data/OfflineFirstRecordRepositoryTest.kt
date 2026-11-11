@@ -109,6 +109,8 @@ class OfflineFirstRecordRepositoryTest {
         override suspend fun updateAccount(id: Long, input: com.rudnam.wallet.core.network.model.NetworkAccountInput) = Unit
         override suspend fun deleteAccount(id: Long) = Unit
         override suspend fun missingCategories() = emptyList<com.rudnam.wallet.core.network.model.NetworkCategory>()
+        override suspend fun regroupOffer() = emptyList<com.rudnam.wallet.core.network.model.NetworkCategory>()
+        override suspend fun regroup(input: com.rudnam.wallet.core.network.model.NetworkRegroupInput) = Unit
         override suspend fun createCategory(input: com.rudnam.wallet.core.network.model.NetworkCategoryInput) = Unit
         override suspend fun updateCategory(id: Long, input: com.rudnam.wallet.core.network.model.NetworkCategoryInput) = Unit
         override suspend fun deleteCategory(id: Long) = Unit

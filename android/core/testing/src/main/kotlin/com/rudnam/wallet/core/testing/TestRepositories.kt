@@ -157,6 +157,10 @@ class TestSettingsRepository : com.rudnam.wallet.core.data.repository.SettingsRe
     override suspend fun saveAccount(id: Long?, input: com.rudnam.wallet.core.model.AccountInput) = result.also { accounts += id to input }
     override suspend fun deleteAccount(id: Long) = result.also { deletedAccounts += id }
     override suspend fun missingCategories() = missing
+    var regroupOffer = emptyList<com.rudnam.wallet.core.model.Category>()
+    val regrouped = mutableListOf<List<Long>>()
+    override suspend fun regroupOffer() = regroupOffer
+    override suspend fun regroup(ids: List<Long>) = result.also { regrouped += ids }
     override suspend fun saveCategory(id: Long?, input: com.rudnam.wallet.core.model.CategoryInput) = result.also { categories += id to input }
     override suspend fun deleteCategory(id: Long) = result.also { deletedCategories += id }
 

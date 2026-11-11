@@ -8,7 +8,9 @@ import com.rudnam.wallet.core.designsystem.theme.WalletTheme
 import com.rudnam.wallet.core.model.Category
 import com.rudnam.wallet.core.model.CategoryKind
 import com.rudnam.wallet.core.model.TransactionKind
+import com.rudnam.wallet.core.model.Wallet
 import com.rudnam.wallet.core.testing.SampleWallet
+import com.rudnam.wallet.core.ui.CategoryPickerContent
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -34,9 +36,8 @@ class RecordSheetScreenshotTest {
         override fun kind(kind: TransactionKind) {}
         override fun press(key: PadKey) {}
         override fun category(id: Long) {}
-        override fun leaveCategory() {}
+        override fun pickCategory(id: Long) {}
         override fun allCategories(show: Boolean) {}
-        override fun searchCategories(query: String) {}
         override fun payee(payee: String) {}
         override fun account(id: Long) {}
         override fun toAccount(id: Long) {}
@@ -60,8 +61,7 @@ class RecordSheetScreenshotTest {
         form = form,
         record = record,
         categories = if (form.kind == TransactionKind.Income) SampleWallet.wallet.categories.filter { it.kind.apiName == "income" } else expenses,
-        canFoldCategories = false,
-        showAllCategories = false,
+        hasMoreCategories = false,
         recentPayees = if (record == null && form.payee.isEmpty()) listOf("Doutor", "Life Supermarket", "Ramen Taro") else emptyList(),
         payeeSuggestions = emptyList(),
         tagSuggestions = listOf("dinner", "trip"),
@@ -101,47 +101,56 @@ class RecordSheetScreenshotTest {
         shot("review", state(RecordForm.from(record, 0), record, extras = true))
     }
 
-    /** A new wallet's expense categories, all of them open, with the search above. */
+    /** A new wallet's expense categories: main ones, each followed by its subcategories. */
+    private val tree: Wallet = run {
+        val mains = listOf(
+            "Food & Drinks" to listOf("Groceries", "Restaurants", "Cafés", "Delivery"),
+            "Shopping" to listOf("Clothing", "Household", "Electronics"),
+            "Housing" to listOf("Rent", "Bills & Utilities", "Phone & Internet"),
+            "Transport" to listOf("Public transport", "Taxi", "Car"),
+            "Health" to listOf("Medical", "Pharmacy"),
+            "Education" to emptyList(),
+            "Other" to emptyList(),
+        )
+        val icons = mapOf(
+            "Food & Drinks" to "food", "Groceries" to "grocery", "Restaurants" to "food", "Cafés" to "coffee", "Delivery" to "other",
+            "Shopping" to "shopping", "Clothing" to "clothes", "Household" to "clean", "Electronics" to "laptop",
+            "Housing" to "home", "Rent" to "home", "Bills & Utilities" to "bills", "Phone & Internet" to "phone",
+            "Transport" to "transit", "Public transport" to "transit", "Taxi" to "car", "Car" to "car",
+            "Health" to "health", "Medical" to "health", "Pharmacy" to "shield", "Education" to "school", "Other" to "other",
+        )
+        var id = 100L
+        val cats = mains.flatMapIndexed { i, (main, subs) ->
+            val colour = listOf("#d9534f", "#c9a227", "#8a5cc2", "#3b82c4", "#2aa198", "#5b4a8a", "#7a7f7c")[i]
+            val parent = id++
+            listOf(Category(parent, main, CategoryKind.Expense, icons[main].orEmpty(), colour)) +
+                subs.map { Category(id++, it, CategoryKind.Expense, icons[it].orEmpty(), colour, parentId = parent) }
+        }
+        SampleWallet.wallet.copy(categories = cats)
+    }
+
+    /** The boxes: the most used, subcategories among them (with their main category under the name), and All. */
     @Test
-    @Config(qualifiers = "w411dp-h1300dp-xxhdpi")
-    fun allCategories() {
-        val defaults = listOf(
-            "Food & Drinks" to "food", "Groceries" to "grocery", "Shopping" to "shopping", "Clothing" to "clothes",
-            "Household" to "clean", "Transport" to "transit", "Car" to "car", "Housing" to "home",
-            "Bills & Utilities" to "bills", "Phone & Internet" to "phone", "Subscriptions" to "repeat", "Insurance" to "shield",
-            "Health" to "health", "Personal care" to "beauty", "Sport & Fitness" to "sport", "Entertainment" to "fun",
-            "Education" to "school", "Travel" to "travel", "Kids & Family" to "kids", "Pets" to "pet",
-            "Gifts & Donations" to "gift", "Taxes & Fees" to "bank", "Other" to "other",
-        ).mapIndexed { i, (name, icon) -> Category(100L + i, name, CategoryKind.Expense, icon, "#5f7387") }
+    fun suggestions() {
+        val shown = listOf("Cafés", "Groceries", "Restaurants", "Public transport", "Rent", "Food & Drinks", "Taxi").map { n -> tree.categories.first { it.name == n } }
         shot(
-            "all-categories",
-            state(newRecord.copy(categoryId = 100)).copy(
-                categories = defaults,
-                canFoldCategories = true,
-                showAllCategories = true,
-                canSearchCategories = true,
-            ),
+            "suggestions",
+            state(newRecord.copy(categoryId = shown.first().id)).copy(wallet = tree, categories = shown, hasMoreCategories = true),
         )
     }
 
-    /** Food & Drinks opened: it first, then its subcategories, then Back; Cafés chosen. */
+    /** All: the picker with every category, the chosen one ticked. */
     @Test
-    fun subcategories() {
-        val subs = listOf(
-            Category(20, "Cafés", CategoryKind.Expense, "coffee", "#8a5a3c", parentId = 10),
-            Category(21, "Restaurants", CategoryKind.Expense, "food", "#d9534f", parentId = 10),
-            Category(22, "Delivery", CategoryKind.Expense, "transit", "#d9534f", parentId = 10),
-        )
-        val wallet = SampleWallet.wallet.copy(categories = SampleWallet.wallet.categories + subs)
-        shot(
-            "subcategories",
-            state(newRecord.copy(categoryId = 20)).copy(
-                wallet = wallet,
-                categories = listOf(wallet.category(10)!!) + subs,
-                chosenMainId = 10,
-                openedMainId = 10,
-            ),
-        )
+    @Config(qualifiers = "w411dp-h1300dp-xxhdpi")
+    fun picker() {
+        compose.setContent {
+            WalletTheme {
+                Surface(color = WalletTheme.colors.surface) {
+                    CategoryPickerContent(tree, CategoryKind.Expense, selectedId = tree.categories.first { it.name == "Cafés" }.id, onPick = {})
+                }
+            }
+        }
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/record-picker.png")
     }
 
     @Test

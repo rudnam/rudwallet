@@ -177,6 +177,8 @@ class OfflineFirstWalletRepositoryTest {
             records = records.filter { it.accountId != id }
         }
         override suspend fun missingCategories() = listOf(com.rudnam.wallet.core.network.model.NetworkCategory(0, "Pets", "expense", "pet", "#8a6d3b"))
+        override suspend fun regroupOffer() = emptyList<com.rudnam.wallet.core.network.model.NetworkCategory>()
+        override suspend fun regroup(input: com.rudnam.wallet.core.network.model.NetworkRegroupInput) = Unit
         override suspend fun createCategory(input: com.rudnam.wallet.core.network.model.NetworkCategoryInput) {
             check()
             categories += com.rudnam.wallet.core.network.model.NetworkCategory(categories.maxOf { it.id } + 1, input.name, input.kind, input.icon, input.color)

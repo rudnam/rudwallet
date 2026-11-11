@@ -46,8 +46,12 @@ interface CategoriesActions {
     /** Starts a new subcategory of [parent]. */
     fun createUnder(parent: Category)
     fun edit(category: Category)
-    /** Adds one of the default categories the user doesn't have. */
-    fun addMissing(category: Category)
+    /**
+     * Matches the defaults a new wallet starts with: moves the offered
+     * categories in [moves] under their main category, then adds [adds],
+     * default categories the user doesn't have.
+     */
+    fun matchDefaults(moves: List<Long>, adds: List<Category>)
     fun setName(name: String)
     fun setKind(kind: CategoryKind)
     /** Puts the category under a main category, or with null makes it a main one. */
@@ -71,6 +75,10 @@ class CategoriesViewModel @Inject constructor(
     private val _missing = MutableStateFlow<List<Category>>(emptyList())
     val missing: StateFlow<List<Category>> = _missing.asStateFlow()
 
+    /** The user's categories that new wallets have under a main category, each with the parentId it would get. */
+    private val _regroup = MutableStateFlow<List<Category>>(emptyList())
+    val regroup: StateFlow<List<Category>> = _regroup.asStateFlow()
+
     private val _editor = MutableStateFlow<CategoryEditor?>(null)
     val editor: StateFlow<CategoryEditor?> = _editor.asStateFlow()
 
@@ -78,10 +86,11 @@ class CategoriesViewModel @Inject constructor(
     val messages: StateFlow<List<ChangeMessage>> = _messages.asStateFlow()
 
     init {
-        // Asked again whenever the categories change: one added or deleted changes what's missing.
+        // Asked again whenever the categories change: one added, deleted or moved changes what's offered.
         viewModelScope.launch {
-            wallet.wallet.filterNotNull().map { w -> w.categories.map { it.kind to it.name } }.distinctUntilChanged().collect {
+            wallet.wallet.filterNotNull().map { w -> w.categories.map { Triple(it.kind, it.name, it.parentId) } }.distinctUntilChanged().collect {
                 _missing.value = settings.missingCategories()
+                _regroup.value = settings.regroupOffer()
             }
         }
     }
@@ -105,10 +114,18 @@ class CategoriesViewModel @Inject constructor(
         )
     }
 
-    override fun addMissing(category: Category) {
+    override fun matchDefaults(moves: List<Long>, adds: List<Category>) {
+        if (moves.isEmpty() && adds.isEmpty()) return
         viewModelScope.launch {
-            val result = settings.saveCategory(null, CategoryInput(category.name, category.kind, category.icon, category.color, category.parentId))
-            report(result, ChangeMessage.Added(category.name))
+            if (moves.isNotEmpty()) {
+                val moved = settings.regroup(moves)
+                if (moved != ChangeResult.Saved) return@launch report(moved, ChangeMessage.Saved)
+            }
+            for (c in adds) {
+                val added = settings.saveCategory(null, CategoryInput(c.name, c.kind, c.icon, c.color, c.parentId))
+                if (added != ChangeResult.Saved) return@launch report(added, ChangeMessage.Saved)
+            }
+            report(ChangeResult.Saved, ChangeMessage.Saved)
         }
     }
 

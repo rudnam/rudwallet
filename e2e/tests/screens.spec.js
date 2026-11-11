@@ -166,16 +166,15 @@ for (const [name, viewport] of [
     const add = page.getByRole('dialog', { name: 'New record' });
     await expect(add).toBeVisible();
     await shot('5-new-record');
-    await add.getByRole('button', { name: 'More' }).click();
+    // All: the picker with every category, main ones and their subcategories, indented.
+    await add.getByRole('button', { name: 'All', exact: true }).click();
+    const picker = page.getByRole('dialog', { name: 'Choose a category' });
+    await expect(picker.getByRole('button', { name: 'Flights' })).toBeVisible();
     await shot('5-new-record-all-categories');
-    // A main category with subcategories opens: it first, then them, then Back.
-    await add.getByRole('radio', { name: 'Travel' }).check();
-    await expect(add.getByRole('radio', { name: 'Flights' })).toBeVisible();
-    await shot('5-new-record-subcategories');
-    await add.getByRole('button', { name: 'Back' }).click();
-    await add.getByRole('button', { name: 'Fewer' }).click();
-    // The chosen category stays in view when the rest fold away.
-    await expect(add.getByRole('radio', { name: 'Travel' })).toBeChecked();
+    await picker.getByRole('button', { name: 'Flights' }).click();
+    await expect(picker).toBeHidden();
+    // Picked there, it's chosen, and in the boxes.
+    await expect(add.getByRole('radio', { name: 'Flights' })).toBeChecked();
     await add.getByRole('combobox', { name: 'Tags' }).fill('Date night,');
     await add.getByRole('combobox', { name: 'Tags' }).fill('Birthday');
     await add.getByRole('combobox', { name: 'Tags' }).press('Enter');

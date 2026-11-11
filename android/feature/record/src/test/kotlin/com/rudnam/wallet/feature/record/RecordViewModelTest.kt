@@ -66,67 +66,41 @@ class RecordViewModelTest {
     }
 
     @Test
-    fun `the grid shows main categories, and tapping one opens its boxes, it first, then its subcategories`() = runTest {
+    fun `the boxes are the most used categories, subcategories too, and a tap chooses one`() = runTest {
         val cafes = Category(20, "Cafés", CategoryKind.Expense, "coffee", "#8a5a3c", parentId = 10)
         wallet.send(SampleWallet.wallet.copy(categories = SampleWallet.wallet.categories + cafes), SampleWallet.budgets, SampleWallet.records)
-        // Cafés' use counts for Food & Drinks.
+        // Each counts its own records: Cafés first, then Coffee; the unused after, main categories first.
         records.habits = RecordHabits(emptyMap(), mapOf(20L to 9, 13L to 5), emptyList())
         val vm = viewModel()
-        assertEquals(10L, vm.ready().categories.first().id)
-        assertTrue(vm.ready().categories.none { it.id == 20L })
-        assertEquals(null, vm.ready().openedMainId)
+        assertEquals(listOf(20L, 13L, 10L, 11L, 12L), vm.ready().categories.map { it.id })
+        assertFalse(vm.ready().hasMoreCategories)
 
-        // Food & Drinks is chosen, and the boxes are it, then Cafés (with Back after them).
-        vm.chooseCategory(10)
-        assertEquals(10L, vm.ready().form.categoryId)
-        assertEquals(10L, vm.ready().openedMainId)
-        assertEquals(listOf(10L, 20L), vm.ready().categories.map { it.id })
-        assertFalse(vm.ready().canFoldCategories)
         vm.chooseCategory(20)
         assertEquals(20L, vm.ready().form.categoryId)
-        // Cafés again goes back to Food & Drinks, which stays chosen when tapped again.
+        // Tapped again, no category is chosen.
         vm.chooseCategory(20)
-        assertEquals(10L, vm.ready().form.categoryId)
-        vm.chooseCategory(10)
-        assertEquals(10L, vm.ready().form.categoryId)
-
-        // Back shows all the main categories, Food & Drinks still chosen.
-        vm.chooseCategory(20)
-        vm.leaveCategory()
-        assertEquals(null, vm.ready().openedMainId)
-        assertEquals(20L, vm.ready().form.categoryId)
-        assertEquals(10L, vm.ready().chosenMainId)
-        // Opening it again keeps Cafés.
-        vm.chooseCategory(10)
-        assertEquals(20L, vm.ready().form.categoryId)
+        assertEquals(null, vm.ready().form.categoryId)
     }
 
     @Test
-    fun `a record in a subcategory opens in its main category's boxes`() = runTest {
-        val cafes = Category(20, "Cafés", CategoryKind.Expense, "coffee", "#8a5a3c", parentId = 10)
-        wallet.send(SampleWallet.wallet.copy(categories = SampleWallet.wallet.categories + cafes), SampleWallet.budgets, SampleWallet.records)
-        records.habits = RecordHabits(mapOf("Doutor" to SampleWallet.records.first { it.payee == "Doutor" }.copy(categoryId = 20)), emptyMap(), emptyList())
-        val vm = viewModel()
-        vm.setPayee("Doutor")
-        assertEquals(20L, vm.ready().form.categoryId)
-        assertEquals(10L, vm.ready().openedMainId)
-    }
-
-    @Test
-    fun `with many categories, all of them open with a search that narrows them`() = runTest {
+    fun `with many categories, All opens the picker, and one picked there takes the last box`() = runTest {
         val many = SampleWallet.wallet.categories + (1..14).map { Category(100L + it, "Extra $it", CategoryKind.Expense, "other", "#7a7f7c") } +
             Category(200, "Pets", CategoryKind.Expense, "pet", "#8a6d3b")
         wallet.send(SampleWallet.wallet.copy(categories = many), SampleWallet.budgets, SampleWallet.records)
         val vm = viewModel()
-        assertEquals(FEW_CATEGORIES, vm.ready().categories.size)
-        assertFalse(vm.ready().canSearchCategories)
+        val before = vm.ready().categories.map { it.id }
+        assertEquals(FEW_CATEGORIES, before.size)
+        assertTrue(vm.ready().hasMoreCategories)
         vm.showAllCategories(true)
-        assertTrue(vm.ready().canSearchCategories)
-        vm.searchCategories("pet")
-        assertEquals(listOf("Pets"), vm.ready().categories.map { it.name })
-        vm.showAllCategories(false)
-        assertEquals("", vm.ready().categoryQuery)
-        assertEquals(FEW_CATEGORIES, vm.ready().categories.size)
+        assertTrue(vm.ready().pickingCategory)
+        vm.pickCategory(200)
+        assertFalse(vm.ready().pickingCategory)
+        assertEquals(200L, vm.ready().form.categoryId)
+        // The others stay where they were.
+        assertEquals(before.dropLast(1) + 200L, vm.ready().categories.map { it.id })
+        // Picking the chosen one again keeps it.
+        vm.pickCategory(200)
+        assertEquals(200L, vm.ready().form.categoryId)
     }
 
     @Test

@@ -58,15 +58,20 @@
     <string name="feature_settings_expenses">Expenses</string>
     <string name="feature_settings_income">Income</string>
     <string name="feature_settings_edit_category_named">Edit category %s</string>
-    <string name="feature_settings_more_categories">More categories</string>
-    <string name="feature_settings_add_category_named">Add category %s</string>
+    <string name="feature_settings_regroup_move">%1$s under %2$s</string>
+    <string name="feature_settings_defaults_title">Match the new default categories</string>
+    <string name="feature_settings_defaults_intro">New wallets start with these. Tick what you want; your other categories stay as they are.</string>
+    <string name="feature_settings_defaults_move">Group</string>
+    <string name="feature_settings_defaults_add">Add</string>
+    <string name="feature_settings_apply">Apply</string>
+    <string name="feature_settings_add_subcategory_to">Add a subcategory to %s</string>
+    <string name="feature_settings_regroup_note">A main category’s budgets and totals then include its subcategories.</string>
     <string name="feature_settings_edit_category">Edit category</string>
     <string name="feature_settings_new_category">New category</string>
     <string name="feature_settings_expense">Expense</string>
     <string name="feature_settings_icon">Icon</string>
     <string name="feature_settings_initial_only">Initial only</string>
     <string name="feature_settings_delete_category_question">Delete “%s”? Its records become uncategorised, and its budgets and the shops filed under it are forgotten.</string>
-    <string name="feature_settings_subcategories_of">Subcategories of %1$s</string>
     <string name="feature_settings_add_subcategory">Add a subcategory</string>
     <string name="feature_settings_under">Under</string>
     <string name="feature_settings_main_category">None: a main category</string>
@@ -212,5 +217,9 @@
     <plurals name="feature_settings_record_count">
         <item quantity="one">%d record</item>
         <item quantity="other">%d records</item>
+    </plurals>
+    <plurals name="feature_settings_defaults_count">
+        <item quantity="one">%d suggestion</item>
+        <item quantity="other">%d suggestions</item>
     </plurals>
 </resources>

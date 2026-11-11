@@ -80,9 +80,11 @@ import com.rudnam.wallet.core.designsystem.theme.mixedWith
 import com.rudnam.wallet.core.designsystem.theme.parseHexColor
 import com.rudnam.wallet.core.model.Account
 import com.rudnam.wallet.core.model.Category
+import com.rudnam.wallet.core.model.CategoryKind
 import com.rudnam.wallet.core.model.TransactionKind
 import com.rudnam.wallet.core.model.Wallet
 import com.rudnam.wallet.core.ui.CategoryIcon
+import com.rudnam.wallet.core.ui.CategoryPickerSheet
 import com.rudnam.wallet.core.ui.MoneyFormat
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
 import java.time.Instant
@@ -106,9 +108,8 @@ internal fun RecordSheetDestination(onDone: () -> Unit, viewModel: RecordViewMod
             override fun kind(kind: TransactionKind) { haptics.select(); viewModel.setKind(kind) }
             override fun press(key: PadKey) { haptics.key(); viewModel.press(key) }
             override fun category(id: Long) { haptics.select(); viewModel.chooseCategory(id) }
-            override fun leaveCategory() = viewModel.leaveCategory()
+            override fun pickCategory(id: Long) { haptics.select(); viewModel.pickCategory(id) }
             override fun allCategories(show: Boolean) = viewModel.showAllCategories(show)
-            override fun searchCategories(query: String) = viewModel.searchCategories(query)
             override fun payee(payee: String) = viewModel.setPayee(payee)
             override fun account(id: Long) { haptics.select(); viewModel.setAccount(id) }
             override fun toAccount(id: Long) { haptics.select(); viewModel.setToAccount(id) }
@@ -133,10 +134,10 @@ internal interface RecordActions {
     fun kind(kind: TransactionKind)
     fun press(key: PadKey)
     fun category(id: Long)
-    /** Back from a main category's boxes to all of them. */
-    fun leaveCategory()
+    /** A category picked from the picker with all of them. */
+    fun pickCategory(id: Long)
+    /** Opens or closes the picker with all the categories. */
     fun allCategories(show: Boolean)
-    fun searchCategories(query: String)
     fun payee(payee: String)
     fun account(id: Long)
     fun toAccount(id: Long)
@@ -168,6 +169,15 @@ internal fun RecordSheet(state: RecordUiState.Ready, actions: RecordActions, onD
         contentWindowInsets = { WindowInsets(0) },
     ) {
         RecordSheetContent(state, actions)
+    }
+    if (state.pickingCategory) {
+        CategoryPickerSheet(
+            wallet = state.wallet,
+            kind = CategoryKind.entries.firstOrNull { it.apiName == state.form.kind.apiName },
+            selectedId = state.form.categoryId,
+            onPick = { actions.pickCategory(it.id) },
+            onDismiss = { actions.allCategories(false) },
+        )
     }
     state.confirming?.let { ChangesDialog(it, state.wallet, actions) }
     if (state.confirmingDelete) {
@@ -304,52 +314,21 @@ private fun Amount(state: RecordUiState.Ready, format: MoneyFormat) {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun CategoryGrid(state: RecordUiState.Ready, actions: RecordActions) {
-    val opened = state.wallet.category(state.openedMainId)
-    val label = opened?.let { stringResource(R.string.feature_record_subcategories_of, it.name) } ?: stringResource(R.string.feature_record_category)
-    // null is the last box: Back from a main category's boxes, or More.
-    val tiles: List<Category?> = state.categories + if (opened != null || state.canFoldCategories) listOf(null) else emptyList()
+    val label = stringResource(R.string.feature_record_category)
+    // null is the last box: All, which opens the picker with every category.
+    val tiles: List<Category?> = state.categories + if (state.hasMoreCategories) listOf(null) else emptyList()
     Column(Modifier.semantics { contentDescription = label }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (state.canSearchCategories) {
-            OutlinedTextField(
-                value = state.categoryQuery,
-                onValueChange = actions::searchCategories,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-                placeholder = { Text(stringResource(R.string.feature_record_find_category)) },
-                leadingIcon = { LineIcon(WalletIcons.search, contentDescription = null, tint = WalletTheme.colors.muted, size = 18.dp) },
-                trailingIcon = {
-                    if (state.categoryQuery.isNotEmpty()) {
-                        IconButton(onClick = { actions.searchCategories("") }) {
-                            LineIcon(WalletIcons.close, contentDescription = stringResource(R.string.feature_record_clear), size = 18.dp)
-                        }
-                    }
-                },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            )
-            if (state.categories.isEmpty()) {
-                Text(
-                    stringResource(R.string.feature_record_no_category_match),
-                    Modifier.padding(vertical = 8.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = WalletTheme.colors.muted,
-                )
-            }
-        }
         for (row in tiles.chunked(4)) {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 for (c in row) {
                     Box(Modifier.weight(1f)) {
-                        when {
-                            c == null && opened != null -> ActionTile(WalletIcons.back, stringResource(R.string.feature_record_back), actions::leaveCategory)
-                            c == null -> ActionTile(
-                                if (state.showAllCategories) WalletIcons.close else WalletIcons.more,
-                                stringResource(if (state.showAllCategories) R.string.feature_record_fewer else R.string.feature_record_more),
-                            ) { actions.allCategories(!state.showAllCategories) }
-                            // In a main category's boxes, the one chosen; among all of them, the main one chosen or holding it.
-                            else -> CategoryTile(c, c.id == state.form.categoryId || (opened == null && c.id == state.chosenMainId)) { actions.category(c.id) }
+                        if (c == null) {
+                            ActionTile(WalletIcons.more, stringResource(R.string.feature_record_all_categories)) { actions.allCategories(true) }
+                        } else {
+                            // A subcategory says which main category it's under, small, for names that need it.
+                            CategoryTile(c, state.wallet.category(c.parentId)?.name, c.id == state.form.categoryId) { actions.category(c.id) }
                         }
                     }
                 }
@@ -359,9 +338,9 @@ private fun CategoryGrid(state: RecordUiState.Ready, actions: RecordActions) {
     }
 }
 
-/** A category to pick: its icon and name; picked, it fills with its colour. */
+/** A category to pick: its icon and name (and a subcategory's main one); picked, it fills with its colour. */
 @Composable
-private fun CategoryTile(category: Category, picked: Boolean, onClick: () -> Unit) {
+private fun CategoryTile(category: Category, main: String?, picked: Boolean, onClick: () -> Unit) {
     val colors = WalletTheme.colors
     val hue = parseHexColor(category.color) ?: colors.muted
     Surface(
@@ -377,11 +356,19 @@ private fun CategoryTile(category: Category, picked: Boolean, onClick: () -> Uni
         Column(Modifier.padding(vertical = 8.dp, horizontal = 2.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
             CategoryIcon(category)
             Text(category.name, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
+            Text(
+                main.orEmpty(),
+                style = MaterialTheme.typography.labelSmall,
+                color = colors.muted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+            )
         }
     }
 }
 
-/** The grid's last box when it does something else: More, Fewer or Back. */
+/** The grid's last box, which does something else: All. */
 @Composable
 private fun ActionTile(icon: String, label: String, onClick: () -> Unit) {
     val colors = WalletTheme.colors

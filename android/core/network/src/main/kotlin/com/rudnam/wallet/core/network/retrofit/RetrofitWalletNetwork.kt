@@ -40,6 +40,7 @@ import com.rudnam.wallet.core.network.model.NetworkStats
 import com.rudnam.wallet.core.network.model.NetworkTag
 import com.rudnam.wallet.core.network.model.NetworkTransaction
 import com.rudnam.wallet.core.network.model.NetworkWallet
+import com.rudnam.wallet.core.network.model.NetworkRegroupInput
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody
@@ -180,6 +181,12 @@ internal interface WalletApi {
     @GET("api/categories/missing")
     suspend fun missingCategories(): List<NetworkCategory>
 
+    @GET("api/categories/regroup")
+    suspend fun regroupOffer(): List<NetworkCategory>
+
+    @POST("api/categories/regroup")
+    suspend fun regroup(@Body input: NetworkRegroupInput): Response<Unit>
+
     @POST("api/categories")
     suspend fun createCategory(@Body input: NetworkCategoryInput): Response<Unit>
 
@@ -304,6 +311,10 @@ internal class RetrofitWalletNetwork @Inject constructor(retrofit: Retrofit, pri
     override suspend fun deleteAccount(id: Long) = call { api.deleteAccount(id).orThrow() }
 
     override suspend fun missingCategories() = call { api.missingCategories() }
+
+    override suspend fun regroupOffer() = call { api.regroupOffer() }
+
+    override suspend fun regroup(input: NetworkRegroupInput) = call { api.regroup(input).orThrow() }
 
     override suspend fun createCategory(input: NetworkCategoryInput) = call { api.createCategory(input).orThrow() }
 

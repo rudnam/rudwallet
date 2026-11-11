@@ -27,6 +27,7 @@ import com.rudnam.wallet.core.network.model.NetworkStats
 import com.rudnam.wallet.core.network.model.NetworkTag
 import com.rudnam.wallet.core.network.model.NetworkTransaction
 import com.rudnam.wallet.core.network.model.NetworkWallet
+import com.rudnam.wallet.core.network.model.NetworkRegroupInput
 import java.time.Instant
 
 /**
@@ -143,6 +144,12 @@ interface WalletNetworkDataSource {
 
     /** The default categories the user doesn't have (yet, or any more). */
     suspend fun missingCategories(): List<NetworkCategory>
+
+    /** The user's categories that new wallets have under a main category, each with the parentId it would get. */
+    suspend fun regroupOffer(): List<NetworkCategory>
+
+    /** Puts the offered categories among [input]'s ids under their main category. */
+    suspend fun regroup(input: NetworkRegroupInput)
 
     suspend fun createCategory(input: NetworkCategoryInput)
 
