@@ -840,7 +840,7 @@ test('appearance follows the phone, or stays light or dark as chosen', async ({ 
   await expect(page.locator('html')).not.toHaveAttribute('data-theme', /./);
 });
 
-test('moving between pages slides the new page in quickly, and a card grows into its account', async ({ page }) => {
+test('moving between pages slides the new page in quickly, and a card grows into its account and back', async ({ page }) => {
   await signUp(page);
   // Each move marks how it moved (router.ts), and is over in a quarter of a second at most.
   const moved = async (go, how) => {
@@ -856,7 +856,12 @@ test('moving between pages slides the new page in quickly, and a card grows into
   await expect(page.locator('.hero-figure')).toBeVisible();
   await moved(() => page.getByRole('list', { name: 'Accounts' }).getByRole('listitem').first().click(), 'card');
   await expect(page.getByRole('heading', { level: 1, name: 'Cash' })).toBeVisible();
-  await moved(() => page.goBack(), 'back');
+  // And shrinks back into its place on Wallet, whether by the back button or the page's own link.
+  await moved(() => page.goBack(), 'card-back');
+  await expect(page.locator('.hero-figure')).toBeVisible();
+  await page.getByRole('list', { name: 'Accounts' }).getByRole('listitem').first().click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Cash' })).toBeVisible();
+  await moved(() => page.getByRole('link', { name: 'Wallet' }).first().click(), 'card-back');
   await expect(page.locator('.hero-figure')).toBeVisible();
   await moved(() => nav.getByRole('link', { name: 'Settings' }).click(), 'next');
   await moved(() => page.goto('/app/#/settings?section=accounts'), 'forward');
