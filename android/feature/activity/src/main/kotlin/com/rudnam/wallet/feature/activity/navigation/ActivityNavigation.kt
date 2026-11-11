@@ -6,6 +6,7 @@ import androidx.navigation.compose.composable
 import com.rudnam.wallet.core.model.RecordFilter
 import com.rudnam.wallet.feature.activity.ActivityDestination
 import com.rudnam.wallet.feature.activity.ActivityNavigation
+import com.rudnam.wallet.feature.activity.DuplicatesDestination
 import kotlinx.serialization.Serializable
 
 /**
@@ -38,6 +39,11 @@ data class ActivityRoute(
     }
 }
 
+/** The possible duplicates the server set aside, to bring back any that weren't (the website's #/duplicates). */
+@Serializable
+data object DuplicatesRoute
+
 fun NavGraphBuilder.activityScreen(navigation: ActivityNavigation, snackbar: SnackbarHostState) {
     composable<ActivityRoute> { ActivityDestination(navigation, snackbar) }
+    composable<DuplicatesRoute> { DuplicatesDestination(navigation::back, snackbar) }
 }

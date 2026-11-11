@@ -128,23 +128,15 @@ func TestConfirmAll(t *testing.T) {
 	unsorted := pay(t, c, "謎の店", 800, day.Add(2*time.Hour))
 	// The new shop gets a category, as the review page does before confirming.
 	c.do("POST", "/api/transactions/bulk", map[string]any{"ids": []int64{newShop.ID}, "action": "categorize", "category_id": shopping}, nil)
-	// A hand-typed record of the same amount makes this one a possible duplicate.
-	c.do("POST", "/api/transactions", map[string]any{"kind": "expense", "amount": 640, "account_id": o.Accounts[0].ID, "occurred_at": day, "payee": "Lawson"}, nil)
-	// 20 minutes apart: too far to be the same payment, close enough to flag.
-	dup := pay(t, c, "ローソン", 640, day.Add(20*time.Minute))
-	if dup.DuplicateOfID == nil {
-		t.Fatalf("want a possible duplicate: %+v", dup)
-	}
-
 	var res wallet.BulkResult
 	if code := c.do("POST", "/api/transactions/bulk", map[string]any{
-		"ids": []int64{known.ID, newShop.ID, unsorted.ID, dup.ID}, "action": "confirm",
-	}, &res); code != 200 || res.Changed != 2 || res.Skipped != 2 {
+		"ids": []int64{known.ID, newShop.ID, unsorted.ID}, "action": "confirm",
+	}, &res); code != 200 || res.Changed != 2 || res.Skipped != 1 {
 		t.Fatalf("confirm all: %d %+v", code, res)
 	}
 	var review []wallet.Transaction
 	c.do("GET", "/api/transactions?status=review", nil, &review)
-	if len(review) != 2 {
+	if len(review) != 1 {
 		t.Errorf("left to review %+v", review)
 	}
 	// The new shop was learned; the existing rule stayed.

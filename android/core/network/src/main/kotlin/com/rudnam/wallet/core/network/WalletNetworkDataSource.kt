@@ -24,6 +24,7 @@ import com.rudnam.wallet.core.network.model.NetworkNotifications
 import com.rudnam.wallet.core.network.model.NetworkReconcileResult
 import com.rudnam.wallet.core.network.model.NetworkRecordInput
 import com.rudnam.wallet.core.network.model.NetworkStats
+import com.rudnam.wallet.core.network.model.NetworkSetAsideList
 import com.rudnam.wallet.core.network.model.NetworkTag
 import com.rudnam.wallet.core.network.model.NetworkTransaction
 import com.rudnam.wallet.core.network.model.NetworkWallet
@@ -79,6 +80,9 @@ interface WalletNetworkDataSource {
     suspend fun deleteRecord(id: Long)
 
     suspend fun restoreRecords(ids: List<Long>)
+
+    /** Possible duplicates the server set aside, kept 60 days; [restoreRecords] brings one back. */
+    suspend fun setAside(): NetworkSetAsideList
 
     /** The tags on the user's records, the most used first. */
     suspend fun tags(): List<NetworkTag>

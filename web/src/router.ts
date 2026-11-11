@@ -22,7 +22,7 @@ function parse(): Route {
 // it shrinks back into its place in the stack. With reduced motion, the page just changes.
 const tabs = ['home', 'records', 'stats', 'settings'];
 /** Pages opened from a tab, and the tab they belong to (App.tsx's subpages). */
-const opened: Record<string, string> = { card: 'home', account: 'home', review: 'records', budgets: 'stats' };
+const opened: Record<string, string> = { card: 'home', account: 'home', review: 'records', duplicates: 'records', budgets: 'stats' };
 
 type Move = 'next' | 'prev' | 'forward' | 'back' | 'fade';
 

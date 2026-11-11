@@ -754,6 +754,17 @@ export const ja = {
   'Spent so far, what’s left of your budget, and payments to review.': 'ここまでの支出、予算の残り、確認待ちの支払い。',
   'Each monthly budget: what’s spent, and what’s left.': '月の予算ごとの、使った額と残り。',
   'One tap to add a record.': 'ワンタップで記録を追加。',
+  // Caught duplicates
+  'Caught duplicates': '検出された重複',
+  'Payments from notifications that looked like a record you already have (the same amount within a day) are set aside here instead of waiting for review. They’re kept for 60 days. If one was a separate payment, bring it back.':
+    '通知から読み取った支払いのうち、すでにある記録と同じ金額で1日以内のものは、確認待ちに入れずここに分けておきます。60日間保管されます。別の支払いだった場合は元に戻してください。',
+  'No duplicates caught lately.': '最近検出された重複はありません。',
+  'Looked like this record you already have:': 'すでにある次の記録と同じに見えました:',
+  'The record it looked like has since been deleted.': '同じに見えた記録はその後削除されました。',
+  'Not a duplicate': '重複ではない',
+  '{payee} is back in review': '{payee}を確認待ちに戻しました',
+  '1 possible duplicate was set aside automatically.': '重複の可能性がある1件を自動で分けました。',
+  '{n} possible duplicates were set aside automatically.': '重複の可能性がある{n}件を自動で分けました。',
 } as const satisfies Record<string, string>;
 
 /**
@@ -852,6 +863,8 @@ export const jaServer: Record<string, string> = {
 
   // What became of a notification
   "Already recorded, so it wasn't added again.": '記録済みのため、追加しませんでした。',
+  'Looks like a record you already have, so it was set aside with the duplicates.': 'すでにある記録と同じに見えるため、重複として分けました。',
+  'Brought back from the duplicates.': '重複から元に戻しました。',
   'Not from a payment app this server reads.': 'このサーバーが読み取る決済アプリの通知ではありません。',
   'No amount, so not a payment.': '金額がないため、支払いではありません。',
   'Not a payment made (declined, a balance or a top-up).': '支払いではありません（拒否、残高、チャージなど）。',

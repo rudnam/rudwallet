@@ -78,6 +78,11 @@ interface ActivityNavigation {
     fun openRecord(record: Transaction)
 
     fun addRecord()
+
+    /** The possible duplicates set aside automatically. */
+    fun openDuplicates()
+
+    fun back()
 }
 
 @Composable
@@ -185,6 +190,9 @@ internal fun ActivityScreen(state: ActivityUiState.Ready, actions: ActivityActio
                 if (state.toReview.isNotEmpty()) {
                     toCheck(state, format, actions, navigation, now)
                 }
+                if (state.caught > 0 && !state.filter.everyMonth && !choosing) {
+                    item(key = "caught", contentType = "caught") { Caught(state.caught, navigation) }
+                }
                 if (choosing) {
                     stickyHeader(key = "bulk", contentType = "bulk") { BulkBar(state, actions) }
                 }
@@ -203,6 +211,21 @@ internal fun ActivityScreen(state: ActivityUiState.Ready, actions: ActivityActio
                 }
             }
         }
+    }
+}
+
+/** "N possible duplicates were set aside automatically", leading to them. */
+@Composable
+private fun Caught(count: Int, navigation: ActivityNavigation) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        LineIcon(WalletIcons.check, contentDescription = null, tint = WalletTheme.colors.muted, size = 18.dp)
+        Text(
+            pluralStringResource(R.plurals.feature_activity_caught, count, count),
+            Modifier.weight(1f).padding(horizontal = 8.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = WalletTheme.colors.muted,
+        )
+        TextButton(onClick = navigation::openDuplicates) { Text(stringResource(R.string.feature_activity_review_caught)) }
     }
 }
 

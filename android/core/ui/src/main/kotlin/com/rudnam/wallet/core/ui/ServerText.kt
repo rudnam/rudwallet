@@ -128,6 +128,8 @@ object ServerText {
         "you have {n} connections already; disconnect one in Settings → Claude first" to "接続はすでに{n}個あります。先に 設定 → Claude で1つ解除してください",
         "Failed to fetch" to "サーバーに接続できませんでした",
         "Already recorded, so it wasn't added again." to "記録済みのため、追加しませんでした。",
+        "Looks like a record you already have, so it was set aside with the duplicates." to "すでにある記録と同じに見えるため、重複として分けました。",
+        "Brought back from the duplicates." to "重複から元に戻しました。",
         "Not from a payment app this server reads." to "このサーバーが読み取る決済アプリの通知ではありません。",
         "No amount, so not a payment." to "金額がないため、支払いではありません。",
         "Not a payment made (declined, a balance or a top-up)." to "支払いではありません（拒否、残高、チャージなど）。",

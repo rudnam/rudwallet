@@ -9,6 +9,7 @@ import { BudgetsPage } from './features/budgets/BudgetsPage';
 import { ConnectPage, rememberConnect, resumeConnect } from './features/settings/ConnectPage';
 import { HomePage } from './features/home/HomePage';
 import { ActivityPage } from './features/records/ActivityPage';
+import { DuplicatesPage } from './features/review/DuplicatesPage';
 import { AccountPage } from './features/account/AccountPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 import { prefetchStats, StatsPage } from './features/stats/StatsPage';
@@ -230,7 +231,7 @@ function prefetchPages() {
 }
 
 /** Pages outside the main navigation, and the entry they belong under. */
-const subpages: Record<string, string> = { card: 'home', account: 'home', review: 'records', budgets: 'stats' };
+const subpages: Record<string, string> = { card: 'home', account: 'home', review: 'records', duplicates: 'records', budgets: 'stats' };
 
 function Shell({
   me,
@@ -308,6 +309,9 @@ function Shell({
     case 'records':
     case 'review':
       page = <ActivityPage route={route} />;
+      break;
+    case 'duplicates':
+      page = <DuplicatesPage />;
       break;
     case 'stats':
       page = <StatsPage route={route} />;

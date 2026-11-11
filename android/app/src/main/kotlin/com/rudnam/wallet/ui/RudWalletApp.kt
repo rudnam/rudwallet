@@ -55,6 +55,7 @@ import com.rudnam.wallet.core.ui.MoneyFormat
 import com.rudnam.wallet.feature.account.AccountNavigation
 import com.rudnam.wallet.feature.account.navigation.accountScreen
 import com.rudnam.wallet.feature.activity.ActivityNavigation
+import com.rudnam.wallet.feature.activity.navigation.DuplicatesRoute
 import com.rudnam.wallet.feature.activity.navigation.ActivityRoute
 import com.rudnam.wallet.feature.activity.navigation.activityScreen
 import com.rudnam.wallet.core.model.ImportSource
@@ -147,6 +148,10 @@ fun RudWalletApp(
                         navigation = object : ActivityNavigation {
                             override fun openRecord(record: Transaction) = appState.navController.navigate(RecordRoute(record.id))
                             override fun addRecord() = appState.navController.navigate(RecordRoute())
+                            override fun openDuplicates() = appState.navController.navigate(DuplicatesRoute)
+                            override fun back() {
+                                appState.navController.popBackStack()
+                            }
                         },
                         snackbar = snackbar,
                     )

@@ -263,7 +263,7 @@ func (s *Store) learn(ctx context.Context, userID int64, t Transaction, category
 }
 
 func (s *Store) Delete(ctx context.Context, userID, id int64) error {
-	n, err := s.trash(ctx, userID, []int64{id})
+	n, err := s.trash(ctx, userID, []int64{id}, false)
 	if err == nil && n == 0 {
 		return db.ErrNotFound
 	}
@@ -377,6 +377,11 @@ func (s *Store) CreateFromNotification(ctx context.Context, userID int64, p Paym
 		   -- Two notifications about the same card are two payments (the same
 		   -- one twice is caught before this): compare with other sources.
 		   AND NOT (source = 'notification' AND source_label = $5)
+		   -- A record made another way that a notification already matched is
+		   -- explained by it: the same amount again is another payment (a
+		   -- second tap at the till), not this one reported twice.
+		   AND NOT (source <> 'notification'
+		     AND EXISTS (SELECT 1 FROM payment_notifications n WHERE n.user_id = $1 AND n.transaction_id = transactions.id))
 		 ORDER BY abs(extract(epoch FROM occurred_at - $4::timestamptz)) LIMIT 1`,
 		userID, t.Kind, t.Amount, t.OccurredAt, t.SourceLabel).Scan(&dup)
 	switch {
