@@ -17,8 +17,9 @@ function parse(): Route {
 // under a fifth of a second), with only transform and opacity animating, so it runs
 // on the GPU. The old page is gone at once: nothing is captured and nothing
 // crossfades. Tabs slide in from the side of the tab chosen, a page opened from one
-// comes in from the right and its tab from the left on the way back, and a card on
-// Wallet grows into its account's page. With reduced motion, the page just changes.
+// comes in from the right and its tab from the left on the way back, a card on
+// Wallet grows into its account's page, and on the way back from that page to Wallet
+// it shrinks back into its place in the stack. With reduced motion, the page just changes.
 const tabs = ['home', 'records', 'stats', 'settings'];
 /** Pages opened from a tab, and the tab they belong to (App.tsx's subpages). */
 const opened: Record<string, string> = { card: 'home', account: 'home', review: 'records', budgets: 'stats' };
@@ -85,12 +86,44 @@ function growCard(main: HTMLElement, id: string): boolean {
   return true;
 }
 
+/** Shrinks the account's card on Wallet out of where the account page's card was, and brings the rest of Wallet in. */
+function shrinkCard(main: HTMLElement, id: string, from: DOMRect | undefined): boolean {
+  if (!from?.width || !from.height || from.bottom < 0 || from.top > innerHeight) return false;
+  const card = main.querySelector<HTMLElement>(`[data-card="${CSS.escape(id)}"]`);
+  if (!card) return false;
+  const to = card.getBoundingClientRect();
+  if (!to.width || !to.height) return false;
+  const dx = from.left - to.left;
+  const dy = from.top - to.top;
+  // Above the cards stacked over it until it has landed.
+  card.animate(
+    [
+      { zIndex: 1000, transformOrigin: 'top left', transform: `translate(${dx}px, ${dy}px) scale(${from.width / to.width}, ${from.height / to.height})` },
+      { zIndex: 1000, transformOrigin: 'top left', transform: 'none' },
+    ],
+    { duration: 240, easing: ease },
+  );
+  // Everything else on Wallet fades in around it: the other cards, and the rest of the page.
+  for (let el: HTMLElement | null = card; el && el !== main; el = el.parentElement) {
+    for (const sib of el.parentElement?.children ?? []) {
+      if (sib !== el) sib.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: 40, easing: ease, fill: 'backwards' });
+    }
+  }
+  return true;
+}
+
 let current = parse();
 const listeners = new Set<() => void>();
 
 function onHashChange() {
   const next = parse();
   const how = move(current, next);
+  // The account page's card, measured before that page goes, to shrink back into Wallet.
+  const leaving =
+    current.page === 'account' && next.page === 'home'
+      ? document.querySelector<HTMLElement>(`main.page [data-card="${CSS.escape(current.params.get('id') ?? '')}"]`)?.getBoundingClientRect()
+      : undefined;
+  const leftId = current.params.get('id') ?? '';
   current = next;
   // Drawn now, so the new page is on screen in this same frame and can be animated.
   flushSync(() => listeners.forEach((l) => l()));
@@ -104,6 +137,10 @@ function onHashChange() {
   // The last move, for the tests.
   if (how === 'forward' && next.page === 'account' && growCard(main, next.params.get('id') ?? '')) {
     html.dataset.nav = 'card';
+    return;
+  }
+  if (how === 'back' && leaving && shrinkCard(main, leftId, leaving)) {
+    html.dataset.nav = 'card-back';
     return;
   }
   tappedCard = null;
