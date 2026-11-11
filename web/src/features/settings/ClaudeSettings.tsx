@@ -151,6 +151,7 @@ function Connections() {
                   {t.signed_in ? tr('Connected {day}', { day: formatDay(new Date(t.created_at)) }) : tr('Made {day}', { day: formatDay(new Date(t.created_at)) })}
                   {' · '}
                   {t.last_used_at ? tr('last used {day}', { day: formatDay(new Date(t.last_used_at)) }) : tr('not used yet')}
+                  {t.read_only && <>{' · '}{tr('read-only')}</>}
                 </span>
               </span>
               <button type="button" className="link danger" onClick={() => remove(t)}>

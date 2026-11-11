@@ -16,6 +16,10 @@ package mcp
 //     client exchanges at /oauth/token, with its PKCE verifier, for an access
 //     token (an hour) and a refresh token (renewed on every use).
 //
+// A client that asks for scope=read (e.g. RudDash, which only shows
+// spending) gets a read-only connection: only tools marked readOnlyHint,
+// and the Connect page says so. Without a scope, access is full.
+//
 // Each connection is a row in mcp_tokens, listed in Settings → Claude, where
 // disconnecting it revokes both tokens.
 
@@ -99,6 +103,7 @@ func (h *Handler) serverMetadata(w http.ResponseWriter, r *http.Request) {
 		"grant_types_supported":                 []string{"authorization_code", "refresh_token"},
 		"code_challenge_methods_supported":      []string{"S256"},
 		"token_endpoint_auth_methods_supported": []string{"none"},
+		"scopes_supported":                      []string{readScope},
 	})
 }
 
@@ -223,6 +228,15 @@ func validChallenge(c string) bool {
 
 const badLink = "This sign-in link isn't valid. Go back to the app you were connecting and try again."
 
+// readScope asks for a read-only connection.
+const readScope = "read"
+
+// wantsReadOnly reads an OAuth scope parameter (space-separated). Unknown
+// scopes are ignored, so "read" anywhere in it means read-only.
+func wantsReadOnly(scope string) bool {
+	return slices.Contains(strings.Fields(scope), readScope)
+}
+
 // authorize is where a client sends the user. It checks the request and
 // hands it to the web app's Connect page.
 func (h *Handler) authorize(w http.ResponseWriter, r *http.Request) {
@@ -262,6 +276,9 @@ func (h *Handler) authorize(w http.ResponseWriter, r *http.Request) {
 	if s := q.Get("state"); s != "" {
 		next.Set("state", s)
 	}
+	if wantsReadOnly(q.Get("scope")) {
+		next.Set("scope", readScope)
+	}
 	http.Redirect(w, r, "/app/#/connect?"+next.Encode(), http.StatusFound)
 }
 
@@ -280,7 +297,11 @@ func (h *Handler) describeRequest(w http.ResponseWriter, r *http.Request) error 
 	if back == "" {
 		back = u.Scheme
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]string{"client_name": c.Name, "redirect_host": back})
+	out := map[string]any{"client_name": c.Name, "redirect_host": back}
+	if wantsReadOnly(q.Get("scope")) {
+		out["read_only"] = true // only then, so the answer for other clients is as it was
+	}
+	httpx.WriteJSON(w, http.StatusOK, out)
 	return nil
 }
 
@@ -295,6 +316,7 @@ func (h *Handler) decide(w http.ResponseWriter, r *http.Request) error {
 		RedirectURI   string `json:"redirect_uri"`
 		CodeChallenge string `json:"code_challenge"`
 		State         string `json:"state"`
+		Scope         string `json:"scope"`
 		Allow         bool   `json:"allow"`
 	}
 	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
@@ -318,7 +340,7 @@ func (h *Handler) decide(w http.ResponseWriter, r *http.Request) error {
 		if !validChallenge(in.CodeChallenge) {
 			return httpx.Errorf(http.StatusBadRequest, badLink)
 		}
-		code, err := h.store.CreateCode(r.Context(), account.UserFrom(r).ID, c.ID, redirectURI, in.CodeChallenge)
+		code, err := h.store.CreateCode(r.Context(), account.UserFrom(r).ID, c.ID, redirectURI, in.CodeChallenge, wantsReadOnly(in.Scope))
 		if errors.Is(err, errTooMany) {
 			return httpx.Errorf(http.StatusConflict, "you have %d connections already; disconnect one in Settings → Claude first", maxTokens)
 		}
@@ -373,7 +395,7 @@ func (h *Handler) token(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if err == nil {
-			t, err = h.store.Connect(r.Context(), g.userID, c)
+			t, err = h.store.Connect(r.Context(), g.userID, c, g.readOnly)
 		}
 	case "refresh_token":
 		t, err = h.store.Refresh(r.Context(), c.ID, r.PostForm.Get("refresh_token"))
@@ -391,10 +413,14 @@ func (h *Handler) token(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Cache-Control", "no-store")
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+	out := map[string]any{
 		"access_token":  t.Access,
 		"token_type":    "Bearer",
 		"expires_in":    int(accessTTL.Seconds()),
 		"refresh_token": t.Refresh,
-	})
+	}
+	if t.ReadOnly {
+		out["scope"] = readScope
+	}
+	httpx.WriteJSON(w, http.StatusOK, out)
 }

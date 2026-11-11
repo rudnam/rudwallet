@@ -726,6 +726,10 @@ export const ja = {
   'Sign in to connect an app such as Claude to your wallet.': 'ClaudeなどのアプリをRudWalletにつなぐには、ログインしてください。',
   'Connect {app}': '{app}と接続',
   '{app} is asking to reach your wallet, signed in as {email}. It will be able to:': '{app}が、{email} でログイン中のRudWalletへのアクセスを求めています。次のことができるようになります:',
+  'see your accounts, records, categories and budgets': '口座、記録、カテゴリ、予算を見る',
+  "It's read-only: it can't change anything in your wallet, or see your password or API key. You can disconnect it at any time in Settings → Claude.":
+    '読み取り専用です。ウォレットの内容を変更したり、パスワードやAPIキーを見たりすることはできません。設定 → Claude からいつでも接続を解除できます。',
+  'read-only': '読み取り専用',
   'see your accounts, records and categories': '口座、記録、カテゴリを見る',
   'change the category or account of records, and add categories': '記録のカテゴリや口座を変更し、カテゴリを追加する',
   "It can't add or delete records, or see your password or API key. You can disconnect it at any time in Settings → Claude.":

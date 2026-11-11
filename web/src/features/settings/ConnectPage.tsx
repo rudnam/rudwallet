@@ -37,14 +37,15 @@ export function ConnectPage({ route, email }: { route: Route; email: string }) {
     redirect_uri: p.get('redirect_uri') ?? '',
     code_challenge: p.get('code_challenge') ?? '',
     state: p.get('state') ?? '',
+    scope: p.get('scope') ?? '',
   };
   const [client, setClient] = useState<MCPClientInfo | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    api.mcpClient(request.client_id, request.redirect_uri).then(setClient, (err) => setError(errorMessage(err)));
-  }, [request.client_id, request.redirect_uri]);
+    api.mcpClient(request.client_id, request.redirect_uri, request.scope).then(setClient, (err) => setError(errorMessage(err)));
+  }, [request.client_id, request.redirect_uri, request.scope]);
 
   async function answer(allow: boolean) {
     setBusy(true);
@@ -70,13 +71,26 @@ export function ConnectPage({ route, email }: { route: Route; email: string }) {
               email: <strong>{email}</strong>,
             })}
           </p>
-          <ul className="small connect-list">
-            <li>{t('see your accounts, records and categories')}</li>
-            <li>{t('change the category or account of records, and add categories')}</li>
-          </ul>
-          <p className="muted small">
-            {t("It can't add or delete records, or see your password or API key. You can disconnect it at any time in Settings → Claude.")}
-          </p>
+          {client.read_only ? (
+            <>
+              <ul className="small connect-list">
+                <li>{t('see your accounts, records, categories and budgets')}</li>
+              </ul>
+              <p className="muted small">
+                {t("It's read-only: it can't change anything in your wallet, or see your password or API key. You can disconnect it at any time in Settings → Claude.")}
+              </p>
+            </>
+          ) : (
+            <>
+              <ul className="small connect-list">
+                <li>{t('see your accounts, records and categories')}</li>
+                <li>{t('change the category or account of records, and add categories')}</li>
+              </ul>
+              <p className="muted small">
+                {t("It can't add or delete records, or see your password or API key. You can disconnect it at any time in Settings → Claude.")}
+              </p>
+            </>
+          )}
           <p className="muted small">{tx("You'll go back to {host}.", { host: <strong>{client.redirect_host}</strong> })}</p>
           <div className="row end">
             <button type="button" className="secondary" disabled={busy} onClick={() => answer(false)}>
