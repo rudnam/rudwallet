@@ -35,8 +35,9 @@ const fewCategories = 7;
 
 /**
  * The last payees and category counts fetched, for the next form: a form
- * opens with them and keeps that order while it's open (what it fetches is
- * for the form after), so the boxes never jump under the pointer.
+ * opens with them, and keeps the boxes in that order while it's open (the
+ * counts it fetches are for the form after), so they never jump under the
+ * pointer. Payees it fetches are suggested at once.
  */
 let knownHabits: { habits: Map<string, Habit>; use: Map<number, number> } | null = null;
 
@@ -103,12 +104,11 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
           if (t.payee && !m.has(t.payee)) m.set(t.payee, t);
           if (t.category_id !== null) counts.set(t.category_id, (counts.get(t.category_id) ?? 0) + 1);
         }
-        const first = knownHabits === null;
+        // Payees as fresh as can be (one just added is suggested); the counts
+        // only if the form had none, so the boxes keep the order they opened in.
         knownHabits = { habits: m, use: counts };
-        if (first) {
-          setHabits(m);
-          setUse(counts);
-        }
+        setHabits(m);
+        setUse((u) => u ?? counts);
       },
       // Offline: the boxes in the list's order.
       () => setUse((u) => u ?? new Map()),
