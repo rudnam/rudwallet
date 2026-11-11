@@ -3,6 +3,7 @@ package com.rudnam.wallet.feature.imports.navigation
 import androidx.compose.material3.SnackbarHostState
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import com.rudnam.wallet.core.ui.Page
 import com.rudnam.wallet.feature.imports.CardDestination
 import com.rudnam.wallet.feature.imports.ImportDestination
 import com.rudnam.wallet.feature.imports.ImportReviewDestination
@@ -23,7 +24,7 @@ import kotlinx.serialization.Serializable
 @Serializable data object CardRoute
 
 fun NavGraphBuilder.importsScreens(navigation: ImportsNavigation, snackbar: SnackbarHostState) {
-    composable<ImportRoute> { ImportDestination(navigation) }
-    composable<ImportReviewRoute> { ImportReviewDestination(navigation, snackbar) }
-    composable<CardRoute> { CardDestination(navigation) }
+    composable<ImportRoute> { Page { ImportDestination(navigation) } }
+    composable<ImportReviewRoute> { Page { ImportReviewDestination(navigation, snackbar) } }
+    composable<CardRoute> { Page { CardDestination(navigation) } }
 }

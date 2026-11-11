@@ -6,7 +6,6 @@ import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
@@ -14,34 +13,41 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import com.rudnam.wallet.core.designsystem.theme.WalletMotion
-import com.rudnam.wallet.core.designsystem.theme.WalletMotion.EmphasizedDecelerate
-import com.rudnam.wallet.core.designsystem.theme.WalletMotion.FADE_OUT
-import com.rudnam.wallet.core.designsystem.theme.WalletMotion.PAGE
+import com.rudnam.wallet.core.designsystem.theme.WalletTheme
 
 /**
  * Shared elements between pages: a piece of one page that becomes a piece of the next, like an
  * account's card on Wallet growing into the card at the top of its page. The app wraps its
  * pages in a SharedTransitionLayout and provides it here; each page provides its own
- * AnimatedVisibilityScope ([SharedPage]). Without them (previews, tests), nothing is shared.
+ * AnimatedVisibilityScope ([Page]). Without them (previews, tests), nothing is shared.
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 val LocalSharedTransitionScope = staticCompositionLocalOf<SharedTransitionScope?> { null }
 
-/** The page's own scope in the navigation's animation; [SharedPage] provides it. */
+/** The page's own scope in the navigation's animation; [Page] provides it. */
 val LocalPageAnimationScope = compositionLocalOf<AnimatedVisibilityScope?> { null }
 
-/** A page's content, able to share elements with the page it came from or goes to. */
+/**
+ * A destination's content, as a page: an opaque sheet on its own ground, so a page sliding
+ * over another covers it (the app's Motion.kt), and able to share elements with the page it
+ * came from or goes to. Every destination's content goes in one.
+ */
 @Composable
-fun AnimatedVisibilityScope.SharedPage(content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalPageAnimationScope provides this, content = content)
+fun AnimatedVisibilityScope.Page(content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalPageAnimationScope provides this) {
+        Box(Modifier.fillMaxSize().background(WalletTheme.colors.ground)) { content() }
+    }
 }
 
 /** The key an account's card shares between Wallet and the account's page. */
 fun accountCardKey(id: Long): Any = "account-card-$id"
 
 @OptIn(ExperimentalSharedTransitionApi::class)
-private val PageBounds = BoundsTransform { _, _ -> tween(WalletMotion.PAGE, easing = WalletMotion.EmphasizedDecelerate) }
+private val PageBounds = BoundsTransform { _, _ -> WalletMotion.pieceSpring() }
 
 /**
  * This piece moves and resizes into the piece with the same [key] on the next page (their
@@ -76,9 +82,10 @@ fun Modifier.sharedBoundsInStack(key: Any, shape: Shape, zIndex: Float): Modifie
     val shared = LocalSharedTransitionScope.current ?: return this
     val page = LocalPageAnimationScope.current ?: return this
     val state = shared.rememberSharedContentState(key)
-    // As the page's own fade in (navigation's Motion.kt), which the pages above don't get.
+    // In step with the account's page fading away above Wallet (navigation's Motion.kt), so
+    // these come out from under it as it goes.
     val fade = page.transition.animateFloat(
-        transitionSpec = { tween(PAGE - FADE_OUT, delayMillis = FADE_OUT, easing = EmphasizedDecelerate) },
+        transitionSpec = { WalletMotion.fadeOut() },
         label = "stack",
     ) { if (it == EnterExitState.Visible) 1f else 0f }
     val above = { shared.isTransitionActive && page.transition.targetState == EnterExitState.Visible && !state.isMatchFound }

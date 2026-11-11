@@ -3,11 +3,11 @@ package com.rudnam.wallet.ui
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import com.rudnam.wallet.core.designsystem.theme.WalletMotion
@@ -117,7 +118,9 @@ fun RudWalletApp(
         bottomBar = { AnimatedTabBar(tab, reviewCount, appState::navigateToTab) },
     ) { padding ->
         // Pages can share elements as they change (an account's card grows into its page).
-        SharedTransitionLayout(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
+        // Behind them all, black: a page that another slides over fades partly out over it,
+        // into shade (navigation's Motion.kt). Every page draws its own ground over it.
+        SharedTransitionLayout(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).background(Color.Black)) {
             CompositionLocalProvider(LocalSharedTransitionScope provides this) {
                 NavHost(
                     appState.navController,
@@ -208,8 +211,8 @@ private fun AnimatedTabBar(tab: TopLevelDestination?, reviewCount: Int, onSelect
     // While it slides away there's no tab any more: it keeps showing the last one.
     val last = remember { object { var tab = TopLevelDestination.Wallet } }
     if (tab != null) last.tab = tab
-    val spec = tween<IntSize>(WalletMotion.PAGE, easing = WalletMotion.EmphasizedDecelerate)
-    val slide = tween<IntOffset>(WalletMotion.PAGE, easing = WalletMotion.EmphasizedDecelerate)
+    val spec = WalletMotion.pageSpring<IntSize>()
+    val slide = WalletMotion.pageSpring<IntOffset>()
     AnimatedVisibility(
         visible = tab != null,
         enter = expandVertically(spec, expandFrom = Alignment.Top) + slideInVertically(slide) { it },
