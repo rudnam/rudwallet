@@ -53,9 +53,10 @@ func run() error {
 		return fmt.Errorf("migrate: %w", err)
 	}
 
+	app := server.New(cfg, conn, web.Static(), version)
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           server.New(cfg, conn, web.Static(), version),
+		Handler:           app,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      30 * time.Second,
@@ -78,7 +79,9 @@ func run() error {
 	slog.Info("shutting down")
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	return srv.Shutdown(shutdownCtx)
+	err = srv.Shutdown(shutdownCtx)
+	app.Wait() // e.g. a reset email still being sent; before the deferred conn.Close
+	return err
 }
 
 func healthcheck() int {

@@ -47,8 +47,15 @@ func newTestServerDB(t *testing.T, edit ...func(*config.Config)) (*httptest.Serv
 		"assets/app-1.js":      {Data: []byte("console.log(1)")},
 		"manifest.webmanifest": {Data: []byte(`{"name":"App"}`)},
 	}
-	ts := httptest.NewServer(server.New(cfg, conn, static, "test"))
-	t.Cleanup(ts.Close)
+	app := server.New(cfg, conn, static, "test")
+	ts := httptest.NewServer(app)
+	// Close waits for in-flight requests; Wait, for what they left running
+	// (a reset email), so none of it reaches the next test's database.
+	// Cleanups run last-in first-out: both finish before conn closes.
+	t.Cleanup(func() {
+		ts.Close()
+		app.Wait()
+	})
 	return ts, conn
 }
 

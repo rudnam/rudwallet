@@ -42,6 +42,26 @@ project=${PWD##*/}; project=${project,,}-verify
 dc() { docker compose -p "$project" -f e2e/compose.yml "$@"; }
 # No --volumes: the database is in tmpfs, and the Go caches should stay.
 down() { dc --profile go --profile e2e down --remove-orphans --timeout 1 >/dev/null 2>&1 || true; }
+# One run per folder at a time. Two runs started together would both pass
+# the cleanup below and then share one database, each wiping it under the
+# other's tests. A later run stops here (exit 3) before touching anything, so
+# the caller can let CI verify instead; VERIFY_WAIT=1 makes it wait its turn.
+# The lock goes when this run exits, however it exits. (Without flock, as on
+# a stock macOS, runs aren't guarded.)
+if command -v flock >/dev/null; then
+  exec 9>"${TMPDIR:-/tmp}/$project.lock"
+  if ! flock -n 9; then
+    if [[ ${VERIFY_WAIT:-} == 1 ]]; then
+      echo "Another ./verify.sh is running in this folder; waiting for it to finish..." >&2
+      flock 9
+    else
+      printf '\n\033[1m== VERIFY BUSY\033[0m\n' >&2
+      echo "Another ./verify.sh is running in this folder. Let CI verify instead (push; the" >&2
+      echo "pull request's verify check), or run again with VERIFY_WAIT=1 to wait for it." >&2
+      exit 3
+    fi
+  fi
+fi
 down   # whatever an earlier run left behind
 docker volume create wallet-app-gomod >/dev/null
 docker volume create wallet-app-gobuild >/dev/null
@@ -56,7 +76,7 @@ pullpid=''
 pw_image="mcr.microsoft.com/playwright:v${PW_VERSION}-noble"
 if [[ ($mode == all || $mode == e2e) &&
       -z $(docker image inspect -f '{{index .Config.Labels "ccr.proxy-ca"}}' "$pw_image" 2>/dev/null) ]]; then
-  dc --profile e2e pull -q e2e >/dev/null 2>&1 & pullpid=$!
+  dc --profile e2e pull -q e2e >/dev/null 2>&1 9>&- & pullpid=$!  # 9>&-: not holding the lock
 fi
 
 status=0
