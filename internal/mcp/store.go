@@ -32,6 +32,8 @@ type Token struct {
 	// SignedIn is true for a connection made by signing in from the client
 	// (OAuth), false for a token made by hand in Settings.
 	SignedIn bool `json:"signed_in"`
+	// ReadOnly: the connection can look but not change anything.
+	ReadOnly bool `json:"read_only"`
 }
 
 // newSecret returns prefix and 256 random bits.
@@ -67,7 +69,7 @@ func (s *Store) Create(ctx context.Context, userID int64, name string) (Token, s
 
 func (s *Store) List(ctx context.Context, userID int64) ([]Token, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, name, created_at, last_used_at, client_id IS NOT NULL FROM mcp_tokens WHERE user_id = $1 ORDER BY id`, userID)
+		`SELECT id, name, created_at, last_used_at, client_id IS NOT NULL, read_only FROM mcp_tokens WHERE user_id = $1 ORDER BY id`, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +78,7 @@ func (s *Store) List(ctx context.Context, userID int64) ([]Token, error) {
 	for rows.Next() {
 		var t Token
 		var used sql.NullTime
-		if err := rows.Scan(&t.ID, &t.Name, &t.CreatedAt, &used, &t.SignedIn); err != nil {
+		if err := rows.Scan(&t.ID, &t.Name, &t.CreatedAt, &used, &t.SignedIn, &t.ReadOnly); err != nil {
 			return nil, err
 		}
 		if used.Valid {
@@ -98,16 +100,17 @@ func (s *Store) Delete(ctx context.Context, userID, id int64) error {
 	return nil
 }
 
-// User finds whose token this is, and notes that it was used.
-func (s *Store) User(ctx context.Context, token string) (int64, error) {
-	var userID int64
-	err := s.db.QueryRowContext(ctx,
+// User finds whose token this is and whether it may only read, and notes
+// that it was used.
+func (s *Store) User(ctx context.Context, token string) (userID int64, readOnly bool, err error) {
+	err = s.db.QueryRowContext(ctx,
 		`UPDATE mcp_tokens SET last_used_at = now()
-		 WHERE token_hash = $1 AND (expires_at IS NULL OR expires_at > now()) RETURNING user_id`, hash(token)).Scan(&userID)
+		 WHERE token_hash = $1 AND (expires_at IS NULL OR expires_at > now()) RETURNING user_id, read_only`, hash(token)).
+		Scan(&userID, &readOnly)
 	if errors.Is(err, sql.ErrNoRows) {
-		return 0, db.ErrNotFound
+		return 0, false, db.ErrNotFound
 	}
-	return userID, err
+	return userID, readOnly, err
 }
 
 // ---------- Sign-in (OAuth) ----------
@@ -150,8 +153,9 @@ func (s *Store) Client(ctx context.Context, id string) (Client, error) {
 }
 
 // CreateCode records the user's approval of a client and returns the code
-// the client exchanges for tokens. challenge is the PKCE S256 challenge.
-func (s *Store) CreateCode(ctx context.Context, userID int64, clientID, redirectURI, challenge string) (string, error) {
+// the client exchanges for tokens. challenge is the PKCE S256 challenge;
+// readOnly limits the tokens to read tools.
+func (s *Store) CreateCode(ctx context.Context, userID int64, clientID, redirectURI, challenge string, readOnly bool) (string, error) {
 	var n int
 	if err := s.db.QueryRowContext(ctx, `SELECT count(*) FROM mcp_tokens WHERE user_id = $1`, userID).Scan(&n); err != nil {
 		return "", err
@@ -164,9 +168,9 @@ func (s *Store) CreateCode(ctx context.Context, userID int64, clientID, redirect
 	}
 	code := newSecret(codePrefix)
 	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO mcp_auth_codes (code_hash, client_id, user_id, redirect_uri, code_challenge, expires_at)
-		 VALUES ($1, $2, $3, $4, $5, now() + $6 * interval '1 second')`,
-		hash(code), clientID, userID, redirectURI, challenge, codeTTL.Seconds())
+		`INSERT INTO mcp_auth_codes (code_hash, client_id, user_id, redirect_uri, code_challenge, expires_at, read_only)
+		 VALUES ($1, $2, $3, $4, $5, now() + $6 * interval '1 second', $7)`,
+		hash(code), clientID, userID, redirectURI, challenge, codeTTL.Seconds(), readOnly)
 	return code, err
 }
 
@@ -175,6 +179,7 @@ func (s *Store) CreateCode(ctx context.Context, userID int64, clientID, redirect
 type grant struct {
 	clientID, redirectURI, challenge string
 	userID                           int64
+	readOnly                         bool
 }
 
 // TakeCode returns the approval behind code and deletes it, so it is used
@@ -183,8 +188,8 @@ func (s *Store) TakeCode(ctx context.Context, code string) (grant, error) {
 	var g grant
 	err := s.db.QueryRowContext(ctx,
 		`DELETE FROM mcp_auth_codes WHERE code_hash = $1 AND expires_at > now()
-		 RETURNING client_id, user_id, redirect_uri, code_challenge`, hash(code)).
-		Scan(&g.clientID, &g.userID, &g.redirectURI, &g.challenge)
+		 RETURNING client_id, user_id, redirect_uri, code_challenge, read_only`, hash(code)).
+		Scan(&g.clientID, &g.userID, &g.redirectURI, &g.challenge, &g.readOnly)
 	if errors.Is(err, sql.ErrNoRows) {
 		return grant{}, db.ErrNotFound
 	}
@@ -194,16 +199,18 @@ func (s *Store) TakeCode(ctx context.Context, code string) (grant, error) {
 // Tokens is what the token endpoint hands a client.
 type Tokens struct {
 	Access, Refresh string
+	// ReadOnly: the connection may only call read tools (the "read" scope).
+	ReadOnly bool
 }
 
 // Connect makes the tokens for a client the user approved. The connection
 // is listed in Settings under the client's name, like a token made by hand.
-func (s *Store) Connect(ctx context.Context, userID int64, c Client) (Tokens, error) {
-	t := Tokens{Access: newSecret(tokenPrefix), Refresh: newSecret(refreshPrefix)}
+func (s *Store) Connect(ctx context.Context, userID int64, c Client, readOnly bool) (Tokens, error) {
+	t := Tokens{Access: newSecret(tokenPrefix), Refresh: newSecret(refreshPrefix), ReadOnly: readOnly}
 	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO mcp_tokens (token_hash, user_id, name, client_id, expires_at, refresh_hash)
-		 VALUES ($1, $2, $3, $4, now() + $5 * interval '1 second', $6)`,
-		hash(t.Access), userID, c.Name, c.ID, accessTTL.Seconds(), hash(t.Refresh))
+		`INSERT INTO mcp_tokens (token_hash, user_id, name, client_id, expires_at, refresh_hash, read_only)
+		 VALUES ($1, $2, $3, $4, now() + $5 * interval '1 second', $6, $7)`,
+		hash(t.Access), userID, c.Name, c.ID, accessTTL.Seconds(), hash(t.Refresh), readOnly)
 	return t, err
 }
 
@@ -212,15 +219,12 @@ func (s *Store) Connect(ctx context.Context, userID int64, c Client) (Tokens, er
 // that belongs to another client.
 func (s *Store) Refresh(ctx context.Context, clientID, refresh string) (Tokens, error) {
 	t := Tokens{Access: newSecret(tokenPrefix), Refresh: newSecret(refreshPrefix)}
-	res, err := s.db.ExecContext(ctx,
+	err := s.db.QueryRowContext(ctx,
 		`UPDATE mcp_tokens SET token_hash = $1, refresh_hash = $2, expires_at = now() + $3 * interval '1 second'
-		 WHERE refresh_hash = $4 AND client_id = $5`,
-		hash(t.Access), hash(t.Refresh), accessTTL.Seconds(), hash(refresh), clientID)
-	if err != nil {
-		return Tokens{}, err
-	}
-	if n, _ := res.RowsAffected(); n == 0 {
+		 WHERE refresh_hash = $4 AND client_id = $5 RETURNING read_only`,
+		hash(t.Access), hash(t.Refresh), accessTTL.Seconds(), hash(refresh), clientID).Scan(&t.ReadOnly)
+	if errors.Is(err, sql.ErrNoRows) {
 		return Tokens{}, db.ErrNotFound
 	}
-	return t, nil
+	return t, err
 }

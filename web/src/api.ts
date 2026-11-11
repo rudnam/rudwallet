@@ -370,6 +370,8 @@ export interface MCPToken {
   token?: string;
   /** True for a connection made by signing in from the app, false for a token made here. */
   signed_in?: boolean;
+  /** Can look but not change anything. */
+  read_only?: boolean;
 }
 
 /** An MCP client asking to connect, for the Connect page. */
@@ -377,6 +379,8 @@ export interface MCPClientInfo {
   client_name: string;
   /** Where the browser goes back to after the user answers. */
   redirect_host: string;
+  /** The client asked to look only (scope=read). */
+  read_only?: boolean;
 }
 
 /** An error response from the API; message is safe to show the user. */
@@ -703,10 +707,10 @@ export const api = {
   mcpTokens: () => request<MCPToken[]>('GET', '/api/mcp/tokens'),
   createMCPToken: (name: string) => request<MCPToken>('POST', '/api/mcp/tokens', { name }),
   deleteMCPToken: (id: number) => request<void>('DELETE', `/api/mcp/tokens/${id}`),
-  mcpClient: (clientId: string, redirectUri: string) =>
-    request<MCPClientInfo>('GET', `/api/mcp/authorize?${new URLSearchParams({ client_id: clientId, redirect_uri: redirectUri })}`),
+  mcpClient: (clientId: string, redirectUri: string, scope = '') =>
+    request<MCPClientInfo>('GET', `/api/mcp/authorize?${new URLSearchParams({ client_id: clientId, redirect_uri: redirectUri, scope })}`),
   /** Allows or denies a client; the answer says where to send the browser. */
-  mcpAuthorize: (r: { client_id: string; redirect_uri: string; code_challenge: string; state: string; allow: boolean }) =>
+  mcpAuthorize: (r: { client_id: string; redirect_uri: string; code_challenge: string; state: string; scope: string; allow: boolean }) =>
     request<{ redirect_to: string }>('POST', '/api/mcp/authorize', r),
 
   previewBudgetBakers: (csv: string) =>
