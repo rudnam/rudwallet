@@ -3,6 +3,7 @@ package com.rudnam.wallet.feature.insights.navigation
 import androidx.compose.material3.SnackbarHostState
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import com.rudnam.wallet.core.ui.Page
 import com.rudnam.wallet.feature.insights.BudgetsDestination
 import com.rudnam.wallet.feature.insights.InsightsDestination
 import com.rudnam.wallet.feature.insights.InsightsNavigation
@@ -35,6 +36,6 @@ data class InsightsRoute(
 data object BudgetsRoute
 
 fun NavGraphBuilder.insightsScreen(navigation: InsightsNavigation, snackbar: SnackbarHostState) {
-    composable<InsightsRoute> { InsightsDestination(navigation) }
-    composable<BudgetsRoute> { BudgetsDestination(navigation, snackbar) }
+    composable<InsightsRoute> { Page { InsightsDestination(navigation) } }
+    composable<BudgetsRoute> { Page { BudgetsDestination(navigation, snackbar) } }
 }

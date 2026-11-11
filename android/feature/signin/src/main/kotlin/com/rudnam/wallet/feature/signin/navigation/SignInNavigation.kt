@@ -2,6 +2,7 @@ package com.rudnam.wallet.feature.signin.navigation
 
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import com.rudnam.wallet.core.ui.Page
 import com.rudnam.wallet.feature.signin.SignInDestination
 import kotlinx.serialization.Serializable
 
@@ -14,5 +15,5 @@ import kotlinx.serialization.Serializable
 data class SignInRoute(val mode: String = "sign-in", val deleted: Boolean = false)
 
 fun NavGraphBuilder.signInScreen() {
-    composable<SignInRoute> { SignInDestination() }
+    composable<SignInRoute> { Page { SignInDestination() } }
 }

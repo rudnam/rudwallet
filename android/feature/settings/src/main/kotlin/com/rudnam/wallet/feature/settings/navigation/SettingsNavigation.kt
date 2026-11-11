@@ -3,17 +3,18 @@ package com.rudnam.wallet.feature.settings.navigation
 import androidx.compose.material3.SnackbarHostState
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import com.rudnam.wallet.core.ui.Page
 import com.rudnam.wallet.feature.settings.AccountsDestination
 import com.rudnam.wallet.feature.settings.AppearanceDestination
 import com.rudnam.wallet.feature.settings.CategoriesDestination
-import com.rudnam.wallet.feature.settings.CurrencyDestination
 import com.rudnam.wallet.feature.settings.ClaudeDestination
+import com.rudnam.wallet.feature.settings.CurrencyDestination
 import com.rudnam.wallet.feature.settings.LanguageDestination
 import com.rudnam.wallet.feature.settings.NotificationsDestination
 import com.rudnam.wallet.feature.settings.RulesDestination
-import com.rudnam.wallet.feature.settings.WidgetsDestination
 import com.rudnam.wallet.feature.settings.SettingsDestination
 import com.rudnam.wallet.feature.settings.SettingsNavigation
+import com.rudnam.wallet.feature.settings.WidgetsDestination
 import kotlinx.serialization.Serializable
 
 /** Settings, the fourth tab: the website's #/settings. */
@@ -32,18 +33,20 @@ data class SettingsSectionRoute(val section: String) {
 }
 
 fun NavGraphBuilder.settingsScreen(navigation: SettingsNavigation, snackbar: SnackbarHostState) {
-    composable<SettingsRoute> { SettingsDestination(navigation, snackbar) }
+    composable<SettingsRoute> { Page { SettingsDestination(navigation, snackbar) } }
     composable<SettingsSectionRoute> { entry ->
-        when (entry.arguments?.getString("section")) {
-            "accounts" -> AccountsDestination(navigation, snackbar)
-            "categories" -> CategoriesDestination(navigation, snackbar)
-            "general" -> CurrencyDestination(navigation, snackbar)
-            "appearance" -> AppearanceDestination(navigation)
-            "language" -> LanguageDestination(navigation)
-            "rules" -> RulesDestination(navigation, snackbar)
-            "notifications" -> NotificationsDestination(navigation, snackbar)
-            "widgets" -> WidgetsDestination(navigation)
-            "claude" -> ClaudeDestination(navigation, snackbar)
+        Page {
+            when (entry.arguments?.getString("section")) {
+                "accounts" -> AccountsDestination(navigation, snackbar)
+                "categories" -> CategoriesDestination(navigation, snackbar)
+                "general" -> CurrencyDestination(navigation, snackbar)
+                "appearance" -> AppearanceDestination(navigation)
+                "language" -> LanguageDestination(navigation)
+                "rules" -> RulesDestination(navigation, snackbar)
+                "notifications" -> NotificationsDestination(navigation, snackbar)
+                "widgets" -> WidgetsDestination(navigation)
+                "claude" -> ClaudeDestination(navigation, snackbar)
+            }
         }
     }
 }

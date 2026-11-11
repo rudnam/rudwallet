@@ -4,6 +4,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import com.rudnam.wallet.core.model.RecordFilter
+import com.rudnam.wallet.core.ui.Page
 import com.rudnam.wallet.feature.activity.ActivityDestination
 import com.rudnam.wallet.feature.activity.ActivityNavigation
 import kotlinx.serialization.Serializable
@@ -39,5 +40,5 @@ data class ActivityRoute(
 }
 
 fun NavGraphBuilder.activityScreen(navigation: ActivityNavigation, snackbar: SnackbarHostState) {
-    composable<ActivityRoute> { ActivityDestination(navigation, snackbar) }
+    composable<ActivityRoute> { Page { ActivityDestination(navigation, snackbar) } }
 }
