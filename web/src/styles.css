@@ -654,8 +654,9 @@ li.record:hover:not(:disabled) { background: none; } /* a row to read, not to ta
 .picker-list button {
   display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 6px 10px;
   border: 0; border-radius: 10px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+  justify-content: flex-start; font-weight: 400; white-space: normal;
 }
-.picker-list button:hover { background: var(--sunken); }
+.picker-list button:hover:not(:disabled) { background: var(--sunken); }
 .picker-list button.sub { padding-left: 44px; }
 .picker-list button.on { background: var(--sunken); font-weight: 600; }
 
@@ -1016,14 +1017,16 @@ button.wide .nav-icon { width: 18px; height: 18px; }
 .category-row > button:first-child {
   flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 16px;
   background: none; color: var(--text); border: 0; border-radius: 0; font: inherit; text-align: left; cursor: pointer;
+  justify-content: flex-start; font-weight: 400; white-space: normal;
 }
 .category-row > button:first-child:hover:not(:disabled) { background: var(--sunken); }
 .category-row.sub > button:first-child { padding-left: 50px; min-height: 42px; font-size: 0.95rem; }
-.category-row .icon-button.quiet { width: 34px; height: 34px; border-color: transparent; color: var(--muted); }
+.category-row .icon-button.quiet { width: 34px; height: 34px; border-color: transparent; background: none; color: var(--muted); }
+.category-row .icon-button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .category-row .icon-button.quiet:hover:not(:disabled) { background: var(--sunken); }
 /* A card that opens something: its text, and › at the end. */
 .row-link {
   display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%;
-  background: var(--surface); color: var(--text); text-align: left; font: inherit;
+  background: var(--surface); color: var(--text); text-align: left; font: inherit; font-weight: 400; white-space: normal;
 }
 .row-link:hover:not(:disabled) { background: var(--sunken); }
