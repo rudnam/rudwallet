@@ -82,3 +82,29 @@ test('an old wallet groups its categories like a new one', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Edit category Food & Drinks › Groceries' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Edit category Housing › Bills & Utilities' })).toBeVisible();
 });
+
+// The boxes open in the order of use and stay in it: no jump once the
+// counts come in, on the first form since the page loaded or after.
+test('the add form opens with the most used categories first, and they stay put', async ({ page }) => {
+  await signUp(page);
+  const { accounts, categories } = await (await page.request.get('/api/wallet')).json();
+  const taxes = categories.find((c) => c.name === 'Taxes & Fees');
+  for (let i = 0; i < 3; i++) {
+    const body = { kind: 'expense', amount: 100, account_id: accounts[0].id, category_id: taxes.id, occurred_at: new Date().toISOString() };
+    expect((await page.request.post('/api/transactions', { data: body })).status()).toBe(201);
+  }
+  await page.goto('/app/#/');
+  for (const time of ['first', 'again']) {
+    await page.getByRole('button', { name: 'Add record' }).click();
+    const rec = page.getByRole('dialog', { name: 'New record' });
+    const boxes = rec.getByRole('group', { name: 'Category' });
+    await expect(boxes).toBeVisible();
+    // The moment they show, the most used is first...
+    expect((await boxes.locator('.category-name').first().textContent()), time).toBe('Taxes & Fees');
+    // ...and a moment later it still is.
+    await page.waitForTimeout(1500);
+    expect((await boxes.locator('.category-name').first().textContent()), time).toBe('Taxes & Fees');
+    await rec.getByRole('button', { name: 'Close' }).click();
+    await expect(rec).toBeHidden();
+  }
+});

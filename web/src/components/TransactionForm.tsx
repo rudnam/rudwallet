@@ -33,6 +33,14 @@ type Change = { field: string; from: string; to: string };
 /** How many categories the form offers before All. */
 const fewCategories = 7;
 
+/**
+ * The last payees and category counts fetched, for the next form: a form
+ * opens with them, and keeps the boxes in that order while it's open (the
+ * counts it fetches are for the form after), so they never jump under the
+ * pointer. Payees it fetches are suggested at once.
+ */
+let knownHabits: { habits: Map<string, Habit>; use: Map<number, number> } | null = null;
+
 /** How many recent payees are offered as one-tap chips on a new record. */
 const fewPayees = 4;
 
@@ -67,9 +75,10 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
   const [tags, setTags] = useState<string[]>(record?.tags ?? []);
   const [tagText, setTagText] = useState('');
   const [knownTags, setKnownTags] = useState<string[]>(() => api.seen.tags()?.map((x) => x.name) ?? []);
-  const [habits, setHabits] = useState<Map<string, Habit>>(new Map());
+  const [habits, setHabits] = useState<Map<string, Habit>>(() => knownHabits?.habits ?? new Map());
   // How many recent records each category has, to show the most used first.
-  const [use, setUse] = useState<Map<number, number>>(new Map());
+  // Until known (the first form since the page loaded), the boxes wait, hidden.
+  const [use, setUse] = useState<Map<number, number> | null>(() => knownHabits?.use ?? null);
   const [picking, setPicking] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -95,10 +104,14 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
           if (t.payee && !m.has(t.payee)) m.set(t.payee, t);
           if (t.category_id !== null) counts.set(t.category_id, (counts.get(t.category_id) ?? 0) + 1);
         }
+        // Payees as fresh as can be (one just added is suggested); the counts
+        // only if the form had none, so the boxes keep the order they opened in.
+        knownHabits = { habits: m, use: counts };
         setHabits(m);
-        setUse(counts);
+        setUse((u) => u ?? counts);
       },
-      () => {},
+      // Offline: the boxes in the list's order.
+      () => setUse((u) => u ?? new Map()),
     );
     api.tags().then((list) => setKnownTags(list.map((x) => x.name)), () => {});
   }, []);
@@ -109,7 +122,7 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
   // every category; one picked there takes the last box.
   const ofKind = inOrder(w.categories).filter((c) => c.kind === kind);
   const ranked = ofKind
-    .map((c, i) => ({ c, i, sub: isSubcategory(c, w.categories) ? 1 : 0, n: use.get(c.id) ?? 0 }))
+    .map((c, i) => ({ c, i, sub: isSubcategory(c, w.categories) ? 1 : 0, n: use?.get(c.id) ?? 0 }))
     .sort((a, b) => b.n - a.n || a.sub - b.sub || a.i - b.i)
     .map((x) => x.c);
   const roomy = ranked.length <= fewCategories + 1;
@@ -404,7 +417,7 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
           />
         </label>
         {kind !== 'transfer' && (
-          <fieldset className="category-pick">
+          <fieldset className="category-pick" aria-busy={use === null} style={use === null ? { visibility: 'hidden' } : undefined}>
             <legend className="sr-only">{t('Category')}</legend>
             {shownCategories.map((c) => {
               const on = categoryId === c.id;
