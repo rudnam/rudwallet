@@ -281,7 +281,7 @@ func TestImportBudgetBakersChoices(t *testing.T) {
 	other.signup("b@example.com")
 	o := overview(t, c)
 	cash, food, salary := o.Accounts[0].ID, categoryID(t, o, "Food & Drinks"), categoryID(t, o, "Salary")
-	restaurants, housing := categoryID(t, o, "Restaurants"), categoryID(t, o, "Housing")
+	restaurants, bills := categoryID(t, o, "Restaurants"), categoryID(t, o, "Bills & Utilities")
 	// As for a user who signed up before Phone & Internet was a default.
 	if code := c.do("DELETE", fmt.Sprintf("/api/categories/%d", categoryID(t, o, "Phone & Internet")), nil, nil); code != 204 {
 		t.Fatalf("delete category: %d", code)
@@ -289,7 +289,7 @@ func TestImportBudgetBakersChoices(t *testing.T) {
 	var missing []wallet.Category
 	c.do("GET", "/api/categories/missing", nil, &missing)
 	if len(missing) != 1 || missing[0].Name != "Phone & Internet" || missing[0].Icon != "phone" ||
-		missing[0].ParentID == nil || *missing[0].ParentID != housing {
+		missing[0].ParentID == nil || *missing[0].ParentID != bills {
 		t.Errorf("missing defaults: %+v", missing)
 	}
 
@@ -317,8 +317,8 @@ func TestImportBudgetBakersChoices(t *testing.T) {
 		t.Errorf("Restaurant, fast-food should go to Restaurants: %+v", g)
 	}
 	// Without Phone & Internet, its main category holds it.
-	if g := groups["Phone, cell phone"]; g.CategoryID == nil || *g.CategoryID != housing {
-		t.Errorf("Phone, cell phone should go to Housing: %+v", g)
+	if g := groups["Phone, cell phone"]; g.CategoryID == nil || *g.CategoryID != bills {
+		t.Errorf("Phone, cell phone should go to Bills & Utilities: %+v", g)
 	}
 	if g := groups["Coffee beans"]; g.CategoryID != nil || g.NewName != "Coffee beans" {
 		t.Errorf("an unknown category is suggested as itself: %+v", g)
@@ -362,8 +362,8 @@ func TestImportBudgetBakersChoices(t *testing.T) {
 	for _, cat := range o.Categories {
 		byName[cat.Name] = cat
 	}
-	// Phone & Internet comes back under Housing.
-	if p := byName["Phone & Internet"]; p.Icon != "phone" || p.ParentID == nil || *p.ParentID != housing || byName["Restaurant, fast-food"].ID != 0 {
+	// Phone & Internet comes back under Bills & Utilities.
+	if p := byName["Phone & Internet"]; p.Icon != "phone" || p.ParentID == nil || *p.ParentID != bills || byName["Restaurant, fast-food"].ID != 0 {
 		t.Errorf("categories after import: %+v", o.Categories)
 	}
 	var list []wallet.Transaction
