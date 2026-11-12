@@ -51,11 +51,11 @@ test('a subcategory is made in Settings, picked under its main category, and cou
   // All opens the picker: main categories, each naming its subcategories small.
   await rec.getByRole('button', { name: 'All', exact: true }).click();
   const picker = page.getByRole('dialog', { name: 'Choose a category' });
-  const food = picker.getByRole('button', { name: /^Food & Drinks/ });
-  await expect(food).toContainText('Groceries · Restaurants · Cafés · Delivery · Bakeries');
-  await expect(food).toHaveAttribute('aria-expanded', 'false');
+  const foodRow = picker.getByRole('button', { name: /^Food & Drinks/ });
+  await expect(foodRow).toContainText('Groceries · Restaurants · Cafés · Delivery · Bakeries');
+  await expect(foodRow).toHaveAttribute('aria-expanded', 'false');
   // Food & Drinks opens in place: it in general first, then its subcategories.
-  await food.click();
+  await foodRow.click();
   const subs = picker.getByRole('group', { name: 'Subcategories of Food & Drinks' });
   await expect(subs.getByRole('button')).toHaveText(['Food & Drinks (general)', 'Groceries', 'Restaurants', 'Cafés', 'Delivery', 'Bakeries']);
   await page.screenshot({ path: test.info().outputPath('picker-open.png'), fullPage: true });
