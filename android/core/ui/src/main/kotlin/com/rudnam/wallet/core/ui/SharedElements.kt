@@ -92,7 +92,9 @@ fun Modifier.sharedBounds(key: Any, shape: Shape, zIndexInOverlay: Float = 0f): 
  * one highest. A shared piece is drawn above both pages while it moves, so one coming back
  * into the stack would cover the pieces in front of it until it landed, then drop behind
  * them. So while its page comes back, the stack's other pieces are drawn above the pages
- * too, each at its place, fading in as their page does.
+ * too, each at its place, solid from the start, so the one coming back goes in behind those
+ * in front of it all the way. Under the back gesture (the transition following the finger)
+ * they come in as far as it's dragged, evenly, as the page above fades.
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -100,17 +102,15 @@ fun Modifier.sharedBoundsInStack(key: Any, shape: Shape, zIndex: Float): Modifie
     val shared = LocalSharedTransitionScope.current ?: return this
     val page = LocalPageAnimationScope.current ?: return this
     val state = shared.rememberSharedContentState(key)
-    // In step with the account's page fading away above Wallet (navigation's Motion.kt), so
-    // these come out from under it as it goes.
-    val fade = page.transition.animateFloat(
-        transitionSpec = { WalletMotion.fadeOut() },
+    val dragged = page.transition.animateFloat(
+        transitionSpec = { WalletMotion.dragged() },
         label = "stack",
     ) { if (it == EnterExitState.Visible) 1f else 0f }
     val above = { shared.isTransitionActive && page.transition.targetState == EnterExitState.Visible && !state.isMatchFound }
     return with(shared) {
         this@sharedBoundsInStack
             .renderInSharedTransitionScopeOverlay(zIndexInOverlay = zIndex, renderInOverlay = above)
-            .graphicsLayer { alpha = if (above()) fade.value else 1f }
+            .graphicsLayer { alpha = if (above() && page.transition.isSeeking) dragged.value else 1f }
             .sharedBounds(
                 state,
                 page,

@@ -3,7 +3,6 @@ package com.rudnam.wallet.navigation
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -56,17 +55,12 @@ private val coverIn =
 private val coverOut =
     slideOutHorizontally(WalletMotion.pageSpring()) { it / SLIDE_SHARE } + fadeOut(WalletMotion.pageSpring())
 
-// Under the back gesture, the transition follows the finger: how far it's dragged is how far
-// along the transition is. So there it runs evenly (a spring, or an easing, would play most of
-// it in the first part of the drag), and the page goes the way the finger does.
-private const val DRAGGED = 300
-
-private fun <T> dragged() = tween<T>(DRAGGED, easing = LinearEasing)
-
+// Under the back gesture, the transition follows the finger, so it runs evenly
+// (WalletMotion.dragged), and the page goes the way the finger does.
 private fun coverDragged(toLeft: Boolean) =
-    slideOutHorizontally(dragged()) { (if (toLeft) -it else it) / SLIDE_SHARE } + fadeOut(dragged())
+    slideOutHorizontally(WalletMotion.dragged()) { (if (toLeft) -it else it) / SLIDE_SHARE } + fadeOut(WalletMotion.dragged())
 
-private val fadeDragged = fadeOut(dragged())
+private val fadeDragged = fadeOut(WalletMotion.dragged())
 
 // An account's page, around its card.
 private val fadeOver = fadeIn(WalletMotion.fadeIn())

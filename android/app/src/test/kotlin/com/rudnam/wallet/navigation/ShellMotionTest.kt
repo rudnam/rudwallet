@@ -47,6 +47,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.testing.TestNavHostController
+import androidx.navigation.toRoute
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.rudnam.wallet.core.designsystem.theme.WalletMotion
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
@@ -120,7 +121,7 @@ class ShellMotionTest {
                                 predictivePopExitTransition = { swipeEdge -> predictivePopExit(swipeEdge) },
                             ) {
                                 composable<WalletRoute> { Page { WalletStandIn() } }
-                                composable<AccountRoute> { Page { AccountStandIn() } }
+                                composable<AccountRoute> { entry -> Page { AccountStandIn(entry.toRoute<AccountRoute>().id) } }
                             }
                         }
                     }
@@ -149,7 +150,7 @@ class ShellMotionTest {
     }
 
     @androidx.compose.runtime.Composable
-    private fun AccountStandIn() {
+    private fun AccountStandIn(id: Long) {
         val scroll = TopAppBarDefaults.pinnedScrollBehavior()
         Scaffold(
             containerColor = Color.Red,
@@ -157,8 +158,8 @@ class ShellMotionTest {
             topBar = { TopAppBar(title = { Text("Account") }) },
         ) { padding ->
             LazyColumn(Modifier.padding(padding).fillMaxSize()) {
-                // The front card (id 2) opened.
-                item(key = "card") { Box(Modifier.padding(16.dp).fillMaxWidth().height(200.dp).sharedBounds(accountCardKey(2), Shape).background(Color(0xFF00C060), Shape)) }
+                // The account's card: yellow here, so it's told apart from Wallet's green ones.
+                item(key = "card") { Box(Modifier.padding(16.dp).fillMaxWidth().height(200.dp).sharedBounds(accountCardKey(id), Shape).background(Color(0xFFC0C000), Shape)) }
                 items(30) { Text("Account record $it", Modifier.padding(16.dp), color = Color.White) }
             }
         }
@@ -258,6 +259,34 @@ class ShellMotionTest {
         val seen = play("shell-quick", 1500)
         File(dir, "shell-quick.txt").writeText(timeline.joinToString("\n"))
         assertGoneBy(250, seen)
+    }
+
+    @Test
+    fun `a middle card goes back into the stack behind the card in front of it`() {
+        // Card 1 is behind card 2 (the front one), which covers its lower part. Where they
+        // overlap, card 2 must show all the way (from the first frame the transition draws),
+        // never card 1 coming back over it.
+        compose.runOnUiThread { nav.navigate(AccountRoute(1)) }
+        compose.waitForIdle()
+        for (how in listOf("button", "system")) {
+            compose.mainClock.autoAdvance = false
+            compose.runOnUiThread { if (how == "button") nav.popBackStack() else back.onBackPressed() }
+            var t = 0L
+            while (t < 600) {
+                compose.mainClock.advanceTimeBy(16)
+                t += 16
+                val image = compose.onRoot().captureToImage().asAndroidBitmap()
+                val pixel = image.getPixel(180, 200) // inside card 2, and inside card 1 where it lands
+                val front = android.graphics.Color.red(pixel) < 20 && android.graphics.Color.blue(pixel) in 0x50..0x70 && android.graphics.Color.green(pixel) > 0xA0
+                timeline += "stack-$how ${t}ms: ${"%08X".format(pixel)}${if (front) " front" else ""}"
+                if (t in setOf(32L, 112L, 208L)) compose.onRoot().captureRoboImage("${dir.path}/stack-$how-$t.png")
+            }
+            File(dir, "stack.txt").writeText(timeline.joinToString("\n"))
+            assertTrue("$how: the card coming back showed over the card in front of it:\n${timeline.joinToString("\n")}", timeline.filter { it.startsWith("stack-$how") }.drop(1).all { it.endsWith(" front") })
+            compose.mainClock.autoAdvance = true
+            compose.runOnUiThread { nav.navigate(AccountRoute(1)) }
+            compose.waitForIdle()
+        }
     }
 
     @Test
