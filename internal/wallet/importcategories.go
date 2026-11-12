@@ -183,8 +183,9 @@ func findCategory(cats []Category, kind, name string) *int64 {
 // Taxes & Fees. A subcategory's broader one is its main category
 // (defaultParents).
 var broaderDefaults = map[string]string{
-	"Insurance": "Taxes & Fees", "Family": "Shopping",
-	"Side income": "Other income", "Sold items": "Other income", "Gifts received": "Other income",
+	"Insurance": "Taxes & Fees", "Family": "Shopping", "Household": "Shopping", "Bills & Utilities": "Housing",
+	"Side income": "Other income", "Investments": "Other income", "Refunds & rewards": "Other income",
+	"Gifts & benefits": "Other income",
 }
 
 // broaderDefault is what holds a default in a wallet without it: its main
@@ -304,43 +305,43 @@ var budgetBakersCategories = map[string]map[string]string{
 		"alcohol tobacco": "Food & Drinks",
 
 		"shopping": "Shopping", "clothes shoes": "Clothing", "jewels accessories": "Clothing",
-		"kids": "Kids", "home garden": "Household", "pets animals": "Pets",
-		"electronics accessories": "Electronics", "stationery tools": "Shopping",
-		"health and beauty": "Personal care", "drug store chemist": "Pharmacy", "gifts joy": "Gifts & Donations",
+		"kids": "Kids", "home garden": "Furniture & home", "pets animals": "Pets",
+		"electronics accessories": "Electronics", "stationery tools": "Household",
+		"health and beauty": "Personal care", "drug store chemist": "Pharmacy", "gifts joy": "Gifts",
 		"free time": "Entertainment",
 
-		"housing": "Housing", "rent": "Rent", "mortgage": "Housing", "maintenance repairs": "Housing",
-		"property insurance": "Insurance", "energy utilities": "Bills & Utilities", "services": "Bills & Utilities",
+		"housing": "Housing", "rent": "Rent", "mortgage": "Rent", "maintenance repairs": "Repairs & maintenance",
+		"property insurance": "Home insurance", "energy utilities": "Electricity & gas", "services": "Bills & Utilities",
 
 		"transportation": "Transport", "transport": "Transport", "public transport": "Public transport", "taxi": "Taxi",
 		"long distance": "Travel", "business trips": "Travel",
 
 		"vehicle": "Car", "fuel": "Car", "parking": "Car", "vehicle maintenance": "Car", "rentals": "Car",
-		"vehicle insurance": "Insurance", "leasing": "Car",
+		"vehicle insurance": "Car insurance", "leasing": "Car",
 
-		"life entertainment": "Entertainment", "entertainment": "Entertainment", "culture sport events": "Going out",
+		"life entertainment": "Entertainment", "entertainment": "Entertainment", "culture sport events": "Events & tickets",
 		"hobbies": "Hobbies", "books audio subscriptions": "Subscriptions", "tv streaming": "Subscriptions",
-		"lottery gambling": "Entertainment", "software apps games": "Entertainment",
+		"lottery gambling": "Entertainment", "software apps games": "Games & media",
 		"health care doctor": "Medical", "health": "Health", "wellness beauty": "Personal care",
-		"active sport fitness": "Sport & Fitness", "education development": "Education",
+		"active sport fitness": "Sport & Fitness", "education development": "Courses & lessons",
 		"holiday trips hotels": "Hotels", "travel": "Travel", "charity gifts": "Gifts & Donations",
-		"life events": "Other",
+		"life events": "Ceremonies",
 
 		"communication pc": "Phone & Internet", "phone cell phone": "Phone & Internet", "internet": "Phone & Internet",
 		"postal services": "Bills & Utilities",
 
-		"financial expenses": "Taxes & Fees", "taxes": "Taxes & Fees", "insurances": "Insurance",
+		"financial expenses": "Bank & card fees", "taxes": "Taxes", "insurances": "Insurance",
 		"loan interest": "Taxes & Fees", "fines": "Taxes & Fees", "advisory": "Taxes & Fees",
-		"charges fees": "Taxes & Fees", "child support": "Kids",
+		"charges fees": "Bank & card fees", "child support": "Family support",
 
 		"others": "Other", "other": "Other", "missing": "Other",
 	},
 	"income": {
-		"income": "Other income", "wage invoices": "Salary", "invoices": "Side income", "salary": "Salary",
-		"interests dividends": "Interest & Dividends", "checks coupons": "Rewards & Cashback",
-		"refunds tax purchase": "Refunds", "refunds": "Refunds",
-		"sale": "Sold items", "rental income": "Other income", "dues grants": "Other income",
-		"lending renting": "Other income", "lottery gambling": "Other income", "child support": "Other income",
+		"income": "Other income", "wage invoices": "Salary", "invoices": "Freelance", "salary": "Salary",
+		"interests dividends": "Investments", "checks coupons": "Rewards & Cashback",
+		"refunds tax purchase": "Tax refunds", "refunds": "Refunds",
+		"sale": "Sold items", "rental income": "Other income", "dues grants": "Government benefits",
+		"lending renting": "Other income", "lottery gambling": "Other income", "child support": "From family",
 		"gifts": "Gifts received", "others": "Other income", "other": "Other income", "missing": "Other income",
 	},
 }
@@ -388,19 +389,24 @@ var shopCategories = []struct {
 	{"Transport", []string{"uber"}},
 	{"Phone & Internet", []string{"ソフトバンク", "softbank", "ドコモ", "docomo", "au", "ワイモバイル", "ymobile", "楽天モバイル",
 		"linemo", "ahamo", "povo", "uqモバイル", "ntt", "nuro", "ビッグローブ", "biglobe"}},
-	{"Bills & Utilities", []string{"電力", "電気", "ガス", "水道", "東京電力", "関西電力", "東京ガス", "大阪ガス", "nhk", "郵便", "ヤマト運輸"}},
+	{"Water", []string{"水道"}},
+	{"Electricity & gas", []string{"電力", "電気", "ガス", "東京電力", "関西電力", "東京ガス", "大阪ガス"}},
+	{"Bills & Utilities", []string{"nhk", "郵便", "ヤマト運輸"}},
 	{"Subscriptions", []string{"netflix", "spotify", "youtube premium", "amazon prime", "prime video", "disney+", "hulu", "u-next",
 		"dazn", "abema", "apple music", "icloud", "google one", "chatgpt", "openai", "claude.ai", "anthropic", "adobe", "microsoft 365",
 		"dropbox", "nintendo switch online", "playstation plus"}},
-	{"Entertainment", []string{"youtube", "disney", "steam", "nintendo", "任天堂", "playstation", "映画", "シネマ", "cinema", "toho", "カラオケ", "karaoke",
-		"google play", "app store", "apple.com"}},
+	{"Games & media", []string{"youtube", "disney", "steam", "nintendo", "任天堂", "playstation", "google play", "app store", "apple.com"}},
+	{"Events & tickets", []string{"映画", "シネマ", "cinema", "toho", "チケット", "ticket", "ぴあ", "イープラス", "eplus"}},
+	{"Entertainment", []string{"カラオケ", "karaoke"}},
 	{"Hotels", []string{"ホテル", "hotel", "旅館", "airbnb", "agoda", "booking.com", "expedia", "楽天トラベル", "じゃらん"}},
 	{"Flights", []string{"ana", "jal", "peach", "jetstar", "ジェットスター", "スカイマーク"}},
 	{"Sport & Fitness", []string{"ジム", "gym", "fitness", "フィットネス", "エニタイム", "anytime", "chocozap", "ちょこざっぷ", "ゴールドジム"}},
 	{"Personal care", []string{"美容", "ヘアサロン", "サロン", "salon", "理容", "qb house", "hair"}},
-	{"Education", []string{"書店", "紀伊國屋", "ブックオフ", "udemy", "塾", "スクール", "school", "英会話"}},
+	{"Books & materials", []string{"書店", "紀伊國屋", "ブックオフ"}},
+	{"Courses & lessons", []string{"udemy", "塾", "スクール", "school", "英会話"}},
 	{"Clothing", []string{"ユニクロ", "uniqlo", "gu", "zara", "しまむら", "zozotown", "abcマート", "abc-mart", "ワークマン", "workman"}},
-	{"Household", []string{"ダイソー", "daiso", "セリア", "seria", "キャンドゥ", "ニトリ", "nitori", "ikea", "カインズ", "cainz",
+	{"Furniture & home", []string{"ニトリ", "nitori", "ikea"}},
+	{"Household", []string{"ダイソー", "daiso", "セリア", "seria", "キャンドゥ", "カインズ", "cainz",
 		"コーナン", "ホームセンター", "dcm", "無印", "muji"}},
 	{"Electronics", []string{"ヨドバシ", "yodobashi", "ビックカメラ", "bic camera", "ヤマダ電機", "エディオン", "ケーズデンキ"}},
 	{"Pets", []string{"ペット", "pet", "動物病院", "トリミング"}},
@@ -417,8 +423,10 @@ var incomeWords = []struct {
 }{
 	{"Refunds", []string{"返金", "取り消し", "取消", "refund", "cancel"}},
 	{"Rewards & Cashback", []string{"ポイント", "獲得", "キャッシュバック", "特典", "point", "cashback", "earned", "reward"}},
-	{"Salary", []string{"給与", "給料", "賞与", "salary", "payroll"}},
-	{"Interest & Dividends", []string{"利息", "配当", "interest", "dividend"}},
+	{"Bonus", []string{"賞与", "ボーナス", "bonus"}},
+	{"Salary", []string{"給与", "給料", "salary", "payroll"}},
+	{"Interest", []string{"利息", "interest"}},
+	{"Dividends", []string{"配当", "dividend"}},
 	{"Sold items", []string{"売上金", "メルカリ", "mercari", "ラクマ", "ヤフオク"}},
 }
 

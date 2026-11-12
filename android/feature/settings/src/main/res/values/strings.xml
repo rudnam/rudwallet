@@ -59,6 +59,7 @@
     <string name="feature_settings_income">Income</string>
     <string name="feature_settings_edit_category_named">Edit category %s</string>
     <string name="feature_settings_regroup_move">%1$s under %2$s</string>
+    <string name="feature_settings_regroup_main">%s as a main category</string>
     <string name="feature_settings_defaults_title">Match the new default categories</string>
     <string name="feature_settings_defaults_intro">New wallets start with these. Tick what you want; your other categories stay as they are.</string>
     <string name="feature_settings_defaults_move">Group</string>
