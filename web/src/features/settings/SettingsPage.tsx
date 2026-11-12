@@ -667,6 +667,7 @@ function CategoryForm({ category, under, onClose }: { category?: Category; under
   const [icon, setIcon] = useState(glyphKey(category?.icon ?? under?.icon) ?? '');
   const [color, setColor] = useState(category?.color ?? under?.color ?? '#66706b');
   const [parentId, setParentId] = useState<number | null>(category?.parent_id ?? under?.id ?? null);
+  const parent = parentId !== null ? w.category(parentId) : undefined;
   const [error, setError] = useState('');
   // One with subcategories stays a main category; the others can go under one of their kind.
   const hasSubs = category ? subcategoriesOf(category.id, w.categories).length > 0 : false;
@@ -737,14 +738,19 @@ function CategoryForm({ category, under, onClose }: { category?: Category; under
           )
         )}
         <div className="grid2">
-          <label className="field">
-            {t('Colour')}
-            <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
-          </label>
+          {/* A subcategory wears its main category's colour. */}
+          {parent ? (
+            <p className="field muted small">{t("Subcategories wear their main category's colour.")}</p>
+          ) : (
+            <label className="field">
+              {t('Colour')}
+              <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
+            </label>
+          )}
           <div className="field">
             {t('Preview')}
             <span className="row">
-              <CategoryIcon icon={icon} name={name || '?'} color={color} />
+              <CategoryIcon icon={icon} name={name || '?'} color={parent?.color ?? color} />
               <span className="ellipsis">{name}</span>
             </span>
           </div>

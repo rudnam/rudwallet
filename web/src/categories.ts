@@ -53,3 +53,17 @@ export function byMainCategory(s: Stats, all: Category[]): Stats {
 export function withSubcategories(id: number, all: Category[]): Set<number> {
   return new Set([id, ...subcategoriesOf(id, all).map((c) => c.id)]);
 }
+
+/**
+ * The categories as the app shows them: a subcategory wears its main
+ * category's colour, whatever it was saved with, so a main category and its
+ * subcategories always match (the icons tell them apart). One whose main
+ * category isn't in the list keeps its own.
+ */
+export function wearingMainColours(all: Category[]): Category[] {
+  const colours = new Map(all.map((c) => [c.id, c.color]));
+  return all.map((c) => {
+    const main = c.parent_id != null ? colours.get(c.parent_id) : undefined;
+    return main !== undefined ? { ...c, color: main } : c;
+  });
+}
