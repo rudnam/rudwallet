@@ -11,14 +11,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.rudnam.wallet.core.designsystem.theme.WalletMotion
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
@@ -36,20 +34,25 @@ val LocalSharedTransitionScope = staticCompositionLocalOf<SharedTransitionScope?
 val LocalPageAnimationScope = compositionLocalOf<AnimatedVisibilityScope?> { null }
 
 /**
+ * The pages open now, the navigation's back stack (each page's entry is its LifecycleOwner),
+ * so a page can tell it's being closed: it's left the stack. The app provides it.
+ */
+val LocalOpenPages = compositionLocalOf<List<LifecycleOwner>?> { null }
+
+/**
  * A destination's content, as a page: an opaque sheet on its own ground, so a page coming in
  * over another covers it (the app's Motion.kt), and able to share elements with the page it
  * came from or goes to. Every destination's content goes in one.
  *
  * A page being closed (back) also fades itself out, whatever the navigation's own transition
- * does with it. On a phone, an account's page was seen staying on screen, untouched, until its
- * card had landed back in Wallet and then a moment longer; it never happened off the phone.
- * Navigation drops a closed page's lifecycle below STARTED as it goes, and a page only covered
- * by another stays STARTED until it's covered, so only the closing one fades.
+ * does with it: on a phone, going back with Android's back, an account's page was seen staying
+ * on screen untouched until its card had landed back in Wallet, then vanishing at once. A page
+ * that's only covered by another stays in the back stack, and stays as it is.
  */
 @Composable
 fun AnimatedVisibilityScope.Page(content: @Composable () -> Unit) {
-    val lifecycle by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
-    val closing = !lifecycle.isAtLeast(Lifecycle.State.STARTED)
+    val owner = LocalLifecycleOwner.current
+    val closing = LocalOpenPages.current?.none { it === owner } ?: false
     val shown = transition.animateFloat(transitionSpec = { WalletMotion.fadeOut() }, label = "closing") { state ->
         if (state == EnterExitState.PostExit && closing) 0f else 1f
     }

@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -34,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import com.rudnam.wallet.core.designsystem.theme.WalletMotion
+import com.rudnam.wallet.core.ui.LocalOpenPages
 import com.rudnam.wallet.core.ui.LocalSharedTransitionScope
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalResources
@@ -118,7 +120,9 @@ fun RudWalletApp(
     ) { padding ->
         // Pages can share elements as they change (an account's card grows into its page).
         SharedTransitionLayout(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
-            CompositionLocalProvider(LocalSharedTransitionScope provides this) {
+            // Which pages are open, so a page being closed can tell (core/ui's Page).
+            val openPages by appState.navController.currentBackStack.collectAsState()
+            CompositionLocalProvider(LocalSharedTransitionScope provides this, LocalOpenPages provides openPages) {
                 NavHost(
                     appState.navController,
                     startDestination = WalletRoute,
