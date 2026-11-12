@@ -11,6 +11,7 @@ import com.rudnam.wallet.core.database.dao.WalletDao
 import com.rudnam.wallet.core.database.model.asEntity
 import com.rudnam.wallet.core.database.model.asModel
 import com.rudnam.wallet.core.database.model.settings
+import com.rudnam.wallet.core.model.wearingMainColours
 import com.rudnam.wallet.core.model.Transaction
 import com.rudnam.wallet.core.model.Wallet
 import com.rudnam.wallet.core.network.ApiException
@@ -51,7 +52,7 @@ internal class OfflineFirstWalletRepository @Inject constructor(
         pending,
     ) { w, accounts, categories, waiting ->
         w?.let {
-            Wallet(it.settings(), accounts.map { a -> a.asModel() }, categories.map { c -> c.asModel() }, it.reviewCount)
+            Wallet(it.settings(), accounts.map { a -> a.asModel() }, categories.map { c -> c.asModel() }.wearingMainColours(), it.reviewCount)
                 .withPending(waiting.filter { t -> t.pending == com.rudnam.wallet.core.model.Pending.Waiting })
         }
     }

@@ -516,6 +516,7 @@ export const ja = {
     '新しいウォレットはこれらで始まります。使いたいものにチェックしてください。ほかのカテゴリはそのままです。',
   Group: 'まとめる',
   Apply: '適用',
+  "Subcategories wear their main category's colour.": 'サブカテゴリはメインカテゴリと同じ色になります。',
   'Add a subcategory to {name}': '{name}にサブカテゴリを追加',
   '{name} under {main}': '{name} → {main}の下へ',
   "A main category's budgets and totals then include its subcategories.": 'メインカテゴリの予算と集計に、サブカテゴリの分も含まれるようになります。',

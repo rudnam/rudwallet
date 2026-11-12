@@ -15,6 +15,20 @@ test('a subcategory is made in Settings, picked under its main category, and cou
   await expect(page.getByRole('button', { name: 'Edit category Food & Drinks › Bakeries' })).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('settings-subcategories.png'), fullPage: true });
 
+  // It wears Food & Drinks' colour, whatever it was saved with, and its form says so.
+  const { categories: before } = await (await page.request.get('/api/wallet')).json();
+  const red = before.find((c) => c.name === 'Food & Drinks').color;
+  const bakery = before.find((c) => c.name === 'Bakeries');
+  expect((await page.request.put(`/api/categories/${bakery.id}`, { data: { name: 'Bakeries', kind: 'expense', icon: bakery.icon, color: '#123456' } })).status()).toBe(200);
+  await page.reload();
+  const bakeries = page.getByRole('button', { name: 'Edit category Food & Drinks › Bakeries' });
+  await expect(bakeries.locator('.cat-icon')).toHaveAttribute('style', new RegExp(red, 'i'));
+  await bakeries.click();
+  const sub = page.getByRole('dialog', { name: 'Edit category' });
+  await expect(sub.getByText("Subcategories wear their main category's colour.")).toBeVisible();
+  await expect(sub.getByLabel('Colour')).toHaveCount(0);
+  await sub.getByRole('button', { name: 'Close' }).click();
+
   // Food & Drinks has a subcategory now, so it stays a main category.
   await page.getByRole('button', { name: 'Edit category Food & Drinks', exact: true }).click();
   const food = page.getByRole('dialog', { name: 'Edit category' });

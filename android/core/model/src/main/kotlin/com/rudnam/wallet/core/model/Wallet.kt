@@ -139,3 +139,14 @@ data class Budget(
 
 /** A newer build of the app than the one installed (GET /api/downloads). */
 data class AppUpdate(val versionCode: Int, val versionName: String, val url: String)
+
+/**
+ * The categories as the app shows them: a subcategory wears its main
+ * category's colour, whatever it was saved with, so a main category and its
+ * subcategories always match (the icons tell them apart). One whose main
+ * category isn't in the list keeps its own.
+ */
+fun List<Category>.wearingMainColours(): List<Category> {
+    val colours = associate { it.id to it.color }
+    return map { c -> c.parentId?.let(colours::get)?.let { c.copy(color = it) } ?: c }
+}
