@@ -290,6 +290,36 @@ class ShellMotionTest {
     }
 
     @Test
+    fun `a middle card opened and quickly closed goes back behind the card in front of it`() {
+        // Back while the card is still growing into its page: it turns round mid-way.
+        for (how in listOf("button", "system")) {
+            for (after in listOf(96L, 208L, 304L)) {
+                val label = "quick-$how-$after"
+                compose.mainClock.autoAdvance = false
+                compose.runOnUiThread { nav.navigate(AccountRoute(1)) }
+                compose.mainClock.advanceTimeBy(after)
+                compose.runOnUiThread { if (how == "button") nav.popBackStack() else back.onBackPressed() }
+                var t = 0L
+                while (t < 700) {
+                    compose.mainClock.advanceTimeBy(16)
+                    t += 16
+                    val image = compose.onRoot().captureToImage().asAndroidBitmap()
+                    val pixel = image.getPixel(180, 200)
+                    val front = android.graphics.Color.red(pixel) < 20 && android.graphics.Color.blue(pixel) in 0x50..0x70 && android.graphics.Color.green(pixel) > 0xA0
+                    timeline += "$label ${t}ms: ${"%08X".format(pixel)}${if (front) " front" else ""}"
+                    if (t in setOf(16L, 48L, 112L, 208L)) compose.onRoot().captureRoboImage("${dir.path}/$label-$t.png")
+                }
+                compose.mainClock.autoAdvance = true
+                compose.waitForIdle()
+            }
+        }
+        File(dir, "quick.txt").writeText(timeline.joinToString("\n"))
+        val behind = timeline.filter { !it.endsWith(" front") }.map { it.substringBefore(" ") }.groupingBy { it }.eachCount()
+        // From the second frame after going back, the card in front shows over it.
+        assertTrue("the card coming back showed over the card in front of it (frames per run: $behind):\n${timeline.joinToString("\n")}", behind.values.all { it <= 1 })
+    }
+
+    @Test
     fun `opening an account, Wallet stays under its page as it fades in`() {
         compose.mainClock.autoAdvance = false
         compose.runOnUiThread { nav.navigate(AccountRoute(2)) }
