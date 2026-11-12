@@ -1035,6 +1035,10 @@ button.wide .nav-icon { width: 18px; height: 18px; }
 .category-row > button:first-child:hover:not(:disabled) { background: var(--sunken); }
 .category-row.sub > button:first-child { padding-left: 50px; min-height: 42px; font-size: 0.95rem; }
 .category-row .icon-button.quiet { width: 34px; height: 34px; border-color: transparent; background: none; color: var(--muted); }
+.category-row .icon-button .glyph { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+/* An open main category's subcategories, as chips to edit, and + for a new one. */
+.category-subs { padding: 0 16px 12px 50px; }
+.category-subs .chip { font-weight: 400; }
 .category-row .icon-button svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
 .category-row .icon-button.quiet:hover:not(:disabled) { background: var(--sunken); }
 /* A card that opens something: its text, and › at the end. */
