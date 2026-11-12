@@ -12,6 +12,12 @@ test('a subcategory is made in Settings, picked under its main category, and cou
   await dialog.getByLabel('Under').selectOption({ label: 'Food & Drinks' });
   await dialog.getByRole('radio', { name: 'Groceries' }).check();
   await dialog.getByRole('button', { name: 'Save' }).click();
+  // Food & Drinks is one row, naming its subcategories small; it opens to show them.
+  const foodGroup = page.getByRole('button', { name: /^Food & Drinks/ });
+  await expect(foodGroup).toContainText('Bakeries');
+  await expect(page.getByRole('button', { name: 'Edit category Food & Drinks › Bakeries' })).toHaveCount(0);
+  await foodGroup.click();
+  await expect(foodGroup).toHaveAttribute('aria-expanded', 'true');
   await expect(page.getByRole('button', { name: 'Edit category Food & Drinks › Bakeries' })).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('settings-subcategories.png'), fullPage: true });
 
@@ -21,6 +27,7 @@ test('a subcategory is made in Settings, picked under its main category, and cou
   const bakery = before.find((c) => c.name === 'Bakeries');
   expect((await page.request.put(`/api/categories/${bakery.id}`, { data: { name: 'Bakeries', kind: 'expense', icon: bakery.icon, color: '#123456' } })).status()).toBe(200);
   await page.reload();
+  await page.getByRole('button', { name: /^Food & Drinks/ }).click();
   const bakeries = page.getByRole('button', { name: 'Edit category Food & Drinks › Bakeries' });
   await expect(bakeries.locator('.cat-icon')).toHaveAttribute('style', new RegExp(red, 'i'));
   await bakeries.click();
@@ -107,8 +114,12 @@ test('an old wallet groups its categories like a new one', async ({ page }) => {
   await offer.getByRole('button', { name: 'Apply' }).click();
   await expect(offer).toBeHidden();
   await expect(page.getByRole('button', { name: /Match the new default categories/ })).toHaveCount(0);
+  await page.getByRole('button', { name: /^Food & Drinks/ }).click();
   await expect(page.getByRole('button', { name: 'Edit category Food & Drinks › Groceries' })).toBeVisible();
+  // One opens at a time.
+  await page.getByRole('button', { name: /^Bills & Utilities/ }).click();
   await expect(page.getByRole('button', { name: 'Edit category Bills & Utilities › Subscriptions' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Edit category Food & Drinks › Groceries' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Edit category Other', exact: true })).toBeVisible();
 });
 

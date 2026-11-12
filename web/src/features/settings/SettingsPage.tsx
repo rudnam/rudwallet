@@ -494,6 +494,8 @@ function Categories() {
   const [missing, setMissing] = useState<Category[]>([]);
   const [regroup, setRegroup] = useState<Category[]>([]);
   const [matching, setMatching] = useState(false);
+  // The main category open, showing its subcategories as chips; one at a time.
+  const [open, setOpen] = useState<number | null>(null);
   const [error, setError] = useState('');
   const names = w.categories.map((c) => `${c.kind}:${c.name}:${c.parent_id ?? ''}`).join('|');
   useEffect(() => {
@@ -519,32 +521,57 @@ function Categories() {
         return (
           <section key={kind} className="stack tight" aria-label={title}>
             <span className="muted small">{title}</span>
-            {/* A row per category: a main one, then its subcategories, indented. */}
+            {/* A row per main category, its subcategories named small under it; it opens to show them as chips. */}
             <ul className="card category-list" role="list">
-              {mains.map((m) => (
-                <li key={m.id} className="category-group">
-                  <div className="category-row">
-                    <button type="button" aria-label={t('Edit category {name}', { name: m.name })} onClick={() => setEditing(m)}>
-                      <CategoryIcon icon={m.icon} name={m.name} color={m.color} size="small" /> {m.name}
-                    </button>
-                    <button
-                      type="button"
-                      className="icon-button quiet"
-                      aria-label={t('Add a subcategory to {name}', { name: m.name })}
-                      onClick={() => setEditing({ under: m })}
-                    >
-                      <Plus />
-                    </button>
-                  </div>
-                  {subcategoriesOf(m.id, w.categories).map((c) => (
-                    <div key={c.id} className="category-row sub">
-                      <button type="button" aria-label={t('Edit category {name}', { name: categoryPath(c.id, w.categories) ?? c.name })} onClick={() => setEditing(c)}>
-                        <CategoryIcon icon={c.icon} name={c.name} color={c.color} size="small" /> {c.name}
-                      </button>
+              {mains.map((m) => {
+                const subs = subcategoriesOf(m.id, w.categories);
+                const isOpen = open === m.id;
+                return (
+                  <li key={m.id} className="category-group">
+                    <div className="category-row">
+                      {subs.length > 0 ? (
+                        <button type="button" aria-expanded={isOpen} onClick={() => setOpen(isOpen ? null : m.id)}>
+                          <CategoryIcon icon={m.icon} name={m.name} color={m.color} size="small" />
+                          <span className="picker-main">
+                            <span>{m.name}</span>
+                            <span className="muted small">{subs.map((c) => c.name).join(' · ')}</span>
+                          </span>
+                          <span className="picker-caret" aria-hidden="true">
+                            {isOpen ? '▴' : '▾'}
+                          </span>
+                        </button>
+                      ) : (
+                        <button type="button" aria-label={t('Edit category {name}', { name: m.name })} onClick={() => setEditing(m)}>
+                          <CategoryIcon icon={m.icon} name={m.name} color={m.color} size="small" /> {m.name}
+                        </button>
+                      )}
+                      {subs.length > 0 && (
+                        <button type="button" className="icon-button quiet" aria-label={t('Edit category {name}', { name: m.name })} onClick={() => setEditing(m)}>
+                          <Icon d={icons.edit} className="glyph" />
+                        </button>
+                      )}
                     </div>
-                  ))}
-                </li>
-              ))}
+                    {isOpen && (
+                      <div className="chips category-subs">
+                        {subs.map((c) => (
+                          <button
+                            key={c.id}
+                            type="button"
+                            className="chip"
+                            aria-label={t('Edit category {name}', { name: categoryPath(c.id, w.categories) ?? c.name })}
+                            onClick={() => setEditing(c)}
+                          >
+                            <CategoryIcon icon={c.icon} name={c.name} color={c.color} size="small" /> {c.name}
+                          </button>
+                        ))}
+                        <button type="button" className="chip quiet" aria-label={t('Add a subcategory to {name}', { name: m.name })} onClick={() => setEditing({ under: m })}>
+                          <Plus /> {t('Subcategory')}
+                        </button>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </section>
         );
