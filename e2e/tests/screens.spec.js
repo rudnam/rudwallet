@@ -171,9 +171,10 @@ for (const [name, viewport] of [
     const picker = page.getByRole('dialog', { name: 'Choose a category' });
     // Main categories, each naming its subcategories; Travel opens to its own.
     await picker.getByRole('button', { name: /^Travel/ }).click();
-    await expect(picker.getByRole('button', { name: 'Flights' })).toBeVisible();
+    const travel = picker.getByRole('group', { name: 'Subcategories of Travel' });
+    await expect(travel.getByRole('button', { name: 'Flights' })).toBeVisible();
     await shot('5-new-record-all-categories');
-    await picker.getByRole('button', { name: 'Flights' }).click();
+    await travel.getByRole('button', { name: 'Flights' }).click();
     await expect(picker).toBeHidden();
     // Picked there, it's chosen, and in the boxes.
     await expect(add.getByRole('radio', { name: 'Flights' })).toBeChecked();
