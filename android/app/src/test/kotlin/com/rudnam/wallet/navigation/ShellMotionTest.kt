@@ -232,6 +232,34 @@ class ShellMotionTest {
     }
 
     @Test
+    fun `back from an account with Android's back and no gesture, in the app's shell`() {
+        // A back button, or a phone that doesn't report the gesture's progress: only the back itself.
+        openFrontCard()
+        compose.mainClock.autoAdvance = false
+        compose.runOnUiThread { back.onBackPressed() }
+        val seen = play("shell-system", 1500)
+        File(dir, "shell-system.txt").writeText(timeline.joinToString("\n"))
+        assertGoneBy(250, seen)
+    }
+
+    @Test
+    fun `back from an account with a quick swipe played out to the end, in the app's shell`() {
+        // Released quickly, the phone plays the gesture's progress out to the end, then backs.
+        openFrontCard()
+        compose.mainClock.autoAdvance = false
+        compose.runOnUiThread { back.dispatchOnBackStarted(BackEventCompat(0f, 300f, 0f, BackEventCompat.EDGE_LEFT)) }
+        for (p in listOf(0.1f, 0.3f, 0.6f, 0.85f, 1f)) {
+            compose.runOnUiThread { back.dispatchOnBackProgressed(BackEventCompat(300f * p, 300f, p, BackEventCompat.EDGE_LEFT)) }
+            compose.mainClock.advanceTimeBy(16)
+            timeline += "shell-quick drag ${"%.2f".format(p)}: red=${"%.2f".format(redness())}"
+        }
+        compose.runOnUiThread { back.onBackPressed() }
+        val seen = play("shell-quick", 1500)
+        File(dir, "shell-quick.txt").writeText(timeline.joinToString("\n"))
+        assertGoneBy(250, seen)
+    }
+
+    @Test
     fun `opening an account, Wallet stays under its page as it fades in`() {
         compose.mainClock.autoAdvance = false
         compose.runOnUiThread { nav.navigate(AccountRoute(2)) }
