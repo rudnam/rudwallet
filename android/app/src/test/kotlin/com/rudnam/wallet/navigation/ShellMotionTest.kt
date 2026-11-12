@@ -27,7 +27,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -51,7 +50,7 @@ import androidx.navigation.testing.TestNavHostController
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.rudnam.wallet.core.designsystem.theme.WalletMotion
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
-import com.rudnam.wallet.core.ui.LocalOpenPages
+import com.rudnam.wallet.core.ui.LocalPageIsOpen
 import com.rudnam.wallet.core.ui.LocalSharedTransitionScope
 import com.rudnam.wallet.core.ui.Page
 import com.rudnam.wallet.core.ui.accountCardKey
@@ -109,8 +108,7 @@ class ShellMotionTest {
                     },
                 ) { padding ->
                     SharedTransitionLayout(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
-                        val openPages by nav.currentBackStack.collectAsState()
-                        CompositionLocalProvider(LocalSharedTransitionScope provides this, LocalOpenPages provides openPages) {
+                        CompositionLocalProvider(LocalSharedTransitionScope provides this, LocalPageIsOpen provides rememberPageIsOpen(nav)) {
                             NavHost(
                                 nav,
                                 startDestination = WalletRoute,

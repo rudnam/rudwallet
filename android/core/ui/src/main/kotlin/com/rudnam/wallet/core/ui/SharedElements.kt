@@ -34,10 +34,10 @@ val LocalSharedTransitionScope = staticCompositionLocalOf<SharedTransitionScope?
 val LocalPageAnimationScope = compositionLocalOf<AnimatedVisibilityScope?> { null }
 
 /**
- * The pages open now, the navigation's back stack (each page's entry is its LifecycleOwner),
- * so a page can tell it's being closed: it's left the stack. The app provides it.
+ * Whether a page (its entry in the navigation, its LifecycleOwner) is still open, in the back
+ * stack, so a page can tell it's being closed: it's left the stack. The app provides it.
  */
-val LocalOpenPages = compositionLocalOf<List<LifecycleOwner>?> { null }
+val LocalPageIsOpen = compositionLocalOf<((LifecycleOwner) -> Boolean)?> { null }
 
 /**
  * A destination's content, as a page: an opaque sheet on its own ground, so a page coming in
@@ -52,7 +52,7 @@ val LocalOpenPages = compositionLocalOf<List<LifecycleOwner>?> { null }
 @Composable
 fun AnimatedVisibilityScope.Page(content: @Composable () -> Unit) {
     val owner = LocalLifecycleOwner.current
-    val closing = LocalOpenPages.current?.none { it === owner } ?: false
+    val closing = LocalPageIsOpen.current?.invoke(owner) == false
     val shown = transition.animateFloat(transitionSpec = { WalletMotion.fadeOut() }, label = "closing") { state ->
         if (state == EnterExitState.PostExit && closing) 0f else 1f
     }

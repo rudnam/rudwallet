@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,7 +29,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.testing.TestNavHostController
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
-import com.rudnam.wallet.core.ui.LocalOpenPages
+import com.rudnam.wallet.core.ui.LocalPageIsOpen
 import com.rudnam.wallet.core.ui.LocalSharedTransitionScope
 import com.rudnam.wallet.core.ui.Page
 import com.rudnam.wallet.core.ui.accountCardKey
@@ -77,8 +75,7 @@ class MotionTest {
                 back = LocalOnBackPressedDispatcherOwner.current!!.onBackPressedDispatcher
                 nav = remember { TestNavHostController(context).apply { navigatorProvider.addNavigator(ComposeNavigator()) } }
                 SharedTransitionLayout(Modifier.fillMaxSize()) {
-                    val openPages by nav.currentBackStack.collectAsState()
-                    CompositionLocalProvider(LocalSharedTransitionScope provides this, LocalOpenPages provides openPages) {
+                    CompositionLocalProvider(LocalSharedTransitionScope provides this, LocalPageIsOpen provides rememberPageIsOpen(nav)) {
                         NavHost(
                             nav,
                             startDestination = WalletRoute,
