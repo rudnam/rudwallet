@@ -6,16 +6,20 @@ import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.rudnam.wallet.core.designsystem.theme.WalletMotion
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
 
@@ -32,14 +36,25 @@ val LocalSharedTransitionScope = staticCompositionLocalOf<SharedTransitionScope?
 val LocalPageAnimationScope = compositionLocalOf<AnimatedVisibilityScope?> { null }
 
 /**
- * A destination's content, as a page: an opaque sheet on its own ground, so a page sliding
+ * A destination's content, as a page: an opaque sheet on its own ground, so a page coming in
  * over another covers it (the app's Motion.kt), and able to share elements with the page it
  * came from or goes to. Every destination's content goes in one.
+ *
+ * A page being closed (back) also fades itself out, whatever the navigation's own transition
+ * does with it. On a phone, an account's page was seen staying on screen, untouched, until its
+ * card had landed back in Wallet and then a moment longer; it never happened off the phone.
+ * Navigation drops a closed page's lifecycle below STARTED as it goes, and a page only covered
+ * by another stays STARTED until it's covered, so only the closing one fades.
  */
 @Composable
 fun AnimatedVisibilityScope.Page(content: @Composable () -> Unit) {
+    val lifecycle by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
+    val closing = !lifecycle.isAtLeast(Lifecycle.State.STARTED)
+    val shown = transition.animateFloat(transitionSpec = { WalletMotion.fadeOut() }, label = "closing") { state ->
+        if (state == EnterExitState.PostExit && closing) 0f else 1f
+    }
     CompositionLocalProvider(LocalPageAnimationScope provides this) {
-        Box(Modifier.fillMaxSize().background(WalletTheme.colors.ground)) { content() }
+        Box(Modifier.fillMaxSize().graphicsLayer { alpha = shown.value }.background(WalletTheme.colors.ground)) { content() }
     }
 }
 
@@ -47,7 +62,7 @@ fun AnimatedVisibilityScope.Page(content: @Composable () -> Unit) {
 fun accountCardKey(id: Long): Any = "account-card-$id"
 
 @OptIn(ExperimentalSharedTransitionApi::class)
-private val PageBounds = BoundsTransform { _, _ -> WalletMotion.pieceSpring() }
+private val PageBounds = BoundsTransform { _, _ -> WalletMotion.piece() }
 
 /**
  * This piece moves and resizes into the piece with the same [key] on the next page (their

@@ -57,6 +57,7 @@ import com.rudnam.wallet.core.ui.sharedBounds
 import com.rudnam.wallet.core.ui.sharedBoundsInStack
 import com.rudnam.wallet.feature.account.navigation.AccountRoute
 import com.rudnam.wallet.feature.wallet.navigation.WalletRoute
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -171,14 +172,30 @@ class ShellMotionTest {
         return if (red + blue == 0) 0f else red.toFloat() / (red + blue)
     }
 
-    private fun play(label: String, ms: Long, frames: Set<Long> = setOf(48, 112, 208, 304, 400, 608, 800, 1008)) {
+    /** Whether the screen low down shows bare ground (no page): its light grey, not a page's red or blue. */
+    private fun bare(): Boolean {
+        val image = compose.onRoot().captureToImage().asAndroidBitmap()
+        return android.graphics.Color.green(image.getPixel(8, image.height - 120)) > 120
+    }
+
+    /** Plays [ms] in frames; the redness at each, by time. */
+    private fun play(label: String, ms: Long, frames: Set<Long> = setOf(48, 112, 208, 304, 400, 608, 800, 1008)): Map<Long, Float> {
+        val seen = mutableMapOf<Long, Float>()
         var t = 0L
         while (t < ms) {
             compose.mainClock.advanceTimeBy(16)
             t += 16
-            timeline += "$label ${t}ms: red=${"%.2f".format(redness())}"
+            val red = redness()
+            seen[t] = red
+            timeline += "$label ${t}ms: red=${"%.2f".format(red)}${if (bare()) " bare" else ""}"
             if (t in frames) compose.onRoot().captureRoboImage("${dir.path}/$label-$t.png")
         }
+        return seen
+    }
+
+    private fun assertGoneBy(ms: Long, seen: Map<Long, Float>) {
+        val at = seen.filterKeys { it >= ms }.minBy { it.key }.value
+        assertTrue("the account's page still shows $ms ms after going back:\n${timeline.joinToString("\n")}", at < 0.05f)
     }
 
     private fun openFrontCard() {
@@ -192,8 +209,9 @@ class ShellMotionTest {
         openFrontCard()
         compose.mainClock.autoAdvance = false
         compose.runOnUiThread { nav.popBackStack() }
-        play("shell-button", 1500)
+        val seen = play("shell-button", 1500)
         File(dir, "shell-button.txt").writeText(timeline.joinToString("\n"))
+        assertGoneBy(250, seen)
     }
 
     @Test
@@ -208,8 +226,18 @@ class ShellMotionTest {
         }
         compose.onRoot().captureRoboImage("${dir.path}/shell-gesture-dragged.png")
         compose.runOnUiThread { back.onBackPressed() }
-        play("shell-gesture", 1500)
+        val seen = play("shell-gesture", 1500)
         File(dir, "shell-gesture.txt").writeText(timeline.joinToString("\n"))
+        assertGoneBy(250, seen)
+    }
+
+    @Test
+    fun `opening an account, Wallet stays under its page as it fades in`() {
+        compose.mainClock.autoAdvance = false
+        compose.runOnUiThread { nav.navigate(AccountRoute(2)) }
+        play("shell-open", 600)
+        File(dir, "shell-open.txt").writeText(timeline.joinToString("\n"))
+        assertTrue("bare ground showed as the account's page opened (Wallet faded too):\n${timeline.joinToString("\n")}", timeline.none { it.endsWith(" bare") })
     }
 
     private companion object {
