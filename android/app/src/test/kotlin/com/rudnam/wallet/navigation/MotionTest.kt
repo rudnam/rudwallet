@@ -29,6 +29,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.testing.TestNavHostController
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
+import com.rudnam.wallet.core.ui.LocalPageIsOnTop
+import com.rudnam.wallet.core.ui.LocalPageIsOpen
 import com.rudnam.wallet.core.ui.LocalSharedTransitionScope
 import com.rudnam.wallet.core.ui.Page
 import com.rudnam.wallet.core.ui.accountCardKey
@@ -74,7 +76,7 @@ class MotionTest {
                 back = LocalOnBackPressedDispatcherOwner.current!!.onBackPressedDispatcher
                 nav = remember { TestNavHostController(context).apply { navigatorProvider.addNavigator(ComposeNavigator()) } }
                 SharedTransitionLayout(Modifier.fillMaxSize()) {
-                    CompositionLocalProvider(LocalSharedTransitionScope provides this) {
+                    CompositionLocalProvider(LocalSharedTransitionScope provides this, LocalPageIsOpen provides rememberPageIsOpen(nav), LocalPageIsOnTop provides rememberPageIsOnTop(nav)) {
                         NavHost(
                             nav,
                             startDestination = WalletRoute,
@@ -217,13 +219,15 @@ class MotionTest {
     }
 
     @Test
-    fun `between tabs, nothing slides`() {
+    fun `between tabs, the new one comes a short way from its side`() {
         compose.mainClock.autoAdvance = false
         compose.runOnUiThread { nav.navigate(ActivityRoute()) }
         val frames = run("tab", 600)
         save("tabs")
-        // Left and right edge always the same colour: the pages fade, they don't slide.
         val all = timeline.joinToString("\n")
-        assertTrue("a tab slid:\n$all", frames.all { it.left == it.right })
+        // Activity (yellow) is to the right of Wallet in the tab bar: it shows at the right edge
+        // before the left one, and ends up filling the screen.
+        assertTrue("the new tab didn't come from the right:\n$all", frames.any { redness(it.right) > redness(it.left) + 0.1f })
+        assertTrue("the new tab doesn't fill the screen:\n$all", frames.last().let { redness(it.left) > 0.95f && redness(it.right) > 0.95f })
     }
 }
