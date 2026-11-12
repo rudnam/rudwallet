@@ -101,14 +101,23 @@ var (
 		{Name: "Restaurants", Kind: "expense", Icon: "food", Color: "#d9534f"},
 		{Name: "Cafés", Kind: "expense", Icon: "coffee", Color: "#d9534f"},
 		{Name: "Delivery", Kind: "expense", Icon: "other", Color: "#d9534f"},
+		{Name: "Household", Kind: "expense", Icon: "clean", Color: "#b8873a"},
+		{Name: "Toiletries", Kind: "expense", Icon: "beauty", Color: "#b8873a"},
+		{Name: "Cleaning & laundry", Kind: "expense", Icon: "clean", Color: "#b8873a"},
+		{Name: "Kitchen supplies", Kind: "expense", Icon: "food", Color: "#b8873a"},
 		{Name: "Shopping", Kind: "expense", Icon: "shopping", Color: "#c9a227"},
 		{Name: "Clothing", Kind: "expense", Icon: "clothes", Color: "#c9a227"},
-		{Name: "Household", Kind: "expense", Icon: "clean", Color: "#c9a227"},
 		{Name: "Electronics", Kind: "expense", Icon: "laptop", Color: "#c9a227"},
+		{Name: "Furniture & home", Kind: "expense", Icon: "home", Color: "#c9a227"},
 		{Name: "Housing", Kind: "expense", Icon: "home", Color: "#8a5cc2"},
 		{Name: "Rent", Kind: "expense", Icon: "home", Color: "#8a5cc2"},
-		{Name: "Bills & Utilities", Kind: "expense", Icon: "bills", Color: "#8a5cc2"},
-		{Name: "Phone & Internet", Kind: "expense", Icon: "phone", Color: "#8a5cc2"},
+		{Name: "Management fees", Kind: "expense", Icon: "bank", Color: "#8a5cc2"},
+		{Name: "Repairs & maintenance", Kind: "expense", Icon: "clean", Color: "#8a5cc2"},
+		{Name: "Bills & Utilities", Kind: "expense", Icon: "bills", Color: "#6d6fc4"},
+		{Name: "Electricity & gas", Kind: "expense", Icon: "bills", Color: "#6d6fc4"},
+		{Name: "Water", Kind: "expense", Icon: "bills", Color: "#6d6fc4"},
+		{Name: "Phone & Internet", Kind: "expense", Icon: "phone", Color: "#6d6fc4"},
+		{Name: "Subscriptions", Kind: "expense", Icon: "repeat", Color: "#6d6fc4"},
 		{Name: "Transport", Kind: "expense", Icon: "transit", Color: "#3b82c4"},
 		{Name: "Public transport", Kind: "expense", Icon: "transit", Color: "#3b82c4"},
 		{Name: "Taxi", Kind: "expense", Icon: "car", Color: "#3b82c4"},
@@ -119,60 +128,116 @@ var (
 		{Name: "Personal care", Kind: "expense", Icon: "beauty", Color: "#2aa198"},
 		{Name: "Sport & Fitness", Kind: "expense", Icon: "sport", Color: "#2aa198"},
 		{Name: "Entertainment", Kind: "expense", Icon: "fun", Color: "#d6619b"},
-		{Name: "Subscriptions", Kind: "expense", Icon: "repeat", Color: "#d6619b"},
 		{Name: "Hobbies", Kind: "expense", Icon: "beauty", Color: "#d6619b"},
-		{Name: "Going out", Kind: "expense", Icon: "coffee", Color: "#d6619b"},
+		{Name: "Events & tickets", Kind: "expense", Icon: "tag", Color: "#d6619b"},
+		{Name: "Games & media", Kind: "expense", Icon: "fun", Color: "#d6619b"},
 		{Name: "Travel", Kind: "expense", Icon: "travel", Color: "#1f9bd1"},
 		{Name: "Flights", Kind: "expense", Icon: "travel", Color: "#1f9bd1"},
 		{Name: "Hotels", Kind: "expense", Icon: "home", Color: "#1f9bd1"},
+		{Name: "Tours & activities", Kind: "expense", Icon: "tag", Color: "#1f9bd1"},
 		{Name: "Family", Kind: "expense", Icon: "kids", Color: "#d99a2b"},
 		{Name: "Kids", Kind: "expense", Icon: "kids", Color: "#d99a2b"},
 		{Name: "Pets", Kind: "expense", Icon: "pet", Color: "#d99a2b"},
+		{Name: "Family support", Kind: "expense", Icon: "gift", Color: "#d99a2b"},
 		{Name: "Education", Kind: "expense", Icon: "school", Color: "#5b4a8a"},
+		{Name: "Courses & lessons", Kind: "expense", Icon: "school", Color: "#5b4a8a"},
+		{Name: "Books & materials", Kind: "expense", Icon: "school", Color: "#5b4a8a"},
+		{Name: "Exams & certificates", Kind: "expense", Icon: "tag", Color: "#5b4a8a"},
 		{Name: "Insurance", Kind: "expense", Icon: "shield", Color: "#4a6f8a"},
+		{Name: "Life & health insurance", Kind: "expense", Icon: "health", Color: "#4a6f8a"},
+		{Name: "Home insurance", Kind: "expense", Icon: "home", Color: "#4a6f8a"},
+		{Name: "Car insurance", Kind: "expense", Icon: "car", Color: "#4a6f8a"},
 		{Name: "Gifts & Donations", Kind: "expense", Icon: "gift", Color: "#c96442"},
+		{Name: "Gifts", Kind: "expense", Icon: "gift", Color: "#c96442"},
+		{Name: "Ceremonies", Kind: "expense", Icon: "gift", Color: "#c96442"},
+		{Name: "Donations", Kind: "expense", Icon: "gift", Color: "#c96442"},
 		{Name: "Taxes & Fees", Kind: "expense", Icon: "bank", Color: "#8c7b5e"},
+		{Name: "Taxes", Kind: "expense", Icon: "bank", Color: "#8c7b5e"},
+		{Name: "Pension & social insurance", Kind: "expense", Icon: "shield", Color: "#8c7b5e"},
+		{Name: "Bank & card fees", Kind: "expense", Icon: "card", Color: "#8c7b5e"},
 		{Name: "Other", Kind: "expense", Icon: "other", Color: "#7a7f7c"},
 		{Name: "Salary", Kind: "income", Icon: "salary", Color: "#2f9e5b"},
+		{Name: "Bonus", Kind: "income", Icon: "salary", Color: "#2f9e5b"},
+		{Name: "Allowances", Kind: "income", Icon: "salary", Color: "#2f9e5b"},
+		{Name: "Reimbursements", Kind: "income", Icon: "money", Color: "#2f9e5b"},
 		{Name: "Side income", Kind: "income", Icon: "laptop", Color: "#2b7d8c"},
+		{Name: "Freelance", Kind: "income", Icon: "laptop", Color: "#2b7d8c"},
+		{Name: "Sold items", Kind: "income", Icon: "tag", Color: "#2b7d8c"},
+		{Name: "Gig work", Kind: "income", Icon: "money", Color: "#2b7d8c"},
+		{Name: "Investments", Kind: "income", Icon: "savings", Color: "#2a8a8a"},
+		{Name: "Interest", Kind: "income", Icon: "savings", Color: "#2a8a8a"},
+		{Name: "Dividends", Kind: "income", Icon: "savings", Color: "#2a8a8a"},
+		{Name: "Capital gains", Kind: "income", Icon: "savings", Color: "#2a8a8a"},
+		{Name: "Refunds & rewards", Kind: "income", Icon: "card", Color: "#b08a3e"},
 		{Name: "Rewards & Cashback", Kind: "income", Icon: "card", Color: "#b08a3e"},
-		{Name: "Refunds", Kind: "income", Icon: "shopping", Color: "#3b6ea8"},
-		{Name: "Sold items", Kind: "income", Icon: "tag", Color: "#8a7a2f"},
+		{Name: "Refunds", Kind: "income", Icon: "shopping", Color: "#b08a3e"},
+		{Name: "Tax refunds", Kind: "income", Icon: "bank", Color: "#b08a3e"},
+		{Name: "Gifts & benefits", Kind: "income", Icon: "gift", Color: "#c96490"},
 		{Name: "Gifts received", Kind: "income", Icon: "gift", Color: "#c96490"},
-		{Name: "Interest & Dividends", Kind: "income", Icon: "savings", Color: "#2a8a8a"},
+		{Name: "Government benefits", Kind: "income", Icon: "bank", Color: "#c96490"},
+		{Name: "From family", Kind: "income", Icon: "kids", Color: "#c96490"},
 		{Name: "Other income", Kind: "income", Icon: "money", Color: "#5aa469"},
 	}
 
 	// defaultParents are the default subcategories' main categories, by
 	// English name. A main category comes before its subcategories above.
+	// Every main category has a few; Other and Other income, the catch-alls,
+	// have none.
 	defaultParents = map[string]string{
 		"Groceries": "Food & Drinks", "Restaurants": "Food & Drinks", "Cafés": "Food & Drinks", "Delivery": "Food & Drinks",
-		"Clothing": "Shopping", "Household": "Shopping", "Electronics": "Shopping",
-		"Rent": "Housing", "Bills & Utilities": "Housing", "Phone & Internet": "Housing",
+		"Toiletries": "Household", "Cleaning & laundry": "Household", "Kitchen supplies": "Household",
+		"Clothing": "Shopping", "Electronics": "Shopping", "Furniture & home": "Shopping",
+		"Rent": "Housing", "Management fees": "Housing", "Repairs & maintenance": "Housing",
+		"Electricity & gas": "Bills & Utilities", "Water": "Bills & Utilities", "Phone & Internet": "Bills & Utilities",
+		"Subscriptions":    "Bills & Utilities",
 		"Public transport": "Transport", "Taxi": "Transport", "Car": "Transport",
 		"Medical": "Health", "Pharmacy": "Health", "Personal care": "Health", "Sport & Fitness": "Health",
-		"Subscriptions": "Entertainment", "Hobbies": "Entertainment", "Going out": "Entertainment",
-		"Flights": "Travel", "Hotels": "Travel",
-		"Kids": "Family", "Pets": "Family",
+		"Hobbies": "Entertainment", "Events & tickets": "Entertainment", "Games & media": "Entertainment",
+		"Flights": "Travel", "Hotels": "Travel", "Tours & activities": "Travel",
+		"Kids": "Family", "Pets": "Family", "Family support": "Family",
+		"Courses & lessons": "Education", "Books & materials": "Education", "Exams & certificates": "Education",
+		"Life & health insurance": "Insurance", "Home insurance": "Insurance", "Car insurance": "Insurance",
+		"Gifts": "Gifts & Donations", "Ceremonies": "Gifts & Donations", "Donations": "Gifts & Donations",
+		"Taxes": "Taxes & Fees", "Pension & social insurance": "Taxes & Fees", "Bank & card fees": "Taxes & Fees",
+		"Bonus": "Salary", "Allowances": "Salary", "Reimbursements": "Salary",
+		"Freelance": "Side income", "Sold items": "Side income", "Gig work": "Side income",
+		"Interest": "Investments", "Dividends": "Investments", "Capital gains": "Investments",
+		"Rewards & Cashback": "Refunds & rewards", "Refunds": "Refunds & rewards", "Tax refunds": "Refunds & rewards",
+		"Gifts received": "Gifts & benefits", "Government benefits": "Gifts & benefits", "From family": "Gifts & benefits",
 	}
 
 	// japaneseNames are the defaults' names in a wallet set up in Japanese,
 	// by English name. Every default needs one (TestJapaneseNames).
 	japaneseNames = map[string]string{
 		"Food & Drinks": "食費", "Groceries": "食料品", "Restaurants": "外食", "Cafés": "カフェ", "Delivery": "デリバリー",
-		"Shopping": "買い物", "Clothing": "衣服", "Household": "日用品", "Electronics": "家電・ガジェット",
-		"Housing": "住居費", "Rent": "家賃", "Bills & Utilities": "水道光熱費", "Phone & Internet": "通信費",
-		"Transport": "交通費", "Public transport": "電車・バス", "Taxi": "タクシー", "Car": "車",
+		"Household": "日用品", "Toiletries": "洗面・衛生用品", "Cleaning & laundry": "掃除・洗濯用品", "Kitchen supplies": "台所用品",
+		"Shopping": "買い物", "Clothing": "衣服", "Electronics": "家電・ガジェット", "Furniture & home": "家具・インテリア",
+		"Housing": "住居費", "Rent": "家賃", "Management fees": "管理費・共益費", "Repairs & maintenance": "修繕・メンテナンス",
+		"Bills & Utilities": "水道光熱費", "Electricity & gas": "電気・ガス", "Water": "水道", "Phone & Internet": "通信費",
+		"Subscriptions": "サブスク",
+		"Transport":     "交通費", "Public transport": "電車・バス", "Taxi": "タクシー", "Car": "車",
 		"Health": "医療費", "Medical": "病院", "Pharmacy": "薬・ドラッグストア", "Personal care": "美容・身だしなみ",
 		"Sport & Fitness": "スポーツ・フィットネス",
-		"Entertainment":   "娯楽", "Subscriptions": "サブスク", "Hobbies": "趣味", "Going out": "交際費",
-		"Travel": "旅行", "Flights": "航空券", "Hotels": "宿泊",
-		"Family": "家族", "Kids": "子ども", "Pets": "ペット",
-		"Education": "教育・教養", "Insurance": "保険", "Gifts & Donations": "贈り物・寄付", "Taxes & Fees": "税金・手数料",
+		"Entertainment":   "娯楽", "Hobbies": "趣味", "Events & tickets": "イベント・チケット", "Games & media": "ゲーム・映像・音楽",
+		"Travel": "旅行", "Flights": "航空券", "Hotels": "宿泊", "Tours & activities": "観光・アクティビティ",
+		"Family": "家族", "Kids": "子ども", "Pets": "ペット", "Family support": "仕送り",
+		"Education": "教育・教養", "Courses & lessons": "講座・習い事", "Books & materials": "書籍・教材", "Exams & certificates": "資格・検定",
+		"Insurance": "保険", "Life & health insurance": "生命・医療保険", "Home insurance": "火災・地震保険", "Car insurance": "自動車保険",
+		"Gifts & Donations": "贈り物・寄付", "Gifts": "プレゼント", "Ceremonies": "冠婚葬祭", "Donations": "寄付",
+		"Taxes & Fees": "税金・手数料", "Taxes": "税金", "Pension & social insurance": "年金・社会保険", "Bank & card fees": "振込・カード手数料",
 		"Other":  "その他",
-		"Salary": "給与", "Side income": "副業", "Rewards & Cashback": "ポイント・還元", "Refunds": "返金",
-		"Sold items": "売却・フリマ", "Gifts received": "お祝い・贈与", "Interest & Dividends": "利息・配当",
+		"Salary": "給与", "Bonus": "賞与", "Allowances": "手当", "Reimbursements": "立替精算",
+		"Side income": "副業", "Freelance": "業務委託・フリーランス", "Sold items": "売却・フリマ", "Gig work": "スキマバイト",
+		"Investments": "投資収入", "Interest": "利息", "Dividends": "配当", "Capital gains": "売却益",
+		"Refunds & rewards": "返金・還元", "Rewards & Cashback": "ポイント・還元", "Refunds": "返金", "Tax refunds": "還付金",
+		"Gifts & benefits": "贈与・給付", "Gifts received": "お祝い・贈与", "Government benefits": "給付金", "From family": "家族から",
 		"Other income": "その他の収入",
+	}
+
+	// formerNames are names a default had before, in English or Japanese,
+	// by its name now: a wallet with one has that default, under the old name.
+	formerNames = map[string]string{
+		"Interest & Dividends": "Investments", "利息・配当": "Investments",
 	}
 )
 
@@ -184,14 +249,27 @@ func localName(english, lang string) string {
 	return english
 }
 
-// sameDefault: a and b name the same default category, in either language.
-func sameDefault(a, b string) bool {
+// defaultName is the English name of the default category name is, in
+// either language or by a former name (ignoring case); "" if none.
+func defaultName(name string) string {
 	for en, ja := range japaneseNames {
-		if (strings.EqualFold(a, en) || a == ja) && (strings.EqualFold(b, en) || b == ja) {
-			return true
+		if strings.EqualFold(name, en) || name == ja {
+			return en
 		}
 	}
-	return false
+	for old, en := range formerNames {
+		if strings.EqualFold(name, old) {
+			return en
+		}
+	}
+	return ""
+}
+
+// sameDefault: a and b name the same default category, in either language
+// or by a former name.
+func sameDefault(a, b string) bool {
+	d := defaultName(a)
+	return d != "" && d == defaultName(b)
 }
 
 // walletLanguage is "ja" for a wallet whose categories are named in

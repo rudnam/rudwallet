@@ -165,33 +165,48 @@ func TestRegroup(t *testing.T) {
 	c.signup("a@example.com")
 	bob.signup("b@example.com")
 	o := overview(t, c)
-	food, housing := categoryID(t, o, "Food & Drinks"), categoryID(t, o, "Housing")
-	groceries, bills := categoryID(t, o, "Groceries"), categoryID(t, o, "Bills & Utilities")
-	offer := func(cl *client) map[int64]int64 {
+	food, bills, fun := categoryID(t, o, "Food & Drinks"), categoryID(t, o, "Bills & Utilities"), categoryID(t, o, "Entertainment")
+	groceries, subs, other := categoryID(t, o, "Groceries"), categoryID(t, o, "Subscriptions"), categoryID(t, o, "Other")
+	const main = -1 // a move that makes a category a main one
+	offer := func(cl *client, query string) map[int64]int64 {
 		t.Helper()
 		var cats []wallet.Category
-		if code := cl.do("GET", "/api/categories/regroup", nil, &cats); code != 200 {
+		if code := cl.do("GET", "/api/categories/regroup"+query, nil, &cats); code != 200 {
 			t.Fatalf("offer: %d", code)
 		}
 		out := map[int64]int64{}
 		for _, cat := range cats {
-			out[cat.ID] = *cat.ParentID
+			out[cat.ID] = main
+			if cat.ParentID != nil {
+				out[cat.ID] = *cat.ParentID
+			}
 		}
 		return out
 	}
-	if got := offer(c); len(got) != 0 {
+	if got := offer(c, "?with_main=1"); len(got) != 0 {
 		t.Errorf("a new wallet is offered %v", got)
 	}
-	// As an old wallet has them: main categories.
-	for _, cat := range o.Categories {
-		if cat.ID == groceries || cat.ID == bills {
-			if code := c.do("PUT", fmt.Sprintf("/api/categories/%d", cat.ID), map[string]any{"name": cat.Name, "kind": cat.Kind, "parent_id": nil}, nil); code != 200 {
-				t.Fatalf("flatten %s: %d", cat.Name, code)
+	// As an old wallet has them: Groceries a main category, Subscriptions under
+	// Entertainment, and (made up) Other under Food & Drinks.
+	move := func(id int64, parent any) {
+		t.Helper()
+		for _, cat := range o.Categories {
+			if cat.ID == id {
+				if code := c.do("PUT", fmt.Sprintf("/api/categories/%d", id), map[string]any{"name": cat.Name, "kind": cat.Kind, "parent_id": parent}, nil); code != 200 {
+					t.Fatalf("move %s: %d", cat.Name, code)
+				}
 			}
 		}
 	}
-	if got, want := offer(c), map[int64]int64{groceries: food, bills: housing}; fmt.Sprint(got) != fmt.Sprint(want) {
+	move(groceries, nil)
+	move(subs, fun)
+	move(other, food)
+	// An older app is offered moves under a main category only.
+	if got, want := offer(c, ""), map[int64]int64{groceries: food, subs: bills}; fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Fatalf("offer %v, want %v", got, want)
+	}
+	if got, want := offer(c, "?with_main=1"), map[int64]int64{groceries: food, subs: bills, other: main}; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("offer with main %v, want %v", got, want)
 	}
 
 	// Bob can't move Alice's categories.
@@ -199,17 +214,16 @@ func TestRegroup(t *testing.T) {
 	if code := bob.do("POST", "/api/categories/regroup", map[string]any{"ids": []int64{groceries}}, &moved); code != 200 || len(moved) != 0 {
 		t.Errorf("another user's: %d %+v", code, moved)
 	}
-	// Only Groceries, and Food & Drinks, which isn't offered, stays put.
-	if code := c.do("POST", "/api/categories/regroup", map[string]any{"ids": []int64{groceries, food}}, &moved); code != 200 ||
-		len(moved) != 1 || moved[0].ID != groceries || *moved[0].ParentID != food {
+	// Groceries and Other; Food & Drinks, which isn't offered, stays put.
+	if code := c.do("POST", "/api/categories/regroup", map[string]any{"ids": []int64{groceries, other, food}}, &moved); code != 200 || len(moved) != 2 {
 		t.Fatalf("regroup: %d %+v", code, moved)
 	}
 	for _, cat := range overview(t, c).Categories {
-		if cat.ID == groceries && (cat.ParentID == nil || *cat.ParentID != food) {
+		if (cat.ID == groceries && (cat.ParentID == nil || *cat.ParentID != food)) || (cat.ID == other && cat.ParentID != nil) {
 			t.Errorf("after regrouping: %+v", cat)
 		}
 	}
-	if got, want := offer(c), map[int64]int64{bills: housing}; fmt.Sprint(got) != fmt.Sprint(want) {
+	if got, want := offer(c, "?with_main=1"), map[int64]int64{subs: bills}; fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Errorf("offer afterwards %v, want %v", got, want)
 	}
 }

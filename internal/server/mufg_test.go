@@ -151,7 +151,7 @@ func TestImportMUFG(t *testing.T) {
 	if r := got["income 250000"]; r.CategoryID == nil || *r.CategoryID != category["Salary"] || r.Payee != employer {
 		t.Errorf("salary: %+v", r)
 	}
-	if r := got["expense 110"]; r.CategoryID == nil || *r.CategoryID != category["Taxes & Fees"] {
+	if r := got["expense 110"]; r.CategoryID == nil || *r.CategoryID != category["Bank & card fees"] {
 		t.Errorf("the ATM fee: %+v", r)
 	}
 	if r := got["income 12"]; r.CategoryID == nil || *r.CategoryID != category["Rewards & Cashback"] {

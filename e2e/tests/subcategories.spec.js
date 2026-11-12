@@ -86,18 +86,21 @@ test('a subcategory is made in Settings, picked under its main category, and cou
 // them like a new one's.
 test('an old wallet groups its categories like a new one', async ({ page }) => {
   await signUp(page);
-  // As an old wallet has them: Groceries and Bills & Utilities as main categories.
+  // As an older wallet has them: Groceries a main category, Subscriptions under
+  // Entertainment, and (made up) Other under Food & Drinks.
   const { categories } = await (await page.request.get('/api/wallet')).json();
-  for (const name of ['Groceries', 'Bills & Utilities']) {
+  const id = (name) => categories.find((x) => x.name === name).id;
+  for (const [name, parent] of [['Groceries', null], ['Subscriptions', id('Entertainment')], ['Other', id('Food & Drinks')]]) {
     const c = categories.find((x) => x.name === name);
-    expect((await page.request.put(`/api/categories/${c.id}`, { data: { name: c.name, kind: c.kind, icon: c.icon, color: c.color, parent_id: null } })).status()).toBe(200);
+    expect((await page.request.put(`/api/categories/${c.id}`, { data: { name: c.name, kind: c.kind, icon: c.icon, color: c.color, parent_id: parent } })).status()).toBe(200);
   }
   await page.goto('/app/#/settings?section=categories');
   await page.screenshot({ path: test.info().outputPath('categories-list.png'), fullPage: true });
   await page.getByRole('button', { name: /Match the new default categories/ }).click();
   const offer = page.getByRole('dialog', { name: 'Match the new default categories' });
   await expect(offer.getByRole('checkbox', { name: 'Groceries under Food & Drinks' })).toBeChecked();
-  await expect(offer.getByRole('checkbox', { name: 'Bills & Utilities under Housing' })).toBeChecked();
+  await expect(offer.getByRole('checkbox', { name: 'Subscriptions under Bills & Utilities' })).toBeChecked();
+  await expect(offer.getByRole('checkbox', { name: 'Other as a main category' })).toBeChecked();
   // Each with its icon.
   await expect(offer.locator('label.check .cat-icon')).toHaveCount(await offer.locator('label.check').count());
   await page.screenshot({ path: test.info().outputPath('regroup-offer.png'), fullPage: true });
@@ -105,7 +108,8 @@ test('an old wallet groups its categories like a new one', async ({ page }) => {
   await expect(offer).toBeHidden();
   await expect(page.getByRole('button', { name: /Match the new default categories/ })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Edit category Food & Drinks › Groceries' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Edit category Housing › Bills & Utilities' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Edit category Bills & Utilities › Subscriptions' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Edit category Other', exact: true })).toBeVisible();
 });
 
 // The boxes open in the order of use and stay in it: no jump once the

@@ -324,10 +324,11 @@ func (h *Handler) missingCategories(w http.ResponseWriter, r *http.Request) erro
 	return nil
 }
 
-// regroupOffer lists the user's categories that new wallets have under a
-// main category, with the main category each would go under.
+// regroupOffer lists the moves that put the user's categories where new
+// wallets have them, with the main category each would go under (with_main=1:
+// also those that become main categories, with parent_id null).
 func (h *Handler) regroupOffer(w http.ResponseWriter, r *http.Request) error {
-	cats, err := h.store.RegroupOffer(r.Context(), userID(r))
+	cats, err := h.store.RegroupOffer(r.Context(), userID(r), r.URL.Query().Get("with_main") == "1")
 	if err != nil {
 		return err
 	}

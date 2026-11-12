@@ -35,11 +35,11 @@ func TestDefaultsInEitherLanguage(t *testing.T) {
 			t.Errorf("%q is offered in English to a Japanese wallet", c.Name)
 		}
 	}
-	// Food & Drinks' subcategories are offered under 食費; the other main
-	// categories' wait until the wallet has those.
+	// Food & Drinks' subcategories are offered under 食費, and Salary's under
+	// 給与; the other main categories' wait until the wallet has those.
 	want := 0
 	for _, d := range defaultCategories {
-		if p := defaultParents[d.Name]; d.Name != "Food & Drinks" && d.Name != "Salary" && (p == "" || p == "Food & Drinks") {
+		if p := defaultParents[d.Name]; d.Name != "Food & Drinks" && d.Name != "Salary" && (p == "" || p == "Food & Drinks" || p == "Salary") {
 			want++
 		}
 	}
