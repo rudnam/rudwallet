@@ -51,6 +51,7 @@ import androidx.navigation.toRoute
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.rudnam.wallet.core.designsystem.theme.WalletMotion
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
+import com.rudnam.wallet.core.ui.LocalPageIsOnTop
 import com.rudnam.wallet.core.ui.LocalPageIsOpen
 import com.rudnam.wallet.core.ui.LocalSharedTransitionScope
 import com.rudnam.wallet.core.ui.Page
@@ -109,7 +110,7 @@ class ShellMotionTest {
                     },
                 ) { padding ->
                     SharedTransitionLayout(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
-                        CompositionLocalProvider(LocalSharedTransitionScope provides this, LocalPageIsOpen provides rememberPageIsOpen(nav)) {
+                        CompositionLocalProvider(LocalSharedTransitionScope provides this, LocalPageIsOpen provides rememberPageIsOpen(nav), LocalPageIsOnTop provides rememberPageIsOnTop(nav)) {
                             NavHost(
                                 nav,
                                 startDestination = WalletRoute,

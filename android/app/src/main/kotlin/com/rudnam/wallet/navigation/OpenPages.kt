@@ -19,6 +19,17 @@ fun rememberPageIsOpen(navController: NavController): (LifecycleOwner) -> Boolea
     return remember(current) { { owner -> navController.isOpen(owner) } }
 }
 
+/**
+ * Whether a page is the one on top now, for core/ui's LocalPageIsOnTop. Going back while a
+ * page is still opening, Navigation plays the opening backwards rather than a closing, so the
+ * transition alone would still say it's on its way to the page being left.
+ */
+@Composable
+fun rememberPageIsOnTop(navController: NavController): (LifecycleOwner) -> Boolean {
+    val current by navController.currentBackStackEntryAsState()
+    return remember(current) { { owner -> owner === current } }
+}
+
 private fun NavController.isOpen(owner: LifecycleOwner): Boolean {
     val entry = owner as? NavBackStackEntry ?: return true
     if (entry === currentBackStackEntry || entry === previousBackStackEntry) return true

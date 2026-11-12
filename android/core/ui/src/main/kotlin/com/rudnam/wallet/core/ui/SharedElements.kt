@@ -40,6 +40,12 @@ val LocalPageAnimationScope = compositionLocalOf<AnimatedVisibilityScope?> { nul
 val LocalPageIsOpen = compositionLocalOf<((LifecycleOwner) -> Boolean)?> { null }
 
 /**
+ * Whether a page (its LifecycleOwner) is the one on top of the navigation now, the page being
+ * shown or coming back into view. The app provides it.
+ */
+val LocalPageIsOnTop = compositionLocalOf<((LifecycleOwner) -> Boolean)?> { null }
+
+/**
  * A destination's content, as a page: an opaque sheet on its own ground, so a page coming in
  * over another covers it (the app's Motion.kt), and able to share elements with the page it
  * came from or goes to. Every destination's content goes in one.
@@ -93,7 +99,7 @@ fun Modifier.sharedBounds(key: Any, shape: Shape, zIndexInOverlay: Float = 0f): 
  * into the stack would cover the pieces in front of it until it landed, then drop behind
  * them. So while its page comes back, the stack's other pieces are drawn above the pages
  * too, each at its place, solid from the start (as the one coming back is), so it goes in
- * behind those in front of it all the way.
+ * behind those in front of it all the way, also when it turns back while still opening.
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -101,7 +107,12 @@ fun Modifier.sharedBoundsInStack(key: Any, shape: Shape, zIndex: Float): Modifie
     val shared = LocalSharedTransitionScope.current ?: return this
     val page = LocalPageAnimationScope.current ?: return this
     val state = shared.rememberSharedContentState(key)
-    val above = { shared.isTransitionActive && page.transition.targetState == EnterExitState.Visible && !state.isMatchFound }
+    // Its page is coming back into view: it's the one on top again. (Going back while the card
+    // is still opening, the opening plays backwards, so the transition still heads away.)
+    val owner = LocalLifecycleOwner.current
+    val onTop = LocalPageIsOnTop.current
+    val comingBack = { onTop?.invoke(owner) ?: (page.transition.targetState == EnterExitState.Visible) }
+    val above = { shared.isTransitionActive && !state.isMatchFound && comingBack() }
     return with(shared) {
         this@sharedBoundsInStack
             .renderInSharedTransitionScopeOverlay(zIndexInOverlay = zIndex, renderInOverlay = above)

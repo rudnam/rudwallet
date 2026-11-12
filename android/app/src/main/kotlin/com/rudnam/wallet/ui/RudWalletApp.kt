@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import com.rudnam.wallet.core.designsystem.theme.WalletMotion
+import com.rudnam.wallet.core.ui.LocalPageIsOnTop
 import com.rudnam.wallet.core.ui.LocalPageIsOpen
 import com.rudnam.wallet.core.ui.LocalSharedTransitionScope
 import androidx.compose.ui.platform.LocalConfiguration
@@ -80,6 +81,7 @@ import com.rudnam.wallet.navigation.exit
 import com.rudnam.wallet.navigation.popEnter
 import com.rudnam.wallet.navigation.popExit
 import com.rudnam.wallet.navigation.predictivePopExit
+import com.rudnam.wallet.navigation.rememberPageIsOnTop
 import com.rudnam.wallet.navigation.rememberPageIsOpen
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -120,8 +122,13 @@ fun RudWalletApp(
     ) { padding ->
         // Pages can share elements as they change (an account's card grows into its page).
         SharedTransitionLayout(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
-            // Which pages are open, so a page being closed can tell (core/ui's Page).
-            CompositionLocalProvider(LocalSharedTransitionScope provides this, LocalPageIsOpen provides rememberPageIsOpen(appState.navController)) {
+            // Which pages are open and which is on top, so a page being closed, and Wallet's
+            // cards as one goes back into the stack, can tell (core/ui's SharedElements.kt).
+            CompositionLocalProvider(
+                LocalSharedTransitionScope provides this,
+                LocalPageIsOpen provides rememberPageIsOpen(appState.navController),
+                LocalPageIsOnTop provides rememberPageIsOnTop(appState.navController),
+            ) {
                 NavHost(
                     appState.navController,
                     startDestination = WalletRoute,
