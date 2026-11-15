@@ -624,8 +624,9 @@ function DefaultsDialog({ missing, regroup, onError, onClose }: { missing: Categ
           <fieldset className="stack tight">
             <legend className="muted small">{t('Group')}</legend>
             {regroup.map((c) => (
-              <label key={c.id} className="check">
+              <label key={c.id} className="check with-icon">
                 <input type="checkbox" checked={moves.has(c.id)} onChange={(e) => setMoves(toggle(moves, c.id, e.target.checked))} />
+                <CategoryIcon icon={c.icon} name={c.name} color={c.color} size="small" />
                 {t('{name} under {main}', { name: c.name, main: w.category(c.parent_id ?? null)?.name ?? '' })}
               </label>
             ))}
@@ -640,8 +641,10 @@ function DefaultsDialog({ missing, regroup, onError, onClose }: { missing: Categ
               // A default subcategory goes under the main category the wallet has.
               const main = c.parent_id != null ? w.category(c.parent_id) : undefined;
               return (
-                <label key={key} className="check">
+                <label key={key} className="check with-icon">
                   <input type="checkbox" checked={adds.has(key)} onChange={(e) => setAdds(toggle(adds, key, e.target.checked))} />
+                  {/* The icon the default comes with. */}
+                  <CategoryIcon icon={c.icon} name={c.name} color={c.color} size="small" />
                   {main ? `${main.name} › ${c.name}` : c.name}
                 </label>
               );

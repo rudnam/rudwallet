@@ -257,7 +257,7 @@ private fun DefaultsSheet(wallet: Wallet, missing: List<Category>, regroup: List
             if (regroup.isNotEmpty()) {
                 Text(stringResource(R.string.feature_settings_defaults_move), style = MaterialTheme.typography.labelLarge, color = colors.muted, modifier = Modifier.padding(top = 8.dp))
                 for (c in regroup) {
-                    CheckRow(stringResource(R.string.feature_settings_regroup_move, c.name, wallet.category(c.parentId)?.name.orEmpty()), c.id in moves) { on ->
+                    CheckRow(c, stringResource(R.string.feature_settings_regroup_move, c.name, wallet.category(c.parentId)?.name.orEmpty()), c.id in moves) { on ->
                         if (on) moves += c.id else moves -= c.id
                     }
                 }
@@ -269,7 +269,7 @@ private fun DefaultsSheet(wallet: Wallet, missing: List<Category>, regroup: List
                     val key = "${c.kind}:${c.name}"
                     // A default subcategory goes under the main category the wallet has.
                     val name = wallet.category(c.parentId)?.let { "${it.name} › ${c.name}" } ?: c.name
-                    CheckRow(name, key in adds) { on -> if (on) adds += key else adds -= key }
+                    CheckRow(c, name, key in adds) { on -> if (on) adds += key else adds -= key }
                 }
             }
             Button(
@@ -282,13 +282,15 @@ private fun DefaultsSheet(wallet: Wallet, missing: List<Category>, regroup: List
 }
 
 @Composable
-private fun CheckRow(text: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+private fun CheckRow(category: Category, text: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     Row(
         Modifier.fillMaxWidth().toggleable(value = checked, role = Role.Checkbox, onValueChange = onChange).padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Checkbox(checked = checked, onCheckedChange = null)
+        // The icon it has, or a default comes with.
+        CategoryIcon(category, Modifier.size(28.dp))
         Text(text, style = MaterialTheme.typography.bodyMedium)
     }
 }

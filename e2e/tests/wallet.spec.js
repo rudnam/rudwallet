@@ -254,6 +254,8 @@ test('add a default category the user is missing', async ({ page }) => {
   await page.getByRole('button', { name: /Match the new default categories/ }).click();
   const offer = page.getByRole('dialog', { name: 'Match the new default categories' });
   await expect(offer.getByRole('checkbox', { name: 'Transport › Car' })).toBeChecked();
+  // With the icon it comes with.
+  await expect(offer.locator('label.check', { hasText: 'Transport › Car' }).locator('.cat-icon svg')).toHaveCount(1);
   await offer.getByRole('button', { name: 'Apply' }).click();
   await expect(page.getByRole('button', { name: 'Edit category Transport › Car' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Match the new default categories/ })).toHaveCount(0);

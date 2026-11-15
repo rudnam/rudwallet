@@ -75,6 +75,8 @@ test('an old wallet groups its categories like a new one', async ({ page }) => {
   const offer = page.getByRole('dialog', { name: 'Match the new default categories' });
   await expect(offer.getByRole('checkbox', { name: 'Groceries under Food & Drinks' })).toBeChecked();
   await expect(offer.getByRole('checkbox', { name: 'Bills & Utilities under Housing' })).toBeChecked();
+  // Each with its icon.
+  await expect(offer.locator('label.check .cat-icon')).toHaveCount(await offer.locator('label.check').count());
   await page.screenshot({ path: test.info().outputPath('regroup-offer.png'), fullPage: true });
   await offer.getByRole('button', { name: 'Apply' }).click();
   await expect(offer).toBeHidden();
