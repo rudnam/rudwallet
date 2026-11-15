@@ -172,12 +172,12 @@ for (const [name, viewport] of [
     // Main categories, each naming its subcategories; Travel opens to its own.
     await picker.getByRole('button', { name: /^Travel/ }).click();
     const travel = picker.getByRole('group', { name: 'Subcategories of Travel' });
-    await expect(travel.getByRole('button', { name: 'Flights' })).toBeVisible();
+    await expect(travel.getByRole('button', { name: 'Trip transport' })).toBeVisible();
     await shot('5-new-record-all-categories');
-    await travel.getByRole('button', { name: 'Flights' }).click();
+    await travel.getByRole('button', { name: 'Trip transport' }).click();
     await expect(picker).toBeHidden();
     // Picked there, it's chosen, and in the boxes.
-    await expect(add.getByRole('radio', { name: 'Flights' })).toBeChecked();
+    await expect(add.getByRole('radio', { name: 'Trip transport' })).toBeChecked();
     await add.getByRole('combobox', { name: 'Tags' }).fill('Date night,');
     await add.getByRole('combobox', { name: 'Tags' }).fill('Birthday');
     await add.getByRole('combobox', { name: 'Tags' }).press('Enter');

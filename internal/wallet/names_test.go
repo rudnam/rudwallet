@@ -102,7 +102,7 @@ func TestBroaderDefaults(t *testing.T) {
 	if got := guessCategory("expense", "UNIQLO 渋谷店", ""); got != "Clothing" {
 		t.Errorf("UNIQLO: %q", got)
 	}
-	if got := guessCategory("expense", "スターバックス 渋谷店", ""); got != "Cafés" {
+	if got := guessCategory("expense", "スターバックス 渋谷店", ""); got != "Eating out" {
 		t.Errorf("Starbucks: %q", got)
 	}
 	g = ImportCategory{Kind: "expense"}
@@ -110,7 +110,7 @@ func TestBroaderDefaults(t *testing.T) {
 	if g.CategoryID == nil || *g.CategoryID != 3 {
 		t.Errorf("Pets in a wallet without Family: %+v", g)
 	}
-	if got := guessCategory("expense", "NETFLIX.COM", ""); got != "Subscriptions" {
+	if got := guessCategory("expense", "NETFLIX.COM", ""); got != "Streaming & games" {
 		t.Errorf("Netflix: %q", got)
 	}
 }

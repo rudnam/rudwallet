@@ -59,12 +59,12 @@ test('a subcategory is made in Settings, picked under its main category, and cou
   await rec.getByRole('button', { name: 'All', exact: true }).click();
   const picker = page.getByRole('dialog', { name: 'Choose a category' });
   const foodRow = picker.getByRole('button', { name: /^Food & Drinks/ });
-  await expect(foodRow).toContainText('Groceries · Restaurants · Cafés · Delivery · Bakeries');
+  await expect(foodRow).toContainText('Groceries · Eating out · Delivery · Bakeries');
   await expect(foodRow).toHaveAttribute('aria-expanded', 'false');
   // Food & Drinks opens in place: it in general first, then its subcategories.
   await foodRow.click();
   const subs = picker.getByRole('group', { name: 'Subcategories of Food & Drinks' });
-  await expect(subs.getByRole('button')).toHaveText(['Food & Drinks (general)', 'Groceries', 'Restaurants', 'Cafés', 'Delivery', 'Bakeries']);
+  await expect(subs.getByRole('button')).toHaveText(['Food & Drinks (general)', 'Groceries', 'Eating out', 'Delivery', 'Bakeries']);
   await page.screenshot({ path: test.info().outputPath('picker-open.png'), fullPage: true });
   // Searching lists every match directly, subcategories too.
   await picker.getByRole('searchbox', { name: 'Find a category' }).fill('bake');
@@ -93,11 +93,11 @@ test('a subcategory is made in Settings, picked under its main category, and cou
 // them like a new one's.
 test('an old wallet groups its categories like a new one', async ({ page }) => {
   await signUp(page);
-  // As an older wallet has them: Groceries a main category, Subscriptions under
-  // Entertainment, and (made up) Other under Food & Drinks.
+  // As an older wallet might have them: Groceries a main category, Electronics
+  // under Entertainment, and (made up) Other under Food & Drinks.
   const { categories } = await (await page.request.get('/api/wallet')).json();
   const id = (name) => categories.find((x) => x.name === name).id;
-  for (const [name, parent] of [['Groceries', null], ['Subscriptions', id('Entertainment')], ['Other', id('Food & Drinks')]]) {
+  for (const [name, parent] of [['Groceries', null], ['Electronics', id('Entertainment')], ['Other', id('Food & Drinks')]]) {
     const c = categories.find((x) => x.name === name);
     expect((await page.request.put(`/api/categories/${c.id}`, { data: { name: c.name, kind: c.kind, icon: c.icon, color: c.color, parent_id: parent } })).status()).toBe(200);
   }
@@ -106,7 +106,7 @@ test('an old wallet groups its categories like a new one', async ({ page }) => {
   await page.getByRole('button', { name: /Match the new default categories/ }).click();
   const offer = page.getByRole('dialog', { name: 'Match the new default categories' });
   await expect(offer.getByRole('checkbox', { name: 'Groceries under Food & Drinks' })).toBeChecked();
-  await expect(offer.getByRole('checkbox', { name: 'Subscriptions under Bills & Utilities' })).toBeChecked();
+  await expect(offer.getByRole('checkbox', { name: 'Electronics under Shopping' })).toBeChecked();
   await expect(offer.getByRole('checkbox', { name: 'Other as a main category' })).toBeChecked();
   // Each with its icon.
   await expect(offer.locator('label.check .cat-icon')).toHaveCount(await offer.locator('label.check').count());
@@ -117,8 +117,8 @@ test('an old wallet groups its categories like a new one', async ({ page }) => {
   await page.getByRole('button', { name: /^Food & Drinks/ }).click();
   await expect(page.getByRole('button', { name: 'Edit category Food & Drinks › Groceries' })).toBeVisible();
   // One opens at a time.
-  await page.getByRole('button', { name: /^Bills & Utilities/ }).click();
-  await expect(page.getByRole('button', { name: 'Edit category Bills & Utilities › Subscriptions' })).toBeVisible();
+  await page.getByRole('button', { name: /^Shopping/ }).click();
+  await expect(page.getByRole('button', { name: 'Edit category Shopping › Electronics' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Edit category Food & Drinks › Groceries' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Edit category Other', exact: true })).toBeVisible();
 });
