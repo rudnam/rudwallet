@@ -519,6 +519,7 @@ export const ja = {
   Group: 'まとめる',
   Apply: '適用',
   "Subcategories wear their main category's colour.": 'サブカテゴリはメインカテゴリと同じ色になります。',
+  Subcategory: 'サブカテゴリ',
   'Add a subcategory to {name}': '{name}にサブカテゴリを追加',
   '{name} as a main category': '{name}をメインカテゴリに',
   '{name} under {main}': '{name} → {main}の下へ',

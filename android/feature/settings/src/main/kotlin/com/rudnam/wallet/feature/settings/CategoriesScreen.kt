@@ -23,6 +23,8 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,6 +53,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -58,6 +61,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -178,11 +182,18 @@ internal fun CategoriesScreen(
     }
 }
 
-/** One kind's categories as rows: a main category, then its subcategories indented; a main one offers + for a new subcategory. */
+/**
+ * One kind's categories, compactly: a row per main category, its
+ * subcategories named small under it; tapped, it opens in place to show
+ * them as chips to edit, and + for a new one. One opens at a time. The
+ * pencil edits the main category; one without subcategories opens its
+ * editor when tapped.
+ */
 @Composable
 private fun CategoryList(wallet: Wallet, kind: CategoryKind, actions: CategoriesActions) {
     val colors = WalletTheme.colors
     val mains = wallet.categoriesInOrder().filter { it.kind == kind && !wallet.isSubcategory(it) }
+    var open by rememberSaveable { mutableStateOf<Long?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             stringResource(if (kind == CategoryKind.Expense) R.string.feature_settings_expenses else R.string.feature_settings_income),
@@ -194,43 +205,72 @@ private fun CategoryList(wallet: Wallet, kind: CategoryKind, actions: Categories
             Column {
                 mains.forEachIndexed { i, main ->
                     if (i > 0) HorizontalDivider(color = colors.border)
-                    CategoryRow(wallet, main, sub = false, actions)
-                    for (c in wallet.subcategories(main.id)) CategoryRow(wallet, c, sub = true, actions)
+                    MainCategoryRow(wallet, main, open == main.id, onToggle = { open = if (open == main.id) null else main.id }, actions)
                 }
             }
         }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun CategoryRow(wallet: Wallet, c: Category, sub: Boolean, actions: CategoriesActions) {
-    val edit = stringResource(R.string.feature_settings_edit_category_named, wallet.categoryPath(c.id) ?: c.name)
-    Row(
-        Modifier.fillMaxWidth().heightIn(min = 52.dp)
-            .clickable(onClickLabel = edit) { actions.edit(c) }
-            .padding(start = if (sub) 60.dp else 16.dp, end = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        CategoryIcon(c, Modifier.size(if (sub) 28.dp else 32.dp))
-        Text(
-            c.name,
-            Modifier.weight(1f).padding(vertical = 12.dp),
-            style = if (sub) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (!sub) {
-            IconButton(onClick = { actions.createUnder(c) }) {
-                LineIcon(
-                    WalletIcons.plus,
-                    contentDescription = stringResource(R.string.feature_settings_add_subcategory_to, c.name),
-                    tint = WalletTheme.colors.muted,
-                    size = 18.dp,
+private fun MainCategoryRow(wallet: Wallet, main: Category, open: Boolean, onToggle: () -> Unit, actions: CategoriesActions) {
+    val colors = WalletTheme.colors
+    val subs = wallet.subcategories(main.id)
+    val edit = stringResource(R.string.feature_settings_edit_category_named, main.name)
+    val state = stringResource(if (open) R.string.feature_settings_open else R.string.feature_settings_closed)
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 56.dp)
+                .then(
+                    if (subs.isEmpty()) {
+                        Modifier.clickable(onClickLabel = edit) { actions.edit(main) }
+                    } else {
+                        Modifier.clickable(role = Role.Button, onClick = onToggle).semantics { stateDescription = state }
+                    },
+                )
+                .padding(start = 16.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            CategoryIcon(main, Modifier.size(32.dp))
+            Column(Modifier.weight(1f)) {
+                Text(main.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (subs.isNotEmpty()) {
+                    Text(subs.joinToString(" · ") { it.name }, style = MaterialTheme.typography.bodySmall, color = colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            if (subs.isNotEmpty()) {
+                IconButton(onClick = { actions.edit(main) }) {
+                    LineIcon(WalletIcons.edit, contentDescription = edit, tint = colors.muted, size = 18.dp)
+                }
+                LineIcon(WalletIcons.expand, contentDescription = null, tint = colors.muted, size = 20.dp, modifier = Modifier.padding(end = 12.dp).rotate(if (open) 180f else 0f))
+            }
+        }
+        if (open) {
+            FlowRow(
+                Modifier.fillMaxWidth().padding(start = 60.dp, end = 16.dp, bottom = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                for (c in subs) {
+                    val editSub = stringResource(R.string.feature_settings_edit_category_named, wallet.categoryPath(c.id) ?: c.name)
+                    AssistChip(
+                        onClick = { actions.edit(c) },
+                        label = { Text(c.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                        leadingIcon = { CategoryIcon(c, Modifier.size(20.dp)) },
+                        modifier = Modifier.semantics { contentDescription = editSub },
+                    )
+                }
+                val add = stringResource(R.string.feature_settings_add_subcategory_to, main.name)
+                AssistChip(
+                    onClick = { actions.createUnder(main) },
+                    label = { Text(stringResource(R.string.feature_settings_subcategory)) },
+                    leadingIcon = { LineIcon(WalletIcons.plus, contentDescription = null, size = 16.dp) },
+                    colors = AssistChipDefaults.assistChipColors(labelColor = colors.muted, leadingIconContentColor = colors.muted),
+                    modifier = Modifier.semantics { contentDescription = add },
                 )
             }
-        } else {
-            Spacer(Modifier.width(48.dp))
         }
     }
 }

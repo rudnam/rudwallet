@@ -243,6 +243,7 @@ test('add a default category the user is missing', async ({ page }) => {
   await signUp(page);
   await page.goto('/app/#/settings?section=categories');
   // Deleting one says what goes with it.
+  await page.getByRole('button', { name: /^Transport/ }).click();
   await page.getByRole('button', { name: 'Edit category Transport › Car' }).click();
   const confirm = page.waitForEvent('dialog');
   const deleting = page.getByRole('dialog', { name: 'Edit category' }).getByRole('button', { name: 'Delete' }).click();
