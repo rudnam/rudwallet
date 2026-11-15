@@ -181,7 +181,8 @@ internal interface WalletApi {
     @GET("api/categories/missing")
     suspend fun missingCategories(): List<NetworkCategory>
 
-    @GET("api/categories/regroup")
+    // with_main=1: also the subcategories new wallets have as main categories (parent_id null).
+    @GET("api/categories/regroup?with_main=1")
     suspend fun regroupOffer(): List<NetworkCategory>
 
     @POST("api/categories/regroup")

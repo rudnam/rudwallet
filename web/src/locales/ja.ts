@@ -520,6 +520,7 @@ export const ja = {
   Apply: '適用',
   "Subcategories wear their main category's colour.": 'サブカテゴリはメインカテゴリと同じ色になります。',
   'Add a subcategory to {name}': '{name}にサブカテゴリを追加',
+  '{name} as a main category': '{name}をメインカテゴリに',
   '{name} under {main}': '{name} → {main}の下へ',
   "A main category's budgets and totals then include its subcategories.": 'メインカテゴリの予算と集計に、サブカテゴリの分も含まれるようになります。',
   'What you spend on and earn from. Tap one to rename it or change its icon.': '支出と収入の分類です。タップすると名前やアイコンを変更できます。',

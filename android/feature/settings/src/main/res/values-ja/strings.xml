@@ -58,6 +58,7 @@
     <string name="feature_settings_income">収入</string>
     <string name="feature_settings_edit_category_named">カテゴリ「%s」を編集</string>
     <string name="feature_settings_regroup_move">%1$s → %2$sの下へ</string>
+    <string name="feature_settings_regroup_main">%sをメインカテゴリに</string>
     <string name="feature_settings_defaults_title">新しい標準カテゴリに合わせる</string>
     <string name="feature_settings_defaults_intro">新しいウォレットはこれらで始まります。使いたいものにチェックしてください。ほかのカテゴリはそのままです。</string>
     <string name="feature_settings_defaults_move">まとめる</string>

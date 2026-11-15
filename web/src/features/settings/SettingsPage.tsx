@@ -627,7 +627,9 @@ function DefaultsDialog({ missing, regroup, onError, onClose }: { missing: Categ
               <label key={c.id} className="check with-icon">
                 <input type="checkbox" checked={moves.has(c.id)} onChange={(e) => setMoves(toggle(moves, c.id, e.target.checked))} />
                 <CategoryIcon icon={c.icon} name={c.name} color={c.color} size="small" />
-                {t('{name} under {main}', { name: c.name, main: w.category(c.parent_id ?? null)?.name ?? '' })}
+                {c.parent_id != null
+                  ? t('{name} under {main}', { name: c.name, main: w.category(c.parent_id)?.name ?? '' })
+                  : t('{name} as a main category', { name: c.name })}
               </label>
             ))}
             <p className="muted small">{t("A main category's budgets and totals then include its subcategories.")}</p>

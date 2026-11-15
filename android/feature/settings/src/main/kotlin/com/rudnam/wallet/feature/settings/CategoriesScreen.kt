@@ -257,7 +257,10 @@ private fun DefaultsSheet(wallet: Wallet, missing: List<Category>, regroup: List
             if (regroup.isNotEmpty()) {
                 Text(stringResource(R.string.feature_settings_defaults_move), style = MaterialTheme.typography.labelLarge, color = colors.muted, modifier = Modifier.padding(top = 8.dp))
                 for (c in regroup) {
-                    CheckRow(c, stringResource(R.string.feature_settings_regroup_move, c.name, wallet.category(c.parentId)?.name.orEmpty()), c.id in moves) { on ->
+                    // Under a main category, or (no parent) a main category of its own.
+                    val label = wallet.category(c.parentId)?.let { stringResource(R.string.feature_settings_regroup_move, c.name, it.name) }
+                        ?: stringResource(R.string.feature_settings_regroup_main, c.name)
+                    CheckRow(c, label, c.id in moves) { on ->
                         if (on) moves += c.id else moves -= c.id
                     }
                 }

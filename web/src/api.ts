@@ -631,8 +631,8 @@ export const api = {
 
   /** Default categories the user doesn't have yet. */
   missingCategories: () => request<Category[]>('GET', '/api/categories/missing'),
-  /** The categories new wallets have under a main category, each with the parent_id it would get. */
-  regroupOffer: () => request<Category[]>('GET', '/api/categories/regroup'),
+  /** Moves that put categories where new wallets have them: each with the parent_id it would get (null: a main category). */
+  regroupOffer: () => request<Category[]>('GET', '/api/categories/regroup?with_main=1'),
   regroup: (ids: number[]) => request<Category[]>('POST', '/api/categories/regroup', { ids }),
   createCategory: (c: Omit<Category, 'id'>) => request<Category>('POST', '/api/categories', c),
   updateCategory: (id: number, c: Omit<Category, 'id'>) => request<Category>('PUT', `/api/categories/${id}`, c),
