@@ -654,14 +654,24 @@ li.record:hover:not(:disabled) { background: none; } /* a row to read, not to ta
 
 /* The category picker: a row per category, a subcategory indented under its main one. */
 .picker-list { list-style: none; margin: 0; padding: 0; }
-.picker-list button {
+.picker-list > li > button {
   display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 6px 10px;
   border: 0; border-radius: 10px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
   justify-content: flex-start; font-weight: 400; white-space: normal;
 }
-.picker-list button:hover:not(:disabled) { background: var(--sunken); }
-.picker-list button.sub { padding-left: 44px; }
-.picker-list button.on { background: var(--sunken); font-weight: 600; }
+.picker-list > li > button:hover:not(:disabled) { background: var(--sunken); }
+.picker-list > li > button.sub { padding-left: 44px; }
+.picker-list > li > button.on { background: var(--sunken); font-weight: 600; }
+.picker-group + .picker-group { border-top: 1px solid var(--border); }
+.picker-list > li.picker-group > button { min-height: 56px; padding: 8px 10px; }
+.picker-list > li.picker-group > button.holds .picker-main > span:first-child { font-weight: 600; }
+.picker-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.picker-main .small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.picker-caret { color: var(--muted); }
+/* An open main category's chips: it in general first, then its subcategories. */
+.picker-subs { padding: 0 10px 12px 58px; }
+.picker-subs .chip { font-weight: 400; }
+.picker-subs .chip.on { background: var(--accent-soft); border-color: var(--accent); font-weight: 600; }
 
 /* The rest of a record: one box, a row per detail, label beside the value. */
 .details { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }

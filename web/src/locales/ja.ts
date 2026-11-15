@@ -78,6 +78,8 @@ export const ja = {
   'Light or dark, as your phone is set': 'スマホの設定に合わせてライトかダーク',
   'Choose a category': 'カテゴリを選んでください',
   'Find a category': 'カテゴリを検索',
+  'Subcategories of {name}': '{name}のサブカテゴリ',
+  '{name} (general)': '{name}(全般)',
   'No category matches': '一致するカテゴリはありません',
   'This account no longer exists.': 'この口座はもうありません。',
   'Edit {name}': '{name}を編集',

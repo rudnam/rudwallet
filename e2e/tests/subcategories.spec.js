@@ -48,9 +48,18 @@ test('a subcategory is made in Settings, picked under its main category, and cou
   const rec = page.getByRole('dialog', { name: 'New record' });
   await rec.getByLabel('Amount (JPY)').fill('600');
   await expect(rec.getByRole('radio', { name: 'Bakeries' })).toHaveCount(0);
-  // All opens the picker: Bakeries is under Food & Drinks, found by searching too.
+  // All opens the picker: main categories, each naming its subcategories small.
   await rec.getByRole('button', { name: 'All', exact: true }).click();
   const picker = page.getByRole('dialog', { name: 'Choose a category' });
+  const foodRow = picker.getByRole('button', { name: /^Food & Drinks/ });
+  await expect(foodRow).toContainText('Groceries · Restaurants · Cafés · Delivery · Bakeries');
+  await expect(foodRow).toHaveAttribute('aria-expanded', 'false');
+  // Food & Drinks opens in place: it in general first, then its subcategories.
+  await foodRow.click();
+  const subs = picker.getByRole('group', { name: 'Subcategories of Food & Drinks' });
+  await expect(subs.getByRole('button')).toHaveText(['Food & Drinks (general)', 'Groceries', 'Restaurants', 'Cafés', 'Delivery', 'Bakeries']);
+  await page.screenshot({ path: test.info().outputPath('picker-open.png'), fullPage: true });
+  // Searching lists every match directly, subcategories too.
   await picker.getByRole('searchbox', { name: 'Find a category' }).fill('bake');
   await expect(picker.getByRole('listitem')).toHaveCount(1);
   await picker.getByRole('button', { name: /Bakeries/ }).click();

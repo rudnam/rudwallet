@@ -1,8 +1,11 @@
 package com.rudnam.wallet.core.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -27,10 +31,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -48,10 +55,13 @@ data class CategoryPickerExtra(val label: String, val selected: Boolean, val onP
 const val CATEGORY_SEARCH_FROM = 10
 
 /**
- * The one way to pick a category, wherever one is picked: a sheet listing
- * every category of [kind] (null: both, under headings), each main category
- * followed by its subcategories, indented. A main category is a choice of its
- * own, for what no subcategory fits. Picking one closes the sheet.
+ * The one way to pick a category, wherever one is picked: a sheet with the
+ * main categories of [kind] (null: both, under headings), a row each, its
+ * subcategories named small under it, so it's plain at a glance whether a
+ * more specific one exists. A main category with subcategories opens in place
+ * to show them as chips (it first, for what none fits); one without is picked
+ * at once. Searching lists every match, subcategories too. Picking one closes
+ * the sheet.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,6 +99,8 @@ fun CategoryPickerContent(
     modifier: Modifier = Modifier,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
+    // The main category open, showing its subcategories: at first, the one holding the choice.
+    var open by rememberSaveable { mutableStateOf(wallet.mainCategoryId(selectedId)?.takeIf { wallet.subcategories(it).isNotEmpty() }) }
     val all = wallet.categoriesInOrder().filter { kind == null || it.kind == kind }
     val q = query.trim()
     // Searching finds a subcategory by its own name or its main category's, and lists it with its path.
@@ -128,25 +140,36 @@ fun CategoryPickerContent(
                 } }
             }
             var heading: CategoryKind? = null
-            for (c in shown) {
+            // Not searching: the main categories, each opening to its subcategories.
+            if (q.isEmpty()) for (main in all.filter { !wallet.isSubcategory(it) }) {
+                if (kind == null && main.kind != heading) {
+                    heading = main.kind
+                    item(key = "kind:${main.kind}") { KindHeading(main.kind) }
+                }
+                item(key = main.id) {
+                    MainGroup(
+                        main = main,
+                        subs = wallet.subcategories(main.id),
+                        selectedId = selectedId,
+                        open = open == main.id,
+                        onToggle = { open = if (open == main.id) null else main.id },
+                        onPick = onPick,
+                    )
+                }
+            }
+            // Searching: every match, a subcategory with its main category's name.
+            if (q.isNotEmpty()) for (c in shown) {
                 if (kind == null && c.kind != heading) {
                     heading = c.kind
-                    item(key = "kind:${c.kind}") {
-                        Text(
-                            stringResource(if (c.kind == CategoryKind.Expense) R.string.core_ui_expenses else R.string.core_ui_income),
-                            Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 4.dp).semantics { heading() },
-                            style = MaterialTheme.typography.labelLarge,
-                            color = colors.muted,
-                        )
-                    }
+                    item(key = "kind:${c.kind}") { KindHeading(c.kind) }
                 }
                 item(key = c.id) {
                     val sub = wallet.isSubcategory(c)
-                    PickerRow(selected = c.id == selectedId, indent = sub && q.isEmpty(), onClick = { onPick(c) }) {
+                    PickerRow(selected = c.id == selectedId, indent = false, onClick = { onPick(c) }) {
                         CategoryIcon(c, Modifier.size(32.dp))
                         Column(Modifier.weight(1f)) {
                             Text(c.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            if (sub && q.isNotEmpty()) {
+                            if (sub) {
                                 Text(wallet.category(c.parentId)?.name.orEmpty(), style = MaterialTheme.typography.bodySmall, color = colors.muted, maxLines = 1)
                             }
                         }
@@ -180,4 +203,80 @@ private fun PickerRow(selected: Boolean, indent: Boolean, onClick: () -> Unit, c
         content()
         if (selected) LineIcon(WalletIcons.check, contentDescription = null, tint = WalletTheme.colors.action, size = 20.dp)
     }
+}
+
+@Composable
+private fun KindHeading(kind: CategoryKind) {
+    Text(
+        stringResource(if (kind == CategoryKind.Expense) R.string.core_ui_expenses else R.string.core_ui_income),
+        Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 4.dp).semantics { heading() },
+        style = MaterialTheme.typography.labelLarge,
+        color = WalletTheme.colors.muted,
+    )
+}
+
+/**
+ * A main category: its row (its subcategories named small under it) and,
+ * open, its chips: itself in general first, then each subcategory. Without
+ * subcategories, the row picks it.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MainGroup(main: Category, subs: List<Category>, selectedId: Long?, open: Boolean, onToggle: () -> Unit, onPick: (Category) -> Unit) {
+    val colors = WalletTheme.colors
+    val holdsChoice = selectedId == main.id || subs.any { it.id == selectedId }
+    val state = stringResource(if (open) R.string.core_ui_open else R.string.core_ui_closed)
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 56.dp)
+                .then(
+                    if (subs.isEmpty()) {
+                        Modifier.selectable(selected = main.id == selectedId, role = Role.RadioButton) { onPick(main) }
+                    } else {
+                        Modifier.clickable(role = Role.Button, onClick = onToggle).semantics { stateDescription = state }
+                    },
+                )
+                .padding(horizontal = 20.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            CategoryIcon(main, Modifier.size(36.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    main.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = if (holdsChoice) FontWeight.SemiBold else null,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (subs.isNotEmpty()) {
+                    Text(subs.joinToString(" · ") { it.name }, style = MaterialTheme.typography.bodySmall, color = colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            when {
+                subs.isNotEmpty() -> LineIcon(WalletIcons.expand, contentDescription = null, tint = colors.muted, size = 20.dp, modifier = Modifier.rotate(if (open) 180f else 0f))
+                main.id == selectedId -> LineIcon(WalletIcons.check, contentDescription = null, tint = colors.action, size = 20.dp)
+            }
+        }
+        if (open) {
+            FlowRow(
+                Modifier.fillMaxWidth().padding(start = 68.dp, end = 20.dp, bottom = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                SubChip(main, stringResource(R.string.core_ui_general, main.name), main.id == selectedId) { onPick(main) }
+                for (c in subs) SubChip(c, c.name, c.id == selectedId) { onPick(c) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SubChip(category: Category, label: String, selected: Boolean, onClick: () -> Unit) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        leadingIcon = { CategoryIcon(category, Modifier.size(24.dp)) },
+    )
 }
