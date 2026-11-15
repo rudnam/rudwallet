@@ -281,7 +281,7 @@ func TestImportBudgetBakersChoices(t *testing.T) {
 	other.signup("b@example.com")
 	o := overview(t, c)
 	cash, food, salary := o.Accounts[0].ID, categoryID(t, o, "Food & Drinks"), categoryID(t, o, "Salary")
-	restaurants, bills := categoryID(t, o, "Restaurants"), categoryID(t, o, "Bills & Utilities")
+	restaurants, bills := categoryID(t, o, "Eating out"), categoryID(t, o, "Bills & Utilities")
 	// As for a user who signed up before Phone & Internet was a default.
 	if code := c.do("DELETE", fmt.Sprintf("/api/categories/%d", categoryID(t, o, "Phone & Internet")), nil, nil); code != 204 {
 		t.Fatalf("delete category: %d", code)
@@ -314,7 +314,7 @@ func TestImportBudgetBakersChoices(t *testing.T) {
 		t.Errorf("preview %+v", p)
 	}
 	if g := groups["Restaurant, fast-food"]; g.CategoryID == nil || *g.CategoryID != restaurants || g.Count != 2 || g.Total != 2000 {
-		t.Errorf("Restaurant, fast-food should go to Restaurants: %+v", g)
+		t.Errorf("Restaurant, fast-food should go to Eating out: %+v", g)
 	}
 	// Without Phone & Internet, its main category holds it.
 	if g := groups["Phone, cell phone"]; g.CategoryID == nil || *g.CategoryID != bills {
@@ -614,7 +614,7 @@ func TestImportPayPayCategories(t *testing.T) {
 	c := newClient(t, ts)
 	c.signup("a@example.com")
 	o := overview(t, c)
-	groceries, rewards := categoryID(t, o, "Groceries"), categoryID(t, o, "Rewards & Cashback")
+	groceries, rewards := categoryID(t, o, "Groceries"), categoryID(t, o, "Points & cashback")
 	csv := strings.Join([]string{
 		"取引日,出金金額（円）,入金金額（円）,海外出金金額,通貨,変換レート（円）,利用国,取引内容,取引先,取引方法,支払い区分,利用者,取引番号",
 		"2026/10/01 08:15,\"1,200\",-,-,-,-,-,支払い,ローソン 渋谷店,PayPay残高,-,本人,c-01",
@@ -640,11 +640,11 @@ func TestImportPayPayCategories(t *testing.T) {
 	if g := groups["JR東日本"]; g.CategoryID == nil || *g.CategoryID != categoryID(t, o, "Public transport") {
 		t.Errorf("JR is suggested Public transport: %+v", g)
 	}
-	if g := groups["ANTHROPIC* CLAUDE SUB"]; g.CategoryID == nil || *g.CategoryID != categoryID(t, o, "Subscriptions") {
-		t.Errorf("a subscription is suggested Subscriptions: %+v", g)
+	if g := groups["ANTHROPIC* CLAUDE SUB"]; g.CategoryID == nil || *g.CategoryID != categoryID(t, o, "Phone & Internet") {
+		t.Errorf("an online service is suggested Phone & Internet: %+v", g)
 	}
 	if g := groups["PayPay"]; g.Kind != "income" || g.CategoryID == nil || *g.CategoryID != rewards {
-		t.Errorf("points earned are suggested Rewards & Cashback: %+v", g)
+		t.Errorf("points earned are suggested Points & cashback: %+v", g)
 	}
 
 	var res wallet.ImportResult

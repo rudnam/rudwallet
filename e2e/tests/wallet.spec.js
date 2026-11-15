@@ -206,7 +206,7 @@ test('import records exported from Wallet by BudgetBakers', async ({ page }) => 
   await expect(page.getByText('You already have an account named Cash; its records go there.')).toBeVisible();
   await page.getByLabel('New account name').fill('Rakuten Savings');
   // BudgetBakers' categories are matched to the closest of the user's.
-  await expect(page.getByLabel('Category for Bar, cafe').locator('option:checked')).toHaveText('Cafés');
+  await expect(page.getByLabel('Category for Bar, cafe').locator('option:checked')).toHaveText('Eating out');
   await expect(page.getByLabel('Category for Salary').locator('option:checked')).toHaveText('Salary');
   await expect(page.getByLabel('Category for Coffee beans').locator('option:checked')).toHaveText('Coffee beans');
 

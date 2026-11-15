@@ -165,8 +165,8 @@ func TestRegroup(t *testing.T) {
 	c.signup("a@example.com")
 	bob.signup("b@example.com")
 	o := overview(t, c)
-	food, bills, fun := categoryID(t, o, "Food & Drinks"), categoryID(t, o, "Bills & Utilities"), categoryID(t, o, "Entertainment")
-	groceries, subs, other := categoryID(t, o, "Groceries"), categoryID(t, o, "Subscriptions"), categoryID(t, o, "Other")
+	food, shopping, fun := categoryID(t, o, "Food & Drinks"), categoryID(t, o, "Shopping"), categoryID(t, o, "Entertainment")
+	groceries, gadgets, other := categoryID(t, o, "Groceries"), categoryID(t, o, "Electronics"), categoryID(t, o, "Other")
 	const main = -1 // a move that makes a category a main one
 	offer := func(cl *client, query string) map[int64]int64 {
 		t.Helper()
@@ -186,8 +186,8 @@ func TestRegroup(t *testing.T) {
 	if got := offer(c, "?with_main=1"); len(got) != 0 {
 		t.Errorf("a new wallet is offered %v", got)
 	}
-	// As an old wallet has them: Groceries a main category, Subscriptions under
-	// Entertainment, and (made up) Other under Food & Drinks.
+	// As an old wallet might have them: Groceries a main category, Electronics
+	// under Entertainment, and (made up) Other under Food & Drinks.
 	move := func(id int64, parent any) {
 		t.Helper()
 		for _, cat := range o.Categories {
@@ -199,13 +199,13 @@ func TestRegroup(t *testing.T) {
 		}
 	}
 	move(groceries, nil)
-	move(subs, fun)
+	move(gadgets, fun)
 	move(other, food)
 	// An older app is offered moves under a main category only.
-	if got, want := offer(c, ""), map[int64]int64{groceries: food, subs: bills}; fmt.Sprint(got) != fmt.Sprint(want) {
+	if got, want := offer(c, ""), map[int64]int64{groceries: food, gadgets: shopping}; fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Fatalf("offer %v, want %v", got, want)
 	}
-	if got, want := offer(c, "?with_main=1"), map[int64]int64{groceries: food, subs: bills, other: main}; fmt.Sprint(got) != fmt.Sprint(want) {
+	if got, want := offer(c, "?with_main=1"), map[int64]int64{groceries: food, gadgets: shopping, other: main}; fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Fatalf("offer with main %v, want %v", got, want)
 	}
 
@@ -223,7 +223,7 @@ func TestRegroup(t *testing.T) {
 			t.Errorf("after regrouping: %+v", cat)
 		}
 	}
-	if got, want := offer(c, "?with_main=1"), map[int64]int64{subs: bills}; fmt.Sprint(got) != fmt.Sprint(want) {
+	if got, want := offer(c, "?with_main=1"), map[int64]int64{gadgets: shopping}; fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Errorf("offer afterwards %v, want %v", got, want)
 	}
 }
