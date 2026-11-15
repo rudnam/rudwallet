@@ -65,6 +65,9 @@
     <string name="feature_settings_defaults_add">追加</string>
     <string name="feature_settings_apply">適用</string>
     <string name="feature_settings_add_subcategory_to">%sにサブカテゴリを追加</string>
+    <string name="feature_settings_open">開いています</string>
+    <string name="feature_settings_closed">閉じています</string>
+    <string name="feature_settings_subcategory">サブカテゴリ</string>
     <string name="feature_settings_regroup_note">メインカテゴリの予算と集計に、サブカテゴリの分も含まれるようになります。</string>
     <string name="feature_settings_edit_category">カテゴリを編集</string>
     <string name="feature_settings_new_category">新しいカテゴリ</string>
