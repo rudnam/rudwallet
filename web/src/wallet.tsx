@@ -5,6 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { api, errorMessage, type Account, type Category, type Me, type Overview } from './api';
 import { Splash } from './components/Splash';
 import { t } from './i18n';
+import { wearingMainColours } from './categories';
 import { formatMoney } from './money';
 import { balanceChange, outbox, useUnsent } from './outbox';
 
@@ -56,14 +57,16 @@ export function WalletProvider({ me, children }: { me: Me; children: ReactNode }
   const accounts = unsent.length
     ? overview.accounts.map((a) => ({ ...a, balance: unsent.reduce((sum, u) => sum + balanceChange(u, a.id), a.balance) }))
     : overview.accounts;
+  const categories = wearingMainColours(overview.categories);
   const value: WalletState = {
     ...overview,
     accounts,
+    categories,
     me,
     refresh,
     money: (amount, signed) => formatMoney(amount, overview.settings, signed),
     account: (id) => accounts.find((a) => a.id === id),
-    category: (id) => overview.categories.find((c) => c.id === id),
+    category: (id) => categories.find((c) => c.id === id),
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

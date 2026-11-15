@@ -300,7 +300,9 @@ private fun CheckRow(category: Category, text: String, checked: Boolean, onChang
 @Composable
 private fun CategorySheet(editor: CategoryEditor, wallet: Wallet?, actions: CategoriesActions) {
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val preview = Category(0, editor.name.ifEmpty { "A" }, editor.kind, editor.icon, editor.color)
+    // A subcategory wears its main category's colour.
+    val parent = wallet?.category(editor.parentId)
+    val preview = Category(0, editor.name.ifEmpty { "A" }, editor.kind, editor.icon, parent?.color ?: editor.color)
     ModalBottomSheet(onDismissRequest = actions::close, sheetState = sheet, containerColor = WalletTheme.colors.surface) {
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 24.dp).navigationBarsPadding(),
@@ -343,7 +345,11 @@ private fun CategorySheet(editor: CategoryEditor, wallet: Wallet?, actions: Cate
                 }
             }
             if (wallet != null) ParentPicker(editor, wallet, actions)
-            ColourPicker(editor.color, actions::setColor)
+            if (parent == null) {
+                ColourPicker(editor.color, actions::setColor)
+            } else {
+                Text(stringResource(R.string.feature_settings_main_colour), style = MaterialTheme.typography.bodySmall, color = WalletTheme.colors.muted)
+            }
             Text(stringResource(R.string.feature_settings_icon), style = MaterialTheme.typography.labelLarge, color = WalletTheme.colors.muted)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 IconChoice(editor.icon.isEmpty(), stringResource(R.string.feature_settings_initial_only), onClick = { actions.setIcon("") }) {
