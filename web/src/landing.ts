@@ -4,7 +4,7 @@
 // installed from / before the move, which still opens at /.
 import './styles.css';
 import './landing.css';
-import { language, locale, setLanguage } from './language';
+import { language, setLanguage } from './language';
 
 const forApp =
   location.hash.startsWith('#/') ||
@@ -37,7 +37,6 @@ function translate() {
   // The switch names the other language, in that language.
   const toggle = document.querySelector<HTMLElement>('#language-toggle');
   if (toggle) toggle.lang = ja ? 'en' : 'ja';
-  offerAPK();
 }
 
 // Sections fade up as they come into view, once each. With reduced motion
@@ -65,24 +64,6 @@ async function offerDemo() {
     if (!res.ok) return;
     const { demo } = (await res.json()) as { demo?: boolean };
     if (demo) document.querySelectorAll<HTMLElement>('[data-demo-hidden]').forEach((el) => (el.hidden = false));
-  } catch {
-    // Offline or an older server: just don't offer it.
-  }
-}
-
-// The Play Store is the way to install; the APK is offered under it, only
-// when the server has one to give.
-async function offerAPK() {
-  try {
-    const res = await fetch('/api/downloads');
-    if (!res.ok) return;
-    const { android } = (await res.json()) as { android: { url: string; size: number; updated: string } | null };
-    if (!android) return;
-    document.querySelector<HTMLAnchorElement>('#apk-link')!.href = android.url;
-    const size = android.size < 1e6 ? `${Math.max(1, Math.round(android.size / 1e3))} KB` : `${(android.size / 1e6).toFixed(1)} MB`;
-    const day = new Date(android.updated).toLocaleDateString(locale(), { day: 'numeric', month: 'short', year: 'numeric' });
-    document.querySelector('#apk-meta')!.textContent = language() === 'ja' ? `(${size} · ${day}更新)` : `(${size} · updated ${day})`;
-    document.querySelectorAll<HTMLElement>('[data-apk-hidden]').forEach((el) => (el.hidden = false));
   } catch {
     // Offline or an older server: just don't offer it.
   }

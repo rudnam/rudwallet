@@ -39,17 +39,13 @@ test('with reduced motion nothing waits to be revealed', async ({ page }) => {
   await expect(page.locator('.landing-close')).toHaveCSS('opacity', '1');
 });
 
-test('the Android app is offered on Google Play, with the APK under it', async ({ page }) => {
+test('the Android app is offered on Google Play', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('link', { name: 'Get the Android app' }).click();
   const play = page.getByRole('link', { name: 'Get it on Google Play' });
   await expect(play).toBeInViewport();
   await expect(play).toHaveAttribute('href', 'https://play.google.com/store/apps/details?id=com.rudnam.wallet');
-  const link = page.getByRole('link', { name: 'download the APK' });
-  await expect(link).toBeVisible();
-  await expect(page.getByText(/^\([\d.]+ [KM]B · updated /)).toBeVisible();
-  const [download] = await Promise.all([page.waitForEvent('download'), link.click()]);
-  expect(download.suggestedFilename()).toBe('wallet.apk');
+  await expect(page.getByRole('link', { name: /APK/ })).toHaveCount(0);
 });
 
 test('links from before the app moved to /app/ still open it', async ({ page }) => {
