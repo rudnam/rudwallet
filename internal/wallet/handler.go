@@ -45,6 +45,8 @@ func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) ht
 	route("POST /api/accounts/{id}/reconcile", h.reconcileAccount)
 
 	route("GET /api/categories/missing", h.missingCategories)
+	route("GET /api/categories/regroup", h.regroupOffer)
+	route("POST /api/categories/regroup", h.regroup)
 	route("POST /api/categories", h.createCategory)
 	route("PUT /api/categories/{id}", h.updateCategory)
 	route("DELETE /api/categories/{id}", h.deleteCategory)
@@ -316,6 +318,34 @@ func (in categoryInput) category() (Category, error) {
 // missingCategories lists the default categories the user doesn't have.
 func (h *Handler) missingCategories(w http.ResponseWriter, r *http.Request) error {
 	cats, err := h.store.MissingDefaults(r.Context(), userID(r))
+	if err != nil {
+		return err
+	}
+	httpx.WriteJSON(w, http.StatusOK, cats)
+	return nil
+}
+
+// regroupOffer lists the moves that put the user's categories where new
+// wallets have them, with the main category each would go under (with_main=1:
+// also those that become main categories, with parent_id null).
+func (h *Handler) regroupOffer(w http.ResponseWriter, r *http.Request) error {
+	cats, err := h.store.RegroupOffer(r.Context(), userID(r), r.URL.Query().Get("with_main") == "1")
+	if err != nil {
+		return err
+	}
+	httpx.WriteJSON(w, http.StatusOK, cats)
+	return nil
+}
+
+// regroup makes the offered moves of the categories in ids.
+func (h *Handler) regroup(w http.ResponseWriter, r *http.Request) error {
+	var in struct {
+		IDs []int64 `json:"ids"`
+	}
+	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
+		return err
+	}
+	cats, err := h.store.Regroup(r.Context(), userID(r), in.IDs)
 	if err != nil {
 		return err
 	}

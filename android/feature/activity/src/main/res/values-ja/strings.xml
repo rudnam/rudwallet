@@ -26,6 +26,8 @@
     <string name="feature_activity_all_ready">ここのすべての支払いにカテゴリがあります。</string>
     <string name="feature_activity_payment">支払い</string>
     <string name="feature_activity_category_for">%sのカテゴリ</string>
+    <string name="feature_activity_choose_category">カテゴリを選ぶ</string>
+    <string name="feature_activity_change_category">カテゴリ: %s。変更する</string>
     <string name="feature_activity_confirm">確定</string>
     <string name="feature_activity_amount_unknown">金額不明</string>
     <string name="feature_activity_duplicate_of">重複の可能性: 次の記録がすでにあります。</string>

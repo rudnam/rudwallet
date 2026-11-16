@@ -19,6 +19,7 @@ import com.rudnam.wallet.core.network.WalletNetworkDataSource
 import com.rudnam.wallet.core.network.model.NetworkSettingsInput
 import com.rudnam.wallet.core.network.model.asModel
 import com.rudnam.wallet.core.network.model.asNetwork
+import com.rudnam.wallet.core.network.model.NetworkRegroupInput
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -41,6 +42,12 @@ interface SettingsRepository {
 
     /** The default categories the user doesn't have; none offline. */
     suspend fun missingCategories(): List<Category>
+
+    /** The categories new wallets have under a main category, each with the parentId it would get; none offline. */
+    suspend fun regroupOffer(): List<Category>
+
+    /** Puts the offered categories among [ids] under their main category. */
+    suspend fun regroup(ids: List<Long>): ChangeResult
 
     /** Adds a category ([id] null) or changes one. */
     suspend fun saveCategory(id: Long?, input: CategoryInput): ChangeResult
@@ -110,6 +117,21 @@ internal class ServerSettingsRepository @Inject constructor(
         } catch (e: Exception) {
             emptyList()
         }
+    }
+
+    override suspend fun regroupOffer(): List<Category> = withContext(io) {
+        try {
+            network.regroupOffer().map { it.asModel() }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    override suspend fun regroup(ids: List<Long>) = change(io) {
+        network.regroup(NetworkRegroupInput(ids))
+        reload()
     }
 
     override suspend fun saveCategory(id: Long?, input: CategoryInput) = change(io) {

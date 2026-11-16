@@ -27,6 +27,8 @@
     <string name="feature_activity_all_ready">Every payment here has a category.</string>
     <string name="feature_activity_payment">Payment</string>
     <string name="feature_activity_category_for">Category for %s</string>
+    <string name="feature_activity_choose_category">Choose a category</string>
+    <string name="feature_activity_change_category">Category: %s. Change it</string>
     <string name="feature_activity_confirm">Confirm</string>
     <string name="feature_activity_amount_unknown">Amount?</string>
     <string name="feature_activity_duplicate_of">Possible duplicate of a record you already have:</string>

@@ -4,6 +4,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import com.rudnam.wallet.core.model.RecordFilter
+import com.rudnam.wallet.core.ui.Page
 import com.rudnam.wallet.feature.activity.ActivityDestination
 import com.rudnam.wallet.feature.activity.ActivityNavigation
 import com.rudnam.wallet.feature.activity.DuplicatesDestination
@@ -44,6 +45,6 @@ data class ActivityRoute(
 data object DuplicatesRoute
 
 fun NavGraphBuilder.activityScreen(navigation: ActivityNavigation, snackbar: SnackbarHostState) {
-    composable<ActivityRoute> { ActivityDestination(navigation, snackbar) }
-    composable<DuplicatesRoute> { DuplicatesDestination(navigation::back, snackbar) }
+    composable<ActivityRoute> { Page { ActivityDestination(navigation, snackbar) } }
+    composable<DuplicatesRoute> { Page { DuplicatesDestination(navigation::back, snackbar) } }
 }

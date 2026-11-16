@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/mail"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -51,7 +52,14 @@ type Handler struct {
 	store *Store
 	limit *httpx.RateLimiter
 	now   func() time.Time
+	// bg tracks work a request leaves running after it answers (sending a
+	// reset email), so Wait can let it finish before the server stops.
+	bg sync.WaitGroup
 }
+
+// Wait blocks until the work requests left running in the background is
+// done. Call it after the HTTP server stops taking requests.
+func (h *Handler) Wait() { h.bg.Wait() }
 
 func NewHandler(cfg Config, st *Store) *Handler {
 	if cfg.SessionTTL == 0 {

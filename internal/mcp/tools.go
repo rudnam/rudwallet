@@ -310,7 +310,37 @@ var toolList = []*tool{
 		Annotations: readOnly,
 		run:         spending,
 	},
+	{
+		Name:  "list_budgets",
+		Title: "Budgets",
+		Description: "The user's monthly budgets with what's spent in a month (confirmed expenses; a category's budget counts its subcategories, " +
+			"and one without a category counts all spending), and the months before it.",
+		InputSchema: object(map[string]any{
+			"month":     map[string]any{"type": "string", "description": "YYYY-MM. Default: this month."},
+			"time_zone": map[string]any{"type": "string", "description": "IANA zone months are counted in, e.g. Asia/Manila. Default: UTC."},
+			"months":    map[string]any{"type": "integer", "description": "How many months of history, this one included (1 to 12, default 1)."},
+		}),
+		Annotations: readOnly,
+		run:         budgets,
+	},
 }
+
+// readOnly reports whether a tool only reads (its readOnlyHint).
+func (t *tool) readOnly() bool {
+	ro, _ := t.Annotations["readOnlyHint"].(bool)
+	return ro
+}
+
+// readTools is what a read-only connection sees.
+var readTools = func() []*tool {
+	var out []*tool
+	for _, t := range toolList {
+		if t.readOnly() {
+			out = append(out, t)
+		}
+	}
+	return out
+}()
 
 var tools = func() map[string]*tool {
 	m := map[string]*tool{}
@@ -788,4 +818,114 @@ func spending(c *call, args json.RawMessage) (any, error) {
 		return nil, err
 	}
 	return map[string]any{"currency": c.currency, "total": totalText, "categories": rows}, nil
+}
+
+// budgets is list_budgets: each budget's limit and spending per month,
+// counted the way the app's Budgets page counts them.
+func budgets(c *call, args json.RawMessage) (any, error) {
+	var in struct {
+		Month    string `json:"month"`
+		TimeZone string `json:"time_zone"`
+		Months   int    `json:"months"`
+	}
+	if err := decode(args, &in); err != nil {
+		return nil, err
+	}
+	zone := time.UTC
+	if in.TimeZone != "" {
+		z, err := time.LoadLocation(in.TimeZone)
+		if err != nil {
+			return nil, toolErrorf("time_zone must be an IANA zone such as Asia/Manila")
+		}
+		zone = z
+	}
+	now := time.Now().In(zone)
+	month := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, zone)
+	if in.Month != "" {
+		m, err := time.ParseInLocation("2006-01", in.Month, zone)
+		if err != nil {
+			return nil, toolErrorf("month must look like 2026-11")
+		}
+		month = m
+	}
+	if in.Months == 0 {
+		in.Months = 1
+	}
+	if in.Months < 1 || in.Months > 12 {
+		return nil, toolErrorf("months must be 1 to 12")
+	}
+	ctx := c.r.Context()
+	list, err := c.h.wallet.Budgets(ctx, c.userID)
+	if err != nil {
+		return nil, err
+	}
+	cats, err := c.h.wallet.Categories(ctx, c.userID)
+	if err != nil {
+		return nil, err
+	}
+	names := map[int64]string{}
+	parent := map[int64]int64{}
+	for _, cat := range cats {
+		names[cat.ID] = cat.Name
+		if cat.ParentID != nil {
+			parent[cat.ID] = *cat.ParentID
+		}
+	}
+	// counts says whether spending in category cat (0: none) falls under b.
+	counts := func(b wallet.Budget, cat int64) bool {
+		return b.CategoryID == nil || cat != 0 && (cat == *b.CategoryID || parent[cat] == *b.CategoryID)
+	}
+
+	type outMonth struct {
+		Month string `json:"month"`
+		Spent string `json:"spent"`
+	}
+	type outBudget struct {
+		ID         int64      `json:"id"`
+		Name       string     `json:"name"`
+		CategoryID *int64     `json:"category_id"`
+		Category   string     `json:"category,omitempty"`
+		Limit      string     `json:"limit"`
+		Spent      string     `json:"spent"`
+		History    []outMonth `json:"history"`
+	}
+	out := make([]outBudget, len(list))
+	for i, b := range list {
+		limit, err := c.money(b.Amount)
+		if err != nil {
+			return nil, err
+		}
+		out[i] = outBudget{ID: b.ID, Name: b.Name, CategoryID: b.CategoryID, Limit: limit, History: []outMonth{}}
+		if b.CategoryID != nil {
+			out[i].Category = names[*b.CategoryID]
+		}
+	}
+	// Oldest month first; the last is the one asked for.
+	for k := in.Months - 1; k >= 0; k-- {
+		from := month.AddDate(0, -k, 0)
+		sums, err := c.h.wallet.Spending(ctx, c.userID, from, from.AddDate(0, 1, 0))
+		if err != nil {
+			return nil, err
+		}
+		for i, b := range list {
+			var spent int64
+			for cat, sum := range sums {
+				if counts(b, cat) {
+					spent += sum
+				}
+			}
+			s, err := c.money(spent)
+			if err != nil {
+				return nil, err
+			}
+			out[i].History = append(out[i].History, outMonth{Month: from.Format("2006-01"), Spent: s})
+			if k == 0 {
+				out[i].Spent = s
+			}
+		}
+	}
+	if _, err := c.money(0); err != nil { // loads the currency for an empty list too
+		return nil, err
+	}
+	return map[string]any{"currency": c.currency, "month": month.Format("2006-01"), "budgets": out}, nil
 }

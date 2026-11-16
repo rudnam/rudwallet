@@ -29,9 +29,20 @@ func init() {
 	mime.AddExtensionType(".ico", "image/x-icon")
 }
 
+// App is the app's complete HTTP handler.
+type App struct {
+	http.Handler
+	accounts *account.Handler
+}
+
+// Wait blocks until the work requests left running in the background (such
+// as sending an email) is done. Call it once the HTTP server has stopped
+// taking requests, before closing the database.
+func (a *App) Wait() { a.accounts.Wait() }
+
 // New returns the app's complete HTTP handler. static is the built web app;
 // version is reported by /healthz so you can tell which build is running.
-func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Handler {
+func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) *App {
 	mux := http.NewServeMux()
 	mux.Handle("GET /healthz", health(conn, version))
 	if cfg.AndroidPackage != "" {
@@ -86,13 +97,13 @@ func New(cfg config.Config, conn *sql.DB, static fs.FS, version string) http.Han
 	}))
 	mux.Handle("/", webApp(static))
 
-	return httpx.Chain(mux,
+	return &App{accounts: accounts, Handler: httpx.Chain(mux,
 		httpx.LogRequests,
 		httpx.Recover,
 		httpx.SecurityHeaders,
 		httpx.AllowApp,
 		httpx.CheckOrigin(cfg.PublicOrigin),
-	)
+	)}
 }
 
 // health answers 200 when the database is reachable. Docker, load balancers

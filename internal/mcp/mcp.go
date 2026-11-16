@@ -160,9 +160,9 @@ func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	token, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
-	userID, err := int64(0), db.ErrNotFound
+	userID, readOnly, err := int64(0), false, db.ErrNotFound
 	if ok && strings.HasPrefix(token, tokenPrefix) {
-		userID, err = h.store.User(r.Context(), token)
+		userID, readOnly, err = h.store.User(r.Context(), token)
 	}
 	if errors.Is(err, db.ErrNotFound) {
 		// Tells clients that can sign in (OAuth) where to start.
@@ -201,7 +201,7 @@ func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	res := rpcResponse{JSONRPC: "2.0", ID: req.ID}
-	result, rerr := h.dispatch(r, userID, req)
+	result, rerr := h.dispatch(r, userID, readOnly, req)
 	if rerr != nil {
 		res.Error = rerr
 	} else {
@@ -216,7 +216,9 @@ func writeRPC(w http.ResponseWriter, res rpcResponse) {
 
 const instructions = `This is the user's personal finance app (a wallet). Amounts are decimal strings in the user's currency. Records ("transactions") are expenses, income or transfers between the user's accounts. Use get_overview first to learn the accounts and categories. To tidy up, list_uncategorized_payees shows records without a category grouped by payee, and categorize_payees files them; prefer the user's existing categories, and ask before creating new ones or deleting any.`
 
-func (h *Handler) dispatch(r *http.Request, userID int64, req rpcRequest) (any, *rpcError) {
+// dispatch answers one request. A read-only connection sees, and may call,
+// only the tools marked readOnlyHint.
+func (h *Handler) dispatch(r *http.Request, userID int64, readOnly bool, req rpcRequest) (any, *rpcError) {
 	switch req.Method {
 	case "initialize":
 		var p struct {
@@ -236,6 +238,9 @@ func (h *Handler) dispatch(r *http.Request, userID int64, req rpcRequest) (any, 
 	case "ping":
 		return map[string]any{}, nil
 	case "tools/list":
+		if readOnly {
+			return map[string]any{"tools": readTools}, nil
+		}
 		return map[string]any{"tools": toolList}, nil
 	case "tools/call":
 		var p struct {
@@ -248,6 +253,9 @@ func (h *Handler) dispatch(r *http.Request, userID int64, req rpcRequest) (any, 
 		t, ok := tools[p.Name]
 		if !ok {
 			return nil, &rpcError{codeInvalidParams, "unknown tool: " + p.Name}
+		}
+		if readOnly && !t.readOnly() {
+			return toolResult(map[string]string{"error": "this connection is read-only: it can look at the wallet but not change it"}, true), nil
 		}
 		if len(p.Arguments) == 0 || string(p.Arguments) == "null" {
 			p.Arguments = json.RawMessage("{}")

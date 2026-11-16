@@ -445,17 +445,22 @@ func suggestMUFG(cats []Category, learned map[string]int64, rec mufgRecord) Impo
 		return g
 	}
 	switch rec.suggest {
+	// The default for it first, then one named like it (a user's own "Fees").
 	case "fee":
-		if id := categoryLike(cats, rec.kind, "fee", "手数料"); id != nil {
+		if id := findCategory(cats, rec.kind, "Bank & card fees"); id != nil {
+			g.CategoryID = id
+		} else if id := categoryLike(cats, rec.kind, "fee", "手数料"); id != nil {
 			g.CategoryID = id
 		} else {
 			suggestNamed(cats, &g, "Other")
 		}
 	case "cashback":
-		if id := categoryLike(cats, rec.kind, "cashback", "還元", "rewards"); id != nil {
+		if id := findCategory(cats, rec.kind, "Points & cashback"); id != nil {
+			g.CategoryID = id
+		} else if id := categoryLike(cats, rec.kind, "cashback", "還元", "rewards"); id != nil {
 			g.CategoryID = id
 		} else {
-			suggestNamed(cats, &g, "Rewards & Cashback")
+			suggestNamed(cats, &g, "Points & cashback")
 		}
 	default:
 		if d := guessCategory(rec.kind, rec.group, ""); d != "" {

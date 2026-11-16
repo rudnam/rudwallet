@@ -78,14 +78,13 @@ import com.rudnam.wallet.core.designsystem.icon.LineIcon
 import com.rudnam.wallet.core.designsystem.icon.WalletIcons
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
 import com.rudnam.wallet.core.model.Account
-import com.rudnam.wallet.core.model.Category
-import com.rudnam.wallet.core.model.CategoryKind
 import com.rudnam.wallet.core.model.McpToken
 import com.rudnam.wallet.core.model.Me
 import com.rudnam.wallet.core.model.NotificationStatus
 import com.rudnam.wallet.core.model.PaymentNotification
 import com.rudnam.wallet.core.model.Rules
 import com.rudnam.wallet.core.model.Wallet
+import com.rudnam.wallet.core.ui.CategoryPickerSheet
 import com.rudnam.wallet.core.ui.CategoryIcon
 import com.rudnam.wallet.core.ui.ServerText
 import com.rudnam.wallet.core.ui.serverText
@@ -170,7 +169,7 @@ internal fun RulesScreen(wallet: Wallet?, rules: Loadable<Rules>, actions: Rules
                         records = rule.records,
                         onForget = { actions.forgetShop(rule.key, rule.payee) },
                     ) {
-                        CategoryChoice(wallet.categoriesInOrder(), rule.categoryId, stringResource(R.string.feature_settings_category_for, rule.payee)) {
+                        CategoryChoice(wallet, rule.categoryId, stringResource(R.string.feature_settings_category_for, rule.payee)) {
                             actions.setShop(rule.key, rule.payee, it)
                         }
                     }
@@ -178,7 +177,7 @@ internal fun RulesScreen(wallet: Wallet?, rules: Loadable<Rules>, actions: Rules
                 }
             }
         }
-        item { AddShop(wallet.categoriesInOrder(), actions::addShop) }
+        item { AddShop(wallet, actions::addShop) }
         item { Heading(stringResource(R.string.feature_settings_cards)) }
         item {
             WalletPanel(Modifier.fillMaxWidth()) {
@@ -212,44 +211,23 @@ private fun RuleRow(title: String, records: Int, onForget: () -> Unit, choice: @
     }
 }
 
-/** A compact menu of categories (expenses, then income), showing the one chosen. */
+/** The category chosen, compactly; tapped, the picker (expenses, then income). */
 @Composable
-private fun CategoryChoice(categories: List<Category>, chosen: Long?, label: String, onChoose: (Long) -> Unit) {
+private fun CategoryChoice(wallet: Wallet, chosen: Long?, label: String, onChoose: (Long) -> Unit) {
     var open by remember { mutableStateOf(false) }
-    val current = categories.firstOrNull { it.id == chosen }
-    Box {
-        TextButton(onClick = { open = true }, modifier = Modifier.widthIn(max = 168.dp).semantics { contentDescription = "$label: ${current?.name.orEmpty()}" }) {
-            current?.let { CategoryIcon(it, Modifier.size(24.dp)) }
-            Text(
-                current?.name ?: stringResource(R.string.feature_settings_pick_category),
-                Modifier.padding(start = 8.dp),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = WalletTheme.colors.text,
-            )
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            for (kind in CategoryKind.entries) {
-                Text(
-                    stringResource(if (kind == CategoryKind.Expense) R.string.feature_settings_expenses else R.string.feature_settings_income),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = WalletTheme.colors.muted,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                )
-                for (c in categories.filter { it.kind == kind }) {
-                    // In order: a subcategory follows its main category, indented.
-                    val indent = if (c.parentId != null && categories.any { it.id == c.parentId }) 20.dp else 0.dp
-                    DropdownMenuItem(
-                        text = { Text(c.name) },
-                        leadingIcon = { CategoryIcon(c, Modifier.padding(start = indent).size(28.dp)) },
-                        onClick = {
-                            open = false
-                            onChoose(c.id)
-                        },
-                    )
-                }
-            }
-        }
+    val current = wallet.category(chosen)
+    TextButton(onClick = { open = true }, modifier = Modifier.widthIn(max = 168.dp).semantics { contentDescription = "$label: ${current?.name.orEmpty()}" }) {
+        current?.let { CategoryIcon(it, Modifier.size(24.dp)) }
+        Text(
+            current?.name ?: stringResource(R.string.feature_settings_pick_category),
+            Modifier.padding(start = 8.dp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            color = WalletTheme.colors.text,
+        )
+    }
+    if (open) {
+        CategoryPickerSheet(wallet = wallet, kind = null, selectedId = chosen, onPick = { onChoose(it.id) }, onDismiss = { open = false }, title = label)
     }
 }
 
@@ -287,7 +265,7 @@ private fun AccountChoice(wallet: Wallet, chosen: Long?, label: String, onChoose
 
 /** A shop added by hand, before its first payment: its name and category. */
 @Composable
-private fun AddShop(categories: List<Category>, onAdd: (String, Long) -> Unit) {
+private fun AddShop(wallet: Wallet, onAdd: (String, Long) -> Unit) {
     var name by rememberSaveable { mutableStateOf("") }
     var category by rememberSaveable { mutableStateOf<Long?>(null) }
     val add = {
@@ -311,7 +289,7 @@ private fun AddShop(categories: List<Category>, onAdd: (String, Long) -> Unit) {
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f)) {
-                    CategoryChoice(categories, category, stringResource(R.string.feature_settings_category)) { category = it }
+                    CategoryChoice(wallet, category, stringResource(R.string.feature_settings_category)) { category = it }
                 }
                 Button(
                     onClick = { add() },

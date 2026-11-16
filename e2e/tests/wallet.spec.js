@@ -206,7 +206,7 @@ test('import records exported from Wallet by BudgetBakers', async ({ page }) => 
   await expect(page.getByText('You already have an account named Cash; its records go there.')).toBeVisible();
   await page.getByLabel('New account name').fill('Rakuten Savings');
   // BudgetBakers' categories are matched to the closest of the user's.
-  await expect(page.getByLabel('Category for Bar, cafe').locator('option:checked')).toHaveText('Cafés');
+  await expect(page.getByLabel('Category for Bar, cafe').locator('option:checked')).toHaveText('Eating out');
   await expect(page.getByLabel('Category for Salary').locator('option:checked')).toHaveText('Salary');
   await expect(page.getByLabel('Category for Coffee beans').locator('option:checked')).toHaveText('Coffee beans');
 
@@ -243,6 +243,7 @@ test('add a default category the user is missing', async ({ page }) => {
   await signUp(page);
   await page.goto('/app/#/settings?section=categories');
   // Deleting one says what goes with it.
+  await page.getByRole('button', { name: /^Transport/ }).click();
   await page.getByRole('button', { name: 'Edit category Transport › Car' }).click();
   const confirm = page.waitForEvent('dialog');
   const deleting = page.getByRole('dialog', { name: 'Edit category' }).getByRole('button', { name: 'Delete' }).click();
@@ -251,10 +252,14 @@ test('add a default category the user is missing', async ({ page }) => {
   await d.accept();
   await deleting;
   // It's offered back under Transport.
-  await page.getByRole('button', { name: 'Add category Transport › Car' }).click();
+  await page.getByRole('button', { name: /Match the new default categories/ }).click();
+  const offer = page.getByRole('dialog', { name: 'Match the new default categories' });
+  await expect(offer.getByRole('checkbox', { name: 'Transport › Car' })).toBeChecked();
+  // With the icon it comes with.
+  await expect(offer.locator('label.check', { hasText: 'Transport › Car' }).locator('.cat-icon svg')).toHaveCount(1);
+  await offer.getByRole('button', { name: 'Apply' }).click();
   await expect(page.getByRole('button', { name: 'Edit category Transport › Car' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Add category Transport › Car' })).toHaveCount(0);
-  await expect(page.getByText('More categories')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Match the new default categories/ })).toHaveCount(0);
 });
 
 test('a new user is walked through setting up, and daily adding remembers things', async ({ page }) => {
@@ -840,7 +845,7 @@ test('appearance follows the phone, or stays light or dark as chosen', async ({ 
   await expect(page.locator('html')).not.toHaveAttribute('data-theme', /./);
 });
 
-test('moving between pages slides the new page in quickly, and a card grows into its account', async ({ page }) => {
+test('moving between pages slides the new page in quickly, and a card grows into its account and back', async ({ page }) => {
   await signUp(page);
   // Each move marks how it moved (router.ts), and is over in a quarter of a second at most.
   const moved = async (go, how) => {
@@ -856,7 +861,12 @@ test('moving between pages slides the new page in quickly, and a card grows into
   await expect(page.locator('.hero-figure')).toBeVisible();
   await moved(() => page.getByRole('list', { name: 'Accounts' }).getByRole('listitem').first().click(), 'card');
   await expect(page.getByRole('heading', { level: 1, name: 'Cash' })).toBeVisible();
-  await moved(() => page.goBack(), 'back');
+  // And shrinks back into its place on Wallet, whether by the back button or the page's own link.
+  await moved(() => page.goBack(), 'card-back');
+  await expect(page.locator('.hero-figure')).toBeVisible();
+  await page.getByRole('list', { name: 'Accounts' }).getByRole('listitem').first().click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Cash' })).toBeVisible();
+  await moved(() => page.getByRole('link', { name: 'Wallet' }).first().click(), 'card-back');
   await expect(page.locator('.hero-figure')).toBeVisible();
   await moved(() => nav.getByRole('link', { name: 'Settings' }).click(), 'next');
   await moved(() => page.goto('/app/#/settings?section=accounts'), 'forward');

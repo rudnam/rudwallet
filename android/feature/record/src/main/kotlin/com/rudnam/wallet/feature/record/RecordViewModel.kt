@@ -31,11 +31,8 @@ import kotlinx.coroutines.launch
 import java.time.Clock
 import javax.inject.Inject
 
-/** How many categories show before More, and how many recent payees are offered. */
+/** How many categories the form offers before All, and how many recent payees. */
 internal const val FEW_CATEGORIES = 7
-
-/** With more categories than this, all of them open with a search field. */
-internal const val SEARCH_CATEGORIES = 12
 internal const val FEW_PAYEES = 4
 
 /** Why the sheet can't do what was asked; each has words of its own. */
@@ -53,21 +50,15 @@ sealed interface RecordUiState {
         /** The record being changed, or null for a new one. */
         val record: Transaction?,
         /**
-         * The main categories of the form's kind, the most used first (a main
-         * category's use counts its subcategories'); [showAllCategories] or the
-         * first few. While searching, every category that matches, subcategories too.
-         * With a main category opened ([openedMainId]): it, then its subcategories.
+         * The categories the form offers: the form's kind's most used, main
+         * categories and subcategories alike (each counts its own records), so
+         * the usual one is a tap away. The chosen one is always among them.
          */
         val categories: List<Category>,
-        /** The main category chosen, or the one the chosen subcategory is under. */
-        val chosenMainId: Long? = null,
-        /** The main category whose boxes the grid shows instead of all of them, with Back. */
-        val openedMainId: Long? = null,
-        val canFoldCategories: Boolean,
-        val showAllCategories: Boolean,
-        /** Shown above all the categories when there are many; [categories] are those matching [categoryQuery]. */
-        val canSearchCategories: Boolean = false,
-        val categoryQuery: String = "",
+        /** More categories than [categories]: the last box opens the picker with all of them. */
+        val hasMoreCategories: Boolean,
+        /** The picker with every category is open. */
+        val pickingCategory: Boolean = false,
         /** Recent payees, offered while a new record has none yet. */
         val recentPayees: List<String>,
         /** Payees matching what's typed, for the field's suggestions. */
@@ -105,12 +96,7 @@ class RecordViewModel @Inject constructor(
         // Null until known: the sheet waits for it (a moment, from the phone), so the
         // categories open in their order and stay there.
         val habits: RecordHabits? = null,
-        val showAllCategories: Boolean = false,
-        val categoryQuery: String = "",
-        // The main category opened (its subcategories shown), and whether Back was
-        // tapped, so a record already in a subcategory opens there until then.
-        val openedMain: Long? = null,
-        val leftMain: Boolean = false,
+        val pickingCategory: Boolean = false,
         val showExtras: Boolean = false,
         val busy: Boolean = false,
         val problem: RecordProblem? = null,
@@ -167,41 +153,27 @@ class RecordViewModel @Inject constructor(
     }
 
     private fun ready(w: Wallet, form: RecordForm, s: Sheet, habits: RecordHabits): RecordUiState.Ready {
-        val allOfKind = w.categories.filter { form.kind != TransactionKind.Transfer && it.kind.apiName == form.kind.apiName }
-        fun use(c: Category) = w.withSubcategories(c.id).sumOf { habits.categoryUse[it] ?: 0 }
-        // A subcategory whose main category isn't on the phone (yet) shows as a main one.
-        val ofKind = allOfKind.filter { it.parentId == null || w.category(it.parentId) == null }.sortedByDescending(::use)
-        val chosenMain = w.mainCategoryId(form.categoryId)?.takeIf { id -> ofKind.any { it.id == id } } ?: form.categoryId
-        val folding = ofKind.size > FEW_CATEGORIES + 1
-        val chosenHidden = ofKind.indexOfFirst { it.id == chosenMain } >= FEW_CATEGORIES
-        val searching = folding && s.showAllCategories && allOfKind.size > SEARCH_CATEGORIES
-        val query = if (searching) s.categoryQuery.trim() else ""
-        val chosenIsSub = w.category(form.categoryId)?.let(w::isSubcategory) == true
-        val opened = when {
-            query.isNotEmpty() -> null
-            s.openedMain != null -> s.openedMain
-            chosenIsSub && !s.leftMain -> chosenMain
-            else -> null
-        }?.takeIf { id -> w.subcategories(id).isNotEmpty() && ofKind.any { it.id == id } }
-        val shown = when {
-            opened != null -> listOf(w.category(opened)!!) + w.subcategories(opened)
-            query.isNotEmpty() -> allOfKind.filter { it.name.contains(query, ignoreCase = true) }
-            !folding || s.showAllCategories -> ofKind
-            // A chosen category from further down takes the last place, so More stays where it is.
-            else -> ofKind.filterIndexed { i, c -> i < FEW_CATEGORIES - (if (chosenHidden) 1 else 0) || c.id == chosenMain }
-        }
+        val ofKind = w.categoriesInOrder().filter { form.kind != TransactionKind.Transfer && it.kind.apiName == form.kind.apiName }
+        // The most used first; unused ones in the list's order, main categories before subcategories.
+        // Habits are read once per sheet, so the boxes don't move while it's open.
+        val ranked = ofKind.withIndex().sortedWith(
+            compareByDescending<IndexedValue<Category>> { habits.categoryUse[it.value.id] ?: 0 }
+                .thenBy { w.isSubcategory(it.value) }
+                .thenBy { it.index },
+        ).map { it.value }
+        val roomy = ranked.size <= FEW_CATEGORIES + 1
+        val few = if (roomy) ranked else ranked.take(FEW_CATEGORIES)
+        val chosen = ofKind.firstOrNull { it.id == form.categoryId }
+        // One chosen from the picker takes the last box, so the others stay where they are.
+        val shown = if (chosen == null || chosen in few) few else few.dropLast(1) + chosen
         val typed = form.payee.trim()
         return RecordUiState.Ready(
             wallet = w,
             form = form,
             record = s.record,
             categories = shown,
-            chosenMainId = chosenMain,
-            openedMainId = opened,
-            canFoldCategories = folding && opened == null,
-            showAllCategories = s.showAllCategories,
-            canSearchCategories = searching && opened == null,
-            categoryQuery = if (searching) s.categoryQuery else "",
+            hasMoreCategories = !roomy,
+            pickingCategory = s.pickingCategory,
             recentPayees = if (s.record == null && typed.isEmpty()) habits.payees.keys.take(FEW_PAYEES) else emptyList(),
             payeeSuggestions = if (typed.isEmpty()) emptyList() else habits.payees.keys.filter { it.contains(typed, ignoreCase = true) && it != typed }.take(5),
             tagSuggestions = habits.tags.filter { t -> form.tags.none { it.equals(t, ignoreCase = true) } },
@@ -219,7 +191,6 @@ class RecordViewModel @Inject constructor(
     }
 
     fun setKind(kind: TransactionKind) {
-        sheet.update { it.copy(openedMain = null, leftMain = false) }
         edit { f ->
             val keep = (uiState.value as? RecordUiState.Ready)?.wallet?.category(f.categoryId)?.kind?.apiName == kind.apiName
             f.copy(kind = kind, categoryId = if (keep) f.categoryId else null)
@@ -231,35 +202,17 @@ class RecordViewModel @Inject constructor(
         edit { it.copy(amount = pressKey(it.amount, key, exponent)) }
     }
 
-    /**
-     * A box tapped. A main category with subcategories is chosen and opened:
-     * the grid shows it first, then its subcategories. In there, the main
-     * category stays chosen when tapped again, and a chosen subcategory
-     * tapped again goes back to it. Elsewhere, choosing the chosen category
-     * again clears it.
-     */
-    fun chooseCategory(id: Long) {
-        val ready = uiState.value as? RecordUiState.Ready ?: return
-        val w = ready.wallet
-        when {
-            ready.openedMainId != null -> {
-                val parent = w.category(id)?.parentId
-                edit { it.copy(categoryId = if (it.categoryId == id && parent != null) parent else id) }
-            }
-            w.subcategories(id).isNotEmpty() -> {
-                sheet.update { it.copy(openedMain = id, leftMain = false) }
-                edit { it.copy(categoryId = if (w.mainCategoryId(it.categoryId) == id) it.categoryId else id) }
-            }
-            else -> edit { it.copy(categoryId = if (it.categoryId == id) null else id) }
-        }
+    /** A box tapped: it's chosen, or, tapped again, no category is. */
+    fun chooseCategory(id: Long) = edit { it.copy(categoryId = if (it.categoryId == id) null else id) }
+
+    /** A category picked from the picker with all of them: it's chosen, and the picker closes. */
+    fun pickCategory(id: Long) {
+        sheet.update { it.copy(pickingCategory = false) }
+        edit { it.copy(categoryId = id) }
     }
 
-    /** Back from a main category's boxes to all the main categories; what's chosen stays. */
-    fun leaveCategory() = sheet.update { it.copy(openedMain = null, leftMain = true) }
-
-    fun showAllCategories(show: Boolean) = sheet.update { it.copy(showAllCategories = show, categoryQuery = "") }
-
-    fun searchCategories(query: String) = sheet.update { it.copy(categoryQuery = query) }
+    /** Opens or closes the picker with every category. */
+    fun showAllCategories(show: Boolean) = sheet.update { it.copy(pickingCategory = show) }
 
     /** A payee typed or picked; one paid before brings what was chosen there last (on a new record). */
     fun setPayee(payee: String) {

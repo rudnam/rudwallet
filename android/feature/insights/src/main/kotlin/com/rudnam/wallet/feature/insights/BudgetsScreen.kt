@@ -1,5 +1,6 @@
 package com.rudnam.wallet.feature.insights
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,15 +20,11 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -50,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
@@ -68,6 +66,8 @@ import com.rudnam.wallet.core.designsystem.theme.WalletTheme
 import com.rudnam.wallet.core.designsystem.theme.figures
 import com.rudnam.wallet.core.model.CategoryKind
 import com.rudnam.wallet.core.model.Wallet
+import com.rudnam.wallet.core.ui.CategoryPickerSheet
+import com.rudnam.wallet.core.ui.CategoryPickerExtra
 import com.rudnam.wallet.core.ui.MoneyFormat
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
 import com.rudnam.wallet.core.ui.serverText
@@ -206,8 +206,6 @@ private fun BudgetCard(row: BudgetRow, wallet: Wallet, format: MoneyFormat, acti
 private fun BudgetSheet(wallet: Wallet, editor: BudgetEditor, actions: BudgetsActions) {
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val format = rememberMoneyFormat(wallet.settings)
-    // Main categories, each followed by its subcategories (a main one's budget counts them).
-    val spending = wallet.categoriesInOrder().filter { it.kind == CategoryKind.Expense }
     val allSpending = stringResource(R.string.feature_insights_all_spending)
     val chosen = wallet.category(editor.categoryId)
     val defaultName = chosen?.name ?: allSpending
@@ -222,39 +220,31 @@ private fun BudgetSheet(wallet: Wallet, editor: BudgetEditor, actions: BudgetsAc
                 modifier = Modifier.semantics { heading() },
             )
 
+            // The category: the picker, with "All spending" above the categories.
             var open by rememberSaveable { mutableStateOf(false) }
-            ExposedDropdownMenuBox(expanded = open, onExpandedChange = { open = it }) {
+            Box {
                 OutlinedTextField(
                     value = wallet.categoryPath(chosen?.id) ?: allSpending,
                     onValueChange = {},
                     readOnly = true,
                     label = { Text(stringResource(R.string.feature_insights_category)) },
                     leadingIcon = { BudgetMark(chosen, allSpending = chosen == null, size = 28.dp) },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = open) },
+                    trailingIcon = { LineIcon(WalletIcons.expand, contentDescription = null, size = 18.dp) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                    modifier = Modifier.fillMaxWidth(),
                 )
-                ExposedDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-                    DropdownMenuItem(
-                        text = { Text(allSpending) },
-                        leadingIcon = { BudgetMark(null, allSpending = true, size = 28.dp) },
-                        onClick = {
-                            actions.setCategory(null)
-                            open = false
-                        },
-                    )
-                    for (c in spending) {
-                        val sub = wallet.isSubcategory(c)
-                        DropdownMenuItem(
-                            text = { Text(c.name) },
-                            leadingIcon = { Box(Modifier.padding(start = if (sub) 20.dp else 0.dp)) { BudgetMark(c, allSpending = false, size = 28.dp) } },
-                            onClick = {
-                                actions.setCategory(c.id)
-                                open = false
-                            },
-                        )
-                    }
-                }
+                Box(Modifier.matchParentSize().clickable(role = Role.Button) { open = true })
+            }
+            if (open) {
+                CategoryPickerSheet(
+                    wallet = wallet,
+                    kind = CategoryKind.Expense,
+                    selectedId = chosen?.id,
+                    onPick = { actions.setCategory(it.id) },
+                    onDismiss = { open = false },
+                    title = stringResource(R.string.feature_insights_category),
+                    extras = listOf(CategoryPickerExtra(allSpending, chosen == null) { actions.setCategory(null) }),
+                )
             }
 
             val exponent = wallet.settings.currencyExponent

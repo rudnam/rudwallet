@@ -35,11 +35,11 @@ func TestDefaultsInEitherLanguage(t *testing.T) {
 			t.Errorf("%q is offered in English to a Japanese wallet", c.Name)
 		}
 	}
-	// Food & Drinks' subcategories are offered under 食費; the other main
-	// categories' wait until the wallet has those.
+	// Food & Drinks' subcategories are offered under 食費, and Salary's under
+	// 給与; the other main categories' wait until the wallet has those.
 	want := 0
 	for _, d := range defaultCategories {
-		if p := defaultParents[d.Name]; d.Name != "Food & Drinks" && d.Name != "Salary" && (p == "" || p == "Food & Drinks") {
+		if p := defaultParents[d.Name]; d.Name != "Food & Drinks" && d.Name != "Salary" && (p == "" || p == "Food & Drinks" || p == "Salary") {
 			want++
 		}
 	}
@@ -102,7 +102,7 @@ func TestBroaderDefaults(t *testing.T) {
 	if got := guessCategory("expense", "UNIQLO 渋谷店", ""); got != "Clothing" {
 		t.Errorf("UNIQLO: %q", got)
 	}
-	if got := guessCategory("expense", "スターバックス 渋谷店", ""); got != "Cafés" {
+	if got := guessCategory("expense", "スターバックス 渋谷店", ""); got != "Eating out" {
 		t.Errorf("Starbucks: %q", got)
 	}
 	g = ImportCategory{Kind: "expense"}
@@ -110,7 +110,7 @@ func TestBroaderDefaults(t *testing.T) {
 	if g.CategoryID == nil || *g.CategoryID != 3 {
 		t.Errorf("Pets in a wallet without Family: %+v", g)
 	}
-	if got := guessCategory("expense", "NETFLIX.COM", ""); got != "Subscriptions" {
+	if got := guessCategory("expense", "NETFLIX.COM", ""); got != "Streaming & games" {
 		t.Errorf("Netflix: %q", got)
 	}
 }

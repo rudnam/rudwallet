@@ -3,7 +3,6 @@ package com.rudnam.wallet.ui
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
@@ -35,6 +34,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import com.rudnam.wallet.core.designsystem.theme.WalletMotion
+import com.rudnam.wallet.core.ui.LocalPageIsOnTop
+import com.rudnam.wallet.core.ui.LocalPageIsOpen
 import com.rudnam.wallet.core.ui.LocalSharedTransitionScope
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalResources
@@ -80,6 +81,9 @@ import com.rudnam.wallet.navigation.enter
 import com.rudnam.wallet.navigation.exit
 import com.rudnam.wallet.navigation.popEnter
 import com.rudnam.wallet.navigation.popExit
+import com.rudnam.wallet.navigation.predictivePopExit
+import com.rudnam.wallet.navigation.rememberPageIsOnTop
+import com.rudnam.wallet.navigation.rememberPageIsOpen
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 import java.time.YearMonth
@@ -119,7 +123,13 @@ fun RudWalletApp(
     ) { padding ->
         // Pages can share elements as they change (an account's card grows into its page).
         SharedTransitionLayout(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding)) {
-            CompositionLocalProvider(LocalSharedTransitionScope provides this) {
+            // Which pages are open and which is on top, so a page being closed, and Wallet's
+            // cards as one goes back into the stack, can tell (core/ui's SharedElements.kt).
+            CompositionLocalProvider(
+                LocalSharedTransitionScope provides this,
+                LocalPageIsOpen provides rememberPageIsOpen(appState.navController),
+                LocalPageIsOnTop provides rememberPageIsOnTop(appState.navController),
+            ) {
                 NavHost(
                     appState.navController,
                     startDestination = WalletRoute,
@@ -127,6 +137,12 @@ fun RudWalletApp(
                     exitTransition = { exit() },
                     popEnterTransition = { popEnter() },
                     popExitTransition = { popExit() },
+                    // The back gesture plays the same ones as it's dragged, the closing page going
+                    // the way the finger does. Left out, Navigation
+                    // (2.10) uses its own: the closing page shrinks to 70% as it fades, all of it
+                    // around an account's card as the card shrinks back into Wallet.
+                    predictivePopEnterTransition = { popEnter() },
+                    predictivePopExitTransition = { swipeEdge -> predictivePopExit(swipeEdge) },
                 ) {
                     walletScreen(
                         navigation = object : WalletNavigation {
@@ -208,8 +224,8 @@ private fun AnimatedTabBar(tab: TopLevelDestination?, reviewCount: Int, onSelect
     // While it slides away there's no tab any more: it keeps showing the last one.
     val last = remember { object { var tab = TopLevelDestination.Wallet } }
     if (tab != null) last.tab = tab
-    val spec = tween<IntSize>(WalletMotion.PAGE, easing = WalletMotion.EmphasizedDecelerate)
-    val slide = tween<IntOffset>(WalletMotion.PAGE, easing = WalletMotion.EmphasizedDecelerate)
+    val spec = WalletMotion.pageSpring<IntSize>()
+    val slide = WalletMotion.pageSpring<IntOffset>()
     AnimatedVisibility(
         visible = tab != null,
         enter = expandVertically(spec, expandFrom = Alignment.Top) + slideInVertically(slide) { it },
