@@ -1,0 +1,59 @@
+# Sends an Android release's .aab (a GitHub release android-<versionCode>,
+# made by android-release.yml) to the Play Console, on the internal testing
+# track. android-release.yml calls it after every release; run it by hand
+# (Actions → Play upload → Run workflow, on main) to send one again, e.g.
+# after a failed upload. Promoting a build from internal testing to
+# production is done in the Play Console.
+#
+# No key: android/play-upload.sh trades GitHub's OIDC token for a Google one
+# (workload identity federation), which Google only gives to this
+# repository's jobs in the android-release environment, on main. That
+# environment's variables GCP_WORKLOAD_IDENTITY_PROVIDER and
+# PLAY_SERVICE_ACCOUNT say where (android/README.md, "Play Store"); without
+# them, it only warns.
+name: Play upload
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: GitHub release to send, e.g. android-35. Empty for the latest.
+        required: false
+
+concurrency:
+  group: android-play
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    environment: android-release
+    permissions:
+      contents: read # the GitHub release
+      id-token: write # the token Google trades
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.tag }}
+      GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      PLAY_SERVICE_ACCOUNT: ${{ vars.PLAY_SERVICE_ACCOUNT }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Upload to the Play Console
+        run: |
+          if [[ -z $GCP_WORKLOAD_IDENTITY_PROVIDER || -z $PLAY_SERVICE_ACCOUNT ]]; then
+            echo "::warning::Play upload isn't set up (android/README.md, \"Play Store\"); upload the .aab by hand."
+            exit 0
+          fi
+          [[ -n $TAG ]] || TAG=$(gh release list -R "$GITHUB_REPOSITORY" --exclude-pre-releases --json tagName \
+            --jq '[.[] | select(.tagName | startswith("android-"))][0].tagName')
+          [[ $TAG =~ ^android-[0-9]+$ ]] || { echo "::error::Not an Android release: $TAG"; exit 1; }
+          name=$(gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json name --jq '.name | sub("^Android "; "")')
+          mkdir -p "$RUNNER_TEMP/play"
+          gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p '*.aab' -D "$RUNNER_TEMP/play"
+          ./android/play-upload.sh "$RUNNER_TEMP"/play/*.aab "$name"
+          echo "Sent $TAG ($name) to the Play Console's internal testing track" >> "$GITHUB_STEP_SUMMARY"
