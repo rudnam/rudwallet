@@ -23,6 +23,7 @@ import com.rudnam.wallet.core.model.Transaction
 import com.rudnam.wallet.core.model.TransactionKind
 import com.rudnam.wallet.core.model.TransactionSource
 import com.rudnam.wallet.core.model.TransactionStatus
+import com.rudnam.wallet.core.model.SetAsideRecord
 import com.rudnam.wallet.core.model.Wallet
 import com.rudnam.wallet.core.model.WalletSettings
 import kotlinx.serialization.SerialName
@@ -92,6 +93,39 @@ data class NetworkTransaction(
     @SerialName("duplicate_of_id") val duplicateOfId: Long? = null,
     @SerialName("created_at") val createdAt: String? = null,
     val tags: List<String> = emptyList(),
+)
+
+/** A possible duplicate the server set aside: the record's own fields, and when and what it matched. */
+@Serializable
+data class NetworkSetAside(
+    val id: Long,
+    val kind: String,
+    val amount: Long,
+    @SerialName("account_id") val accountId: Long,
+    @SerialName("to_account_id") val toAccountId: Long? = null,
+    @SerialName("category_id") val categoryId: Long? = null,
+    @SerialName("occurred_at") val occurredAt: String,
+    val payee: String = "",
+    val note: String = "",
+    val status: String = "review",
+    val source: String = "notification",
+    @SerialName("source_label") val sourceLabel: String = "",
+    @SerialName("duplicate_of_id") val duplicateOfId: Long? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+    val tags: List<String> = emptyList(),
+    @SerialName("set_aside_at") val setAsideAt: String,
+    @SerialName("duplicate_of") val duplicateOf: NetworkTransaction? = null,
+)
+
+@Serializable
+data class NetworkSetAsideList(val duplicates: List<NetworkSetAside> = emptyList())
+
+fun NetworkSetAside.asModel() = SetAsideRecord(
+    record = NetworkTransaction(
+        id, kind, amount, accountId, toAccountId, categoryId, occurredAt, payee, note, status, source, sourceLabel, duplicateOfId, createdAt, tags,
+    ).asModel(),
+    setAsideAt = OffsetDateTime.parse(setAsideAt).toInstant(),
+    duplicateOf = duplicateOf?.asModel(),
 )
 
 /** A record as sent to add or change one. */

@@ -89,6 +89,7 @@ class TestActivityRepository : com.rudnam.wallet.core.data.repository.ActivityRe
     var bulkOutcome: com.rudnam.wallet.core.data.repository.BulkOutcome? = null
     var tagList = listOf(com.rudnam.wallet.core.model.Tag("dinner", 4), com.rudnam.wallet.core.model.Tag("trip", 2))
     var matches: Map<Long, Transaction> = emptyMap()
+    var setAsideResult: com.rudnam.wallet.core.data.repository.SetAsideResult = com.rudnam.wallet.core.data.repository.SetAsideResult.Found(emptyList())
 
     fun sendReview(list: List<Transaction>) {
         review.value = list
@@ -102,6 +103,7 @@ class TestActivityRepository : com.rudnam.wallet.core.data.repository.ActivityRe
     override suspend fun restore(ids: List<Long>) = com.rudnam.wallet.core.data.repository.BulkOutcome.Done(com.rudnam.wallet.core.model.BulkResult(ids.size, 0)).also { restored += ids }
     override suspend fun tags() = tagList
     override suspend fun match(id: Long, near: java.time.Instant) = matches[id]
+    override suspend fun setAside() = setAsideResult
 }
 
 /** An [AccountRepository] that keeps what it's asked. */

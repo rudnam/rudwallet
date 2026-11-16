@@ -56,7 +56,7 @@ test('PayPay payments wait for review, and an offer is skipped', async ({ page }
   await expect(page.getByLabel(/Confirm known shops/)).toBeVisible();
 });
 
-test('a possible duplicate shows the record it matches, and is deleted in one tap', async ({ page }) => {
+test('a possible duplicate is set aside automatically, and can be brought back', async ({ page }) => {
   await signUp(page);
   const api = page.request;
   const overview = await (await api.get('/api/wallet')).json();
@@ -65,20 +65,27 @@ test('a possible duplicate shows the record it matches, and is deleted in one ta
     data: { kind: 'expense', amount: 1820, account_id: overview.accounts[0].id, occurred_at: new Date(when.getTime() - 3600_000).toISOString(), payee: 'Lunch' },
   });
   expect(added.status()).toBe(201);
-  await sendNotifications(api, payPayCard({ merchant: '大戸屋', yen: 1820, when }));
+  const [n] = await sendNotifications(api, payPayCard({ merchant: '大戸屋', yen: 1820, when }));
+  expect(n.status).toBe('matched');
+  expect(n.transaction_id).toBeNull();
 
-  await page.goto('/app/#/review');
-  const card = page.getByRole('listitem', { name: '大戸屋' });
-  await expect(card.getByRole('status')).toContainText('Possible duplicate of a record you already have:');
-  await expect(card.getByRole('status')).toContainText(/Lunch · −¥1,820/);
-  await card.getByRole('button', { name: 'Delete duplicate' }).click();
-  await expect(page.getByText('Deleted 大戸屋')).toBeVisible();
-  await expect(card).toHaveCount(0);
-  // Nothing left to check: the section goes, leaving the records.
+  // Nothing to check: Activity says what was caught instead.
+  await page.goto('/app/#/records');
   await expect(page.getByRole('region', { name: 'Payments to review' })).toHaveCount(0);
+  await expect(page.getByText('1 possible duplicate was set aside automatically.')).toBeVisible();
+  await page.getByRole('link', { name: 'Review', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Caught duplicates' })).toBeVisible();
+  const card = page.getByRole('listitem', { name: '大戸屋' });
+  await expect(card.getByRole('status')).toContainText('Looked like this record you already have:');
+  await expect(card.getByRole('status')).toContainText(/Lunch · −¥1,820/);
 
-  // Undo brings it back, still flagged.
-  await page.getByRole('button', { name: 'Undo' }).click();
-  await expect(page.getByText('Record restored')).toBeVisible();
-  await expect(card.getByRole('button', { name: 'Delete duplicate' })).toBeVisible();
+  // Not a duplicate after all: back to review, no longer flagged.
+  await card.getByRole('button', { name: 'Not a duplicate' }).click();
+  await expect(page.getByText('大戸屋 is back in review')).toBeVisible();
+  await expect(card).toHaveCount(0);
+  await expect(page.getByText('No duplicates caught lately.')).toBeVisible();
+  await page.goto('/app/#/review');
+  const back = page.getByRole('listitem', { name: '大戸屋' });
+  await expect(back.getByRole('button', { name: 'Confirm', exact: true })).toBeVisible();
+  await expect(back.getByRole('status')).toHaveCount(0);
 });

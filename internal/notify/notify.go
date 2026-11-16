@@ -234,6 +234,21 @@ func (s *Service) process(ctx context.Context, userID int64, n Notification, at 
 		if matched {
 			n.Status, n.Detail = "matched", "Already recorded, so it wasn't added again."
 		}
+		if !matched && t.DuplicateOfID != nil {
+			// A possible duplicate is set aside rather than left to review.
+			// The notification is linked first, so bringing the record back
+			// links it again.
+			if n, err = s.store.finish(ctx, userID, n); err != nil {
+				return n, err
+			}
+			aside, err := s.wallet.SetAside(ctx, userID, t.ID)
+			if err != nil {
+				return n, err
+			}
+			if aside {
+				n.Status, n.Detail, n.TransactionID = "matched", wallet.SetAsideDetail, nil
+			}
+		}
 	}
 	return s.store.finish(ctx, userID, n)
 }

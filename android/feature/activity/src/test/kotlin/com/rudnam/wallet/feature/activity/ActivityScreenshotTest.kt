@@ -6,6 +6,7 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
 import com.rudnam.wallet.core.model.BulkChange
 import com.rudnam.wallet.core.model.RecordFilter
+import com.rudnam.wallet.core.model.SetAsideRecord
 import com.rudnam.wallet.core.model.Tag
 import com.rudnam.wallet.core.model.Transaction
 import com.rudnam.wallet.core.model.TransactionStatus
@@ -53,6 +54,8 @@ class ActivityScreenshotTest {
     private val navigation = object : ActivityNavigation {
         override fun openRecord(record: Transaction) {}
         override fun addRecord() {}
+        override fun openDuplicates() {}
+        override fun back() {}
     }
 
     /** Two to check: one ready (a shop's category), one a possible duplicate of a record already there. */
@@ -67,7 +70,7 @@ class ActivityScreenshotTest {
         ),
     )
 
-    private fun state(selected: Set<Long>? = null, filter: RecordFilter = RecordFilter()) = ActivityUiState.Ready(
+    private fun state(selected: Set<Long>? = null, filter: RecordFilter = RecordFilter(), caught: Int = 0) = ActivityUiState.Ready(
         wallet = SampleWallet.wallet,
         month = YearMonth.of(2026, 11),
         filter = filter,
@@ -81,6 +84,7 @@ class ActivityScreenshotTest {
         selected = selected,
         refreshing = false,
         busy = false,
+        caught = caught,
     )
 
     private fun shot(name: String, state: ActivityUiState.Ready, dark: Boolean = false) {
@@ -103,4 +107,37 @@ class ActivityScreenshotTest {
 
     @Test
     fun tag() = shot("tag", state(filter = RecordFilter(tag = "dinner")))
+
+    @Test
+    fun caught() = shot("caught", state(caught = 2))
+
+    private val original = SampleWallet.records.first { it.id == 16L }
+    private val duplicates = DuplicatesUiState.Ready(
+        wallet = SampleWallet.wallet,
+        records = listOf(
+            SetAsideRecord(original.copy(id = 40, status = TransactionStatus.Review, duplicateOfId = 16, sourceLabel = "PayPay"), SampleWallet.now, original),
+            SetAsideRecord(original.copy(id = 41, status = TransactionStatus.Review, duplicateOfId = 99, payee = "Lawson", amount = 640), SampleWallet.now, null),
+        ),
+        offline = false,
+        busy = false,
+    )
+    private val noDuplicateActions = object : DuplicatesActions {
+        override fun load() {}
+        override fun bringBack(record: SetAsideRecord) {}
+    }
+
+    private fun duplicatesShot(name: String, dark: Boolean = false) {
+        compose.setContent { WalletTheme(darkTheme = dark) { DuplicatesScreen(duplicates, noDuplicateActions, onBack = {}, now = SampleWallet.now) } }
+        compose.onRoot().captureRoboImage("build/outputs/roborazzi/activity-$name.png")
+    }
+
+    @Test
+    fun duplicatesPage() = duplicatesShot("duplicates")
+
+    @Test
+    fun duplicatesDark() = duplicatesShot("duplicates-dark", dark = true)
+
+    @Test
+    @Config(qualifiers = "ja-w411dp-h1600dp-xxhdpi")
+    fun duplicatesJapanese() = duplicatesShot("duplicates-ja")
 }

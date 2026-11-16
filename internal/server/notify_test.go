@@ -301,11 +301,7 @@ func TestRestoreNotifiedRecord(t *testing.T) {
 	ts := newTestServer(t)
 	c := newClient(t, ts)
 	c.signup("a@example.com")
-	o := overview(t, c)
 	when := time.Date(2026, 10, 5, 23, 0, 0, 0, time.UTC)
-	var manual wallet.Transaction
-	c.do("POST", "/api/transactions", map[string]any{"kind": "expense", "amount": 1820, "account_id": o.Accounts[0].ID,
-		"occurred_at": when.Add(-time.Hour), "payee": "lunch"}, &manual)
 	n := post(t, c, notify.Incoming{Package: payPay, When: when.UnixMilli(), Title: "支払いを受け付けました",
 		Text: "お店：大戸屋\n金額：1,820円\n日時：2026年10月6日 08:00"})[0]
 	if n.Status != "payment" || n.TransactionID == nil {
@@ -317,18 +313,6 @@ func TestRestoreNotifiedRecord(t *testing.T) {
 		c.do("GET", "/api/notifications", nil, &list)
 		return list.Notifications[0].TransactionID
 	}
-	review := func() wallet.Transaction {
-		var l []wallet.Transaction
-		c.do("GET", "/api/transactions?status=review", nil, &l)
-		if len(l) != 1 {
-			t.Fatalf("%d records to review, want 1", len(l))
-		}
-		return l[0]
-	}
-	before := review()
-	if before.DuplicateOfID == nil || *before.DuplicateOfID != manual.ID {
-		t.Fatalf("want a possible duplicate of %d: %+v", manual.ID, before)
-	}
 
 	c.do("DELETE", fmt.Sprintf("/api/transactions/%d", notified), nil, nil)
 	if link() != nil {
@@ -337,22 +321,100 @@ func TestRestoreNotifiedRecord(t *testing.T) {
 	if code := c.do("POST", "/api/transactions/restore", map[string]any{"ids": []int64{notified}}, nil); code != 200 {
 		t.Fatalf("restore: %d", code)
 	}
-	after := review()
-	if after.ID != notified || after.Source != "notification" || after.SourceLabel != before.SourceLabel || after.Status != "review" {
-		t.Errorf("restored %+v, want %+v", after, before)
+	var review []wallet.Transaction
+	c.do("GET", "/api/transactions?status=review", nil, &review)
+	if len(review) != 1 || review[0].ID != notified || review[0].Source != "notification" || review[0].SourceLabel == "" {
+		t.Errorf("restored %+v", review)
 	}
 	if l := link(); l == nil || *l != notified {
 		t.Errorf("notification links to %v, want %d", l, notified)
 	}
-
-	// The record it duplicates: deleting it clears the flag, restoring it puts it back.
-	c.do("DELETE", fmt.Sprintf("/api/transactions/%d", manual.ID), nil, nil)
-	if review().DuplicateOfID != nil {
-		t.Fatal("still flagged as a duplicate of a deleted record")
+	// A record the user deleted isn't a duplicate set aside.
+	if o := overview(t, c); o.SetAsideCount != 0 {
+		t.Errorf("set aside %d", o.SetAsideCount)
 	}
-	c.do("POST", "/api/transactions/restore", map[string]any{"ids": []int64{manual.ID}}, nil)
-	if d := review().DuplicateOfID; d == nil || *d != manual.ID {
-		t.Errorf("duplicate of %v, want %d", d, manual.ID)
+}
+
+type setAsideList struct {
+	Duplicates []wallet.SetAsideRecord `json:"duplicates"`
+}
+
+// A notification that looks like a record the user already has is set
+// aside, not left to review, and can be brought back.
+func TestSetAsideDuplicate(t *testing.T) {
+	ts := newTestServer(t)
+	c := newClient(t, ts)
+	c.signup("a@example.com")
+	o := overview(t, c)
+	when := time.Date(2026, 10, 5, 23, 0, 0, 0, time.UTC)
+	var manual wallet.Transaction
+	c.do("POST", "/api/transactions", map[string]any{"kind": "expense", "amount": 1820, "account_id": o.Accounts[0].ID,
+		"occurred_at": when.Add(-time.Hour), "payee": "lunch", "status": "confirmed"}, &manual)
+	n := post(t, c, notify.Incoming{Package: payPay, When: when.UnixMilli(), Title: "支払いを受け付けました",
+		Text: "お店：大戸屋\n金額：1,820円\n日時：2026年10月6日 08:00"})[0]
+	if n.Status != "matched" || n.TransactionID != nil || n.Detail != wallet.SetAsideDetail {
+		t.Fatalf("notification %+v", n)
+	}
+	review := func() []wallet.Transaction {
+		var l []wallet.Transaction
+		c.do("GET", "/api/transactions?status=review", nil, &l)
+		return l
+	}
+	if r := review(); len(r) != 0 {
+		t.Fatalf("left to review %+v", r)
+	}
+	if o := overview(t, c); o.SetAsideCount != 1 || o.ReviewCount != 0 {
+		t.Errorf("overview counts: set aside %d, review %d", o.SetAsideCount, o.ReviewCount)
+	}
+	var list setAsideList
+	if code := c.do("GET", "/api/transactions/duplicates", nil, &list); code != 200 || len(list.Duplicates) != 1 {
+		t.Fatalf("duplicates: %d %+v", code, list)
+	}
+	d := list.Duplicates[0]
+	if d.Payee != "大戸屋" || d.Amount != 1820 || d.Source != "notification" || d.SetAsideAt.IsZero() ||
+		d.DuplicateOf == nil || d.DuplicateOf.ID != manual.ID {
+		t.Errorf("set aside %+v", d)
+	}
+
+	// Another user sees none of it, and can't bring it back.
+	bob := newClient(t, ts)
+	bob.signup("b@example.com")
+	var theirs setAsideList
+	bob.do("GET", "/api/transactions/duplicates", nil, &theirs)
+	if len(theirs.Duplicates) != 0 {
+		t.Errorf("bob sees %+v", theirs)
+	}
+	if code := bob.do("POST", "/api/transactions/restore", map[string]any{"ids": []int64{d.ID}}, nil); code != 404 {
+		t.Errorf("bob restores alice's duplicate: %d", code)
+	}
+
+	// Not a duplicate after all: it comes back to review, no longer flagged,
+	// and its notification points at it again.
+	if code := c.do("POST", "/api/transactions/restore", map[string]any{"ids": []int64{d.ID}}, nil); code != 200 {
+		t.Fatalf("restore: %d", code)
+	}
+	r := review()
+	if len(r) != 1 || r[0].ID != d.ID || r[0].DuplicateOfID != nil {
+		t.Fatalf("brought back %+v", r)
+	}
+	var ns notifications
+	c.do("GET", "/api/notifications", nil, &ns)
+	if got := ns.Notifications[0]; got.Status != "payment" || got.TransactionID == nil || *got.TransactionID != d.ID {
+		t.Errorf("notification after restore %+v", got)
+	}
+	c.do("GET", "/api/transactions/duplicates", nil, &list)
+	if len(list.Duplicates) != 0 {
+		t.Errorf("still set aside %+v", list)
+	}
+
+	// The same notification sent again changes nothing.
+	again := post(t, c, notify.Incoming{Package: payPay, When: when.UnixMilli(), Title: "支払いを受け付けました",
+		Text: "お店：大戸屋\n金額：1,820円\n日時：2026年10月6日 08:00"})[0]
+	if !again.Duplicate {
+		t.Errorf("sent again %+v", again)
+	}
+	if r := review(); len(r) != 1 {
+		t.Errorf("review after resend %+v", r)
 	}
 }
 

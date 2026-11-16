@@ -4,8 +4,14 @@
 import type { Route } from '../../router';
 import { t } from '../../i18n';
 import { ReviewPage } from '../review/ReviewPage';
+import { CaughtNote } from '../review/DuplicatesPage';
 import { RecordsPage } from './RecordsPage';
 
 export function ActivityPage({ route }: { route: Route }) {
-  return <RecordsPage route={route} title={t('Activity')} above={<ReviewPage compact />} hideReview />;
+  return <RecordsPage route={route} title={t('Activity')} above={
+        <>
+          <ReviewPage compact />
+          <CaughtNote />
+        </>
+      } hideReview />;
 }
