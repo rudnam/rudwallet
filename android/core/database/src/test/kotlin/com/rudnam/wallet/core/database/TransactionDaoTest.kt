@@ -46,4 +46,27 @@ class TransactionDaoTest {
         assertEquals(listOf("dinner"), dao.observeRange(nov, dec).first()[1].tags)
         assertEquals(listOf(1L), dao.observeRange(Instant.EPOCH, nov).first().map { it.id })
     }
+
+    @Test
+    fun `records confirmed at once stay in their month when the records to review are replaced`() = runTest {
+        val dao = db.transactionDao()
+        val oct = Instant.parse("2026-10-01T00:00:00Z")
+        val nov = Instant.parse("2026-11-01T00:00:00Z")
+        db.walletDao().insertCategories(
+            listOf(com.rudnam.wallet.core.database.model.CategoryEntity(7, 0, "Food", "expense", "", "", null)),
+        )
+        fun review(id: Long, duplicateOf: Long? = null) =
+            record(id, "2026-10-${10 + id}T12:00:00Z").copy(status = "review", duplicateOfId = duplicateOf)
+        // 3 is a possible duplicate: the server doesn't confirm it.
+        dao.upsert(listOf(review(1), review(2), review(3, duplicateOf = 1)))
+
+        dao.categorizeAll(listOf(1, 2, 3), 7)
+        dao.confirmAll(listOf(1, 2, 3))
+        dao.replaceReview(listOf(review(3, duplicateOf = 1).copy(categoryId = 7)))
+
+        val october = dao.observeRange(oct, nov).first().associateBy { it.id }
+        assertEquals(setOf(1L, 2L, 3L), october.keys)
+        assertEquals(listOf("confirmed", "confirmed", "review"), listOf(1L, 2L, 3L).map { october.getValue(it).status })
+        assertEquals(7L, october.getValue(2).categoryId)
+    }
 }
