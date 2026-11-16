@@ -46,7 +46,7 @@ After each release, the **Play upload** workflow (`.github/workflows/android-pla
 
 It uses no key. The job asks GitHub for an OIDC token and trades it, through Google's workload identity federation, for a 15-minute token as the service account `play-publisher@wallet-app-511308.iam.gserviceaccount.com`. In the Google Cloud project *wallet-app* (`wallet-app-511308`): the workload identity pool `github`, provider `rudwallet`, accepts only tokens for this repository (by its numeric ID and its owner's), in the `android-release` environment, on `refs/heads/main`; and only this repository may act as the service account (`roles/iam.workloadIdentityUser`). In the Play Console (Users and permissions), the service account may view RudWallet and release it to testing tracks, not to production. The `android-release` environment's variables `GCP_WORKLOAD_IDENTITY_PROVIDER` and `PLAY_SERVICE_ACCOUNT` name the two; without them the upload only warns.
 
-The introduction page offers the APK as **Download for Android** while the server has one, with no restart needed. To put a new build on https://wallet.rudnam.com:
+The introduction page sends people to the Play Store (**Get it on Google Play**, the listing of `com.rudnam.wallet`), and under it offers the APK (**download the APK**) while the server has one, with no restart needed. To put a new build on https://wallet.rudnam.com:
 
 ```sh
 ./android/build.sh && ./android/publish.sh   # needs: aws login --profile rudnam-ec2
