@@ -325,6 +325,7 @@ class OfflineFirstWalletRepositoryTest {
         assertEquals("wallet_secret", (settings.createMcpToken("Claude Desktop") as Fetched.Done).value.token)
         assertEquals(listOf(null), (settings.mcpTokens() as Fetched.Done).value.map { it.token })
         assertTrue(settings.mcpAddress.endsWith("/mcp"))
+        assertTrue(settings.privacyAddress.endsWith("/privacy"))
 
         network.failure = IOException("offline")
         assertEquals(ChangeResult.Offline, settings.deleteCategory(11))

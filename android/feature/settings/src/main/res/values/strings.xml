@@ -23,6 +23,7 @@
     <string name="feature_settings_signed_in_as">Signed in as</string>
     <string name="feature_settings_sign_out">Sign out</string>
     <string name="feature_settings_delete_account">Delete account</string>
+    <string name="feature_settings_privacy_policy">Privacy policy</string>
     <string name="feature_settings_delete_account_detail">This deletes %s and everything in it: accounts, records, budgets and categories. It can’t be undone.</string>
     <string name="feature_settings_your_password">Your password</string>
     <string name="feature_settings_type_email">Type your email to confirm</string>

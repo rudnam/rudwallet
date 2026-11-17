@@ -67,6 +67,9 @@ class SettingsViewModel @Inject constructor(
     private val _messages = MutableStateFlow<List<SettingsMessage>>(emptyList())
     val messages: StateFlow<List<SettingsMessage>> = _messages.asStateFlow()
 
+    /** The privacy policy on the website, which the menu links to (Google Play asks for it in the app). */
+    val privacyAddress: String = settings.privacyAddress
+
     init {
         viewModelScope.launch { users.refreshMe() }
     }

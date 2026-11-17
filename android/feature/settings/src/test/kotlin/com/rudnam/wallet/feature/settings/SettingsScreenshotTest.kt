@@ -1,7 +1,9 @@
 package com.rudnam.wallet.feature.settings
 
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
 import com.rudnam.wallet.core.datastore.Appearance
@@ -17,6 +19,7 @@ import com.rudnam.wallet.core.model.PayeeRule
 import com.rudnam.wallet.core.model.PaymentNotification
 import com.rudnam.wallet.core.model.Rules
 import com.rudnam.wallet.core.testing.SampleWallet
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -83,6 +86,15 @@ class SettingsScreenshotTest {
 
     @Test
     fun menu() = shot("menu") { SettingsScreen(state, null, settings, navigation) }
+
+    @Test
+    @Config(qualifiers = "w411dp-h1400dp-xxhdpi") // tall enough for the whole menu: rows below the fold aren't composed
+    fun menuLinksToThePrivacyPolicy() {
+        var opened = false
+        compose.setContent { WalletTheme { SettingsScreen(state, null, settings, navigation, onPrivacy = { opened = true }) } }
+        compose.onNodeWithText("Privacy policy").performClick()
+        assertTrue(opened)
+    }
 
     @Test
     @Config(qualifiers = "w411dp-h1400dp-xxhdpi")

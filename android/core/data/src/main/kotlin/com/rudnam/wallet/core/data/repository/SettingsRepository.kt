@@ -76,6 +76,9 @@ interface SettingsRepository {
     /** Where an MCP client (Claude) connects: the server's /mcp. */
     val mcpAddress: String
 
+    /** The privacy policy, on the website: the server's /privacy. */
+    val privacyAddress: String
+
     suspend fun mcpTokens(): Fetched<List<McpToken>>
 
     /** A new connection for Claude; its token is in the answer only. */
@@ -164,6 +167,8 @@ internal class ServerSettingsRepository @Inject constructor(
     override suspend fun forgetCard(source: String) = change(io) { network.deleteCardRule(source) }
 
     override val mcpAddress: String = server.resolve("/mcp")
+
+    override val privacyAddress: String = server.resolve("/privacy")
 
     override suspend fun mcpTokens() = fetch(io) { network.mcpTokens().map { it.asModel() } }
 

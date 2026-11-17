@@ -22,6 +22,7 @@
     <string name="feature_settings_signed_in_as">ログイン中</string>
     <string name="feature_settings_sign_out">ログアウト</string>
     <string name="feature_settings_delete_account">アカウントを削除</string>
+    <string name="feature_settings_privacy_policy">プライバシーポリシー</string>
     <string name="feature_settings_delete_account_detail">%s と、その中のすべて（口座、記録、予算、カテゴリ）を削除します。元に戻せません。</string>
     <string name="feature_settings_your_password">パスワード</string>
     <string name="feature_settings_type_email">確認のためメールアドレスを入力</string>
