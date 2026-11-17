@@ -20,11 +20,14 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     // index.html is the app, which the server serves at /app/; landing.html
-    // is the introduction at /.
+    // is the introduction at /; privacy.html and delete-account.html are
+    // /privacy and /delete-account, which the Play Store listing links to.
     rollupOptions: {
       input: {
         app: resolve(import.meta.dirname, 'index.html'),
         landing: resolve(import.meta.dirname, 'landing.html'),
+        privacy: resolve(import.meta.dirname, 'privacy.html'),
+        deleteAccount: resolve(import.meta.dirname, 'delete-account.html'),
       },
     },
   },
