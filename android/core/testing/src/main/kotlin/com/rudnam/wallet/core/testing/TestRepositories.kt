@@ -188,6 +188,7 @@ class TestSettingsRepository : com.rudnam.wallet.core.data.repository.SettingsRe
     override suspend fun setCard(source: String, accountId: Long) = result.also { cards += source to accountId }
     override suspend fun forgetCard(source: String) = result.also { cards += source to null }
     override val mcpAddress = "https://wallet.example.com/mcp"
+    override val privacyAddress = "https://wallet.example.com/privacy"
     override suspend fun mcpTokens() = com.rudnam.wallet.core.data.repository.Fetched.Done(tokens.map { it.copy(token = null) })
     override suspend fun createMcpToken(name: String): com.rudnam.wallet.core.data.repository.Fetched<com.rudnam.wallet.core.model.McpToken> {
         val token = com.rudnam.wallet.core.model.McpToken(tokens.size + 1L, name, java.time.Instant.EPOCH, null, "wallet_secret", false)

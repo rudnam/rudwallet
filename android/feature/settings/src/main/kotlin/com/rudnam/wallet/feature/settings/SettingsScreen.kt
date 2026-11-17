@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalLocale
 import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -96,8 +97,9 @@ private val groups = listOf(R.string.feature_settings_group_money, R.string.feat
 internal fun SettingsDestination(navigation: SettingsNavigation, snackbar: SnackbarHostState, viewModel: SettingsViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val deleting by viewModel.deleting.collectAsStateWithLifecycle()
+    val uri = LocalUriHandler.current
     SettingsMessages(viewModel, snackbar)
-    SettingsScreen(state, deleting, viewModel, navigation)
+    SettingsScreen(state, deleting, viewModel, navigation, onPrivacy = { uri.openUri(viewModel.privacyAddress) })
 }
 
 /** The snackbar for what Settings' own changes said. */
@@ -120,7 +122,13 @@ internal fun SettingsMessages(viewModel: SettingsViewModel, snackbar: SnackbarHo
 /** Settings, the fourth tab: a short menu in groups, then who's signed in (docs/design, "settings"). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun SettingsScreen(state: SettingsUiState, deleting: DeleteAccountState?, actions: SettingsActions, navigation: SettingsNavigation) {
+internal fun SettingsScreen(
+    state: SettingsUiState,
+    deleting: DeleteAccountState?,
+    actions: SettingsActions,
+    navigation: SettingsNavigation,
+    onPrivacy: () -> Unit = {},
+) {
     val scroll = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
@@ -158,6 +166,14 @@ internal fun SettingsScreen(state: SettingsUiState, deleting: DeleteAccountState
                 }
             }
             item(key = "me") { Me(state, actions) }
+            // The privacy policy, on the website (Google Play asks for a link inside the app).
+            item(key = "privacy") {
+                Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    TextButton(onClick = onPrivacy) {
+                        Text(stringResource(R.string.feature_settings_privacy_policy), color = WalletTheme.colors.muted)
+                    }
+                }
+            }
         }
     }
     if (deleting != null && state.me != null) DeleteAccountDialog(state.me.email, state.me.hasPassword, deleting, actions)

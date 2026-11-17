@@ -3,7 +3,7 @@
 # android/publish.sh (phones on a build that checks are offered it, see
 # android/core/data/…/UpdateRepository.kt), and keeps both files as a GitHub release,
 # android-<versionCode>, whose .aab android-play.yml then sends to the Play
-# Console's internal testing track. The versionCode is one above the published APK (android/version.sh).
+# Console (the track PLAY_TRACK names, else internal testing). The versionCode is one above the published APK (android/version.sh).
 #
 # It runs:
 #   - by itself, once CI has passed on main, when the commit came from a pull
@@ -156,7 +156,7 @@ jobs:
           cp android/wallet.aab "rudwallet-$WALLET_VERSION_NAME.aab"
           gh release create "$tag" --target "$SHA" \
             --title "Android $WALLET_VERSION_NAME" \
-            --notes "versionCode $WALLET_VERSION_CODE, published on wallet.rudnam.com. The .aab goes to the Play Console's internal testing track (android-play.yml)." \
+            --notes "versionCode $WALLET_VERSION_CODE, published on wallet.rudnam.com. The .aab goes to the Play Console (android-play.yml), on the track PLAY_TRACK names." \
             "rudwallet-$WALLET_VERSION_NAME.apk" "rudwallet-$WALLET_VERSION_NAME.aab"
           echo "GitHub release: $tag" >> "$GITHUB_STEP_SUMMARY"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
