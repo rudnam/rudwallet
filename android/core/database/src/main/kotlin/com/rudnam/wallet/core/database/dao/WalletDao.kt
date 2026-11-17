@@ -104,6 +104,27 @@ interface TransactionDao {
     @Query("DELETE FROM transactions WHERE id IN (:ids)")
     suspend fun deleteAll(ids: List<Long>)
 
+    /**
+     * The server confirmed these (POST /api/transactions/bulk, "confirm"): the
+     * ones it confirms, records to review that are ready (BulkConfirm in
+     * internal/wallet). They stay on the phone as confirmed records, so they
+     * show in their month at once, whichever month it is.
+     */
+    @Query(
+        """UPDATE transactions SET status = 'confirmed'
+           WHERE id IN (:ids) AND status = 'review' AND kind <> 'transfer'
+             AND categoryId IS NOT NULL AND amount > 0 AND duplicateOfId IS NULL""",
+    )
+    suspend fun confirmAll(ids: List<Long>)
+
+    /** The server gave these a category, or none ("categorize"): only records of the category's kind, never transfers. */
+    @Query(
+        """UPDATE transactions SET categoryId = :categoryId
+           WHERE id IN (:ids) AND kind <> 'transfer'
+             AND (:categoryId IS NULL OR kind = (SELECT kind FROM categories WHERE id = :categoryId))""",
+    )
+    suspend fun categorizeAll(ids: List<Long>, categoryId: Long?)
+
     /** An account was deleted, and every record in it with it. */
     @Query("DELETE FROM transactions WHERE accountId = :accountId OR toAccountId = :accountId")
     suspend fun deleteForAccount(accountId: Long)

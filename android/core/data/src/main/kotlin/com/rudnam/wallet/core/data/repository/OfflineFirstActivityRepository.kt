@@ -76,8 +76,15 @@ internal class OfflineFirstActivityRepository @Inject constructor(
 
     override suspend fun bulk(change: BulkChange): BulkOutcome = attempt {
         val result = network.bulk(change.asNetwork())
-        // Gone from the lists at once; any other change shows with the next refresh.
-        if (change is BulkChange.Delete) transactionDao.deleteAll(change.ids)
+        // Shown at once. Records to review must be: refreshReview drops every one the
+        // server no longer lists, and a month refresh only brings back its own month's.
+        // Any other change shows with the next refresh.
+        when (change) {
+            is BulkChange.Delete -> transactionDao.deleteAll(change.ids)
+            is BulkChange.Categorize -> transactionDao.categorizeAll(change.ids, change.categoryId)
+            is BulkChange.Confirm -> transactionDao.confirmAll(change.ids)
+            else -> Unit
+        }
         BulkResult(result.changed, result.skipped)
     }
 
