@@ -46,8 +46,8 @@ test('the Android app is offered on Google Play, with how to join its test', asy
   await expect(play).toBeInViewport();
   await expect(play).toHaveAttribute('href', 'https://play.google.com/store/apps/details?id=com.rudnam.wallet');
   // Testers join a Google Group the closed test is open to, then opt in.
-  await expect(page.getByRole('link', { name: "Join the testers' group" })).toHaveAttribute('href', 'https://groups.google.com/g/rudwallet-testers');
-  await expect(page.getByRole('link', { name: 'Join the test on Google Play' })).toHaveAttribute('href', 'https://play.google.com/apps/testing/com.rudnam.wallet');
+  await expect(page.getByRole('link', { name: 'Join the group' })).toHaveAttribute('href', 'https://groups.google.com/g/rudwallet-testers');
+  await expect(page.getByRole('link', { name: 'Join the test' })).toHaveAttribute('href', 'https://play.google.com/apps/testing/com.rudnam.wallet');
   await expect(page.getByRole('link', { name: /APK/ })).toHaveCount(0);
 });
 
