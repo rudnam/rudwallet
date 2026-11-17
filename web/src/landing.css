@@ -85,11 +85,15 @@
 .source-list strong { font-weight: 600; font-size: 1.05rem; letter-spacing: -0.01em; }
 .source-list span { color: var(--muted); line-height: 1.5; }
 
-/* The Android app: what it does, and the download. */
-.landing-section.android { flex-direction: row; align-items: center; justify-content: space-between; gap: 32px; }
-.landing-section.android > div:first-child { display: flex; flex-direction: column; gap: 10px; max-width: 34em; }
-.android-get { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
-.android-get[hidden] { display: none; }
+/* The Android app: what it does, and the three steps to it, as rows like
+   the sources above. */
+.android-intro { display: flex; flex-direction: column; gap: 10px; max-width: 40em; }
+.android-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 40px; }
+.android-steps li { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 18px 0; border-top: 1px solid var(--border); }
+.android-steps strong { font-weight: 600; font-size: 1.05rem; letter-spacing: -0.01em; }
+.android-steps li > span:not(.android-step-n) { color: var(--muted); line-height: 1.5; margin-bottom: 12px; }
+.android-step-n { color: var(--muted); font-size: 0.85rem; font-weight: 500; font-variant-numeric: tabular-nums; margin-bottom: 4px; }
+.android-steps .button { margin-top: auto; } /* the three line up, however their text wraps */
 
 .landing-close { display: flex; flex-direction: column; align-items: center; gap: 20px; text-align: center; padding: 80px 0 96px; border-top: 1px solid var(--border); }
 .landing-close h2 { font-size: clamp(2rem, 4.4vw, 3rem); letter-spacing: -0.04em; }
@@ -100,7 +104,7 @@
   .flow-row { grid-template-columns: minmax(0, 1fr); gap: 28px; }
   .source-list { grid-template-columns: minmax(0, 1fr); }
   .landing-section { padding: 48px 0; }
-  .landing-section.android { flex-direction: column; align-items: flex-start; }
+  .android-steps { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ---------- Motion: one entrance, then sections as they arrive ---------- */

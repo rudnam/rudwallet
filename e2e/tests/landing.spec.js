@@ -39,14 +39,16 @@ test('with reduced motion nothing waits to be revealed', async ({ page }) => {
   await expect(page.locator('.landing-close')).toHaveCSS('opacity', '1');
 });
 
-test('the Android app can be downloaded from the introduction', async ({ page }) => {
+test('the Android app is offered on Google Play, with how to join its test', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('link', { name: 'Get the Android app' }).click();
-  const link = page.getByRole('link', { name: 'Download for Android' });
-  await expect(link).toBeInViewport();
-  await expect(page.getByText(/^APK · [\d.]+ [KM]B · updated /)).toBeVisible();
-  const [download] = await Promise.all([page.waitForEvent('download'), link.click()]);
-  expect(download.suggestedFilename()).toBe('wallet.apk');
+  const play = page.getByRole('link', { name: 'Get it on Google Play' });
+  await expect(play).toBeInViewport();
+  await expect(play).toHaveAttribute('href', 'https://play.google.com/store/apps/details?id=com.rudnam.wallet');
+  // Testers join a Google Group the closed test is open to, then opt in.
+  await expect(page.getByRole('link', { name: 'Join the group' })).toHaveAttribute('href', 'https://groups.google.com/g/rudwallet-testers');
+  await expect(page.getByRole('link', { name: 'Join the test' })).toHaveAttribute('href', 'https://play.google.com/apps/testing/com.rudnam.wallet');
+  await expect(page.getByRole('link', { name: /APK/ })).toHaveCount(0);
 });
 
 test('links from before the app moved to /app/ still open it', async ({ page }) => {
