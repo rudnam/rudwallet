@@ -121,7 +121,9 @@ func health(conn *sql.DB, version string) http.Handler {
 }
 
 // webApp serves the built web app. The introduction page (landing.html) is
-// at /, and the single-page app (index.html) at /app/: paths under /app/ that
+// at /, the privacy policy and how to delete an account at /privacy and
+// /delete-account (the Play Store listing links to both), and the
+// single-page app (index.html) at /app/: paths under /app/ that
 // are not files get index.html, so client-side routes survive a reload. Vite
 // puts content-hashed files in assets/, which can be cached for good;
 // everything else is revalidated, so a deploy shows up on the next load.
@@ -142,6 +144,8 @@ func webApp(static fs.FS) http.Handler {
 		switch {
 		case name == "":
 			http.ServeFileFS(w, r, static, "landing.html")
+		case name == "privacy" || name == "delete-account":
+			http.ServeFileFS(w, r, static, name+".html")
 		case r.URL.Path == "/app":
 			to := "/app/"
 			if r.URL.RawQuery != "" {

@@ -1,0 +1,14 @@
+/* The privacy policy and delete-account pages (legal.ts): one readable
+   column under the introduction's bar. No inline styles (the CSP allows
+   none). */
+.landing main.legal { max-width: 760px; padding-top: 24px; padding-bottom: 72px; }
+.legal h1 { font-size: clamp(2rem, 4.4vw, 2.8rem); line-height: 1.08; letter-spacing: -0.04em; margin: 0 0 8px; }
+.legal h2 { font-size: 1.25rem; letter-spacing: -0.02em; margin: 40px 0 12px; }
+.legal p, .legal li { line-height: 1.6; }
+.legal p + p { margin-top: 12px; }
+.legal ol + p, .legal ul + p { margin-top: 16px; }
+.legal ul, .legal ol { margin: 12px 0 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 8px; }
+.legal a { color: var(--accent); }
+.legal-updated { color: var(--muted); }
+.legal-lead { font-size: 1.1rem; color: var(--muted); margin-top: 16px !important; }
+.legal-foot { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border); color: var(--muted); }

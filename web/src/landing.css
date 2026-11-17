@@ -2,7 +2,7 @@
    styles.css, so it looks like the app. No inline styles: the page's CSP
    allows none, so every colour is a class here. */
 .landing { padding: 0; }
-.landing main, .landing-bar { max-width: 1040px; margin: 0 auto; padding-left: 20px; padding-right: 20px; }
+.landing main, .landing-bar, .landing-foot { max-width: 1040px; margin: 0 auto; padding-left: 20px; padding-right: 20px; }
 .landing main { overflow-x: clip; }
 .landing p { margin: 0; }
 .landing-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 18px; padding-bottom: 18px; }
@@ -120,3 +120,7 @@
 @media (prefers-reduced-motion: reduce) {
   .motion .reveal { opacity: 1; transform: none; }
 }
+
+/* ---------- Footer: the privacy policy and deleting an account ---------- */
+.landing-foot { display: flex; flex-wrap: wrap; gap: 8px 20px; padding-top: 24px; padding-bottom: 32px; border-top: 1px solid var(--border); font-size: 0.9rem; }
+.landing-foot a { color: var(--muted); }

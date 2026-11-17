@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title data-ja="アカウントの削除 · RudWallet">Deleting your account · RudWallet</title>
+<meta name="description" content="How to delete your RudWallet account and everything in it.">
+<meta name="theme-color" content="#f5f5f3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0c0d0f" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<!-- How to delete an account, served at /delete-account. The Play Store
+     listing's data safety section links here (and to #data), so it must
+     work without the app and keep saying what deleting removes. -->
+<script type="module" src="/src/legal.ts"></script>
+</head>
+<body class="landing">
+<header class="landing-bar">
+  <a class="landing-brand" href="/">
+    <img class="logo" src="/favicon.svg" width="32" height="32" alt="">
+    RudWallet
+  </a>
+  <div class="landing-bar-end">
+    <button type="button" class="link" id="language-toggle" lang="ja" data-ja="English">日本語</button>
+  </div>
+</header>
+
+<main class="legal">
+  <h1 data-ja="RudWalletのアカウントを削除する">Deleting your RudWallet account</h1>
+  <p class="legal-lead" data-ja="RudWallet（rudnamのAndroidアプリと wallet.rudnam.com）のアカウントは、いつでもご自身で削除できます。アプリを入れ直す必要はありません。">You can delete your account for RudWallet (the Android app by rudnam, and wallet.rudnam.com) yourself at any time. You don't need the app installed.</p>
+
+  <h2 data-ja="Androidアプリで">In the Android app</h2>
+  <ol>
+    <li data-ja="下のタブの <strong>設定</strong> を開きます。">Open the <strong>Settings</strong> tab.</li>
+    <li data-ja="<strong>アカウントを削除</strong> をタップします。">Tap <strong>Delete account</strong>.</li>
+    <li data-ja="パスワードを入力して確定します（Googleだけでログインしている場合は、メールアドレスを入力します）。">Confirm with your password (or, if you only sign in with Google, with your email address).</li>
+  </ol>
+
+  <h2 data-ja="ウェブで">On the website</h2>
+  <ol>
+    <li data-ja="<a href=&quot;/app/settings&quot;>wallet.rudnam.com/app/settings</a> を開いて、ログインします。">Go to <a href="/app/settings">wallet.rudnam.com/app/settings</a> and sign in.</li>
+    <li data-ja="<strong>アカウントを削除</strong> を選び、同じように確定します。">Choose <strong>Delete account</strong> and confirm it the same way.</li>
+  </ol>
+  <p data-ja="ログインできない場合は、登録したメールアドレスから <a href=&quot;mailto:francisalbarracin2@gmail.com?subject=RudWallet%20account%20deletion&quot;>francisalbarracin2@gmail.com</a> に「アカウントを削除してほしい」とご連絡ください。本人であることを確かめたうえで、削除します。">If you can't sign in, write to <a href="mailto:francisalbarracin2@gmail.com?subject=RudWallet%20account%20deletion">francisalbarracin2@gmail.com</a> from the address you signed up with, asking for your account to be deleted. Once it's clear the account is yours, it's deleted for you.</p>
+
+  <h2 data-ja="削除されるもの">What's deleted</h2>
+  <p data-ja="アカウントと、その中のすべてがすぐに削除されます。メールアドレスとパスワード、口座、記録、予算、カテゴリ、お店ごとの設定、取り込んだ決済通知とICカードの履歴、接続用のトークン、ログイン中のすべてのセッションです。元には戻せません。">Your account and everything in it are deleted at once: your email address and password, accounts, records, budgets, categories, settings for each shop, the payment notifications and IC card history brought in, connection tokens, and every signed-in session. It can't be undone.</p>
+  <p data-ja="データベースのバックアップは30日間保存されるため、そこからは30日以内に消えます。サーバーのログ（IPアドレスなど）は、サービスを動かし守るのに必要なあいだだけ残ります。ほかに残しておくものはありません。">Database backups are kept for 30 days, so your data is gone from them within 30 days. Server logs (such as IP addresses) are kept only as long as needed to run and protect the service. Nothing else is kept.</p>
+
+  <h2 id="data" data-ja="アカウントを残して、データだけ削除する">Deleting data but keeping the account</h2>
+  <p data-ja="記録はアプリかウェブで、1件ずつ、または複数を選んでまとめて削除できます。口座、予算、カテゴリも、それぞれの設定から削除できます。削除したものはすぐに消え、バックアップからも30日以内に消えます。">You can delete records one at a time, or choose several and delete them together, in the app or on the website. Accounts, budgets and categories can each be deleted from their settings. What you delete is gone at once, and from the backups within 30 days.</p>
+
+  <p class="legal-foot"><a href="/" data-ja="RudWalletのトップへ">Back to RudWallet</a> · <a href="/privacy" data-ja="プライバシーポリシー">Privacy policy</a></p>
+</main>
+</body>
+</html>

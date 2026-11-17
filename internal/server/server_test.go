@@ -40,6 +40,9 @@ func TestServesWebApp(t *testing.T) {
 	}{
 		{"/", "<title>Landing</title>", "no-cache", 200},
 		{"/app/", "<title>App</title>", "no-cache", 200},
+		{"/privacy", "<title>Privacy</title>", "no-cache", 200},
+		{"/delete-account", "<title>Delete account</title>", "no-cache", 200},
+		{"/privacy.html", "<title>Privacy</title>", "no-cache", 200},
 		{"/app/records", "<title>App</title>", "no-cache", 200}, // client-side route
 		{"/app?email=confirmed", "<title>App</title>", "no-cache", 200},
 		{"/records", "404", "no-cache", 404},
