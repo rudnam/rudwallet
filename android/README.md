@@ -46,6 +46,15 @@ After each release, the **Play upload** workflow (`.github/workflows/android-pla
 
 It uses no key. The job asks GitHub for an OIDC token and trades it, through Google's workload identity federation, for a 15-minute token as the service account `play-publisher@wallet-app-511308.iam.gserviceaccount.com`. In the Google Cloud project *wallet-app* (`wallet-app-511308`): the workload identity pool `github`, provider `rudwallet`, accepts only tokens for this repository (by its numeric ID and its owner's), in the `android-release` environment, on `refs/heads/main`; and only this repository may act as the service account (`roles/iam.workloadIdentityUser`). In the Play Console (Users and permissions), the service account may view RudWallet and release it to testing tracks, not to production. The `android-release` environment's variables `GCP_WORKLOAD_IDENTITY_PROVIDER` and `PLAY_SERVICE_ACCOUNT` name the two; without them the upload only warns.
 
+**Testers join by themselves.** Internal testing takes only emails you add by hand, so the public test is a *closed* test whose testers are the Google Group `rudwallet-testers@googlegroups.com`, which anyone may join. The introduction page walks people through it: join the group (groups.google.com/g/rudwallet-testers), opt in at https://play.google.com/apps/testing/com.rudnam.wallet, install from the listing. To set it up, once:
+
+1. At groups.google.com, create the group `rudwallet-testers`: who can search for it and join it, *anyone on the web*; who can post, *group managers* (it's a list, not a forum). If the name is taken, choose another and change it in `web/landing.html` and `e2e/tests/landing.spec.js`.
+2. Play Console → RudWallet → Test and release → Testing → Closed testing → Create track (or use *Closed testing - Alpha*) → Testers → Google Groups: `rudwallet-testers@googlegroups.com`; set the countries.
+3. Promote the latest internal release to it (the track → Promote release), and send it for review. The first closed release is reviewed by Google, often within a few days; until then the opt-in link says the app isn't available.
+4. So that releases go to the closed test from then on: GitHub → Settings → Environments → `android-release` → variable `PLAY_TRACK` = `alpha` (the closed track's ID; for a track you created, its name). Unset, releases go to internal testing only.
+
+When RudWallet is in production, the two joining steps can go from the page: the listing then installs for anyone.
+
 The introduction page sends people to the Play Store (**Get it on Google Play**, the listing of `com.rudnam.wallet`) and no longer links to the APK. The server still serves it at `/download/wallet.apk` for the copies already installed from it: their update banner downloads it from there. To put a new build on https://wallet.rudnam.com:
 
 ```sh

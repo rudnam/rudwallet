@@ -39,12 +39,15 @@ test('with reduced motion nothing waits to be revealed', async ({ page }) => {
   await expect(page.locator('.landing-close')).toHaveCSS('opacity', '1');
 });
 
-test('the Android app is offered on Google Play', async ({ page }) => {
+test('the Android app is offered on Google Play, with how to join its test', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('link', { name: 'Get the Android app' }).click();
   const play = page.getByRole('link', { name: 'Get it on Google Play' });
   await expect(play).toBeInViewport();
   await expect(play).toHaveAttribute('href', 'https://play.google.com/store/apps/details?id=com.rudnam.wallet');
+  // Testers join a Google Group the closed test is open to, then opt in.
+  await expect(page.getByRole('link', { name: "Join the testers' group" })).toHaveAttribute('href', 'https://groups.google.com/g/rudwallet-testers');
+  await expect(page.getByRole('link', { name: 'Join the test on Google Play' })).toHaveAttribute('href', 'https://play.google.com/apps/testing/com.rudnam.wallet');
   await expect(page.getByRole('link', { name: /APK/ })).toHaveCount(0);
 });
 

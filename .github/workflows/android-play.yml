@@ -1,6 +1,7 @@
 # Sends an Android release's .aab (a GitHub release android-<versionCode>,
 # made by android-release.yml) to the Play Console, on the internal testing
-# track. android-release.yml calls it after every release; run it by hand
+# track, or the one the android-release environment's variable PLAY_TRACK
+# names (alpha is closed testing). android-release.yml calls it after every release; run it by hand
 # (Actions → Play upload → Run workflow, on main) to send one again, e.g.
 # after a failed upload. Promoting a build from internal testing to
 # production is done in the Play Console.
@@ -41,6 +42,7 @@ jobs:
       TAG: ${{ inputs.tag }}
       GCP_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
       PLAY_SERVICE_ACCOUNT: ${{ vars.PLAY_SERVICE_ACCOUNT }}
+      PLAY_TRACK: ${{ vars.PLAY_TRACK }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Upload to the Play Console
@@ -56,4 +58,4 @@ jobs:
           mkdir -p "$RUNNER_TEMP/play"
           gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p '*.aab' -D "$RUNNER_TEMP/play"
           ./android/play-upload.sh "$RUNNER_TEMP"/play/*.aab "$name"
-          echo "Sent $TAG ($name) to the Play Console's internal testing track" >> "$GITHUB_STEP_SUMMARY"
+          echo "Sent $TAG ($name) to the Play Console's ${PLAY_TRACK:-internal} track" >> "$GITHUB_STEP_SUMMARY"
