@@ -184,6 +184,8 @@
     <string name="feature_settings_notifications_intro">PayPay、Googleウォレット、三井住友カード（Vpass）で支払うと、すぐに明細に届きます。</string>
     <string name="feature_settings_access_on">オン。RudWalletがPayPay、Googleウォレット、Vpassの通知を読み取ります。</string>
     <string name="feature_settings_access_off">オフ。読み取るには、RudWalletに通知へのアクセスを許可してください。</string>
+    <string name="feature_settings_alerts_help">通知を許可すると、これがオフになったときにお知らせします。</string>
+    <string name="feature_settings_allow_alerts">通知を許可</string>
     <string name="feature_settings_turn_off">オフにする</string>
     <string name="feature_settings_allow_access">アクセスを許可</string>
     <string name="feature_settings_access_help">アプリの一覧が表示されたらRudWalletをオンにします。スイッチがグレーで押せない場合は、RudWalletのアプリ情報 › ⋮ › 制限付き設定を許可を開いてからもう一度お試しください。</string>

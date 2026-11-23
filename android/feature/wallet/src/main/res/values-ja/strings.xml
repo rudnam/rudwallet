@@ -44,4 +44,7 @@
     <string name="feature_wallet_confirm">メールアドレスの確認: %s にお送りしたリンクを開いてください。</string>
     <string name="feature_wallet_confirm_sent">送信しました。%s の受信箱をご確認ください。</string>
     <string name="feature_wallet_confirm_again">再送する</string>
+    <string name="feature_wallet_notifications_off">支払いが記録されていません</string>
+    <string name="feature_wallet_notifications_off_detail">通知へのアクセスがオフです。</string>
+    <string name="feature_wallet_notifications_turn_on">オンにする</string>
 </resources>

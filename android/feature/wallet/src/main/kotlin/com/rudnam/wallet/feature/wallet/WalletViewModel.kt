@@ -46,6 +46,9 @@ class WalletViewModel @Inject constructor(
     private val update = MutableStateFlow<AppUpdate?>(null)
     private val notificationsSent = MutableStateFlow<Boolean?>(null)
 
+    /** Whether Android lets RudWallet read notifications, as the screen last saw it; null until it has looked. */
+    private val notificationAccess = MutableStateFlow<Boolean?>(null)
+
     /** One-off messages for the screen's snackbar. */
     private val _messages = MutableStateFlow<List<WalletMessage>>(emptyList())
     val messages: StateFlow<List<WalletMessage>> = _messages.asStateFlow()
@@ -54,10 +57,10 @@ class WalletViewModel @Inject constructor(
 
     private val confirmation = MutableStateFlow<Confirmation>(Confirmation.Idle)
 
-    private val account = combine(users.me, confirmation, ::Pair)
+    private val account = combine(users.me, confirmation, notificationAccess, ::Triple)
 
     private val extras = combine(sync, update, notificationsSent, preferences.preferences, account) { s, u, n, p, a ->
-        Extras(s, u, n, p.setupDismissed, a.first, a.second)
+        Extras(s, u, n, p.setupDismissed, a.first, a.second, a.third)
     }
 
     private data class Extras(
@@ -67,6 +70,7 @@ class WalletViewModel @Inject constructor(
         val setupDismissed: Boolean,
         val me: Me?,
         val confirmation: Confirmation,
+        val notificationAccess: Boolean?,
     )
 
     val uiState: StateFlow<WalletUiState> = combine(
@@ -89,6 +93,8 @@ class WalletViewModel @Inject constructor(
                 refreshing = x.sync.refreshing,
                 me = x.me,
                 confirmation = x.confirmation,
+                // Only for someone whose notifications reached the server before: who never turned it on has the checklist.
+                notificationAccessLost = x.notificationAccess == false && x.notificationsSent == true && x.me?.demo != true,
             )
             x.sync.last == null || x.sync.refreshing -> WalletUiState.Loading
             else -> WalletUiState.Unavailable
@@ -102,6 +108,11 @@ class WalletViewModel @Inject constructor(
         viewModelScope.launch { update.value = updates.check() }
         // Whether the address is confirmed yet, and whether this is a demo.
         viewModelScope.launch { users.refreshMe() }
+    }
+
+    /** What the screen found when it came into view: whether Android lets RudWallet read notifications. */
+    fun onNotificationAccess(granted: Boolean) {
+        notificationAccess.value = granted
     }
 
     /** Emails the link to confirm the address again. */

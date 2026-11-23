@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import com.rudnam.wallet.core.data.sync.OutboxScheduler
+import com.rudnam.wallet.notify.AccessWatch
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -14,6 +15,8 @@ class RudWalletApplication : Application(), Configuration.Provider {
 
     @Inject lateinit var outbox: OutboxScheduler
 
+    @Inject lateinit var accessWatch: AccessWatch
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
 
@@ -21,5 +24,7 @@ class RudWalletApplication : Application(), Configuration.Provider {
         super.onCreate()
         // Records left waiting last time go as soon as there's a connection.
         outbox.schedule()
+        // Notification access going off is noticed with the app closed, and said with a notification.
+        accessWatch.schedule()
     }
 }

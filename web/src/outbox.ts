@@ -15,6 +15,8 @@ export interface Unsent {
   input: TransactionInput;
   /** Why the server refused it (e.g. its account was deleted); it waits for the user to fix it. */
   error?: string;
+  /** The server's id once it has the record, while it waits to leave the outbox: a list that already has it doesn't show it twice. */
+  saved_id?: number;
 }
 
 const storageKey = 'wallet:outbox';
@@ -64,6 +66,10 @@ export const outbox = {
   update(localID: number, input: TransactionInput): Unsent | undefined {
     write(entries.map((u) => (u.local_id === localID ? { ...u, input: strip(input), error: undefined } : u)));
     return outbox.get(localID);
+  },
+  /** The server has it, under this id; it leaves the outbox once what shows it has reloaded (sent). */
+  saved(clientID: string, id: number) {
+    write(entries.map((u) => (u.client_id === clientID ? { ...u, saved_id: id } : u)));
   },
   refused(clientID: string, error: string) {
     write(entries.map((u) => (u.client_id === clientID ? { ...u, error } : u)));

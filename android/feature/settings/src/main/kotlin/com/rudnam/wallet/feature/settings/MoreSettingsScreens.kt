@@ -4,12 +4,16 @@ import android.appwidget.AppWidgetManager
 import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
+import android.Manifest
 import android.content.ComponentName
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import android.content.Context
-import android.content.Intent
 import android.os.Build
 import android.os.PersistableBundle
-import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -68,9 +72,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.app.NotificationManagerCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rudnam.wallet.core.designsystem.component.WalletPanel
 import com.rudnam.wallet.core.designsystem.component.rememberHaptics
@@ -87,6 +89,8 @@ import com.rudnam.wallet.core.model.Wallet
 import com.rudnam.wallet.core.ui.CategoryPickerSheet
 import com.rudnam.wallet.core.ui.CategoryIcon
 import com.rudnam.wallet.core.ui.ServerText
+import com.rudnam.wallet.core.ui.openNotificationAccess
+import com.rudnam.wallet.core.ui.rememberNotificationAccess
 import com.rudnam.wallet.core.ui.serverText
 import java.time.Instant
 
@@ -303,32 +307,21 @@ private fun AddShop(wallet: Wallet, onAdd: (String, Long) -> Unit) {
 
 // ---------- Payment notifications ----------
 
-/** Whether RudWallet may read notifications, checked again each time the page comes back (from Android's settings, say). */
+/**
+ * On Android 13+ without permission to post notifications: asks for it.
+ * Null when it's allowed (always, before 13), checked again on coming back.
+ */
 @Composable
-private fun rememberNotificationAccess(): Boolean? {
+private fun rememberAlertPermission(): (() -> Unit)? {
+    if (Build.VERSION.SDK_INT < 33) return null
     val context = LocalContext.current
-    var access by remember { mutableStateOf<Boolean?>(null) }
+    var allowed by remember { mutableStateOf(true) }
     LifecycleResumeEffect(Unit) {
-        access = NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
+        allowed = ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
         onPauseOrDispose {}
     }
-    return access
-}
-
-/** Android's notification access page, at RudWallet's own switch where it can. */
-private fun openNotificationAccess(context: Context) {
-    val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        val listener = ComponentName(context.packageName, "com.rudnam.wallet.notify.PaymentListener")
-        Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
-            .putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, listener.flattenToString())
-    } else {
-        Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
-    }
-    try {
-        context.startActivity(intent)
-    } catch (e: android.content.ActivityNotFoundException) {
-        context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-    }
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { allowed = it }
+    return if (allowed) null else ({ launcher.launch(Manifest.permission.POST_NOTIFICATIONS) })
 }
 
 @Composable
@@ -339,7 +332,15 @@ internal fun NotificationsDestination(navigation: SettingsNavigation, snackbar: 
     val messages by viewModel.messages.collectAsStateWithLifecycle()
     val context = LocalContext.current
     PageMessages(messages, viewModel::messageShown, snackbar)
-    NotificationsScreen(wallet, rememberNotificationAccess(), autoConfirm, recent, viewModel, onOpenAccess = { openNotificationAccess(context) }, navigation = navigation)
+    val access = rememberNotificationAccess()
+    val alerts = rememberAlertPermission()
+    NotificationsScreen(
+        wallet, access, autoConfirm, recent, viewModel,
+        onOpenAccess = { openNotificationAccess(context) },
+        navigation = navigation,
+        // Only once reading works: then the alert is for losing it.
+        onAllowAlerts = alerts.takeIf { access == true },
+    )
 }
 
 /**
@@ -356,6 +357,8 @@ internal fun NotificationsScreen(
     actions: NotificationsActions,
     onOpenAccess: () -> Unit,
     navigation: SettingsNavigation,
+    /** Asks to post notifications, so losing access is said with one; null when allowed already. */
+    onAllowAlerts: (() -> Unit)? = null,
 ) {
     SettingsPage(stringResource(R.string.feature_settings_notifications), navigation) {
         item { Intro(stringResource(R.string.feature_settings_notifications_intro)) }
@@ -371,6 +374,10 @@ internal fun NotificationsScreen(
                         }
                         if (access) {
                             OutlinedButton(onClick = onOpenAccess) { Text(stringResource(R.string.feature_settings_turn_off)) }
+                            onAllowAlerts?.let {
+                                Muted(stringResource(R.string.feature_settings_alerts_help), Modifier.padding(0.dp))
+                                OutlinedButton(onClick = it) { Text(stringResource(R.string.feature_settings_allow_alerts)) }
+                            }
                         } else {
                             Button(
                                 onClick = onOpenAccess,

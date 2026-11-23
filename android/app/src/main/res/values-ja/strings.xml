@@ -1,4 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="notify_listener_label">RudWalletの決済通知</string>
+    <string name="notify_access_channel">決済通知へのアクセス</string>
+    <string name="notify_access_lost">支払いが記録されていません</string>
+    <string name="notify_access_lost_detail">通知へのアクセスがオフです。タップしてオンにしてください。</string>
 </resources>

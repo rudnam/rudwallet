@@ -8,6 +8,7 @@ android { namespace = "com.rudnam.wallet.feature.settings" }
 dependencies {
     implementation(project(":core:common"))
     implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.activity.compose)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.navigation.testing)
 }

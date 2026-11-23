@@ -122,6 +122,8 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Only to say that notification access went off (notify/AccessWatch.kt). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Reading transit IC cards (IcCardReader, in core/data). Not required: phones
          without NFC can still install the app. -->
     <uses-permission android:name="android.permission.NFC" />
