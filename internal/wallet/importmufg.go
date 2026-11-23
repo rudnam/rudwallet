@@ -16,7 +16,6 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/lib/pq"
 	"golang.org/x/text/encoding/japanese"
 	"golang.org/x/text/unicode/norm"
 	"golang.org/x/text/width"
@@ -399,7 +398,10 @@ func (s *Store) PreviewMUFG(ctx context.Context, userID int64, data []byte) (MUF
 		return p, err
 	}
 	defer tx.Rollback()
-	m := mufgMatcher{ctx: ctx, tx: tx, userID: userID, matched: []int64{}}
+	m, err := newMUFGMatcher(ctx, tx, userID, rows)
+	if err != nil {
+		return p, err
+	}
 	var added []mufgAdded
 	for i, r := range rows {
 		out := describeMUFG(r, recs[i])
@@ -497,33 +499,63 @@ func describeMUFG(r mufgRow, rec mufgRecord) MUFGRow {
 	return out
 }
 
-// mufgMatcher finds rows already recorded: by an earlier import (the same
-// key), or another way. Each existing record matches one row at most.
+// mufgMatcher finds rows already recorded (importDedup): by an earlier
+// import, or another way. Each existing record matches one row at most.
 type mufgMatcher struct {
-	ctx     context.Context
-	tx      *sql.Tx
-	userID  int64
-	matched []int64 // never nil: pq sends a nil slice as NULL, which matches nothing
+	*importDedup
+}
+
+func newMUFGMatcher(ctx context.Context, tx *sql.Tx, userID int64, rows []mufgRow) (mufgMatcher, error) {
+	keys := make([]string, len(rows))
+	for i, r := range rows {
+		keys[i] = r.key
+	}
+	d, err := newImportDedup(ctx, tx, userID, mufgKeyPrefix, keys)
+	return mufgMatcher{d}, err
+}
+
+// mufgTransaction is the record a row makes, without its payee and
+// category. bank is the bank's account and other the counterpart's (0 for
+// one the import creates).
+func mufgTransaction(r mufgRow, rec mufgRecord, bank, other int64) Transaction {
+	t := Transaction{Kind: rec.kind, Amount: r.out + r.in, AccountID: bank, OccurredAt: r.day.Add(12 * time.Hour), Note: mufgNote(r)}
+	if rec.kind == "transfer" {
+		from, to := bank, other
+		if r.in > 0 {
+			from, to = to, from
+		}
+		t.AccountID, t.ToAccountID = from, &to
+	}
+	return t
 }
 
 // status sets out.Status, and the matched record. bank is the bank's
 // account (0 if new) and other the counterpart's (nil if new).
 //
-// A record is the same payment when it is of the same kind and amount,
-// within a day either side of the row's date, and has the same counterpart:
-// for a transfer, the account on the other side (so a PayPay charge
-// recorded from its notification matches whichever bank account it was put
-// in), and for an expense or income, the bank's account.
+// A record imported from a statement before is the same row when its key
+// is the row's, or, the key having changed, when it is the same kind and
+// amount on the same day between the same accounts. A record made another
+// way is the same payment when it is of the same kind and amount, within a
+// day either side of the row's date, and has the same counterpart: for a
+// transfer, the account on the other side (so a PayPay charge recorded from
+// its notification matches whichever bank account it was put in), and for
+// an expense or income, the bank's account.
 func (m *mufgMatcher) status(out *MUFGRow, r mufgRow, rec mufgRecord, bank int64, other *int64) error {
-	var exists bool
-	if err := m.tx.QueryRowContext(m.ctx,
-		`SELECT EXISTS (SELECT 1 FROM transactions WHERE user_id = $1 AND import_key = $2)`,
-		m.userID, r.key).Scan(&exists); err != nil {
-		return err
-	}
-	if exists {
+	if _, ok := m.imported(r.key); ok {
 		out.Status = "imported"
 		return nil
+	}
+	var o int64
+	if other != nil {
+		o = *other
+	}
+	if rec.kind != "transfer" || other != nil {
+		if _, ok, err := m.sameRow(mufgTransaction(r, rec, bank, o)); err != nil || ok {
+			if ok {
+				out.Status = "imported"
+			}
+			return err
+		}
 	}
 	out.Status = "new"
 	q := `SELECT id, account_id FROM transactions
@@ -531,7 +563,7 @@ func (m *mufgMatcher) status(out *MUFGRow, r mufgRow, rec mufgRecord, bank int64
 		  AND occurred_at >= $4::timestamptz - interval '1 day' AND occurred_at < $4::timestamptz + interval '2 days'
 		  AND (import_key IS NULL OR import_key NOT LIKE 'mufg:%')
 		  AND NOT (id = ANY($5::bigint[]))`
-	args := []any{m.userID, rec.kind, r.out + r.in, r.day, pq.Array(m.matched)}
+	args := []any{m.userID, rec.kind, r.out + r.in, r.day, m.takenArray()}
 	switch {
 	case rec.kind != "transfer":
 		if bank == 0 {
@@ -557,7 +589,7 @@ func (m *mufgMatcher) status(out *MUFGRow, r mufgRow, rec mufgRecord, bank int64
 	if err != nil {
 		return err
 	}
-	m.matched = append(m.matched, id)
+	m.take(id)
 	out.Status, out.MatchedID = "matched", &id
 	if r.in > 0 && rec.kind == "transfer" {
 		// The bank's side of an incoming transfer is where it goes.
@@ -872,7 +904,11 @@ func (s *Store) ImportMUFG(ctx context.Context, userID int64, data []byte, accou
 		return id, nil
 	}
 
-	m := mufgMatcher{ctx: ctx, tx: tx, userID: userID, matched: []int64{}}
+	m, err := newMUFGMatcher(ctx, tx, userID, rows)
+	if err != nil {
+		return res, err
+	}
+	run := &importRun{importDedup: m.importDedup, source: SourceMUFG}
 	for i, r := range rows {
 		rec := recs[i]
 		out := describeMUFG(r, rec)
@@ -880,6 +916,7 @@ func (s *Store) ImportMUFG(ctx context.Context, userID int64, data []byte, accou
 		if err := m.status(&out, r, rec, account[MUFGBank], &other); err != nil {
 			return res, err
 		}
+		run.period(r.day.Add(12 * time.Hour))
 		res.Rows = append(res.Rows, out)
 		switch out.Status {
 		case "imported":
@@ -889,25 +926,14 @@ func (s *Store) ImportMUFG(ctx context.Context, userID int64, data []byte, accou
 			res.Matched++
 			continue
 		}
-		t := Transaction{Kind: rec.kind, Amount: r.out + r.in, AccountID: account[MUFGBank],
-			OccurredAt: r.day.Add(12 * time.Hour), Note: mufgNote(r)}
-		if rec.kind == "transfer" {
-			from, to := account[MUFGBank], account[rec.role]
-			if r.in > 0 {
-				from, to = to, from
-			}
-			t.AccountID, t.ToAccountID = from, &to
-		} else {
+		t := mufgTransaction(r, rec, account[MUFGBank], account[rec.role])
+		if rec.kind != "transfer" {
 			t.Payee = rec.group
 			if t.CategoryID, err = category(rec); err != nil {
 				return res, err
 			}
 		}
-		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO transactions (user_id, kind, amount, account_id, to_account_id, category_id, occurred_at,
-				payee, note, status, source, import_key)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'confirmed', 'import', $10)`,
-			userID, t.Kind, t.Amount, t.AccountID, t.ToAccountID, t.CategoryID, t.OccurredAt, t.Payee, t.Note, r.key); err != nil {
+		if _, err := run.add(t, r.key); err != nil {
 			return res, err
 		}
 		res.Imported++
@@ -926,6 +952,9 @@ func (s *Store) ImportMUFG(ctx context.Context, userID int64, data []byte, accou
 		b.Adjusted, b.InitialBalance, b.App, b.Difference = adjust, b.InitialBalance+adjust, b.App+adjust, b.Misplaced
 	}
 	res.CategoriesCreated = ic.created
+	if err := run.finish(&res.ImportResult, bank, res.Balance.Adjusted); err != nil {
+		return res, err
+	}
 	return res, tx.Commit()
 }
 

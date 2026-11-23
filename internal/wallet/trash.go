@@ -38,16 +38,16 @@ func (s *Store) trash(ctx context.Context, userID int64, ids []int64, setAside b
 	// the links are read before the delete clears them.
 	n, err := affected(tx.ExecContext(ctx,
 		`WITH gone AS (
-			DELETE FROM transactions WHERE user_id = $1 AND id = ANY($2::bigint[]) RETURNING `+txColumns+`, import_key
+			DELETE FROM transactions WHERE user_id = $1 AND id = ANY($2::bigint[]) RETURNING `+txColumns+`, import_key, import_batch_id
 		)
 		INSERT INTO deleted_transactions (id, user_id, kind, amount, account_id, to_account_id, category_id,
 			occurred_at, payee, note, status, source, source_label, duplicate_of_id, import_key, created_at, tags,
-			notification_ids, duplicate_ids, set_aside)
+			notification_ids, duplicate_ids, set_aside, import_batch_id)
 		SELECT g.id, $1, g.kind, g.amount, g.account_id, g.to_account_id, g.category_id,
 			g.occurred_at, g.payee, g.note, g.status, g.source, g.source_label, g.duplicate_of_id, g.import_key, g.created_at, g.tags,
 			ARRAY(SELECT p.id FROM payment_notifications p WHERE p.user_id = $1 AND p.transaction_id = g.id),
 			ARRAY(SELECT d.id FROM transactions d WHERE d.user_id = $1 AND d.duplicate_of_id = g.id),
-			$3
+			$3, g.import_batch_id
 		FROM gone g`,
 		userID, pq.Array(ids), setAside))
 	if err != nil {
@@ -70,12 +70,13 @@ func (s *Store) Restore(ctx context.Context, userID int64, ids []int64) (int, er
 	defer tx.Rollback()
 	rows, err := tx.QueryContext(ctx,
 		`INSERT INTO transactions (id, user_id, kind, amount, account_id, to_account_id, category_id,
-			occurred_at, payee, note, status, source, source_label, duplicate_of_id, import_key, created_at, tags)
+			occurred_at, payee, note, status, source, source_label, duplicate_of_id, import_key, created_at, tags, import_batch_id)
 		OVERRIDING SYSTEM VALUE
 		SELECT d.id, d.user_id, d.kind, d.amount, d.account_id, d.to_account_id, d.category_id,
 			d.occurred_at, d.payee, d.note, d.status, d.source, d.source_label,
 			CASE WHEN NOT d.set_aside THEN (SELECT t.id FROM transactions t WHERE t.user_id = $1 AND t.id = d.duplicate_of_id) END,
-			d.import_key, d.created_at, d.tags
+			d.import_key, d.created_at, d.tags,
+			(SELECT b.id FROM import_batches b WHERE b.user_id = $1 AND b.id = d.import_batch_id)
 		FROM deleted_transactions d
 		WHERE d.user_id = $1 AND d.id = ANY($2::bigint[]) AND `+kept+`
 		ON CONFLICT DO NOTHING
@@ -108,6 +109,9 @@ func (s *Store) Restore(ctx context.Context, userID int64, ids []int64) (int, er
 		 FROM deleted_transactions d
 		 WHERE d.user_id = $1 AND d.id = ANY($2::bigint[]) AND p.user_id = $1 AND p.id = ANY(d.notification_ids) AND p.transaction_id IS NULL`,
 		// A record still to review was flagged as a duplicate of this one.
+		// An import undone has its records back: it's no longer undone.
+		`UPDATE import_batches b SET undone_at = NULL FROM deleted_transactions d
+		 WHERE d.user_id = $1 AND d.id = ANY($2::bigint[]) AND b.user_id = $1 AND b.id = d.import_batch_id`,
 		`UPDATE transactions t SET duplicate_of_id = d.id FROM deleted_transactions d
 		 WHERE d.user_id = $1 AND d.id = ANY($2::bigint[]) AND t.user_id = $1 AND t.id = ANY(d.duplicate_ids)
 		   AND t.status = 'review' AND t.duplicate_of_id IS NULL`,

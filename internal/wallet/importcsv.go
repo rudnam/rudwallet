@@ -21,15 +21,22 @@ import (
 
 // ImportResult reports what a CSV import did.
 type ImportResult struct {
-	Imported   int `json:"imported"`
+	Imported int `json:"imported"`
+	// Duplicates counts rows imported before.
 	Duplicates int `json:"duplicates"`
-	// Matched counts rows already recorded another way (PayPay import only).
+	// Matched counts rows already recorded another way (from a
+	// notification, by hand, or by another import).
 	Matched int `json:"matched"`
 	// Skipped counts rows paid in a way the user chose not to import (PayPay only).
 	Skipped           int      `json:"skipped"`
 	AccountsCreated   int      `json:"accounts_created"`
 	CategoriesCreated int      `json:"categories_created"`
 	Problems          []string `json:"problems"`
+	// BatchID is the import, for POST /api/imports/{id}/undo; absent when
+	// it added nothing.
+	BatchID *int64 `json:"batch_id,omitempty"`
+	// Rows: each row of a PayPay or BudgetBakers file, and what became of it.
+	Rows []ImportRow `json:"rows,omitempty"`
 }
 
 const maxProblems = 20
@@ -69,6 +76,13 @@ type BudgetBakersPreview struct {
 	// a group's records can go to (created on import).
 	NewCategories []Category `json:"new_categories"`
 	Problems      []string   `json:"problems"`
+
+	// What importing with these choices does (the import run and rolled
+	// back), as in PayPayPreview.
+	New        int         `json:"new"`
+	Duplicates int         `json:"duplicates"`
+	Matched    int         `json:"matched"`
+	Rows       []ImportRow `json:"rows"`
 }
 
 // bbRulePrefix marks the account remembered for a BudgetBakers account (by
@@ -78,10 +92,11 @@ const bbRulePrefix = "budgetbakers:"
 
 func bbKey(kind, name string) string { return kind + ":" + strings.ToLower(strings.TrimSpace(name)) }
 
-// PreviewBudgetBakers reads a BudgetBakers export and suggests an account
-// for each of its accounts and a category for each of its categories.
-func (s *Store) PreviewBudgetBakers(ctx context.Context, userID int64, data []byte, zone *time.Location) (BudgetBakersPreview, error) {
-	p := BudgetBakersPreview{Accounts: []BudgetBakersAccount{}, Categories: []ImportCategory{}, Problems: []string{}}
+// PreviewBudgetBakers reads a BudgetBakers export, suggests an account for
+// each of its accounts and a category for each of its categories, and says
+// what importing it with choices (nil: the suggested accounts) would do.
+func (s *Store) PreviewBudgetBakers(ctx context.Context, userID int64, data []byte, zone *time.Location, choices *ImportChoices) (BudgetBakersPreview, error) {
+	p := BudgetBakersPreview{Accounts: []BudgetBakersAccount{}, Categories: []ImportCategory{}, Problems: []string{}, Rows: []ImportRow{}}
 	st, err := s.Settings(ctx, userID)
 	if err != nil {
 		return p, err
@@ -167,6 +182,20 @@ func (s *Store) PreviewBudgetBakers(ctx context.Context, userID int64, data []by
 	slices.SortStableFunc(p.Accounts, func(a, b BudgetBakersAccount) int { return b.Count - a.Count })
 	sortGroups(p.Categories)
 	p.NewCategories = missingDefaults(cats)
+
+	if choices == nil {
+		choices = &ImportChoices{}
+		for _, a := range p.Accounts {
+			if a.AccountID != nil {
+				choices.Accounts = append(choices.Accounts, AccountChoice{Name: a.Name, AccountID: *a.AccountID})
+			}
+		}
+	}
+	dry, err := s.importBudgetBakers(ctx, userID, data, zone, choices, true)
+	if err != nil {
+		return p, err
+	}
+	p.New, p.Duplicates, p.Matched, p.Rows = dry.Imported, dry.Duplicates, dry.Matched, dry.Rows
 	return p, nil
 }
 
@@ -217,7 +246,13 @@ func guessAccountKind(name string) string {
 //
 // Dates without a UTC offset are read in zone, the user's local time.
 func (s *Store) ImportBudgetBakers(ctx context.Context, userID int64, data []byte, zone *time.Location, choices *ImportChoices) (ImportResult, error) {
-	res := ImportResult{Problems: []string{}}
+	return s.importBudgetBakers(ctx, userID, data, zone, choices, false)
+}
+
+// importBudgetBakers is ImportBudgetBakers, or with dry, what it would do:
+// the same import, rolled back.
+func (s *Store) importBudgetBakers(ctx context.Context, userID int64, data []byte, zone *time.Location, choices *ImportChoices, dry bool) (ImportResult, error) {
+	res := ImportResult{Problems: []string{}, Rows: []ImportRow{}}
 	st, err := s.Settings(ctx, userID)
 	if err != nil {
 		return res, err
@@ -321,6 +356,21 @@ func (s *Store) ImportBudgetBakers(ctx context.Context, userID int64, data []byt
 		resolved[k] = id
 		return id, nil
 	}
+	keys := make([]string, 0, len(rows))
+	for i, r := range rows {
+		if r.matchedTo >= 0 {
+			if r.matchedTo > i {
+				keys = append(keys, "bb:"+r.key+"+"+rows[r.matchedTo].key)
+			}
+		} else {
+			keys = append(keys, "bb:"+r.key)
+		}
+	}
+	run, err := newImportRun(ctx, tx, userID, SourceBudgetBakers, "bb:", keys, dry)
+	if err != nil {
+		return res, err
+	}
+	var names map[int64]string
 	for i, r := range rows {
 		if r.matchedTo >= 0 && r.matchedTo < i {
 			continue // recorded with its other half
@@ -345,27 +395,50 @@ func (s *Store) ImportBudgetBakers(ctx context.Context, userID int64, data []byt
 			key = r.key + "+" + other.key
 		case r.transfer:
 			t.Note = strings.TrimSpace("Transfer. " + t.Note)
-		default:
-			if t.CategoryID, err = category(r.kind, r.category); err != nil {
-				return res, err
-			}
 		}
-		result, err := tx.ExecContext(ctx,
-			`INSERT INTO transactions (user_id, kind, amount, account_id, to_account_id, category_id, occurred_at,
-				payee, note, status, source, import_key)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'confirmed', 'import', $10)
-			 ON CONFLICT (user_id, import_key) WHERE import_key IS NOT NULL DO NOTHING`,
-			userID, t.Kind, t.Amount, t.AccountID, t.ToAccountID, t.CategoryID, t.OccurredAt, t.Payee, t.Note, "bb:"+key)
+		run.period(t.OccurredAt)
+		status, id, err := run.check("bb:"+key, t, 24*time.Hour)
 		if err != nil {
 			return res, err
 		}
-		if n, _ := result.RowsAffected(); n == 0 {
+		if status == "" {
+			if r.matchedTo < 0 && !r.transfer {
+				if t.CategoryID, err = category(r.kind, r.category); err != nil {
+					return res, err
+				}
+			}
+			if id, err = run.add(t, "bb:"+key); err != nil {
+				return res, err
+			}
+			status = "new"
+			res.Imported++
+		} else if status == "imported" {
 			res.Duplicates++
 		} else {
-			res.Imported++
+			res.Matched++
 		}
+		if names == nil || names[t.AccountID] == "" || t.ToAccountID != nil && names[*t.ToAccountID] == "" {
+			if names, err = accountNames(ctx, tx, userID); err != nil {
+				return res, err
+			}
+		}
+		row := ImportRow{OccurredAt: t.OccurredAt, Kind: t.Kind, Amount: t.Amount, Payee: t.Payee, Note: t.Note,
+			Account: names[t.AccountID], Status: status}
+		if t.ToAccountID != nil {
+			row.ToAccount = names[*t.ToAccountID]
+		}
+		if status != "new" {
+			row.MatchedID = &id
+		}
+		res.Rows = append(res.Rows, row)
 	}
 	res.CategoriesCreated = ic.created
+	if err := run.finish(&res, 0, 0); err != nil {
+		return res, err
+	}
+	if dry {
+		return res, nil
+	}
 	return res, tx.Commit()
 }
 

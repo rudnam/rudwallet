@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/csv"
 	"encoding/hex"
 	"errors"
@@ -16,8 +15,6 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
-
-	"github.com/lib/pq"
 
 	"github.com/rudnam/wallet-app/internal/db"
 )
@@ -113,6 +110,15 @@ type PayPayPreview struct {
 	// NewCategories are the default categories the user doesn't have.
 	NewCategories []Category `json:"new_categories"`
 	Problems      []string   `json:"problems"`
+
+	// What importing with these choices does: the import run and rolled
+	// back. New rows to record, Duplicates imported before, Matched
+	// already recorded another way, Skipped left out; Rows each row.
+	New        int         `json:"new"`
+	Duplicates int         `json:"duplicates"`
+	Matched    int         `json:"matched"`
+	Skipped    int         `json:"skipped"`
+	Rows       []ImportRow `json:"rows"`
 }
 
 type payPayRow struct {
@@ -125,10 +131,11 @@ type payPayRow struct {
 	key    string
 }
 
-// PreviewPayPay reads a PayPay export and suggests an account for each way
-// of paying in it.
-func (s *Store) PreviewPayPay(ctx context.Context, userID int64, data []byte) (PayPayPreview, error) {
-	p := PayPayPreview{Methods: []PayPayMethod{}, Categories: []ImportCategory{}}
+// PreviewPayPay reads a PayPay export, suggests an account for each way of
+// paying in it and a category for each shop, and says what importing it
+// with accounts and categories (nil: the suggestions) would do.
+func (s *Store) PreviewPayPay(ctx context.Context, userID int64, data []byte, accounts map[string]AccountPick, categories []CategoryChoice) (PayPayPreview, error) {
+	p := PayPayPreview{Methods: []PayPayMethod{}, Categories: []ImportCategory{}, Rows: []ImportRow{}}
 	res := ImportResult{Problems: []string{}}
 	rows, err := s.readPayPayFor(ctx, userID, data, &res)
 	if err != nil {
@@ -187,6 +194,11 @@ func (s *Store) PreviewPayPay(ctx context.Context, userID int64, data []byte) (P
 		return 1
 	})
 	p.NewCategories = missingDefaults(cats)
+	dry, err := s.importPayPay(ctx, userID, data, accounts, categories, true)
+	if err != nil {
+		return p, err
+	}
+	p.New, p.Duplicates, p.Matched, p.Skipped, p.Rows = dry.Imported, dry.Duplicates, dry.Matched, dry.Skipped, dry.Rows
 	return p, nil
 }
 
@@ -249,13 +261,19 @@ func (rs payeeRuleSet) match(payee string) *int64 {
 // sorts records. A record whose group has no choice gets its shop's
 // remembered category, if an expense, as before previews had them.
 //
-// Rows are keyed by their 取引番号, so importing overlapping periods adds
-// each payment once, and a row whose key changed between exports is still
-// found by its time, account and amount. A payment already recorded another
+// Rows are keyed by their 取引番号, kind and method, so importing
+// overlapping periods adds each payment once; one imported with an older
+// key is found by its time, account, kind and amount (importDedup). A payment already recorded another
 // way (from its notification, by hand, or a charge from the bank's
 // statement) in the same account, for the same amount, within a day, is
 // skipped and counted as Matched.
 func (s *Store) ImportPayPay(ctx context.Context, userID int64, data []byte, accounts map[string]AccountPick, categories []CategoryChoice) (ImportResult, error) {
+	return s.importPayPay(ctx, userID, data, accounts, categories, false)
+}
+
+// importPayPay is ImportPayPay, or with dry, what it would do: the same
+// import, rolled back.
+func (s *Store) importPayPay(ctx context.Context, userID int64, data []byte, accounts map[string]AccountPick, categories []CategoryChoice, dry bool) (ImportResult, error) {
 	res := ImportResult{Problems: []string{}}
 	rows, err := s.readPayPayFor(ctx, userID, data, &res)
 	if err != nil {
@@ -380,12 +398,28 @@ func (s *Store) ImportPayPay(ctx context.Context, userID int64, data []byte, acc
 		return id, nil
 	}
 
-	matched := []int64{} // records each matched to a row, or imported from one
+	keys := make([]string, len(rows))
+	for i, r := range rows {
+		keys[i] = r.key
+	}
+	run, err := newImportRun(ctx, tx, userID, SourcePayPay, "pp:", keys, dry)
+	if err != nil {
+		return res, err
+	}
+	names, err := accountNames(ctx, tx, userID)
+	if err != nil {
+		return res, err
+	}
+	res.Rows = []ImportRow{}
 	for _, r := range rows {
 		t := Transaction{Kind: r.kind, Amount: r.amount, AccountID: account[r.method], OccurredAt: r.when, Payee: r.payee, Note: r.note}
+		row := ImportRow{OccurredAt: r.when, Kind: r.kind, Amount: r.amount, Payee: r.payee, Note: r.note, Account: r.method}
+		run.period(r.when)
 		switch {
 		case r.kind == "transfer" && skip[r.method] && skip[payPayBalance], r.kind != "transfer" && skip[r.method]:
 			res.Skipped++
+			row.Status = "skipped"
+			res.Rows = append(res.Rows, row)
 			continue
 		case r.kind == "transfer" && skip[r.method]: // money in from somewhere not tracked
 			t.Kind, t.AccountID = "income", account[payPayBalance]
@@ -398,78 +432,44 @@ func (s *Store) ImportPayPay(ctx context.Context, userID int64, data []byte, acc
 				t.Kind, t.ToAccountID = "income", nil
 			}
 		}
+		row.Kind, row.Account = t.Kind, names[t.AccountID]
+		if t.ToAccountID != nil {
+			row.ToAccount = names[*t.ToAccountID]
+		}
 
-		var exists bool
-		if err := tx.QueryRowContext(ctx,
-			`SELECT EXISTS (SELECT 1 FROM transactions WHERE user_id = $1 AND import_key = $2)`,
-			userID, r.key).Scan(&exists); err != nil {
+		status, id, err := run.check(r.key, t, 24*time.Hour)
+		if err != nil {
 			return res, err
 		}
-		if exists {
-			res.Duplicates++
-			continue
-		}
-		// A row's key can change between exports: the number after the
-		// 取引番号 counts the file's earlier rows with the same 取引番号
-		// (points earned later on a payment, a share left out), and a row
-		// without one is keyed by all its columns. A row exported again
-		// that doesn't find its key is the same row as an earlier import's
-		// record of the same kind and amount, in the same account, at the
-		// same second.
-		var id int64
-		err := tx.QueryRowContext(ctx,
-			`SELECT id FROM transactions
-			 WHERE user_id = $1 AND kind = $2 AND amount = $3 AND account_id = $4
-			   AND to_account_id IS NOT DISTINCT FROM $5 AND occurred_at = $6
-			   AND import_key LIKE 'pp:%'
-			   AND NOT (id = ANY($7::bigint[]))
-			 LIMIT 1`,
-			userID, t.Kind, t.Amount, t.AccountID, t.ToAccountID, t.OccurredAt, pq.Array(matched)).Scan(&id)
-		if err == nil {
-			matched = append(matched, id)
-			res.Duplicates++
-			continue
-		}
-		if !errors.Is(err, sql.ErrNoRows) {
-			return res, err
-		}
-		// Recorded another way: from its notification, by hand, or, for a
-		// charge, from the bank's statement (as a transfer between the same
-		// two accounts).
-		err = tx.QueryRowContext(ctx,
-			`SELECT id FROM transactions
-			 WHERE user_id = $1 AND kind = $2 AND amount = $3 AND account_id = $4
-			   AND to_account_id IS NOT DISTINCT FROM $5
-			   AND occurred_at BETWEEN $6::timestamptz - interval '1 day' AND $6::timestamptz + interval '1 day'
-			   AND (import_key IS NULL OR import_key NOT LIKE 'pp:%')
-			   AND NOT (id = ANY($7::bigint[]))
-			 ORDER BY abs(extract(epoch FROM occurred_at - $6::timestamptz)) LIMIT 1`,
-			userID, t.Kind, t.Amount, t.AccountID, t.ToAccountID, t.OccurredAt, pq.Array(matched)).Scan(&id)
-		if err == nil {
-			matched = append(matched, id)
-			res.Matched++
-			continue
-		}
-		if !errors.Is(err, sql.ErrNoRows) {
-			return res, err
-		}
-		if t.Kind != "transfer" {
-			if t.CategoryID, err = category(r); err != nil {
+		if status == "" {
+			if t.Kind != "transfer" {
+				if t.CategoryID, err = category(r); err != nil {
+					return res, err
+				}
+			}
+			if id, err = run.add(t, r.key); err != nil {
 				return res, err
 			}
+			status = "new"
+			res.Imported++
+		} else {
+			row.MatchedID = &id
+			if status == "imported" {
+				res.Duplicates++
+			} else {
+				res.Matched++
+			}
 		}
-		if err := tx.QueryRowContext(ctx,
-			`INSERT INTO transactions (user_id, kind, amount, account_id, to_account_id, category_id, occurred_at,
-				payee, note, status, source, import_key)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'confirmed', 'import', $10) RETURNING id`,
-			userID, t.Kind, t.Amount, t.AccountID, t.ToAccountID, t.CategoryID, t.OccurredAt, t.Payee, t.Note, r.key).Scan(&id); err != nil {
-			return res, err
-		}
-		// Rows of this file aren't the same row as each other.
-		matched = append(matched, id)
-		res.Imported++
+		row.Status = status
+		res.Rows = append(res.Rows, row)
 	}
 	res.CategoriesCreated = ic.created
+	if err := run.finish(&res, 0, 0); err != nil {
+		return res, err
+	}
+	if dry {
+		return res, nil
+	}
 	return res, tx.Commit()
 }
 
@@ -749,8 +749,14 @@ func readPayPay(data []byte, res *ImportResult) ([]payPayRow, error) {
 		}
 		row.note = clip(strings.Join(note, ". "), maxText)
 
-		// The 取引番号 identifies the payment; a payment split over several
-		// methods (e.g. points and card) shares it, so count repeats.
+		// The 取引番号 identifies the payment, but rows can share it: a
+		// payment split over several methods (e.g. points and card), and
+		// points earned on it later. So the key is the 取引番号 with the
+		// row's kind and method (and a count, should they repeat), which
+		// doesn't depend on what else the file holds. Keys from before
+		// counted every row with the 取引番号, so they changed when points
+		// earned later came into a newer export; records with those keys
+		// are found by their content instead (importDedup.sameRow).
 		id := get(rec, "取引番号")
 		if id == "" {
 			sum := sha256.Sum256([]byte(strings.Join(rec, "\x1f")))
@@ -767,8 +773,9 @@ func readPayPay(data []byte, res *ImportResult) ([]payPayRow, error) {
 			if charge && r.kind == "income" && r.method != payPayBalance {
 				r.kind = "transfer"
 			}
-			seen[id]++
-			r.key = fmt.Sprintf("pp:%s:%d", id, seen[id])
+			k := id + "\x1f" + r.kind + "\x1f" + r.method
+			seen[k]++
+			r.key = fmt.Sprintf("pp:%s:%s:%s:%d", id, r.kind, r.method, seen[k])
 			rows = append(rows, r)
 		}
 	}
