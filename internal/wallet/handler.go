@@ -76,6 +76,8 @@ func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) ht
 	route("POST /api/import/paypay", h.importPayPay)
 	route("POST /api/import/mufg", h.importMUFG)
 	route("POST /api/import/ic-card", h.importICCard)
+	route("GET /api/imports", h.listImports)
+	route("POST /api/imports/{id}/undo", h.undoImport)
 }
 
 func userID(r *http.Request) int64 { return account.UserFrom(r).ID }
@@ -643,8 +645,9 @@ func (h *Handler) deleteBudget(w http.ResponseWriter, r *http.Request) error {
 // {"csv", "accounts": [AccountChoice], "categories": [CategoryChoice]}.
 // An AccountChoice with account_id 0 and a new_name sends the account's
 // records to the account by that name, created if missing.
-// With ?preview=1 (and the CSV file) it only reads the file and suggests
-// where its accounts and categories go. tz_offset is the browser's
+// With ?preview=1 it suggests where its accounts and categories go, and
+// says what importing with the choices given (or the suggested accounts)
+// would do, row by row. tz_offset is the browser's
 // Date.getTimezoneOffset(), in minutes.
 func (h *Handler) importBudgetBakers(w http.ResponseWriter, r *http.Request) error {
 	offset, _ := strconv.Atoi(r.URL.Query().Get("tz_offset"))
@@ -657,7 +660,7 @@ func (h *Handler) importBudgetBakers(w http.ResponseWriter, r *http.Request) err
 		return err
 	}
 	if r.URL.Query().Get("preview") == "1" {
-		p, err := h.store.PreviewBudgetBakers(r.Context(), userID(r), data, zone)
+		p, err := h.store.PreviewBudgetBakers(r.Context(), userID(r), data, zone, choices)
 		if err := storeErr(err, "record"); err != nil {
 			return err
 		}
@@ -674,8 +677,9 @@ func (h *Handler) importBudgetBakers(w http.ResponseWriter, r *http.Request) err
 
 // importPayPay takes a PayPay transaction history CSV as the request body,
 // or JSON: {"csv", "accounts": [AccountChoice], "categories": [CategoryChoice]}.
-// With ?preview=1 it only reads the file and suggests an account for each
-// way of paying in it and a category for each shop. Otherwise it imports,
+// With ?preview=1 it suggests an account for each way of paying in it and
+// a category for each shop, and says what importing with the choices given
+// (or the suggestions) would do, row by row. Otherwise it imports,
 // sending each way of paying to the account chosen for it, given either in
 // the JSON or as ?account=<id>:<取引方法> (0, or none: the suggestion;
 // -1: don't import it; 0 with a new_name in the JSON: the account by that
@@ -684,14 +688,6 @@ func (h *Handler) importPayPay(w http.ResponseWriter, r *http.Request) error {
 	data, choices, err := readImport(w, r)
 	if err != nil {
 		return err
-	}
-	if r.URL.Query().Get("preview") == "1" {
-		p, err := h.store.PreviewPayPay(r.Context(), userID(r), data)
-		if err := storeErr(err, "record"); err != nil {
-			return err
-		}
-		httpx.WriteJSON(w, http.StatusOK, p)
-		return nil
 	}
 	accounts := map[string]AccountPick{}
 	for _, v := range r.URL.Query()["account"] {
@@ -708,6 +704,14 @@ func (h *Handler) importPayPay(w http.ResponseWriter, r *http.Request) error {
 			return storeErr(err, "account")
 		}
 		categories = choices.Categories
+	}
+	if r.URL.Query().Get("preview") == "1" {
+		p, err := h.store.PreviewPayPay(r.Context(), userID(r), data, accounts, categories)
+		if err := storeErr(err, "account"); err != nil {
+			return err
+		}
+		httpx.WriteJSON(w, http.StatusOK, p)
+		return nil
 	}
 	res, err := h.store.ImportPayPay(r.Context(), userID(r), data, accounts, categories)
 	if err := storeErr(err, "account"); err != nil {

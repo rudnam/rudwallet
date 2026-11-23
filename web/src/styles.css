@@ -1047,3 +1047,30 @@ button.wide .nav-icon { width: 18px; height: 18px; }
   background: var(--surface); color: var(--text); text-align: left; font: inherit; font-weight: 400; white-space: normal;
 }
 .row-link:hover:not(:disabled) { background: var(--sunken); }
+
+/* Imports: what importing does, a file's rows by what becomes of them, and the recent imports. */
+.import-outlook { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; display: grid; gap: 6px; }
+.import-outlook p { margin: 0; }
+.import-outlook-title { font-size: 1.15rem; font-weight: 600; }
+.import-outlook-lines { list-style: none; margin: 2px 0; padding: 0; display: grid; gap: 4px; }
+.import-outlook-lines li { padding-left: 22px; position: relative; }
+.import-outlook-lines li::before { position: absolute; left: 2px; top: 0; font-weight: 600; }
+.import-outlook-lines li.done::before { content: '✓'; color: var(--positive); }
+.import-outlook-lines li.out::before { content: '×'; color: var(--muted); }
+.import-rows h3 { margin: 4px 0 0; font-size: 0.95rem; }
+.import-group summary { cursor: pointer; font-weight: 600; font-size: 0.9rem; padding: 6px 0; list-style-position: inside; }
+.import-group.new summary { color: var(--text); }
+.import-group:not(.new) summary { color: var(--muted); }
+.import-row-list { list-style: none; margin: 0; padding: 0; }
+.import-row-list li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 8px 0; border-top: 1px solid var(--border); }
+.import-row-text { min-width: 0; overflow-wrap: anywhere; }
+.import-row-list .amount { flex: none; font-variant-numeric: tabular-nums; }
+.import-history { list-style: none; margin: 0; padding: 0; }
+.import-history li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); }
+.import-history li:first-child { border-top: none; }
+/* The import's buttons stay in view at the bottom while the review scrolls. */
+.import-actions { position: sticky; bottom: 0; background: var(--surface); padding: 10px 0; margin-bottom: -10px; border-top: 1px solid var(--border); z-index: 1; }
+/* On phones it stops above the tab bar, and leaves the new-record button room. */
+@media (max-width: 799px) {
+  .import-actions { bottom: calc(70px + env(safe-area-inset-bottom)); padding-right: 72px; }
+}

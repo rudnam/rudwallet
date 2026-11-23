@@ -12,8 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lib/pq"
-
 	"github.com/rudnam/wallet-app/internal/db"
 )
 
@@ -315,7 +313,10 @@ func (s *Store) PreviewICCard(ctx context.Context, userID int64, read ICCardRead
 		return p, err
 	}
 	defer tx.Rollback()
-	m := icMatcher{ctx: ctx, tx: tx, userID: userID, matched: []int64{}}
+	m, err := newICMatcher(ctx, tx, userID, rows)
+	if err != nil {
+		return p, err
+	}
 	var card int64
 	if account[ICCard] != nil {
 		card = *account[ICCard]
@@ -448,36 +449,61 @@ func suggestIC(cats []Category, learned map[string]int64, rec icRecord, name str
 	return g
 }
 
-// icMatcher finds entries already recorded: by an earlier read (the same
-// key), or another way. Each existing record matches one entry at most.
+// icMatcher finds entries already recorded (importDedup): by an earlier
+// read, or another way. Each existing record matches one entry at most.
 type icMatcher struct {
-	ctx     context.Context
-	tx      *sql.Tx
-	userID  int64
-	matched []int64 // never nil: pq sends a nil slice as NULL, which matches nothing
+	*importDedup
+}
+
+func newICMatcher(ctx context.Context, tx *sql.Tx, userID int64, rows []icRow) (icMatcher, error) {
+	keys := make([]string, len(rows))
+	for i, r := range rows {
+		keys[i] = r.key
+	}
+	d, err := newImportDedup(ctx, tx, userID, icKeyPrefix, keys)
+	return icMatcher{d}, err
 }
 
 // status sets out.Status, and the matched record. card is the card's
-// account (0 if new). A record is the same payment when it is of the same
-// kind and amount, within a day either side of the entry's, in the card's
-// account (for a top-up, into it).
+// account (0 if new). An entry read before is the same entry when its key
+// is the entry's, or, the key having changed, when it is the same kind and
+// amount at the same time in the card's account. A record made another way
+// is the same payment when it is of the same kind and amount, within a day
+// either side of the entry's, in the card's account (for a top-up, into it).
 func (m *icMatcher) status(out *ICRow, r icRow, rec icRecord, card int64) error {
-	var exists bool
-	if err := m.tx.QueryRowContext(m.ctx,
-		`SELECT EXISTS (SELECT 1 FROM transactions WHERE user_id = $1 AND import_key = $2)`,
-		m.userID, r.key).Scan(&exists); err != nil {
-		return err
-	}
-	switch {
-	case exists:
+	if _, ok := m.imported(r.key); ok {
 		out.Status = "imported"
 		return nil
+	}
+	switch {
 	case r.start:
 		out.Status = "start"
 		return nil
 	case r.change == 0:
 		out.Status = "none"
 		return nil
+	}
+	if rec.kind != "transfer" {
+		probe := Transaction{Kind: rec.kind, Amount: rec.amount, AccountID: card, OccurredAt: r.when}
+		if _, ok, err := m.sameRow(probe); err != nil || ok {
+			if ok {
+				out.Status = "imported"
+			}
+			return err
+		}
+	} else if card != 0 {
+		// A top-up's other side may have changed; the card's side is enough.
+		if _, ok, err := m.find(
+			`SELECT id FROM transactions
+			 WHERE user_id = $1 AND kind = 'transfer' AND amount = $2 AND to_account_id = $3 AND occurred_at = $4
+			   AND import_key LIKE $5 || '%' AND NOT (id = ANY($6::bigint[]))
+			 ORDER BY id LIMIT 1`,
+			m.userID, rec.amount, card, r.when, m.prefix, m.takenArray()); err != nil || ok {
+			if ok {
+				out.Status = "imported"
+			}
+			return err
+		}
 	}
 	out.Status = "new"
 	if card == 0 {
@@ -495,14 +521,14 @@ func (m *icMatcher) status(out *ICRow, r icRow, rec icRecord, card int64) error 
 		   AND (import_key IS NULL OR import_key NOT LIKE 'ic:%')
 		   AND NOT (id = ANY($6::bigint[]))
 		 ORDER BY abs(extract(epoch FROM occurred_at - $5::timestamptz)), id LIMIT 1`,
-		m.userID, rec.kind, rec.amount, card, r.when, pq.Array(m.matched)).Scan(&id)
+		m.userID, rec.kind, rec.amount, card, r.when, m.takenArray()).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}
 	if err != nil {
 		return err
 	}
-	m.matched = append(m.matched, id)
+	m.take(id)
 	out.Status, out.MatchedID = "matched", &id
 	return nil
 }
@@ -778,13 +804,18 @@ func (s *Store) ImportICCard(ctx context.Context, userID int64, read ICCardRead,
 		return id, nil
 	}
 
-	m := icMatcher{ctx: ctx, tx: tx, userID: userID, matched: []int64{}}
+	m, err := newICMatcher(ctx, tx, userID, rows)
+	if err != nil {
+		return res, err
+	}
+	run := &importRun{importDedup: m.importDedup, source: SourceICCard, label: idm[len(idm)-4:]}
 	for _, r := range rows {
 		rec := classifyIC(r)
 		out := describeIC(r, rec, lang)
 		if err := m.status(&out, r, rec, account[ICCard]); err != nil {
 			return res, err
 		}
+		run.period(r.when)
 		res.Rows = append(res.Rows, out)
 		switch out.Status {
 		case "imported":
@@ -803,11 +834,7 @@ func (s *Store) ImportICCard(ctx context.Context, userID int64, read ICCardRead,
 		} else if t.CategoryID, err = category(rec, out.Group); err != nil {
 			return res, err
 		}
-		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO transactions (user_id, kind, amount, account_id, to_account_id, category_id, occurred_at,
-				payee, note, status, source, import_key)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'confirmed', 'import', $10)`,
-			userID, t.Kind, t.Amount, t.AccountID, t.ToAccountID, t.CategoryID, t.OccurredAt, t.Payee, t.Note, r.key); err != nil {
+		if _, err := run.add(t, r.key); err != nil {
 			return res, err
 		}
 		res.Imported++
@@ -826,5 +853,8 @@ func (s *Store) ImportICCard(ctx context.Context, userID int64, read ICCardRead,
 		b.Adjusted, b.InitialBalance, b.App, b.Difference = adjust, b.InitialBalance+adjust, b.App+adjust, 0
 	}
 	res.CategoriesCreated = ic.created
+	if err := run.finish(&res.ImportResult, card, res.Balance.Adjusted); err != nil {
+		return res, err
+	}
 	return res, tx.Commit()
 }

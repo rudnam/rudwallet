@@ -5,6 +5,7 @@ import androidx.core.net.toUri
 import com.rudnam.wallet.core.common.Dispatcher
 import com.rudnam.wallet.core.common.WalletDispatchers
 import com.rudnam.wallet.core.model.IcCardRead
+import com.rudnam.wallet.core.model.ImportBatch
 import com.rudnam.wallet.core.model.ImportChoices
 import com.rudnam.wallet.core.model.ImportPreview
 import com.rudnam.wallet.core.model.ImportResult
@@ -43,6 +44,22 @@ interface ImportRepository {
     suspend fun previewCard(card: IcCardRead): Fetched<ImportPreview>
 
     suspend fun importCard(card: IcCardRead, choices: ImportChoices): Fetched<ImportResult>
+
+    /**
+     * The preview again for the user's choices (PayPay, BudgetBakers): the
+     * server runs the import and rolls it back, so its counts and rows are
+     * what importing with them does.
+     */
+    suspend fun previewWith(source: ImportSource, csv: String, choices: ImportChoices): Fetched<ImportPreview>
+
+    /** The latest imports that added records, newest first. */
+    suspend fun history(): Fetched<List<ImportBatch>>
+
+    /** Moves an import's records to the trash, and gives their ids for [restore]; then brings the phone's wallet up to date. */
+    suspend fun undo(batchId: Long): Fetched<List<Long>>
+
+    /** Brings back the records an undo moved to the trash. */
+    suspend fun restore(ids: List<Long>): Fetched<Unit>
 }
 
 internal class ServerImportRepository @Inject constructor(
@@ -77,6 +94,16 @@ internal class ServerImportRepository @Inject constructor(
     override suspend fun importCard(card: IcCardRead, choices: ImportChoices) = fetch(io) {
         network.importICCard(card.asNetwork(choices)).asModel(ImportSource.IcCard).also { refresh() }
     }
+
+    override suspend fun previewWith(source: ImportSource, csv: String, choices: ImportChoices) = fetch(io) {
+        network.previewImport(source.key, choices.asFileImport(csv), tzOffset()).asModel(source)
+    }
+
+    override suspend fun history() = fetch(io) { network.imports().imports.map { it.asModel() } }
+
+    override suspend fun undo(batchId: Long) = fetch(io) { network.undoImport(batchId).ids.also { refresh() } }
+
+    override suspend fun restore(ids: List<Long>) = fetch(io) { network.restoreRecords(ids).also { refresh() } }
 
     /** The phone's offset from UTC in minutes, west positive, as the website sends it (Date.getTimezoneOffset). */
     private fun tzOffset(): Int = -clock.zone.rules.getOffset(clock.instant()).totalSeconds / 60
