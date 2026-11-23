@@ -129,6 +129,9 @@ type payPayRow struct {
 	method string
 	note   string
 	key    string
+	// foreign: paid in another currency, so the yen amount is the one
+	// billed, which a notification at the time of paying only estimated.
+	foreign bool
 }
 
 // PreviewPayPay reads a PayPay export, suggests an account for each way of
@@ -441,6 +444,16 @@ func (s *Store) importPayPay(ctx context.Context, userID int64, data []byte, acc
 		if err != nil {
 			return res, err
 		}
+		if status == "" && r.foreign && t.Kind == "expense" {
+			// The notification of a payment in another currency gives its
+			// amount in yen at that day's rate, and the card bills it with
+			// a fee added: a few percent apart.
+			if mid, ok, err := run.recordedNear(t, 24*time.Hour, foreignSlack); err != nil {
+				return res, err
+			} else if ok {
+				status, id = "matched", mid
+			}
+		}
 		if status == "" {
 			if t.Kind != "transfer" {
 				if t.CategoryID, err = category(r); err != nil {
@@ -734,6 +747,7 @@ func readPayPay(data []byte, res *ImportResult) ([]payPayRow, error) {
 			note = append(note, plan)
 		}
 		if abroad, cur := get(rec, "海外出金金額"), get(rec, "通貨"); abroad != "" && cur != "" {
+			row.foreign = cur != "JPY"
 			n := cur + " " + abroad
 			if rate := get(rec, "変換レート"); rate != "" && cur != "JPY" {
 				// 164.36400000 as 164.364, keeping two decimals.

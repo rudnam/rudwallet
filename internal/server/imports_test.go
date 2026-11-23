@@ -332,3 +332,33 @@ func TestImportBudgetBakersDuplicates(t *testing.T) {
 		t.Errorf("the export again, one row edited: %+v", res)
 	}
 }
+
+// A payment in another currency is billed in yen with a fee, so its
+// notification's amount is a few percent off; it still isn't added again.
+// A yen payment needs the same amount.
+func TestImportPayPayForeignPaymentMatchesItsNotification(t *testing.T) {
+	ts := newTestServer(t)
+	c := newClient(t, ts)
+	c.signup("a@example.com")
+	card := newAccount(t, c, "Card 8602", "credit_card")
+	for _, r := range []map[string]any{
+		{"kind": "expense", "amount": 881, "account_id": card, "occurred_at": time.Date(2026, 11, 16, 10, 26, 0, 0, time.UTC), "payee": "ANTHROPIC", "note": "Charged 5.5 USD."},
+		{"kind": "expense", "amount": 4005, "account_id": card, "occurred_at": time.Date(2026, 11, 15, 10, 3, 0, 0, time.UTC), "payee": "Visa海外加盟店"},
+		{"kind": "expense", "amount": 1240, "account_id": card, "occurred_at": time.Date(2026, 11, 14, 3, 0, 0, 0, time.UTC), "payee": "LAWSON"},
+	} {
+		if code := c.do("POST", "/api/transactions", r, nil); code != 201 {
+			t.Fatalf("create record: %d", code)
+		}
+	}
+	csv := strings.Join([]string{
+		payPayHeader,
+		`2026/11/16 19:26:22,914,-,5.5,USD,166.182,US,Payment,ANTHROPIC,Credit VISA 8602,-,-,f-01`,
+		`2026/11/15 19:03:13,"4,159",-,25,USD,166.36,US,Payment,GOOGLE *PLAY,Credit VISA 8602,-,-,f-02`,
+		// Yen, a few percent off the notification: a different payment.
+		`2026/11/14 12:00:00,"1,280",-,-,-,-,-,Payment,ローソン,Credit VISA 8602,-,-,f-03`,
+	}, "\n")
+	res := payPayImport(t, c, csv, map[string]int64{"Credit VISA 8602": card})
+	if res.Matched != 2 || res.Imported != 1 {
+		t.Errorf("import %+v (want the two foreign payments matched to their notifications, the yen one added)", res)
+	}
+}

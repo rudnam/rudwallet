@@ -118,6 +118,31 @@ func (d *importDedup) check(key string, t Transaction, window time.Duration) (st
 	return "", 0, nil
 }
 
+// foreignSlack is how far apart, as a share of the billed amount, a
+// payment in another currency and its notification's yen amount may be.
+const foreignSlack = 0.05
+
+// recordedNear is recorded for a payment whose amount others saw only
+// roughly: a record made another way of the same kind, in the same
+// account, within slack (a share of t's amount) of it, within window
+// either side of its time. The nearest in time is taken, then the nearest
+// in amount.
+func (d *importDedup) recordedNear(t Transaction, window time.Duration, slack float64) (int64, bool, error) {
+	if t.AccountID == 0 || t.ToAccountID != nil {
+		return 0, false, nil
+	}
+	diff := int64(float64(t.Amount) * slack)
+	return d.find(
+		`SELECT id FROM transactions
+		 WHERE user_id = $1 AND kind = $2 AND account_id = $3 AND to_account_id IS NULL
+		   AND amount BETWEEN $4::bigint - $5::bigint AND $4::bigint + $5::bigint
+		   AND occurred_at BETWEEN $6::timestamptz - $7 * interval '1 second' AND $6::timestamptz + $7 * interval '1 second'
+		   AND (import_key IS NULL OR import_key NOT LIKE $8 || '%')
+		   AND NOT (id = ANY($9::bigint[]))
+		 ORDER BY abs(extract(epoch FROM occurred_at - $6::timestamptz)), abs(amount - $4::bigint), id LIMIT 1`,
+		d.userID, t.Kind, t.AccountID, t.Amount, diff, t.OccurredAt, int64(window/time.Second), d.prefix, pq.Array(d.taken))
+}
+
 // find runs a query for one record's id and takes it.
 func (d *importDedup) find(q string, args ...any) (int64, bool, error) {
 	var id int64
