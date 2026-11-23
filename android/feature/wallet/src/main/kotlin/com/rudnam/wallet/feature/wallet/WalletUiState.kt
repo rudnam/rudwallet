@@ -32,6 +32,8 @@ sealed interface WalletUiState {
         /** Who's signed in: a demo, or an address still to confirm, says so. */
         val me: Me? = null,
         val confirmation: Confirmation = Confirmation.Idle,
+        /** Notifications were read before, and Android's notification access is now off: payments aren't being recorded. */
+        val notificationAccessLost: Boolean = false,
     ) : WalletUiState
 }
 

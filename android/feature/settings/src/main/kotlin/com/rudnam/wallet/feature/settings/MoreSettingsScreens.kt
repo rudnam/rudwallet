@@ -6,10 +6,8 @@ import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
 import android.os.Build
 import android.os.PersistableBundle
-import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -68,9 +66,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.app.NotificationManagerCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rudnam.wallet.core.designsystem.component.WalletPanel
 import com.rudnam.wallet.core.designsystem.component.rememberHaptics
@@ -87,6 +83,8 @@ import com.rudnam.wallet.core.model.Wallet
 import com.rudnam.wallet.core.ui.CategoryPickerSheet
 import com.rudnam.wallet.core.ui.CategoryIcon
 import com.rudnam.wallet.core.ui.ServerText
+import com.rudnam.wallet.core.ui.openNotificationAccess
+import com.rudnam.wallet.core.ui.rememberNotificationAccess
 import com.rudnam.wallet.core.ui.serverText
 import java.time.Instant
 
@@ -302,34 +300,6 @@ private fun AddShop(wallet: Wallet, onAdd: (String, Long) -> Unit) {
 }
 
 // ---------- Payment notifications ----------
-
-/** Whether RudWallet may read notifications, checked again each time the page comes back (from Android's settings, say). */
-@Composable
-private fun rememberNotificationAccess(): Boolean? {
-    val context = LocalContext.current
-    var access by remember { mutableStateOf<Boolean?>(null) }
-    LifecycleResumeEffect(Unit) {
-        access = NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
-        onPauseOrDispose {}
-    }
-    return access
-}
-
-/** Android's notification access page, at RudWallet's own switch where it can. */
-private fun openNotificationAccess(context: Context) {
-    val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        val listener = ComponentName(context.packageName, "com.rudnam.wallet.notify.PaymentListener")
-        Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
-            .putExtra(Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME, listener.flattenToString())
-    } else {
-        Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
-    }
-    try {
-        context.startActivity(intent)
-    } catch (e: android.content.ActivityNotFoundException) {
-        context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-    }
-}
 
 @Composable
 internal fun NotificationsDestination(navigation: SettingsNavigation, snackbar: SnackbarHostState, viewModel: NotificationsViewModel = hiltViewModel()) {

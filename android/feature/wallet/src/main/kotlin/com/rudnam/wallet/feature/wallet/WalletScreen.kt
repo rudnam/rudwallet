@@ -43,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -59,6 +60,8 @@ import com.rudnam.wallet.core.designsystem.theme.WalletTheme
 import com.rudnam.wallet.core.designsystem.theme.figures
 import com.rudnam.wallet.core.model.Transaction
 import com.rudnam.wallet.core.ui.MoneyFormat
+import com.rudnam.wallet.core.ui.openNotificationAccess
+import com.rudnam.wallet.core.ui.rememberNotificationAccess
 import com.rudnam.wallet.core.ui.recordDays
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
 import java.time.Instant
@@ -91,6 +94,11 @@ internal fun WalletDestination(
         onPauseOrDispose {}
     }
 
+    // Checked each time Wallet comes back into view, so coming back from Android's settings clears the card.
+    val access = rememberNotificationAccess()
+    LaunchedEffect(access) { access?.let(viewModel::onNotificationAccess) }
+
+    val context = LocalContext.current
     val offline = stringResource(R.string.feature_wallet_offline)
     val failed = stringResource(R.string.feature_wallet_failed)
     LaunchedEffect(messages) {
@@ -111,6 +119,7 @@ internal fun WalletDestination(
             navigation.createAccount()
             viewModel.leaveDemo()
         },
+        onTurnOnNotifications = { openNotificationAccess(context) },
     )
 }
 
@@ -125,6 +134,7 @@ internal fun WalletScreen(
     onReorder: (List<Long>) -> Unit = {},
     onResend: () -> Unit = {},
     onLeaveDemo: () -> Unit = {},
+    onTurnOnNotifications: () -> Unit = {},
     now: Instant = Instant.now(),
 ) {
     val scroll = TopAppBarDefaults.pinnedScrollBehavior()
@@ -165,7 +175,7 @@ internal fun WalletScreen(
             when (state) {
                 WalletUiState.Loading -> PageLoading(Modifier.fillMaxSize())
                 WalletUiState.Unavailable -> Unavailable(onRefresh)
-                is WalletUiState.Ready -> Wallet(state, navigation, onDismissSetup, onUpdateLater, onReorder, onResend, onLeaveDemo, now)
+                is WalletUiState.Ready -> Wallet(state, navigation, onDismissSetup, onUpdateLater, onReorder, onResend, onLeaveDemo, onTurnOnNotifications, now)
             }
         }
     }
@@ -193,6 +203,7 @@ private fun Wallet(
     onReorder: (List<Long>) -> Unit,
     onResend: () -> Unit,
     onLeaveDemo: () -> Unit,
+    onTurnOnNotifications: () -> Unit,
     now: Instant,
 ) {
     val format = rememberMoneyFormat(state.wallet.settings)
@@ -208,6 +219,9 @@ private fun Wallet(
         }
         state.me?.takeIf { it.confirmEmail && !it.demo }?.let { me ->
             item(key = "confirm", contentType = "notice") { ConfirmEmailCard(me.email, state.confirmation, onResend) }
+        }
+        if (state.notificationAccessLost) {
+            item(key = "notifications", contentType = "notice") { NotificationAccessCard(onTurnOnNotifications) }
         }
         state.update?.let { update ->
             item(key = "update", contentType = "update") {
@@ -295,6 +309,21 @@ private fun UpdateCard(versionName: String, onInstall: () -> Unit, onLater: () -
             )
             TextButton(onClick = onLater) { Text(stringResource(R.string.feature_wallet_update_later), color = WalletTheme.colors.muted) }
             TextButton(onClick = onInstall) { Text(stringResource(R.string.feature_wallet_update_install)) }
+        }
+    }
+}
+
+/** Notification access went off (a reinstall, say): payments aren't being recorded until it's back on. */
+@Composable
+private fun NotificationAccessCard(onTurnOn: () -> Unit) {
+    WalletPanel(Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            LineIcon(WalletIcons.warning, contentDescription = null, tint = WalletTheme.colors.danger, size = 20.dp)
+            Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                Text(stringResource(R.string.feature_wallet_notifications_off), style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.feature_wallet_notifications_off_detail), style = MaterialTheme.typography.bodySmall, color = WalletTheme.colors.muted)
+            }
+            TextButton(onClick = onTurnOn) { Text(stringResource(R.string.feature_wallet_notifications_turn_on)) }
         }
     }
 }

@@ -42,7 +42,7 @@ class WalletScreenshotTest {
         override fun addRecord() {}
     }
 
-    private fun ready(update: AppUpdate? = null, setup: SetupChecklist? = null, empty: Boolean = false) = WalletUiState.Ready(
+    private fun ready(update: AppUpdate? = null, setup: SetupChecklist? = null, empty: Boolean = false, accessLost: Boolean = false) = WalletUiState.Ready(
         wallet = SampleWallet.wallet,
         accounts = SampleWallet.wallet.activeAccounts,
         month = YearMonth.of(2026, 11),
@@ -52,6 +52,7 @@ class WalletScreenshotTest {
         setup = setup,
         update = update,
         refreshing = false,
+        notificationAccessLost = accessLost,
     )
 
     private fun shot(name: String, state: WalletUiState, dark: Boolean = false) {
@@ -84,6 +85,17 @@ class WalletScreenshotTest {
         "new",
         ready(update = AppUpdate(42, "2.1.42", ""), setup = SetupChecklist(accountsAdded = true, notificationsOn = false, budgetSet = false, noRecordsYet = true), empty = true),
     )
+
+    /** Notification access went off after payments had been read from notifications. */
+    @Test
+    fun notificationsOff() = shot("notifications-off", ready(accessLost = true))
+
+    @Test
+    @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
+    fun notificationsOffJapanese() = shot("notifications-off-ja", ready(accessLost = true))
+
+    @Test
+    fun notificationsOffDark() = shot("notifications-off-dark", ready(accessLost = true), dark = true)
 
     @Test
     fun unavailable() = shot("unavailable", WalletUiState.Unavailable)

@@ -13,6 +13,7 @@ import com.rudnam.wallet.core.testing.TestWalletRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -92,6 +93,31 @@ class WalletViewModelTest {
             assertNull(awaitReady().update)
         }
         assertEquals(listOf(update), updates.skipped)
+    }
+
+    @Test
+    fun `losing notification access after notifications came shows a warning until it's back`() = runTest {
+        wallet.notificationsSent = true
+        wallet.send(SampleWallet.wallet, SampleWallet.budgets, SampleWallet.records)
+        val vm = viewModel()
+        vm.uiState.test {
+            assertFalse(awaitReady().notificationAccessLost) // not known yet: nothing shown
+            vm.onNotificationAccess(false)
+            assertTrue(awaitReady().notificationAccessLost)
+            vm.onNotificationAccess(true)
+            assertFalse(awaitReady().notificationAccessLost)
+        }
+    }
+
+    @Test
+    fun `without notification access, someone who never turned it on sees no warning`() = runTest {
+        wallet.notificationsSent = false
+        wallet.send(SampleWallet.wallet, SampleWallet.budgets, SampleWallet.records)
+        val vm = viewModel()
+        vm.onNotificationAccess(false)
+        vm.uiState.test {
+            assertFalse(awaitReady().notificationAccessLost)
+        }
     }
 
     /** The next state that isn't still loading (the preferences come from DataStore a moment later). */
