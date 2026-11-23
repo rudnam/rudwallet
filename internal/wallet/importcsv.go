@@ -403,7 +403,8 @@ func (s *Store) importBudgetBakers(ctx context.Context, userID int64, data []byt
 		if err != nil {
 			return res, err
 		}
-		if status == "" {
+		switch status {
+		case "":
 			if r.matchedTo < 0 && !r.transfer {
 				if t.CategoryID, err = category(r.kind, r.category); err != nil {
 					return res, err
@@ -414,9 +415,9 @@ func (s *Store) importBudgetBakers(ctx context.Context, userID int64, data []byt
 			}
 			status = "new"
 			res.Imported++
-		} else if status == "imported" {
+		case "imported":
 			res.Duplicates++
-		} else {
+		default:
 			res.Matched++
 		}
 		if names == nil || names[t.AccountID] == "" || t.ToAccountID != nil && names[*t.ToAccountID] == "" {
