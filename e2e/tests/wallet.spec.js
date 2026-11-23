@@ -223,10 +223,12 @@ test('import records exported from Wallet by BudgetBakers', async ({ page }) => 
   await page.getByRole('button', { name: 'Import 4 records' }).click();
   await expect(page.getByRole('status')).toContainText('Imported 4 records, created 1 account.');
 
-  // The same file again adds nothing.
+  // The same file again adds nothing, and says so before anything is imported.
   await page.getByLabel('CSV file', { exact: true }).setInputFiles(file);
-  await page.getByRole('button', { name: 'Import 4 records' }).click();
-  await expect(page.getByRole('status')).toContainText('Imported 0 records, skipped 4 already imported');
+  await expect(page.getByText('Nothing new to add')).toBeVisible();
+  await expect(page.getByText('4 are already in RudWallet from an earlier import')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Nothing to import' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Cancel' }).click();
   await page.getByRole('link', { name: 'Settings', exact: true }).first().click();
   await page.getByRole('link', { name: /Accounts/ }).click();
   await expect(page.getByRole('list', { name: 'Accounts' })).toContainText('Rakuten Savings');
@@ -339,12 +341,52 @@ test('import PayPay transaction history', async ({ page }) => {
   await expect(page.getByLabel(/^PayPay残高/).locator('option:checked')).toHaveText('New account: PayPay');
   await expect(page.getByLabel(/^PayPay銀行/).locator('option:checked')).toHaveText('New account: PayPay銀行');
   await expect(page.getByLabel('Category for ローソン').locator('option:checked')).toHaveText('Food & Drinks');
-  await page.getByRole('button', { name: 'Import 3 payments' }).click();
+  // Before anything is recorded: what's new, and what's already there.
+  await expect(page.getByText('2 new records to add')).toBeVisible();
+  await expect(page.getByText('1 is already recorded another way (a notification, by hand, or another import)')).toBeVisible();
+  await page.getByText('Already recorded another way · 1').click();
+  await expect(page.getByRole('group').filter({ hasText: 'Already recorded another way' })).toContainText('PayPay Card−¥1,280');
+  await page.screenshot({ path: test.info().outputPath('paypay-review.png'), fullPage: true });
+  await page.getByRole('button', { name: 'Import 2 payments' }).click();
   await expect(page.getByRole('status')).toContainText('Imported 2 records, skipped 1 already recorded from notifications or by hand, created 2 accounts');
+  await expect(page.getByRole('list').filter({ hasText: '2 added' })).toContainText('PayPay');
+
+  // Undone at once, and brought back.
+  await page.getByRole('button', { name: 'Undo import' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Undone: 2 records moved to the trash.' })).toBeVisible();
+  await expect(page.getByText('Undone', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Bring them back' }).click();
+  await expect(page.getByRole('button', { name: 'Undo import' })).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath('paypay-done.png'), fullPage: true });
+
+  // The same file again: nothing new.
+  await page.getByLabel('PayPay CSV file').setInputFiles({ name: 'paypay.csv', mimeType: 'text/csv', buffer: Buffer.from(payPayCsv(day)) });
+  await expect(page.getByText('Nothing new to add')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Nothing to import' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Cancel' }).click();
 
   await page.goto('/app/#/records');
   await expect(page.getByRole('button', { name: /ローソン, −¥1,200/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /SEVEN-ELEVEN/ })).toHaveCount(1);
+});
+
+test('undo an import from the recent imports', async ({ page }) => {
+  await signUp(page);
+  const now = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  const day = `${now.getFullYear()}/${p(now.getMonth() + 1)}/${p(now.getDate())}`;
+  const res = await page.request.post('/api/import/paypay', { data: { csv: payPayCsv(day), accounts: [] } });
+  expect((await res.json()).imported).toBe(3);
+
+  await page.goto('/app/#/settings?section=import');
+  const recent = page.getByRole('list').filter({ hasText: '3 added' });
+  await expect(recent).toContainText('PayPay');
+  await page.screenshot({ path: test.info().outputPath('recent-imports.png'), fullPage: true });
+  await recent.getByRole('button', { name: 'Undo' }).click();
+  await expect(page.getByText('Import undone: 3 records moved to the trash')).toBeVisible();
+  await expect(recent).toContainText('Undone');
+  await page.goto('/app/#/records');
+  await expect(page.getByRole('button', { name: /ローソン/ })).toHaveCount(0);
 });
 
 test('leave PayPay points out of an import, and remember it', async ({ page }) => {
@@ -363,8 +405,10 @@ test('leave PayPay points out of an import, and remember it', async ({ page }) =
   await page.goto('/app/#/settings?section=import');
   await upload();
   await page.getByLabel(/^PayPayポイント ·/).selectOption({ label: "Don't import" });
+  // Counted again for the choice: the points' rows are left out.
+  await expect(page.getByText('2 are paid in ways you’re not importing')).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('skip-points.png'), fullPage: true });
-  await page.getByRole('button', { name: 'Import the rest' }).click();
+  await page.getByRole('button', { name: 'Import 1 payment' }).click();
   await expect(page.getByRole('status')).toContainText('Imported 1 record, left out 2 paid in ways not imported');
 
   // The next import suggests leaving points out again.

@@ -210,14 +210,59 @@ export interface PaymentNotification {
 
 export interface ImportResult {
   imported: number;
+  /** Rows imported before. */
   duplicates: number;
-  /** Rows already recorded another way, e.g. from their notification (PayPay only). */
+  /** Rows already recorded another way: from a notification, by hand, or by another import. */
   matched: number;
   /** Rows paid in a way the user chose not to import (PayPay only). */
   skipped: number;
   accounts_created: number;
   categories_created: number;
   problems: string[];
+  /** The import, to undo (api.undoImport); absent when it changed nothing. */
+  batch_id?: number;
+}
+
+/** A row of a PayPay or BudgetBakers file, as importing records it (or would). */
+export interface ImportFileRow {
+  occurred_at: string;
+  kind: 'expense' | 'income' | 'transfer';
+  amount: number;
+  payee: string;
+  note: string;
+  /** Account names: in a preview, possibly one the import would create. */
+  account: string;
+  to_account?: string;
+  status: 'new' | 'imported' | 'matched' | 'skipped';
+}
+
+/**
+ * What importing a file does, from its preview: the server runs the import
+ * with the choices sent and rolls it back, so these are exact.
+ */
+export interface ImportOutlook {
+  new: number;
+  duplicates: number;
+  matched: number;
+  skipped?: number;
+}
+
+/** An import that changed something, for the import page's history. */
+export interface ImportBatch {
+  id: number;
+  source: 'paypay' | 'mufg' | 'iccard' | 'budgetbakers';
+  /** An IC card's last digits. */
+  label: string;
+  from: string | null;
+  to: string | null;
+  imported: number;
+  duplicates: number;
+  matched: number;
+  skipped: number;
+  /** How many of its records are still in the wallet. */
+  remaining: number;
+  created_at: string;
+  undone_at: string | null;
 }
 
 /** One way of paying in a PayPay export, and the account suggested for it (null: a new one). */
@@ -255,6 +300,12 @@ export interface PayPayPreview {
   /** Default categories the user doesn't have, which can be created on import. */
   new_categories: Category[];
   problems: string[];
+  /** What importing with the choices sent does (the import, rolled back). */
+  new: number;
+  duplicates: number;
+  matched: number;
+  skipped: number;
+  file_rows: ImportFileRow[];
 }
 
 /** A role in an MUFG statement: the bank itself, or what money moves to and from. */
@@ -366,6 +417,11 @@ export interface BudgetBakersPreview {
   categories: ImportCategory[];
   new_categories: Category[];
   problems: string[];
+  /** What importing with the choices sent does (the import, rolled back). */
+  new: number;
+  duplicates: number;
+  matched: number;
+  file_rows: ImportFileRow[];
 }
 
 /** An access token for an MCP client such as Claude Desktop. */
@@ -728,6 +784,8 @@ export const api = {
 
   previewBudgetBakers: (csv: string) =>
     request<BudgetBakersPreview>('POST', `/api/import/budgetbakers?preview=1&tz_offset=${new Date().getTimezoneOffset()}`, csv, 'text/csv'),
+  previewBudgetBakersWith: (csv: string, accounts: AccountChoice[], categories: CategoryChoice[]) =>
+    request<BudgetBakersPreview>('POST', `/api/import/budgetbakers?preview=1&tz_offset=${new Date().getTimezoneOffset()}`, { csv, accounts, categories }),
   /** accounts says where each account in the file goes. */
   importBudgetBakers: (csv: string, accounts: AccountChoice[], categories: CategoryChoice[]) =>
     request<ImportResult>('POST', `/api/import/budgetbakers?tz_offset=${new Date().getTimezoneOffset()}`, {
@@ -749,6 +807,9 @@ export const api = {
   reconcileAccount: (id: number, balance: number) =>
     request<{ transaction: Transaction | null }>('POST', `/api/accounts/${id}/reconcile`, { balance }),
   previewPayPay: (csv: string) => request<PayPayPreview>('POST', '/api/import/paypay?preview=1', csv, 'text/csv'),
+  /** The preview again for these choices: what importing with them does. */
+  previewPayPayWith: (csv: string, accounts: AccountChoice[], categories: CategoryChoice[]) =>
+    request<PayPayPreview>('POST', '/api/import/paypay?preview=1', { csv, accounts, categories }),
   /** accounts says where each payment method goes, or skipAccount. */
   importPayPay: (csv: string, accounts: AccountChoice[], categories: CategoryChoice[]) =>
     request<ImportResult>('POST', '/api/import/paypay', {
@@ -756,6 +817,10 @@ export const api = {
       accounts,
       categories,
     }),
+  /** The latest imports that changed something, newest first. */
+  imports: () => request<{ imports: ImportBatch[] }>('GET', '/api/imports'),
+  /** Moves an import's records to the trash; restoreTransactions(ids) brings them back. */
+  undoImport: (id: number) => request<{ deleted: number; ids: number[] }>('POST', `/api/imports/${id}/undo`),
 };
 
 /** A message to show for any thrown value, in the language in use when it's one the app knows. */

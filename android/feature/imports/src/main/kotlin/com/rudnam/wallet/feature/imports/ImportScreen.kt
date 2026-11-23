@@ -8,7 +8,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.Alignment
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.material3.TextButton
@@ -119,20 +119,20 @@ internal fun ImportDestination(navigation: ImportsNavigation, snackbar: Snackbar
         viewModel.refresh()
         onPauseOrDispose {}
     }
-    val context = LocalContext.current
+    val res = LocalResources.current
     LaunchedEffect(viewModel) {
         viewModel.events.collect { e ->
             when (e) {
                 is HistoryEvent.Undone -> {
                     val r = snackbar.showSnackbar(
-                        context.resources.getQuantityString(R.plurals.feature_imports_batch_undone_snack, e.count, e.count),
-                        actionLabel = context.getString(R.string.feature_imports_restore),
+                        res.getQuantityString(R.plurals.feature_imports_batch_undone_snack, e.count, e.count),
+                        actionLabel = res.getString(R.string.feature_imports_restore),
                         withDismissAction = true,
                     )
                     if (r == SnackbarResult.ActionPerformed) viewModel.restore(e.ids)
                 }
                 is HistoryEvent.Failed -> snackbar.showSnackbar(
-                    if (e.message.isEmpty()) context.getString(R.string.feature_imports_offline) else context.getString(R.string.feature_imports_undo_failed, e.message),
+                    if (e.message.isEmpty()) res.getString(R.string.feature_imports_offline) else res.getString(R.string.feature_imports_undo_failed, e.message),
                 )
             }
         }

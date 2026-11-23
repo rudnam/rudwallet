@@ -1,9 +1,9 @@
 // Sorting an import's records into categories before they're recorded: one
 // row per category in the file (BudgetBakers) or shop (PayPay), with the
 // app's suggestion picked. Ticking rows sets several at once.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { inOrder, optionLabel } from "../../categories";
-import type { Category, CategoryChoice, ImportCategory, ImportResult } from "../../api";
+import { api, errorMessage, type Category, type CategoryChoice, type ImportBatch, type ImportCategory, type ImportFileRow, type ImportOutlook, type ImportResult } from "../../api";
 import { CategoryIcon } from "../../components/Icon";
 import { useWallet } from "../../wallet";
 import { serverText, t, tn, tx } from "../../i18n";
@@ -281,31 +281,238 @@ export const shortDate = (iso: string) => new Date(iso).toLocaleDateString(local
 
 /** What an import did, in one sentence. */
 export function ImportSummary({ result }: { result: ImportResult }) {
+  const w = useWallet();
+  // Undoing the import: its records go to the trash, and can come back.
+  const [undone, setUndone] = useState<number[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  async function undo() {
+    if (!result.batch_id) return;
+    setBusy(true);
+    setError('');
+    try {
+      if (undone) {
+        await api.restoreTransactions(undone);
+        setUndone(null);
+      } else {
+        setUndone((await api.undoImport(result.batch_id)).ids);
+      }
+      importsChanged();
+      await w.refresh();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
-    <div className="notice" role="status">
-      {[
-        tn(result.imported, 'Imported {n} record', 'Imported {n} records'),
-        result.duplicates > 0 && t('skipped {n} already imported', { n: result.duplicates }),
-        result.matched > 0 && t('skipped {n} already recorded from notifications or by hand', { n: result.matched }),
-        result.skipped > 0 && t('left out {n} paid in ways not imported', { n: result.skipped }),
-        result.accounts_created > 0 && tn(result.accounts_created, 'created {n} account', 'created {n} accounts'),
-        result.categories_created > 0 && tn(result.categories_created, 'created {n} category', 'created {n} categories'),
-      ]
-        .filter(Boolean)
-        .join(t(', '))}
-      {t('.')}
-      {result.imported > 0 && (
-        <>
-          {' '}
-          {tx('Records without a category can be {sorted}.', { sorted: <a href={href('settings', { section: 'claude' })}>{t('sorted by Claude')}</a> })}
-        </>
+    <div className="notice stack" role="status">
+      {undone ? (
+        <p>{tn(undone.length, 'Undone: {n} record moved to the trash.', 'Undone: {n} records moved to the trash.')}</p>
+      ) : (
+        <p>
+          {[
+            tn(result.imported, 'Imported {n} record', 'Imported {n} records'),
+            result.duplicates > 0 && t('skipped {n} already imported', { n: result.duplicates }),
+            result.matched > 0 && t('skipped {n} already recorded from notifications or by hand', { n: result.matched }),
+            result.skipped > 0 && t('left out {n} paid in ways not imported', { n: result.skipped }),
+            result.accounts_created > 0 && tn(result.accounts_created, 'created {n} account', 'created {n} accounts'),
+            result.categories_created > 0 && tn(result.categories_created, 'created {n} category', 'created {n} categories'),
+          ]
+            .filter(Boolean)
+            .join(t(', '))}
+          {t('.')}
+          {result.imported > 0 && (
+            <>
+              {' '}
+              {tx('Records without a category can be {sorted}.', { sorted: <a href={href('settings', { section: 'claude' })}>{t('sorted by Claude')}</a> })}
+            </>
+          )}
+        </p>
       )}
-      {result.problems.length > 0 && (
+      {!undone && result.problems.length > 0 && (
         <ul className="small">
           {result.problems.map((p) => (
             <li key={p}>{serverText(p)}</li>
           ))}
         </ul>
+      )}
+      {result.batch_id && (
+        <div className="row end">
+          <button type="button" className="secondary" onClick={undo} disabled={busy}>
+            {busy ? t('Undoing…') : undone ? t('Bring them back') : t('Undo import')}
+          </button>
+        </div>
+      )}
+      {error && (
+        <p role="alert" className="error">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Tells the list of recent imports to ask again: after an import, an undo or a restore. */
+export function importsChanged() {
+  window.dispatchEvent(new Event('rudwallet:imports'));
+}
+
+/**
+ * What importing does, before anything else: how many records it adds, and
+ * how many it leaves out as already there. The server works these out by
+ * running the import and rolling it back.
+ */
+export function ImportOutlookCard({ outlook, from, to, checking }: { outlook: ImportOutlook; from?: string | null; to?: string | null; checking?: boolean }) {
+  const skipped = outlook.skipped ?? 0;
+  return (
+    <div className="import-outlook" aria-busy={checking || undefined}>
+      <p className="import-outlook-title">
+        {outlook.new > 0 ? tn(outlook.new, '{n} new record to add', '{n} new records to add') : t('Nothing new to add')}
+        {checking && <span className="muted small"> · {t('Counting again for your choices…')}</span>}
+      </p>
+      {from && to && <p className="small muted">{shortDate(from) === shortDate(to) ? shortDate(from) : `${shortDate(from)} – ${shortDate(to)}`}</p>}
+      <ul className="import-outlook-lines">
+        {outlook.duplicates > 0 && <li className="done">{tn(outlook.duplicates, '{n} is already in RudWallet from an earlier import', '{n} are already in RudWallet from an earlier import')}</li>}
+        {outlook.matched > 0 && <li className="done">{tn(outlook.matched, '{n} is already recorded another way (a notification, by hand, or another import)', '{n} are already recorded another way (a notification, by hand, or another import)')}</li>}
+        {skipped > 0 && <li className="out">{tn(skipped, '{n} is paid in a way you’re not importing', '{n} are paid in ways you’re not importing')}</li>}
+      </ul>
+      <p className="small muted">{t('What’s already in RudWallet is never added again, and you can undo the import afterwards.')}</p>
+    </div>
+  );
+}
+
+const rowGroups: { status: ImportFileRow['status']; label: (n: number) => string; open: boolean }[] = [
+  { status: 'new', label: (n) => t('To add · {n}', { n }), open: true },
+  { status: 'imported', label: (n) => t('Already in RudWallet · {n}', { n }), open: false },
+  { status: 'matched', label: (n) => t('Already recorded another way · {n}', { n }), open: false },
+  { status: 'skipped', label: (n) => t('Not imported · {n}', { n }), open: false },
+];
+
+/** A file's rows by what becomes of them: those to add open, those already there folded away. */
+export function FileRows({ rows }: { rows: ImportFileRow[] }) {
+  const w = useWallet();
+  return (
+    <div className="stack import-rows">
+      <h3>{t('In the file')}</h3>
+      {rowGroups.map((g) => {
+        const these = rows.filter((r) => r.status === g.status);
+        if (these.length === 0) return null;
+        return (
+          <details key={g.status} open={g.open} className={`import-group ${g.status}`}>
+            <summary>{g.label(these.length)}</summary>
+            <ul className="import-row-list">
+              {these.map((r, i) => (
+                <li key={i} className={g.status === 'new' ? undefined : 'muted'}>
+                  <span className="import-row-text">
+                    {r.payee || r.note || t(r.kind === 'transfer' ? 'Transfer' : r.kind === 'expense' ? 'Expense' : 'Income')}
+                    <span className="small muted">
+                      {' '}
+                      · {new Date(r.occurred_at).toLocaleString(locale(), { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · {r.to_account ? `${r.account} → ${r.to_account}` : r.account}
+                    </span>
+                  </span>
+                  <span className="amount">{w.money(r.kind === 'expense' ? -r.amount : r.amount, r.kind !== 'transfer')}</span>
+                </li>
+              ))}
+            </ul>
+          </details>
+        );
+      })}
+    </div>
+  );
+}
+
+const sourceNames: Record<ImportBatch['source'], () => string> = {
+  paypay: () => 'PayPay',
+  mufg: () => 'MUFG',
+  iccard: () => t('IC card'),
+  budgetbakers: () => 'BudgetBakers',
+};
+
+/** The latest imports, each with what it added and found already there, and Undo. */
+export function RecentImports() {
+  const w = useWallet();
+  const [list, setList] = useState<ImportBatch[]>([]);
+  const [busy, setBusy] = useState<number | null>(null);
+  const [message, setMessage] = useState<{ text: string; ids?: number[] } | null>(null);
+  useEffect(() => {
+    let live = true;
+    const load = () =>
+      api.imports().then(
+        (r) => live && setList(r.imports),
+        () => {},
+      );
+    load();
+    window.addEventListener('rudwallet:imports', load);
+    return () => {
+      live = false;
+      window.removeEventListener('rudwallet:imports', load);
+    };
+  }, []);
+  async function undo(b: ImportBatch) {
+    setBusy(b.id);
+    setMessage(null);
+    try {
+      const { ids } = await api.undoImport(b.id);
+      setMessage({ text: tn(ids.length, 'Import undone: {n} record moved to the trash', 'Import undone: {n} records moved to the trash'), ids });
+      importsChanged();
+      await w.refresh();
+    } catch (err) {
+      setMessage({ text: errorMessage(err) });
+    } finally {
+      setBusy(null);
+    }
+  }
+  async function restore(ids: number[]) {
+    setMessage(null);
+    await api.restoreTransactions(ids);
+    importsChanged();
+    await w.refresh();
+  }
+  if (list.length === 0) return null;
+  return (
+    <div className="card stack">
+      <h2>{t('Recent imports')}</h2>
+      <ul className="import-history">
+        {list.map((b) => {
+          const already = b.duplicates + b.matched;
+          return (
+            <li key={b.id} className={b.undone_at ? 'muted' : undefined}>
+              <span className="stack tight">
+                <strong>
+                  {sourceNames[b.source]()}
+                  {b.label && ` ••${b.label}`}
+                </strong>
+                <span className="small muted">
+                  {new Date(b.created_at).toLocaleString(locale(), { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  {b.from && b.to && ` · ${shortDate(b.from) === shortDate(b.to) ? shortDate(b.from) : `${shortDate(b.from)} – ${shortDate(b.to)}`}`}
+                </span>
+                <span className="small muted">
+                  {[tn(b.imported, '{n} added', '{n} added'), already > 0 && tn(already, '{n} already there', '{n} already there')].filter(Boolean).join(' · ')}
+                </span>
+              </span>
+              {b.undone_at ? (
+                <span className="small muted">{t('Undone')}</span>
+              ) : (
+                b.remaining > 0 && (
+                  <button type="button" className="secondary" onClick={() => undo(b)} disabled={busy !== null}>
+                    {busy === b.id ? t('Undoing…') : t('Undo')}
+                  </button>
+                )
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {message && (
+        <p role="status" className="notice row">
+          <span>{message.text}</span>
+          {message.ids && (
+            <button type="button" className="link" onClick={() => restore(message.ids!)}>
+              {t('Bring them back')}
+            </button>
+          )}
+        </p>
       )}
     </div>
   );
