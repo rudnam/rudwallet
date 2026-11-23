@@ -250,8 +250,10 @@ func (rs payeeRuleSet) match(payee string) *int64 {
 // remembered category, if an expense, as before previews had them.
 //
 // Rows are keyed by their 取引番号, so importing overlapping periods adds
-// each payment once. A payment already recorded another way (from its
-// notification, or by hand) in the same account, for the same amount, within a day, is
+// each payment once, and a row whose key changed between exports is still
+// found by its time, account and amount. A payment already recorded another
+// way (from its notification, by hand, or a charge from the bank's
+// statement) in the same account, for the same amount, within a day, is
 // skipped and counted as Matched.
 func (s *Store) ImportPayPay(ctx context.Context, userID int64, data []byte, accounts map[string]AccountPick, categories []CategoryChoice) (ImportResult, error) {
 	res := ImportResult{Problems: []string{}}
@@ -378,7 +380,7 @@ func (s *Store) ImportPayPay(ctx context.Context, userID int64, data []byte, acc
 		return id, nil
 	}
 
-	matched := []int64{} // existing records, each matched to one row
+	matched := []int64{} // records each matched to a row, or imported from one
 	for _, r := range rows {
 		t := Transaction{Kind: r.kind, Amount: r.amount, AccountID: account[r.method], OccurredAt: r.when, Payee: r.payee, Note: r.note}
 		switch {
@@ -407,37 +409,64 @@ func (s *Store) ImportPayPay(ctx context.Context, userID int64, data []byte, acc
 			res.Duplicates++
 			continue
 		}
-		if t.Kind != "transfer" {
-			var id int64
-			err := tx.QueryRowContext(ctx,
-				`SELECT id FROM transactions
-				 WHERE user_id = $1 AND kind = $2 AND amount = $3 AND account_id = $4
-				   AND occurred_at BETWEEN $5::timestamptz - interval '1 day' AND $5::timestamptz + interval '1 day'
-				   AND (import_key IS NULL OR import_key NOT LIKE 'pp:%')
-				   AND NOT (id = ANY($6::bigint[]))
-				 ORDER BY abs(extract(epoch FROM occurred_at - $5::timestamptz)) LIMIT 1`,
-				userID, t.Kind, t.Amount, t.AccountID, t.OccurredAt, pq.Array(matched)).Scan(&id)
-			if err == nil {
-				matched = append(matched, id)
-				res.Matched++
-				continue
-			}
-			if !errors.Is(err, sql.ErrNoRows) {
-				return res, err
-			}
+		// A row's key can change between exports: the number after the
+		// 取引番号 counts the file's earlier rows with the same 取引番号
+		// (points earned later on a payment, a share left out), and a row
+		// without one is keyed by all its columns. A row exported again
+		// that doesn't find its key is the same row as an earlier import's
+		// record of the same kind and amount, in the same account, at the
+		// same second.
+		var id int64
+		err := tx.QueryRowContext(ctx,
+			`SELECT id FROM transactions
+			 WHERE user_id = $1 AND kind = $2 AND amount = $3 AND account_id = $4
+			   AND to_account_id IS NOT DISTINCT FROM $5 AND occurred_at = $6
+			   AND import_key LIKE 'pp:%'
+			   AND NOT (id = ANY($7::bigint[]))
+			 LIMIT 1`,
+			userID, t.Kind, t.Amount, t.AccountID, t.ToAccountID, t.OccurredAt, pq.Array(matched)).Scan(&id)
+		if err == nil {
+			matched = append(matched, id)
+			res.Duplicates++
+			continue
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return res, err
+		}
+		// Recorded another way: from its notification, by hand, or, for a
+		// charge, from the bank's statement (as a transfer between the same
+		// two accounts).
+		err = tx.QueryRowContext(ctx,
+			`SELECT id FROM transactions
+			 WHERE user_id = $1 AND kind = $2 AND amount = $3 AND account_id = $4
+			   AND to_account_id IS NOT DISTINCT FROM $5
+			   AND occurred_at BETWEEN $6::timestamptz - interval '1 day' AND $6::timestamptz + interval '1 day'
+			   AND (import_key IS NULL OR import_key NOT LIKE 'pp:%')
+			   AND NOT (id = ANY($7::bigint[]))
+			 ORDER BY abs(extract(epoch FROM occurred_at - $6::timestamptz)) LIMIT 1`,
+			userID, t.Kind, t.Amount, t.AccountID, t.ToAccountID, t.OccurredAt, pq.Array(matched)).Scan(&id)
+		if err == nil {
+			matched = append(matched, id)
+			res.Matched++
+			continue
+		}
+		if !errors.Is(err, sql.ErrNoRows) {
+			return res, err
 		}
 		if t.Kind != "transfer" {
 			if t.CategoryID, err = category(r); err != nil {
 				return res, err
 			}
 		}
-		if _, err := tx.ExecContext(ctx,
+		if err := tx.QueryRowContext(ctx,
 			`INSERT INTO transactions (user_id, kind, amount, account_id, to_account_id, category_id, occurred_at,
 				payee, note, status, source, import_key)
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'confirmed', 'import', $10)`,
-			userID, t.Kind, t.Amount, t.AccountID, t.ToAccountID, t.CategoryID, t.OccurredAt, t.Payee, t.Note, r.key); err != nil {
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'confirmed', 'import', $10) RETURNING id`,
+			userID, t.Kind, t.Amount, t.AccountID, t.ToAccountID, t.CategoryID, t.OccurredAt, t.Payee, t.Note, r.key).Scan(&id); err != nil {
 			return res, err
 		}
+		// Rows of this file aren't the same row as each other.
+		matched = append(matched, id)
 		res.Imported++
 	}
 	res.CategoriesCreated = ic.created
