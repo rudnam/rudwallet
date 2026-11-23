@@ -210,6 +210,13 @@ class SettingsScreenshotTest {
         NotificationsScreen(SampleWallet.wallet, access = true, autoConfirm = null, recent = Loadable.Ready(notifications), actions = notificationsActions, onOpenAccess = {}, navigation = navigation)
     }
 
+    /** Reading works, and notifications aren't allowed yet: the way to an alert if it stops. */
+    @Test
+    @Config(qualifiers = "w411dp-h1300dp-xxhdpi")
+    fun paymentNotificationsAllowAlerts() = shot("notifications-alerts") {
+        NotificationsScreen(SampleWallet.wallet, access = true, autoConfirm = null, recent = Loadable.Ready(notifications), actions = notificationsActions, onOpenAccess = {}, navigation = navigation, onAllowAlerts = {})
+    }
+
     @Test
     fun widgets() = shot("widgets") { WidgetsScreen(canPin = true, onPin = {}, navigation = navigation) }
 

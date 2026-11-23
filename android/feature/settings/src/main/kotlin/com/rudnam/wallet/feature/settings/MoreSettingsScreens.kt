@@ -4,7 +4,13 @@ import android.appwidget.AppWidgetManager
 import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
+import android.Manifest
 import android.content.ComponentName
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import android.content.Context
 import android.os.Build
 import android.os.PersistableBundle
@@ -301,6 +307,23 @@ private fun AddShop(wallet: Wallet, onAdd: (String, Long) -> Unit) {
 
 // ---------- Payment notifications ----------
 
+/**
+ * On Android 13+ without permission to post notifications: asks for it.
+ * Null when it's allowed (always, before 13), checked again on coming back.
+ */
+@Composable
+private fun rememberAlertPermission(): (() -> Unit)? {
+    if (Build.VERSION.SDK_INT < 33) return null
+    val context = LocalContext.current
+    var allowed by remember { mutableStateOf(true) }
+    LifecycleResumeEffect(Unit) {
+        allowed = ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        onPauseOrDispose {}
+    }
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { allowed = it }
+    return if (allowed) null else ({ launcher.launch(Manifest.permission.POST_NOTIFICATIONS) })
+}
+
 @Composable
 internal fun NotificationsDestination(navigation: SettingsNavigation, snackbar: SnackbarHostState, viewModel: NotificationsViewModel = hiltViewModel()) {
     val wallet by viewModel.wallet.collectAsStateWithLifecycle()
@@ -309,7 +332,15 @@ internal fun NotificationsDestination(navigation: SettingsNavigation, snackbar: 
     val messages by viewModel.messages.collectAsStateWithLifecycle()
     val context = LocalContext.current
     PageMessages(messages, viewModel::messageShown, snackbar)
-    NotificationsScreen(wallet, rememberNotificationAccess(), autoConfirm, recent, viewModel, onOpenAccess = { openNotificationAccess(context) }, navigation = navigation)
+    val access = rememberNotificationAccess()
+    val alerts = rememberAlertPermission()
+    NotificationsScreen(
+        wallet, access, autoConfirm, recent, viewModel,
+        onOpenAccess = { openNotificationAccess(context) },
+        navigation = navigation,
+        // Only once reading works: then the alert is for losing it.
+        onAllowAlerts = alerts.takeIf { access == true },
+    )
 }
 
 /**
@@ -326,6 +357,8 @@ internal fun NotificationsScreen(
     actions: NotificationsActions,
     onOpenAccess: () -> Unit,
     navigation: SettingsNavigation,
+    /** Asks to post notifications, so losing access is said with one; null when allowed already. */
+    onAllowAlerts: (() -> Unit)? = null,
 ) {
     SettingsPage(stringResource(R.string.feature_settings_notifications), navigation) {
         item { Intro(stringResource(R.string.feature_settings_notifications_intro)) }
@@ -341,6 +374,10 @@ internal fun NotificationsScreen(
                         }
                         if (access) {
                             OutlinedButton(onClick = onOpenAccess) { Text(stringResource(R.string.feature_settings_turn_off)) }
+                            onAllowAlerts?.let {
+                                Muted(stringResource(R.string.feature_settings_alerts_help), Modifier.padding(0.dp))
+                                OutlinedButton(onClick = it) { Text(stringResource(R.string.feature_settings_allow_alerts)) }
+                            }
                         } else {
                             Button(
                                 onClick = onOpenAccess,

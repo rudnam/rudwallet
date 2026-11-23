@@ -21,7 +21,10 @@ class PaymentListener : NotificationListenerService() {
 
     @Inject lateinit var sender: PaymentNotificationSender
 
+    @Inject lateinit var accessWatch: AccessWatch
+
     override fun onListenerConnected() {
+        accessWatch.working()
         // Catch up on what arrived while the listener wasn't running; the server recognises any it has seen.
         try {
             activeNotifications?.forEach(::keep)

@@ -187,6 +187,8 @@
     <string name="feature_settings_notifications_intro">Pay with PayPay, Google Wallet or a 三井住友カード card (Vpass), and the payment appears in Activity moments later.</string>
     <string name="feature_settings_access_on">On. RudWallet reads PayPay’s, Google Wallet’s and Vpass’s notifications.</string>
     <string name="feature_settings_access_off">Off. RudWallet needs notification access to read them.</string>
+    <string name="feature_settings_alerts_help">Allow notifications, and RudWallet tells you if this turns off.</string>
+    <string name="feature_settings_allow_alerts">Allow notifications</string>
     <string name="feature_settings_turn_off">Turn off</string>
     <string name="feature_settings_allow_access">Allow access</string>
     <string name="feature_settings_access_help">Android shows a list of apps: turn on RudWallet. If the switch is greyed out, open App info › ⋮ › Allow restricted settings for RudWallet, then try again.</string>

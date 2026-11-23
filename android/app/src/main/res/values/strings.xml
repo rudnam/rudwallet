@@ -3,4 +3,7 @@
     <string name="app_name" translatable="false">RudWallet</string>
     <string name="title_activity_main" translatable="false">RudWallet</string>
     <string name="notify_listener_label">RudWallet payment notifications</string>
+    <string name="notify_access_channel">Payment notification access</string>
+    <string name="notify_access_lost">Payments aren’t being recorded</string>
+    <string name="notify_access_lost_detail">Notification access is off. Tap to turn it on.</string>
 </resources>
