@@ -7,7 +7,9 @@ import com.rudnam.wallet.core.network.model.NetworkCategoryInput
 import com.rudnam.wallet.core.network.model.NetworkDeleteMe
 import com.rudnam.wallet.core.network.model.NetworkFileImport
 import com.rudnam.wallet.core.network.model.NetworkICCardImport
+import com.rudnam.wallet.core.network.model.NetworkImportBatches
 import com.rudnam.wallet.core.network.model.NetworkImportPreview
+import com.rudnam.wallet.core.network.model.NetworkUndoneImport
 import com.rudnam.wallet.core.network.model.NetworkImportResult
 import com.rudnam.wallet.core.network.model.NetworkIncomingNotification
 import com.rudnam.wallet.core.network.model.NetworkMcpToken
@@ -188,7 +190,16 @@ interface WalletNetworkDataSource {
      */
     suspend fun previewImport(source: String, csv: String, tzOffset: Int): NetworkImportPreview
 
+    /** The preview for these choices: what importing [body] would do, row by row (PayPay, BudgetBakers). */
+    suspend fun previewImport(source: String, body: NetworkFileImport, tzOffset: Int): NetworkImportPreview
+
     suspend fun import(source: String, body: NetworkFileImport, tzOffset: Int): NetworkImportResult
+
+    /** The latest imports that added records. */
+    suspend fun imports(): NetworkImportBatches
+
+    /** Moves an import's records to the trash ([restoreRecords] brings them back). */
+    suspend fun undoImport(id: Long): NetworkUndoneImport
 
     /** How a transit IC card's entries would be recorded ([body] without choices), or recording them. */
     suspend fun previewICCard(body: NetworkICCardImport): NetworkImportPreview

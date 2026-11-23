@@ -24,7 +24,7 @@ import kotlinx.serialization.Serializable
 @Serializable data object CardRoute
 
 fun NavGraphBuilder.importsScreens(navigation: ImportsNavigation, snackbar: SnackbarHostState) {
-    composable<ImportRoute> { Page { ImportDestination(navigation) } }
+    composable<ImportRoute> { Page { ImportDestination(navigation, snackbar) } }
     composable<ImportReviewRoute> { Page { ImportReviewDestination(navigation, snackbar) } }
     composable<CardRoute> { Page { CardDestination(navigation) } }
 }

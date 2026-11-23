@@ -12,6 +12,9 @@ enum class ImportSource(val key: String) {
 
     companion object {
         fun fromKey(key: String?) = entries.firstOrNull { it.key == key }
+
+        /** As the server names it in an import's history ("iccard" for the card). */
+        fun fromServer(name: String) = if (name == "iccard") IcCard else fromKey(name)
     }
 }
 
@@ -63,7 +66,12 @@ data class ImportCategoryGroup(
     val learned: Boolean,
 )
 
-enum class ImportRowStatus { New, Imported, Matched, Start, None }
+enum class ImportRowStatus {
+    New, Imported, Matched, Start, None,
+
+    /** Paid in a way the user chose not to import (PayPay). */
+    Skipped,
+}
 
 /** How one row of a statement, or one entry on a card, would be (or was) recorded. */
 data class ImportRow(
@@ -84,6 +92,9 @@ data class ImportRow(
     /** A rule knew it (MUFG): false means it needs a category. */
     val rule: Boolean = true,
     val matchedAccountId: Long? = null,
+    /** The accounts it goes to, by name (PayPay, BudgetBakers): one of the user's, or one the import makes. */
+    val account: String? = null,
+    val toAccount: String? = null,
 )
 
 /** The statement's or the card's balance against its account in the app (MUFG, IC card). */
@@ -122,6 +133,10 @@ data class ImportPreview(
     val gap: Boolean = false,
     /** The card's last four IDm digits. */
     val card: String? = null,
+    /** Rows imported before, already recorded another way, and left out ([ImportRowStatus]). */
+    val duplicates: Int = 0,
+    val matched: Int = 0,
+    val skipped: Int = 0,
 )
 
 /** What an import did. */
@@ -135,6 +150,26 @@ data class ImportResult(
     val problems: List<String>,
     val rows: List<ImportRow> = emptyList(),
     val balance: ImportBalance? = null,
+    /** The import, to undo; null when it changed nothing. */
+    val batchId: Long? = null,
+)
+
+/** An import that added records, as the import page lists them. */
+data class ImportBatch(
+    val id: Long,
+    val source: ImportSource?,
+    /** An IC card's last digits. */
+    val label: String,
+    val from: java.time.Instant?,
+    val to: java.time.Instant?,
+    val imported: Int,
+    val duplicates: Int,
+    val matched: Int,
+    val skipped: Int,
+    /** How many of its records are still in the wallet. */
+    val remaining: Int,
+    val createdAt: java.time.Instant,
+    val undone: Boolean,
 )
 
 /** Where a group of records goes: an account, [NEW] (with [newName]) or [SKIP]. */

@@ -118,7 +118,7 @@ type PayPayPreview struct {
 	Duplicates int         `json:"duplicates"`
 	Matched    int         `json:"matched"`
 	Skipped    int         `json:"skipped"`
-	Rows       []ImportRow `json:"rows"`
+	Rows       []ImportRow `json:"file_rows"`
 }
 
 type payPayRow struct {

@@ -5,6 +5,7 @@ import com.rudnam.wallet.core.model.CategoryKind
 import com.rudnam.wallet.core.model.CategoryPick
 import com.rudnam.wallet.core.model.IcCardRead
 import com.rudnam.wallet.core.model.ImportAccountGroup
+import com.rudnam.wallet.core.model.ImportBatch
 import com.rudnam.wallet.core.model.ImportBalance
 import com.rudnam.wallet.core.model.ImportCategoryGroup
 import com.rudnam.wallet.core.model.ImportChoices
@@ -75,6 +76,19 @@ data class NetworkImportRow(
     val status: String = "new",
 )
 
+/** A row of a PayPay or BudgetBakers file as the import records it, or would ("file_rows"). */
+@Serializable
+data class NetworkImportFileRow(
+    @SerialName("occurred_at") val occurredAt: String,
+    val kind: String = "expense",
+    val amount: Long = 0,
+    val payee: String = "",
+    val note: String = "",
+    val account: String = "",
+    @SerialName("to_account") val toAccount: String? = null,
+    val status: String = "new",
+)
+
 @Serializable
 data class NetworkImportBalance(
     @SerialName("account_id") val accountId: Long? = null,
@@ -106,6 +120,11 @@ data class NetworkImportPreview(
     val balance: NetworkImportBalance? = null,
     val gap: Boolean = false,
     val card: String? = null,
+    // What importing does (PayPay, BudgetBakers: the import run and rolled back).
+    val duplicates: Int = 0,
+    val matched: Int = 0,
+    val skipped: Int = 0,
+    @SerialName("file_rows") val fileRows: List<NetworkImportFileRow> = emptyList(),
 )
 
 @Serializable
@@ -119,7 +138,31 @@ data class NetworkImportResult(
     val problems: List<String> = emptyList(),
     val rows: List<NetworkImportRow> = emptyList(),
     val balance: NetworkImportBalance? = null,
+    @SerialName("batch_id") val batchId: Long? = null,
 )
+
+@Serializable
+data class NetworkImportBatch(
+    val id: Long,
+    val source: String,
+    val label: String = "",
+    val from: String? = null,
+    val to: String? = null,
+    val imported: Int = 0,
+    val duplicates: Int = 0,
+    val matched: Int = 0,
+    val skipped: Int = 0,
+    val remaining: Int = 0,
+    @SerialName("created_at") val createdAt: String,
+    @SerialName("undone_at") val undoneAt: String? = null,
+)
+
+@Serializable
+data class NetworkImportBatches(val imports: List<NetworkImportBatch> = emptyList())
+
+/** The records an undone import moved to the trash. */
+@Serializable
+data class NetworkUndoneImport(val deleted: Int = 0, val ids: List<Long> = emptyList())
 
 @Serializable
 data class NetworkAccountChoice(val name: String, @SerialName("account_id") val accountId: Long, @SerialName("new_name") val newName: String? = null)
@@ -163,17 +206,34 @@ private fun NetworkImportRow.asModel(source: ImportSource): ImportRow {
         amount = amount ?: (into - out),
         balance = balance,
         kind = TransactionKind.fromApi(kind),
-        status = when (status) {
-            "imported" -> ImportRowStatus.Imported
-            "matched" -> ImportRowStatus.Matched
-            "start" -> ImportRowStatus.Start
-            "none" -> ImportRowStatus.None
-            else -> ImportRowStatus.New
-        },
+        status = status(status),
         fromRole = fromRole,
         toRole = toRole,
         rule = rule,
         matchedAccountId = matchedAccountId,
+    )
+}
+
+private fun status(text: String) = when (text) {
+    "imported" -> ImportRowStatus.Imported
+    "matched" -> ImportRowStatus.Matched
+    "start" -> ImportRowStatus.Start
+    "none" -> ImportRowStatus.None
+    "skipped" -> ImportRowStatus.Skipped
+    else -> ImportRowStatus.New
+}
+
+private fun NetworkImportFileRow.asModel(): ImportRow {
+    val kind = TransactionKind.fromApi(kind)
+    return ImportRow(
+        date = day(occurredAt)!!,
+        time = OffsetDateTime.parse(occurredAt).atZoneSameInstant(ZoneId.systemDefault()).toLocalTime().toString().take(5),
+        text = payee.ifEmpty { note },
+        amount = if (kind == TransactionKind.Expense) -amount else amount,
+        kind = kind,
+        status = status(status),
+        account = account.ifEmpty { null },
+        toAccount = toAccount?.ifEmpty { null },
     )
 }
 
@@ -202,6 +262,9 @@ fun NetworkImportPreview.asModel(source: ImportSource): ImportPreview {
             candidates = it.candidates,
         )
     }
+    val rows = if (fileRows.isNotEmpty()) fileRows.map { it.asModel() } else rows.map { it.asModel(source) }
+    // A statement's or card's rows carry their status; a file's preview counts them.
+    val counted = fileRows.isNotEmpty() || duplicates + matched + skipped > 0
     return ImportPreview(
         source = source,
         records = records,
@@ -212,15 +275,35 @@ fun NetworkImportPreview.asModel(source: ImportSource): ImportPreview {
         categories = categories.map { ImportCategoryGroup(it.name, CategoryKind.fromApi(it.kind), it.count, it.total, it.categoryId, it.newName, it.learned) },
         newCategories = newCategories.map { it.asModel() },
         problems = problems,
-        rows = rows.map { it.asModel(source) },
+        rows = rows,
         balance = balance?.asModel(),
         gap = gap,
         card = card,
+        duplicates = if (counted) duplicates else rows.count { it.status == ImportRowStatus.Imported },
+        matched = if (counted) matched else rows.count { it.status == ImportRowStatus.Matched },
+        skipped = if (counted) skipped else rows.count { it.status == ImportRowStatus.Skipped },
     )
 }
 
+private fun moment(text: String?) = text?.let { OffsetDateTime.parse(it).toInstant() }
+
+fun NetworkImportBatch.asModel() = ImportBatch(
+    id = id,
+    source = ImportSource.fromServer(source),
+    label = label,
+    from = moment(from),
+    to = moment(to),
+    imported = imported,
+    duplicates = duplicates,
+    matched = matched,
+    skipped = skipped,
+    remaining = remaining,
+    createdAt = moment(createdAt)!!,
+    undone = undoneAt != null,
+)
+
 fun NetworkImportResult.asModel(source: ImportSource) = ImportResult(
-    imported, duplicates, matched, skipped, accountsCreated, categoriesCreated, problems, rows.map { it.asModel(source) }, balance?.asModel(),
+    imported, duplicates, matched, skipped, accountsCreated, categoriesCreated, problems, rows.map { it.asModel(source) }, balance?.asModel(), batchId,
 )
 
 private fun AccountPick.asNetwork() = NetworkAccountChoice(key, accountId, newName?.takeIf { accountId == AccountPick.NEW && it.isNotBlank() }?.trim())

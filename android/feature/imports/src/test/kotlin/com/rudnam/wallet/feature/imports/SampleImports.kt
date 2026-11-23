@@ -39,6 +39,34 @@ object SampleImports {
         problems = listOf("line 9: no amount"),
     )
 
+    /** The same file as the server previews it now: what importing does, row by row. */
+    val payPayCounted = payPay.copy(
+        new = 3,
+        duplicates = 9,
+        matched = 1,
+        skipped = 1,
+        rows = buildList {
+            add(ImportRow(day(14), time = "08:12", text = "ドトール", amount = -480, kind = TransactionKind.Expense, status = ImportRowStatus.New, account = "PayPay"))
+            add(ImportRow(day(13), time = "19:40", text = "ラーメン太郎", amount = -1_280, kind = TransactionKind.Expense, status = ImportRowStatus.New, account = "PayPay Card"))
+            add(ImportRow(day(12), time = "09:00", text = "PayPay", amount = 3_000, kind = TransactionKind.Transfer, status = ImportRowStatus.New, account = "MUFG", toAccount = "PayPay"))
+            add(ImportRow(day(11), time = "12:30", text = "ファミリーマート", amount = -402, kind = TransactionKind.Expense, status = ImportRowStatus.Matched, account = "PayPay"))
+            add(ImportRow(day(10), time = "10:00", text = "セブン-イレブン", amount = -120, kind = TransactionKind.Expense, status = ImportRowStatus.Skipped, account = "PayPayポイント"))
+            for (d in 1..9) add(ImportRow(day(d), time = "08:0$d", text = "ドトール", amount = -480, kind = TransactionKind.Expense, status = ImportRowStatus.Imported, account = "PayPay"))
+        },
+    )
+
+    /** An import that added three records, and the one before it, undone. */
+    val batches = listOf(
+        com.rudnam.wallet.core.model.ImportBatch(
+            7, ImportSource.PayPay, "", java.time.Instant.parse("2026-11-01T00:00:00Z"), java.time.Instant.parse("2026-11-14T10:00:00Z"),
+            imported = 3, duplicates = 9, matched = 1, skipped = 1, remaining = 3, createdAt = java.time.Instant.parse("2026-11-14T11:00:00Z"), undone = false,
+        ),
+        com.rudnam.wallet.core.model.ImportBatch(
+            6, ImportSource.IcCard, "CDEF", java.time.Instant.parse("2026-11-10T00:00:00Z"), java.time.Instant.parse("2026-11-13T00:00:00Z"),
+            imported = 2, duplicates = 1, matched = 0, skipped = 0, remaining = 0, createdAt = java.time.Instant.parse("2026-11-13T09:00:00Z"), undone = true,
+        ),
+    )
+
     val card = IcCardRead("0123456789ABCDEF", emptyList())
 
     val icCard = ImportPreview(

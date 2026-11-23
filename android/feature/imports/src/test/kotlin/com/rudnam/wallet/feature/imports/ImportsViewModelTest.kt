@@ -17,6 +17,7 @@ import com.rudnam.wallet.core.testing.TestImportRepository
 import com.rudnam.wallet.core.testing.TestWalletRepository
 import com.rudnam.wallet.feature.imports.navigation.ImportReviewRoute
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -132,5 +133,54 @@ class ImportsViewModelTest {
         val reviewed = review(source = "ic", uri = null).stage.first { it is ReviewStage.Ready } as ReviewStage.Ready
         assertEquals("CDEF", reviewed.preview.card)
         assertTrue(reviewed.choices.matchBalance)
+    }
+
+    @Test
+    fun `changing where a way of paying goes counts the file again, keeping the choices`() = runTest {
+        val vm = review()
+        vm.stage.first { it is ReviewStage.Ready }
+        imports.rechecked = Fetched.Done(SampleImports.payPayCounted)
+        vm.setAccount("PayPayポイント", 3)
+        vm.setCategory("expense:ラーメン太郎", CategoryValue.Existing(10))
+        val ready = vm.stage.first { it is ReviewStage.Ready && !it.checking && it.preview.duplicates > 0 } as ReviewStage.Ready
+        assertEquals(3, ready.preview.new)
+        assertEquals(9, ready.preview.duplicates)
+        assertEquals(SampleImports.payPayCounted.rows, ready.preview.rows)
+        assertEquals(3L, ready.choices.accounts["PayPayポイント"])
+        assertEquals(CategoryValue.Existing(10), ready.choices.categories["expense:ラーメン太郎"])
+        assertEquals(AccountPick("PayPayポイント", 3), imports.rechecks.single().accounts[2])
+    }
+
+    @Test
+    fun `an import just made can be undone, and brought back`() = runTest {
+        imports.result = Fetched.Done(com.rudnam.wallet.core.model.ImportResult(3, 0, 1, 0, 1, 0, emptyList(), batchId = 7))
+        val vm = review()
+        vm.stage.first { it is ReviewStage.Ready }
+        vm.submit()
+        vm.stage.first { it is ReviewStage.Done }
+        vm.undo()
+        val undone = vm.stage.first { (it as? ReviewStage.Done)?.undo is UndoState.Undone } as ReviewStage.Done
+        assertEquals(listOf(7L), imports.undone)
+        assertEquals(UndoState.Undone(listOf(41L, 42L)), undone.undo)
+        vm.undo()
+        vm.stage.first { (it as? ReviewStage.Done)?.undo == UndoState.Idle }
+        assertEquals(listOf(listOf(41L, 42L)), imports.restored)
+    }
+
+    @Test
+    fun `the import page lists recent imports, and undoing one offers to bring it back`() = runTest {
+        imports.batches = SampleImports.batches
+        val vm = ImportHistoryViewModel(wallet, imports)
+        vm.refresh()
+        assertEquals(SampleImports.batches, vm.state.first { it.batches.isNotEmpty() }.batches)
+        val events = mutableListOf<HistoryEvent>()
+        val collecting = backgroundScope.launch(kotlinx.coroutines.test.UnconfinedTestDispatcher(testScheduler)) { vm.events.collect { events += it } }
+        vm.undo(SampleImports.batches[0])
+        val after = vm.state.first { s -> s.batches.firstOrNull()?.undone == true }
+        assertEquals(0, after.batches[0].remaining)
+        assertEquals(HistoryEvent.Undone(2, listOf(41L, 42L)), events.single())
+        vm.restore(listOf(41L, 42L))
+        assertFalse(vm.state.first { s -> s.batches.firstOrNull()?.undone == false }.batches[0].undone)
+        collecting.cancel()
     }
 }

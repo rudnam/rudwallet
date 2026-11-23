@@ -35,8 +35,10 @@ type ImportResult struct {
 	// BatchID is the import, for POST /api/imports/{id}/undo; absent when
 	// it added nothing.
 	BatchID *int64 `json:"batch_id,omitempty"`
-	// Rows: each row of a PayPay or BudgetBakers file, and what became of it.
-	Rows []ImportRow `json:"rows,omitempty"`
+	// Rows: each row of a PayPay or BudgetBakers file, and what became of
+	// it. Not "rows", which MUFG and IC card results use for rows of their
+	// own shape, and which older Android builds read as those.
+	Rows []ImportRow `json:"file_rows,omitempty"`
 }
 
 const maxProblems = 20
@@ -82,7 +84,7 @@ type BudgetBakersPreview struct {
 	New        int         `json:"new"`
 	Duplicates int         `json:"duplicates"`
 	Matched    int         `json:"matched"`
-	Rows       []ImportRow `json:"rows"`
+	Rows       []ImportRow `json:"file_rows"`
 }
 
 // bbRulePrefix marks the account remembered for a BudgetBakers account (by

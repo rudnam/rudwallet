@@ -91,6 +91,9 @@ class OfflineFirstRecordRepositoryTest {
         override suspend fun resendConfirmation() = Unit
         override suspend fun previewImport(source: String, csv: String, tzOffset: Int) = com.rudnam.wallet.core.network.model.NetworkImportPreview()
         override suspend fun import(source: String, body: com.rudnam.wallet.core.network.model.NetworkFileImport, tzOffset: Int) = com.rudnam.wallet.core.network.model.NetworkImportResult()
+        override suspend fun previewImport(source: String, body: com.rudnam.wallet.core.network.model.NetworkFileImport, tzOffset: Int) = com.rudnam.wallet.core.network.model.NetworkImportPreview()
+        override suspend fun imports() = com.rudnam.wallet.core.network.model.NetworkImportBatches()
+        override suspend fun undoImport(id: Long) = com.rudnam.wallet.core.network.model.NetworkUndoneImport()
         override suspend fun previewICCard(body: com.rudnam.wallet.core.network.model.NetworkICCardImport) = com.rudnam.wallet.core.network.model.NetworkImportPreview()
         override suspend fun importICCard(body: com.rudnam.wallet.core.network.model.NetworkICCardImport) = com.rudnam.wallet.core.network.model.NetworkImportResult()
         override suspend fun rules() = com.rudnam.wallet.core.network.model.NetworkRules()

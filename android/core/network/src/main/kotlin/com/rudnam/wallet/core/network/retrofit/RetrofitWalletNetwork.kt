@@ -10,7 +10,9 @@ import com.rudnam.wallet.core.network.model.NetworkDeleteMe
 import com.rudnam.wallet.core.network.model.NetworkCardRuleInput
 import com.rudnam.wallet.core.network.model.NetworkFileImport
 import com.rudnam.wallet.core.network.model.NetworkICCardImport
+import com.rudnam.wallet.core.network.model.NetworkImportBatches
 import com.rudnam.wallet.core.network.model.NetworkImportPreview
+import com.rudnam.wallet.core.network.model.NetworkUndoneImport
 import com.rudnam.wallet.core.network.model.NetworkImportResult
 import com.rudnam.wallet.core.network.model.NetworkIncomingNotification
 import com.rudnam.wallet.core.network.model.NetworkIncomingNotifications
@@ -228,8 +230,17 @@ internal interface WalletApi {
     @POST("api/import/{source}?preview=1")
     suspend fun previewImport(@Path("source") source: String, @Body csv: RequestBody, @Query("tz_offset") tzOffset: Int): NetworkImportPreview
 
+    @POST("api/import/{source}?preview=1")
+    suspend fun previewImportWith(@Path("source") source: String, @Body body: NetworkFileImport, @Query("tz_offset") tzOffset: Int): NetworkImportPreview
+
     @POST("api/import/{source}")
     suspend fun import(@Path("source") source: String, @Body body: NetworkFileImport, @Query("tz_offset") tzOffset: Int): NetworkImportResult
+
+    @GET("api/imports")
+    suspend fun imports(): NetworkImportBatches
+
+    @POST("api/imports/{id}/undo")
+    suspend fun undoImport(@Path("id") id: Long): NetworkUndoneImport
 
     @POST("api/import/ic-card?preview=1")
     suspend fun previewICCard(@Body body: NetworkICCardImport): NetworkImportPreview
@@ -348,7 +359,13 @@ internal class RetrofitWalletNetwork @Inject constructor(retrofit: Retrofit, pri
     override suspend fun previewImport(source: String, csv: String, tzOffset: Int) =
         call { api.previewImport(source, csv.toRequestBody("text/csv; charset=utf-8".toMediaType()), tzOffset) }
 
+    override suspend fun previewImport(source: String, body: NetworkFileImport, tzOffset: Int) = call { api.previewImportWith(source, body, tzOffset) }
+
     override suspend fun import(source: String, body: NetworkFileImport, tzOffset: Int) = call { api.import(source, body, tzOffset) }
+
+    override suspend fun imports() = call { api.imports() }
+
+    override suspend fun undoImport(id: Long) = call { api.undoImport(id) }
 
     override suspend fun previewICCard(body: NetworkICCardImport) = call { api.previewICCard(body) }
 
