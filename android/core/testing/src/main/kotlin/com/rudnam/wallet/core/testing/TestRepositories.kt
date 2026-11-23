@@ -234,6 +234,28 @@ class TestImportRepository : com.rudnam.wallet.core.data.repository.ImportReposi
     override suspend fun previewCard(card: com.rudnam.wallet.core.model.IcCardRead) = preview!!
     override suspend fun importCard(card: com.rudnam.wallet.core.model.IcCardRead, choices: com.rudnam.wallet.core.model.ImportChoices) =
         result.also { imported += com.rudnam.wallet.core.model.ImportSource.IcCard to choices }
+
+    /** What [previewWith] answers (else [preview]), and the choices it was asked with. */
+    var rechecked: com.rudnam.wallet.core.data.repository.Fetched<com.rudnam.wallet.core.model.ImportPreview>? = null
+    val rechecks = mutableListOf<com.rudnam.wallet.core.model.ImportChoices>()
+    var batches: List<com.rudnam.wallet.core.model.ImportBatch> = emptyList()
+    var undoIds: List<Long> = listOf(41, 42)
+    val undone = mutableListOf<Long>()
+    val restored = mutableListOf<List<Long>>()
+
+    override suspend fun previewWith(source: com.rudnam.wallet.core.model.ImportSource, csv: String, choices: com.rudnam.wallet.core.model.ImportChoices) =
+        (rechecked ?: preview!!).also { rechecks += choices }
+    override suspend fun history() = com.rudnam.wallet.core.data.repository.Fetched.Done(batches)
+    override suspend fun undo(batchId: Long): com.rudnam.wallet.core.data.repository.Fetched<List<Long>> {
+        undone += batchId
+        batches = batches.map { if (it.id == batchId) it.copy(undone = true, remaining = 0) else it }
+        return com.rudnam.wallet.core.data.repository.Fetched.Done(undoIds)
+    }
+    override suspend fun restore(ids: List<Long>): com.rudnam.wallet.core.data.repository.Fetched<Unit> {
+        restored += ids
+        batches = batches.map { if (it.undone) it.copy(undone = false, remaining = it.imported) else it }
+        return com.rudnam.wallet.core.data.repository.Fetched.Done(Unit)
+    }
 }
 
 /** An [AuthRepository] that answers [result], and keeps what it's asked. */

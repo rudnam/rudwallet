@@ -19,6 +19,8 @@ import com.rudnam.wallet.core.model.ImportSource
 import com.rudnam.wallet.core.model.Wallet
 import com.rudnam.wallet.feature.imports.navigation.ImportReviewRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -99,9 +101,29 @@ sealed interface ReviewStage {
         val busy: Boolean = false,
         /** Why the import didn't happen: the server's reason, or empty for offline. */
         val error: String? = null,
+        /** The counts and rows are being worked out again for changed choices. */
+        val checking: Boolean = false,
     ) : ReviewStage
 
-    data class Done(val preview: ImportPreview, val result: ImportResult, val matchBalance: Boolean) : ReviewStage
+    data class Done(
+        val preview: ImportPreview,
+        val result: ImportResult,
+        val matchBalance: Boolean,
+        val undo: UndoState = UndoState.Idle,
+    ) : ReviewStage
+}
+
+/** Undoing an import just made, from its summary. */
+sealed interface UndoState {
+    data object Idle : UndoState
+
+    data object Busy : UndoState
+
+    /** Its records are in the trash; [ids] bring them back. */
+    data class Undone(val ids: List<Long>) : UndoState
+
+    /** The server's reason, or empty for offline. */
+    data class Failed(val message: String) : UndoState
 }
 
 /** What the review's controls do. */
@@ -116,6 +138,8 @@ interface ReviewActions {
     fun setMatchBalance(on: Boolean)
     fun submit()
     fun retry()
+    /** After the import: moves what it added to the trash, or ([UndoState.Undone]) brings it back. */
+    fun undo()
 }
 
 @HiltViewModel
@@ -164,9 +188,67 @@ class ImportReviewViewModel @Inject constructor(
 
     private fun choices(change: (Choices) -> Choices) = ready { it.copy(choices = change(it.choices), error = null) }
 
-    override fun setAccount(key: String, accountId: Long) = choices { it.copy(accounts = it.accounts + (key to accountId)) }
+    override fun setAccount(key: String, accountId: Long) {
+        choices { it.copy(accounts = it.accounts + (key to accountId)) }
+        recheck()
+    }
 
-    override fun setNewName(key: String, name: String) = choices { it.copy(newNames = it.newNames + (key to name.take(60))) }
+    override fun setNewName(key: String, name: String) {
+        choices { it.copy(newNames = it.newNames + (key to name.take(60))) }
+        recheck()
+    }
+
+    private var checking: Job? = null
+
+    /**
+     * Where a way of paying or an account goes changes what's already
+     * recorded there, so a file's counts and rows are asked for again
+     * (PayPay and BudgetBakers previews take the choices), shortly after
+     * the last change. The choices the user made stay.
+     */
+    private fun recheck() {
+        if (source != ImportSource.PayPay && source != ImportSource.BudgetBakers) return
+        val text = csv ?: return
+        checking?.cancel()
+        ready { it.copy(checking = true) }
+        checking = viewModelScope.launch {
+            delay(RECHECK_DELAY_MS)
+            val asked = _stage.value as? ReviewStage.Ready ?: return@launch
+            val fetched = imports.previewWith(source, text, asked.choices.asImport(asked.preview))
+            ready { r ->
+                if (fetched !is Fetched.Done) return@ready r.copy(checking = false)
+                val p = fetched.value
+                r.copy(
+                    checking = false,
+                    preview = r.preview.copy(new = p.new, duplicates = p.duplicates, matched = p.matched, skipped = p.skipped, rows = p.rows),
+                )
+            }
+        }
+    }
+
+    override fun undo() {
+        val d = _stage.value as? ReviewStage.Done ?: return
+        val batch = d.result.batchId ?: return
+        val undone = d.undo as? UndoState.Undone
+        if (d.undo == UndoState.Busy) return
+        _stage.value = d.copy(undo = UndoState.Busy)
+        viewModelScope.launch {
+            val next = if (undone != null) {
+                when (val f = imports.restore(undone.ids)) {
+                    is Fetched.Done -> UndoState.Idle
+                    is Fetched.Failed -> UndoState.Failed(f.message)
+                    else -> UndoState.Failed("")
+                }
+            } else {
+                when (val f = imports.undo(batch)) {
+                    is Fetched.Done -> UndoState.Undone(f.value)
+                    is Fetched.Failed -> UndoState.Failed(f.message)
+                    else -> UndoState.Failed("")
+                }
+            }
+            _stage.update { (it as? ReviewStage.Done)?.copy(undo = next) ?: it }
+        }
+    }
 
     override fun setCategory(groupKey: String, value: CategoryValue) = choices { it.copy(categories = it.categories + (groupKey to value)) }
 
@@ -187,7 +269,9 @@ class ImportReviewViewModel @Inject constructor(
     override fun submit() {
         val r = _stage.value as? ReviewStage.Ready ?: return
         if (r.busy) return
-        _stage.value = r.copy(busy = true, error = null)
+        // The import works out the same counts itself; no need to wait for them.
+        checking?.cancel()
+        _stage.value = r.copy(busy = true, error = null, checking = false)
         viewModelScope.launch {
             val choices = r.choices.asImport(r.preview)
             val result = if (source == ImportSource.IcCard) {
@@ -203,3 +287,5 @@ class ImportReviewViewModel @Inject constructor(
         }
     }
 }
+
+private const val RECHECK_DELAY_MS = 400L

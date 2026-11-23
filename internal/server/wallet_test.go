@@ -771,6 +771,54 @@ func TestImportPayPayEnglish(t *testing.T) {
 	}
 }
 
+// Importing an overlapping export again adds nothing, even when a row's key
+// changed: here points earned later on a payment come above it in the newer
+// export, under the same 取引番号. A top-up already recorded from the bank's
+// statement isn't added again either.
+func TestImportPayPayOverlappingExports(t *testing.T) {
+	ts := newTestServer(t)
+	c := newClient(t, ts)
+	c.signup("a@example.com")
+	var paypay, bank wallet.Account
+	c.do("POST", "/api/accounts", map[string]any{"name": "PayPay", "kind": "e_money"}, &paypay)
+	c.do("POST", "/api/accounts", map[string]any{"name": "Bank", "kind": "bank"}, &bank)
+	fromBank := map[string]any{"kind": "transfer", "amount": 5000, "account_id": bank.ID, "to_account_id": paypay.ID,
+		"occurred_at": time.Date(2026, 10, 24, 3, 0, 0, 0, time.UTC), "note": "口座振替 · RTK ペイペイ"}
+	if code := c.do("POST", "/api/transactions", fromBank, nil); code != 201 {
+		t.Fatalf("create record: %d", code)
+	}
+
+	header := "Date & Time,Amount Outgoing (Yen),Amount Incoming (Yen),Amount Outgoing Overseas,Currency,Exchange Rate (Yen),Country Paid In,Transaction Type,Business Name,Method,Payment Option,User,Transaction ID"
+	payment := "2026/09/25 19:14:00,\"5,314\",-,-,-,-,-,Payment,Uber Eats,PayPay Balance,-,-,o-01"
+	accounts := []map[string]any{
+		{"name": "PayPay残高", "account_id": paypay.ID},
+		{"name": "PayPayポイント", "account_id": wallet.SkipAccount},
+		{"name": "Bank", "account_id": bank.ID},
+	}
+	var res wallet.ImportResult
+	if code := c.do("POST", "/api/import/paypay", map[string]any{"csv": header + "\n" + payment, "accounts": accounts}, &res); code != 200 || res.Imported != 1 {
+		t.Fatalf("first import: %d %+v", code, res)
+	}
+
+	newer := strings.Join([]string{
+		header,
+		"2026/10/24 23:48:44,-,\"5,000\",-,-,-,-,Top-Up,PayPay,Bank,-,-,o-02",
+		"2026/10/02 08:00:00,-,27,-,-,-,-,\"Points, Balance Earned\",Uber Eats,PayPay Point,-,-,o-01",
+		payment,
+	}, "\n")
+	if code := c.do("POST", "/api/import/paypay", map[string]any{"csv": newer, "accounts": accounts}, &res); code != 200 {
+		t.Fatalf("second import: %d", code)
+	}
+	if res.Imported != 0 || res.Duplicates != 1 || res.Matched != 1 || res.Skipped != 1 {
+		t.Errorf("second import %+v (want the payment already imported, the top-up already recorded, the points left out)", res)
+	}
+	var list []wallet.Transaction
+	c.do("GET", "/api/transactions?account_id="+strconv.FormatInt(paypay.ID, 10), nil, &list)
+	if len(list) != 2 {
+		t.Errorf("PayPay records %+v (want the payment and the top-up, once each)", list)
+	}
+}
+
 // A way of paying can be left out of a PayPay import, e.g. points for
 // someone who doesn't track them, and that choice is remembered.
 func TestImportPayPaySkipsAWayOfPaying(t *testing.T) {

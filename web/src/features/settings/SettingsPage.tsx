@@ -1,7 +1,7 @@
 // Settings: a short menu; each entry opens its own page (?section=…), with
 // a way back. Payment notifications, what they learned, Claude, accounts,
 // categories, currency, and import.
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { categoryPath, inOrder, isSubcategory, subcategoriesOf } from '../../categories';
 import { api, errorMessage, type Me, type Account, type AccountKind, type Category, type ImportResult, type PayPayPreview, type BudgetBakersPreview, type MUFGPreview, type MUFGResult, type MUFGRole, type MUFGBalance, skipAccount } from '../../api';
 import { CategoryIcon, glyphKey, glyphs, Icon, icons, Plus } from '../../components/Icon';
@@ -18,7 +18,7 @@ import { LanguageSettings } from './LanguageSettings';
 import { RulesSettings } from './RulesSettings';
 import { serverText, t, tn, tx, type Key } from '../../i18n';
 import { language, languages } from '../../language';
-import { ImportCategories, ImportSummary, categoryChoices, shortDate, suggestedChoices, type Choices } from './ImportCategories';
+import { FileRows, ImportCategories, ImportOutlookCard, ImportSummary, RecentImports, categoryChoices, importsChanged, shortDate, suggestedChoices, type Choices } from './ImportCategories';
 import { ImportAccount, accountChoices, type NewNames } from './ImportAccount';
 import { ICCardImport } from './ICCardImport';
 
@@ -855,12 +855,45 @@ function General() {
 function Import() {
   return (
     <>
+      <p className="muted">{t('Import from a file or a card. What’s already in RudWallet is skipped, and you can undo any import.')}</p>
+      <RecentImports />
       <PayPayImport />
       <MUFGImport />
       <ICCardImport />
       <BudgetBakersImport />
     </>
   );
+}
+
+/**
+ * Asks for a preview again shortly after the choices in deps change (where
+ * a way of paying or an account goes changes what's already recorded
+ * there). ask returns how to apply its answer, which is dropped if newer
+ * choices were made meanwhile. skipNext leaves out the change that loads a
+ * preview's own suggestions.
+ */
+function useRecheck(active: boolean, deps: unknown[], ask: () => Promise<() => void>) {
+  const skip = useRef(false);
+  const latest = useRef(0);
+  const askRef = useRef(ask);
+  askRef.current = ask;
+  useEffect(() => {
+    if (!active) return;
+    if (skip.current) {
+      skip.current = false;
+      return;
+    }
+    const n = ++latest.current;
+    const id = setTimeout(() => {
+      askRef.current().then(
+        (apply) => n === latest.current && apply(),
+        () => {},
+      );
+    }, 400);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+  return { skipNext: () => (skip.current = true) };
 }
 
 /** English names for the ways of paying PayPay lists most often. */
@@ -887,6 +920,16 @@ function PayPayImport() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [fileKey, setFileKey] = useState(0);
+  const [checking, setChecking] = useState(false);
+  const recheck = useRecheck(preview !== null, [choice, names], async () => {
+    setChecking(true);
+    try {
+      const p = await api.previewPayPayWith(csv, accountChoices(choice, names), []);
+      return () => setPreview((cur) => cur && { ...cur, new: p.new, duplicates: p.duplicates, matched: p.matched, skipped: p.skipped, file_rows: p.file_rows });
+    } finally {
+      setChecking(false);
+    }
+  });
 
   function reset() {
     setCsv('');
@@ -902,6 +945,7 @@ function PayPayImport() {
       const text = await file.text();
       const p = await api.previewPayPay(text);
       setCsv(text);
+      recheck.skipNext();
       setPreview(p);
       setChoice(Object.fromEntries(p.methods.map((m) => [m.method, m.skip ? skipAccount : (m.account_id ?? 0)])));
       setNames(Object.fromEntries(p.methods.map((m) => [m.method, m.new_name])));
@@ -921,6 +965,7 @@ function PayPayImport() {
     try {
       setResult(await api.importPayPay(csv, accountChoices(choice, names), categoryChoices(preview?.categories ?? [], cats)));
       reset();
+      importsChanged();
       await w.refresh();
     } catch (err) {
       setError(errorMessage(err));
@@ -956,6 +1001,7 @@ function PayPayImport() {
       )}
       {preview && preview.records > 0 && (
         <form className="stack" onSubmit={submit}>
+          <ImportOutlookCard outlook={preview} from={preview.from} to={preview.to} checking={checking} />
           <p>
             {!preview.from || !preview.to
               ? tn(preview.records, '{n} payment. Choose where each way of paying is recorded:', '{n} payments. Choose where each way of paying is recorded:')
@@ -1002,16 +1048,13 @@ function PayPayImport() {
               </ul>
             </div>
           )}
-          <div className="row end">
+          {preview.file_rows && <FileRows rows={preview.file_rows} />}
+          <div className="row end import-actions">
             <button type="button" className="secondary" onClick={reset} disabled={busy}>
               {t('Cancel')}
             </button>
-            <button type="submit" disabled={busy}>
-              {busy
-                ? t('Importing…')
-                : Object.values(choice).includes(skipAccount)
-                  ? t('Import the rest')
-                  : tn(preview.records, 'Import {n} payment', 'Import {n} payments')}
+            <button type="submit" disabled={busy || (preview.new === 0 && !checking)}>
+              {busy ? t('Importing…') : preview.new === 0 ? t('Nothing to import') : tn(preview.new, 'Import {n} payment', 'Import {n} payments')}
             </button>
           </div>
         </form>
@@ -1131,6 +1174,7 @@ function MUFGImport() {
     setError('');
     try {
       setResult(await api.importMUFG(csv, accountChoices(choice, names), categoryChoices(preview?.categories ?? [], cats), match));
+      importsChanged();
       reset();
       await w.refresh();
     } catch (err) {
@@ -1162,6 +1206,11 @@ function MUFGImport() {
       )}
       {preview && (
         <form className="stack" onSubmit={submit}>
+          <ImportOutlookCard
+            outlook={{ new: preview.new, duplicates: preview.rows.filter((r) => r.status === 'imported').length, matched: preview.rows.filter((r) => r.status === 'matched').length }}
+            from={preview.balance.from}
+            to={preview.balance.to}
+          />
           <p>
             {tn(preview.records, '{n} row, {from} to {to}. Choose the accounts:', '{n} rows, {from} to {to}. Choose the accounts:', {
               from: shortDate(preview.balance.from),
@@ -1275,6 +1324,16 @@ function BudgetBakersImport() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [fileKey, setFileKey] = useState(0);
+  const [checking, setChecking] = useState(false);
+  const recheck = useRecheck(preview !== null, [choice, names], async () => {
+    setChecking(true);
+    try {
+      const p = await api.previewBudgetBakersWith(csv, accountChoices(choice, names), []);
+      return () => setPreview((cur) => cur && { ...cur, new: p.new, duplicates: p.duplicates, matched: p.matched, file_rows: p.file_rows });
+    } finally {
+      setChecking(false);
+    }
+  });
 
   function reset() {
     setCsv('');
@@ -1290,6 +1349,7 @@ function BudgetBakersImport() {
       const text = await file.text();
       const p = await api.previewBudgetBakers(text);
       setCsv(text);
+      recheck.skipNext();
       setPreview(p);
       setChoice(Object.fromEntries(p.accounts.map((a) => [a.name, a.account_id ?? 0])));
       setNames(Object.fromEntries(p.accounts.map((a) => [a.name, a.name])));
@@ -1309,6 +1369,7 @@ function BudgetBakersImport() {
     try {
       setResult(await api.importBudgetBakers(csv, accountChoices(choice, names), categoryChoices(preview?.categories ?? [], cats)));
       reset();
+      importsChanged();
       await w.refresh();
     } catch (err) {
       setError(errorMessage(err));
@@ -1344,6 +1405,7 @@ function BudgetBakersImport() {
       )}
       {preview && preview.records > 0 && (
         <form className="stack" onSubmit={submit}>
+          <ImportOutlookCard outlook={preview} from={preview.from} to={preview.to} checking={checking} />
           <p>
             {!preview.from || !preview.to
               ? tn(preview.records, "{n} record. Choose where each account's records go:", "{n} records. Choose where each account's records go:")
@@ -1388,12 +1450,13 @@ function BudgetBakersImport() {
               </ul>
             </div>
           )}
-          <div className="row end">
+          {preview.file_rows && <FileRows rows={preview.file_rows} />}
+          <div className="row end import-actions">
             <button type="button" className="secondary" onClick={reset} disabled={busy}>
               {t('Cancel')}
             </button>
-            <button type="submit" disabled={busy}>
-              {busy ? t('Importing…') : tn(preview.records, 'Import {n} record', 'Import {n} records')}
+            <button type="submit" disabled={busy || (preview.new === 0 && !checking)}>
+              {busy ? t('Importing…') : preview.new === 0 ? t('Nothing to import') : tn(preview.new, 'Import {n} record', 'Import {n} records')}
             </button>
           </div>
         </form>

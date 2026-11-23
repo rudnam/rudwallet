@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -101,7 +102,13 @@ private fun sourceName(source: ImportSource) = when (source) {
  */
 @Composable
 internal fun ImportReviewScreen(source: ImportSource, wallet: Wallet?, stage: ReviewStage, actions: ReviewActions, navigation: ImportsNavigation) {
-    ImportPage(sourceName(source), navigation) {
+    // Which groups of rows are open: those to add are, those already in RudWallet aren't.
+    var open by rememberSaveable { mutableStateOf(listOf(ImportRowStatus.New.name)) }
+    val toggle = { status: ImportRowStatus -> open = if (status.name in open) open - status.name else open + status.name }
+    val bar: @Composable () -> Unit = {
+        if (wallet != null && stage is ReviewStage.Ready && stage.preview.records > 0) ImportBar(stage, actions, navigation)
+    }
+    ImportPage(sourceName(source), navigation, bottomBar = bar) {
         if (wallet == null) {
             item { Loading() }
             return@ImportPage
@@ -117,8 +124,8 @@ internal fun ImportReviewScreen(source: ImportSource, wallet: Wallet?, stage: Re
                     onRetry = actions::retry,
                 )
             }
-            is ReviewStage.Ready -> review(stage, wallet, actions, navigation)
-            is ReviewStage.Done -> done(stage, wallet, navigation)
+            is ReviewStage.Ready -> review(stage, wallet, actions, navigation, open.mapNotNull { n -> ImportRowStatus.entries.firstOrNull { it.name == n } }.toSet(), toggle)
+            is ReviewStage.Done -> done(stage, wallet, actions, navigation)
         }
     }
 }
@@ -150,7 +157,14 @@ private fun Note(text: String, warn: Boolean = false) {
     )
 }
 
-private fun LazyListScope.review(stage: ReviewStage.Ready, wallet: Wallet, actions: ReviewActions, navigation: ImportsNavigation) {
+private fun LazyListScope.review(
+    stage: ReviewStage.Ready,
+    wallet: Wallet,
+    actions: ReviewActions,
+    navigation: ImportsNavigation,
+    open: Set<ImportRowStatus>,
+    toggle: (ImportRowStatus) -> Unit,
+) {
     val p = stage.preview
     val c = stage.choices
     if (p.records == 0) {
@@ -162,11 +176,13 @@ private fun LazyListScope.review(stage: ReviewStage.Ready, wallet: Wallet, actio
         }
         return
     }
-    item { Intro(p, wallet) }
+    item(key = "summary") { Summary(p, wallet, stage.checking) }
     if (p.gap) item { Note(stringResource(R.string.feature_imports_gap_review), warn = true) }
+    item { SectionTitle(stringResource(R.string.feature_imports_where_they_go)) }
     item(key = "accounts") {
         WalletPanel(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                Intro(p, wallet)
                 for (g in p.accounts) AccountChoice(p.source, g, wallet, c, actions)
             }
         }
@@ -192,15 +208,22 @@ private fun LazyListScope.review(stage: ReviewStage.Ready, wallet: Wallet, actio
     }
     if (p.rows.isNotEmpty()) {
         item {
-            Text(
-                stringResource(if (p.source == ImportSource.IcCard) R.string.feature_imports_card_entries else R.string.feature_imports_statement_rows),
-                style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.padding(horizontal = 4.dp).semantics { heading() },
+            SectionTitle(
+                stringResource(
+                    when (p.source) {
+                        ImportSource.IcCard -> R.string.feature_imports_card_entries
+                        ImportSource.Mufg -> R.string.feature_imports_statement_rows
+                        else -> R.string.feature_imports_file_rows
+                    },
+                ),
             )
         }
         // A card's entries come oldest first; the newest shows first, as on the card page. A statement stays in its order.
-        val rows = if (p.source == ImportSource.IcCard) p.rows.asReversed() else p.rows
-        items(rows.size, key = { "row$it" }) { i -> RowLine(rows[i], p, wallet, c) }
+        val all = if (p.source == ImportSource.IcCard) p.rows.asReversed() else p.rows
+        for ((status, rows) in rowGroups(all)) {
+            item(key = "group-${status.name}") { GroupHeader(status, rows.size, status in open) { toggle(status) } }
+            if (status in open) items(rows.size, key = { "row-${status.name}-$it" }) { i -> RowLine(rows[i], p, wallet, c) }
+        }
     }
     p.balance?.takeIf { it.accountId != null || p.source == ImportSource.IcCard }?.let { b ->
         item { BalanceNote(p.source, b, wallet, c.matchBalance, done = false, newName = c.newNames[p.accounts.firstOrNull()?.key].orEmpty()) }
@@ -216,7 +239,92 @@ private fun LazyListScope.review(stage: ReviewStage.Ready, wallet: Wallet, actio
         }
     }
     stage.error?.let { item { Problem(it.ifEmpty { null }?.let { m -> serverText(m) } ?: stringResource(R.string.feature_imports_offline), onRetry = null) } }
-    item { ImportButtons(stage, actions, navigation) }
+}
+
+/** Rows by what becomes of them: to add first, then those already there, then the rest. */
+private fun rowGroups(rows: List<ImportRow>): List<Pair<ImportRowStatus, List<ImportRow>>> {
+    val order = listOf(ImportRowStatus.New, ImportRowStatus.Imported, ImportRowStatus.Matched, ImportRowStatus.Skipped, ImportRowStatus.None)
+    val group = { r: ImportRow -> if (r.status == ImportRowStatus.Start) ImportRowStatus.None else r.status }
+    return order.mapNotNull { s -> rows.filter { group(it) == s }.takeIf { it.isNotEmpty() }?.let { s to it } }
+}
+
+@Composable
+private fun SectionTitle(text: String) {
+    Text(text, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 8.dp).semantics { heading() })
+}
+
+@Composable
+private fun GroupHeader(status: ImportRowStatus, count: Int, open: Boolean, onClick: () -> Unit) {
+    val title = stringResource(
+        when (status) {
+            ImportRowStatus.New -> R.string.feature_imports_group_new
+            ImportRowStatus.Imported -> R.string.feature_imports_group_imported
+            ImportRowStatus.Matched -> R.string.feature_imports_group_matched
+            ImportRowStatus.Skipped -> R.string.feature_imports_group_skipped
+            else -> R.string.feature_imports_group_other
+        },
+        count,
+    )
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 4.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(Modifier.size(8.dp).background(statusColor(status), RoundedCornerShape(4.dp)))
+        Text(title, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+        Text(
+            stringResource(if (open) R.string.feature_imports_hide else R.string.feature_imports_show),
+            style = MaterialTheme.typography.labelMedium,
+            color = WalletTheme.colors.muted,
+        )
+    }
+}
+
+@Composable
+private fun statusColor(status: ImportRowStatus) = when (status) {
+    ImportRowStatus.New -> WalletTheme.colors.action
+    ImportRowStatus.Imported, ImportRowStatus.Matched -> WalletTheme.colors.positive
+    else -> WalletTheme.colors.muted
+}
+
+/**
+ * What importing does, before anything else: how many records it adds, and
+ * how many it leaves out because they're already there. The server works
+ * these out by running the import and rolling it back.
+ */
+@Composable
+private fun Summary(p: ImportPreview, wallet: Wallet, checking: Boolean) {
+    val format = rememberMoneyFormat(wallet.settings)
+    WalletPanel(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    if (p.new > 0) pluralStringResource(R.plurals.feature_imports_to_add, p.new, p.new) else stringResource(R.string.feature_imports_nothing_new),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.weight(1f).semantics { heading() },
+                )
+                if (checking) {
+                    val checkingText = stringResource(R.string.feature_imports_rechecking)
+                    CircularProgressIndicator(Modifier.size(18.dp).semantics { contentDescription = checkingText }, strokeWidth = 2.dp)
+                }
+            }
+            if (p.from != null && p.to != null) {
+                Text(format.dateRange(p.from!!, p.to!!) + (p.card?.let { " · ••$it" } ?: ""), style = MaterialTheme.typography.bodySmall, color = WalletTheme.colors.muted)
+            }
+            val lines = buildList {
+                if (p.duplicates > 0) add(ImportRowStatus.Imported to pluralStringResource(R.plurals.feature_imports_summary_imported, p.duplicates, p.duplicates))
+                if (p.matched > 0) add(ImportRowStatus.Matched to pluralStringResource(R.plurals.feature_imports_summary_matched, p.matched, p.matched))
+                if (p.skipped > 0) add(ImportRowStatus.Skipped to pluralStringResource(R.plurals.feature_imports_summary_skipped, p.skipped, p.skipped))
+            }
+            for ((status, text) in lines) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
+                    LineIcon(if (status == ImportRowStatus.Skipped) WalletIcons.close else WalletIcons.check, contentDescription = null, tint = statusColor(status), size = 18.dp)
+                    Text(text, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+            Text(stringResource(R.string.feature_imports_summary_safe), style = MaterialTheme.typography.bodySmall, color = WalletTheme.colors.muted)
+        }
+    }
 }
 
 @Composable
@@ -529,7 +637,10 @@ private fun rowStatus(r: ImportRow, p: ImportPreview, wallet: Wallet, choices: C
         ?: stringResource(R.string.feature_imports_already_recorded)
     ImportRowStatus.Start -> stringResource(R.string.feature_imports_start_unknown)
     ImportRowStatus.None -> stringResource(R.string.feature_imports_nothing_paid)
+    ImportRowStatus.Skipped -> stringResource(R.string.feature_imports_not_imported) + (r.account?.let { " · $it" } ?: "")
     ImportRowStatus.New -> when {
+        r.account != null && r.toAccount != null -> stringResource(R.string.feature_imports_transfer, r.account!!, r.toAccount!!)
+        r.account != null -> r.account!!
         r.kind == TransactionKind.Transfer && p.source == ImportSource.IcCard ->
             stringResource(R.string.feature_imports_transfer, roleAccount("top-up", p, wallet, choices), stringResource(R.string.feature_imports_role_card))
         r.kind == TransactionKind.Transfer -> stringResource(R.string.feature_imports_transfer, roleAccount(r.fromRole, p, wallet, choices), roleAccount(r.toRole, p, wallet, choices))
@@ -570,50 +681,72 @@ private fun BalanceNote(source: ImportSource, b: ImportBalance, wallet: Wallet, 
     Note(lines.joinToString("\n"), warn = b.difference != 0L)
 }
 
+/** The import's buttons, kept at the bottom of the screen however long the review. */
 @Composable
-private fun ImportButtons(stage: ReviewStage.Ready, actions: ReviewActions, navigation: ImportsNavigation) {
+private fun ImportBar(stage: ReviewStage.Ready, actions: ReviewActions, navigation: ImportsNavigation) {
     val p = stage.preview
     val c = stage.choices
-    val label = when (p.source) {
-        ImportSource.PayPay -> if (AccountPick.SKIP in c.accounts.values) {
-            stringResource(R.string.feature_imports_import_rest)
-        } else {
-            pluralStringResource(R.plurals.feature_imports_import_payments, p.records, p.records)
-        }
-        ImportSource.Mufg -> pluralStringResource(R.plurals.feature_imports_import_rows, p.new, p.new)
-        ImportSource.BudgetBakers -> pluralStringResource(R.plurals.feature_imports_import_records, p.records, p.records)
-        ImportSource.IcCard -> pluralStringResource(R.plurals.feature_imports_import_entries, p.new, p.new)
+    val label = when {
+        p.new == 0 -> stringResource(R.string.feature_imports_import_nothing)
+        p.source == ImportSource.PayPay -> pluralStringResource(R.plurals.feature_imports_import_payments, p.new, p.new)
+        p.source == ImportSource.Mufg -> pluralStringResource(R.plurals.feature_imports_import_rows, p.new, p.new)
+        p.source == ImportSource.BudgetBakers -> pluralStringResource(R.plurals.feature_imports_import_records, p.new, p.new)
+        else -> pluralStringResource(R.plurals.feature_imports_import_entries, p.new, p.new)
     }
-    val enabled = !stage.busy && when (p.source) {
-        ImportSource.Mufg -> p.new > 0
-        ImportSource.IcCard -> p.new > 0 || (c.matchBalance && (p.balance?.difference ?: 0L) != 0L)
-        else -> true
-    }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
-        TextButton(onClick = navigation::back, enabled = !stage.busy) { Text(stringResource(R.string.feature_imports_cancel)) }
-        Button(
-            onClick = actions::submit,
-            enabled = enabled,
-            colors = ButtonDefaults.buttonColors(containerColor = WalletTheme.colors.action, contentColor = WalletTheme.colors.onAction),
+    // A balance to match is something to do even with nothing new.
+    val balanceOnly = c.matchBalance && p.balance?.let { (it.difference - it.misplaced) != 0L && (it.accountId != null || p.source == ImportSource.IcCard) } == true
+    val enabled = !stage.busy && (p.new > 0 || balanceOnly || stage.checking)
+    Column(Modifier.fillMaxWidth().background(WalletTheme.colors.surface)) {
+        HorizontalDivider(color = WalletTheme.colors.border)
+        Row(
+            Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (stage.busy) {
-                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = WalletTheme.colors.onAction)
-                Box(Modifier.size(8.dp))
-                Text(stringResource(R.string.feature_imports_importing))
-            } else {
-                Text(label)
+            TextButton(onClick = navigation::back, enabled = !stage.busy) { Text(stringResource(R.string.feature_imports_cancel)) }
+            Button(
+                onClick = actions::submit,
+                enabled = enabled,
+                colors = ButtonDefaults.buttonColors(containerColor = WalletTheme.colors.action, contentColor = WalletTheme.colors.onAction),
+            ) {
+                if (stage.busy) {
+                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = WalletTheme.colors.onAction)
+                    Box(Modifier.size(8.dp))
+                    Text(stringResource(R.string.feature_imports_importing))
+                } else {
+                    Text(label)
+                }
             }
         }
     }
 }
 
-private fun LazyListScope.done(stage: ReviewStage.Done, wallet: Wallet, navigation: ImportsNavigation) {
-    item { ImportSummary(stage.result, navigation) }
-    stage.result.balance?.takeIf { it.accountId != null }?.let { b ->
-        item { BalanceNote(stage.preview.source, b, wallet, stage.matchBalance, done = true, newName = "") }
+private fun LazyListScope.done(stage: ReviewStage.Done, wallet: Wallet, actions: ReviewActions, navigation: ImportsNavigation) {
+    val undone = stage.undo as? UndoState.Undone
+    item { if (undone == null) ImportSummary(stage.result, navigation) else Note(pluralStringResource(R.plurals.feature_imports_undone, undone.ids.size, undone.ids.size)) }
+    if (undone == null) {
+        stage.result.balance?.takeIf { it.accountId != null }?.let { b ->
+            item { BalanceNote(stage.preview.source, b, wallet, stage.matchBalance, done = true, newName = "") }
+        }
+    }
+    (stage.undo as? UndoState.Failed)?.let { f ->
+        item { Problem(f.message.ifEmpty { null }?.let { stringResource(R.string.feature_imports_undo_failed, serverText(it)) } ?: stringResource(R.string.feature_imports_offline), onRetry = null) }
     }
     item {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
+            if (stage.result.batchId != null) {
+                OutlinedButton(onClick = actions::undo, enabled = stage.undo != UndoState.Busy) {
+                    Text(
+                        stringResource(
+                            when {
+                                stage.undo == UndoState.Busy -> R.string.feature_imports_undoing
+                                undone != null -> R.string.feature_imports_restore
+                                else -> R.string.feature_imports_undo
+                            },
+                        ),
+                    )
+                }
+            }
             Button(
                 onClick = navigation::back,
                 colors = ButtonDefaults.buttonColors(containerColor = WalletTheme.colors.action, contentColor = WalletTheme.colors.onAction),

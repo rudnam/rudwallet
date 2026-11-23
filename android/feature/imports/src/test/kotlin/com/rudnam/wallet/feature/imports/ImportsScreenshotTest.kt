@@ -45,6 +45,11 @@ class ImportsScreenshotTest {
         override fun setMatchBalance(on: Boolean) {}
         override fun submit() {}
         override fun retry() {}
+        override fun undo() {}
+    }
+    private val history = object : HistoryActions {
+        override fun undo(batch: com.rudnam.wallet.core.model.ImportBatch) {}
+        override fun restore(ids: List<Long>) {}
     }
     private val card = object : CardActions {
         override fun waitForCard(on: Boolean) {}
@@ -60,7 +65,28 @@ class ImportsScreenshotTest {
 
     @Test
     @Config(qualifiers = "w411dp-h1300dp-xxhdpi")
-    fun sources() = shot("sources") { ImportScreen(onPick = {}, navigation = navigation) }
+    fun sources() = shot("sources") {
+        ImportScreen(onPick = {}, navigation = navigation, wallet = SampleWallet.wallet, history = ImportHistoryState(SampleImports.batches), actions = history)
+    }
+
+    @Test
+    @Config(qualifiers = "ja-w411dp-h1300dp-xxhdpi")
+    fun sourcesJapanese() = shot("sources-ja", dark = true) {
+        ImportScreen(onPick = {}, navigation = navigation, wallet = SampleWallet.wallet, history = ImportHistoryState(SampleImports.batches), actions = history)
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h2400dp-xxhdpi")
+    fun payPayCounted() = shot("paypay-counted") {
+        val p = SampleImports.payPayCounted
+        ImportReviewScreen(ImportSource.PayPay, SampleWallet.wallet, ReviewStage.Ready(p, Choices.suggested(p)), review, navigation)
+    }
+
+    @Test
+    fun undone() = shot("undone") {
+        val p = SampleImports.payPay
+        ImportReviewScreen(ImportSource.PayPay, SampleWallet.wallet, ReviewStage.Done(p, ImportResult(3, 9, 1, 1, 0, 0, emptyList(), batchId = 7), false, UndoState.Undone(listOf(1, 2, 3))), review, navigation)
+    }
 
     @Test
     @Config(qualifiers = "w411dp-h2000dp-xxhdpi")
@@ -87,7 +113,7 @@ class ImportsScreenshotTest {
     @Test
     fun done() = shot("done") {
         val p = SampleImports.payPay
-        ImportReviewScreen(ImportSource.PayPay, SampleWallet.wallet, ReviewStage.Done(p, ImportResult(13, 0, 1, 1, 1, 1, emptyList()), false), review, navigation)
+        ImportReviewScreen(ImportSource.PayPay, SampleWallet.wallet, ReviewStage.Done(p, ImportResult(13, 0, 1, 1, 1, 1, emptyList(), batchId = 7), false), review, navigation)
     }
 
     /** A card with ¥3,520 on it, last used on 14 November (the block layout: internal/wallet/importic.go). */

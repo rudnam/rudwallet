@@ -176,4 +176,66 @@
         <item quantity="one">left out %d paid in ways not imported</item>
         <item quantity="other">left out %d paid in ways not imported</item>
     </plurals>
+    <!-- The review's summary: what importing does, worked out by the server (a dry run). -->
+    <plurals name="feature_imports_to_add">
+        <item quantity="one">%d new record to add</item>
+        <item quantity="other">%d new records to add</item>
+    </plurals>
+    <string name="feature_imports_nothing_new">Nothing new to add</string>
+    <plurals name="feature_imports_summary_imported">
+        <item quantity="one">%d is already in RudWallet from an earlier import</item>
+        <item quantity="other">%d are already in RudWallet from an earlier import</item>
+    </plurals>
+    <plurals name="feature_imports_summary_matched">
+        <item quantity="one">%d is already recorded another way (a notification, by hand, or another import)</item>
+        <item quantity="other">%d are already recorded another way (a notification, by hand, or another import)</item>
+    </plurals>
+    <plurals name="feature_imports_summary_skipped">
+        <item quantity="one">%d is paid in a way you’re not importing</item>
+        <item quantity="other">%d are paid in ways you’re not importing</item>
+    </plurals>
+    <string name="feature_imports_summary_safe">What’s already in RudWallet is never added again, and you can undo the import afterwards.</string>
+    <string name="feature_imports_where_they_go">Where they go</string>
+    <string name="feature_imports_group_new">To add · %d</string>
+    <string name="feature_imports_group_imported">Already in RudWallet · %d</string>
+    <string name="feature_imports_group_matched">Already recorded another way · %d</string>
+    <string name="feature_imports_group_skipped">Not imported · %d</string>
+    <string name="feature_imports_group_other">Nothing to record · %d</string>
+    <string name="feature_imports_show">Show</string>
+    <string name="feature_imports_hide">Hide</string>
+    <string name="feature_imports_not_imported">Not imported</string>
+    <string name="feature_imports_import_nothing">Nothing to import</string>
+    <!-- Undoing an import. -->
+    <string name="feature_imports_undo">Undo import</string>
+    <string name="feature_imports_undo_short">Undo</string>
+    <string name="feature_imports_undoing">Undoing…</string>
+    <plurals name="feature_imports_undone">
+        <item quantity="one">Undone: %d record moved to the trash.</item>
+        <item quantity="other">Undone: %d records moved to the trash.</item>
+    </plurals>
+    <string name="feature_imports_restore">Bring them back</string>
+    <string name="feature_imports_undo_failed">Couldn’t undo the import: %s</string>
+    <!-- The import page: sources and recent imports. -->
+    <string name="feature_imports_sources_intro">Import from a file or a card. What’s already in RudWallet is skipped, and you can undo any import.</string>
+    <string name="feature_imports_paypay_hint">取引履歴 (transaction history) CSV from the PayPay app</string>
+    <string name="feature_imports_mufg_hint">入出金明細 CSV from 三菱UFJダイレクト</string>
+    <string name="feature_imports_ic_hint">Suica, PASMO, ICOCA… held to the back of the phone</string>
+    <string name="feature_imports_budgetbakers_hint">CSV export from BudgetBakers’ Wallet</string>
+    <string name="feature_imports_how">How to get it</string>
+    <string name="feature_imports_recent">Recent imports</string>
+    <plurals name="feature_imports_batch_added">
+        <item quantity="one">%d added</item>
+        <item quantity="other">%d added</item>
+    </plurals>
+    <plurals name="feature_imports_batch_already">
+        <item quantity="one">%d already there</item>
+        <item quantity="other">%d already there</item>
+    </plurals>
+    <string name="feature_imports_batch_undone">Undone</string>
+    <plurals name="feature_imports_batch_undone_snack">
+        <item quantity="one">Import undone: %d record moved to the trash</item>
+        <item quantity="other">Import undone: %d records moved to the trash</item>
+    </plurals>
+    <string name="feature_imports_rechecking">Counting again for your choices…</string>
+    <string name="feature_imports_file_rows">In the file</string>
 </resources>
