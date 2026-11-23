@@ -38,7 +38,11 @@ export function useRecords(filter: TransactionFilter) {
   const withUnsent = useMemo(() => {
     if (!records || unsent.length === 0) return records;
     const filter = JSON.parse(key, revive) as TransactionFilter;
-    const extra = unsent.map(asRecord).filter((t) => matches(t, filter));
+    // One the server has already, in a list loaded since, shows once: as the server's.
+    const extra = unsent
+      .filter((u) => u.saved_id === undefined || !records.some((r) => r.id === u.saved_id))
+      .map(asRecord)
+      .filter((t) => matches(t, filter));
     if (extra.length === 0) return records;
     // Newest first, as the server sorts them.
     return [...records, ...extra].sort((a, b) => Date.parse(b.occurred_at) - Date.parse(a.occurred_at));

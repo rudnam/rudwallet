@@ -632,6 +632,7 @@ async function sendEach(): Promise<number> {
         if (unreachable(err) || (err instanceof ApiError && (err.status === 401 || err.status >= 500))) break;
         continue;
       }
+      outbox.saved(u.client_id, saved.id);
       // Edited or deleted on the phone while it was on its way.
       const now = outbox.all().find((x) => x.client_id === u.client_id);
       if (!now) await request('DELETE', `/api/transactions/${saved.id}`).catch(() => {});
