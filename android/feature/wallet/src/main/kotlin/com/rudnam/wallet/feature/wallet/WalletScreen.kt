@@ -77,6 +77,9 @@ interface WalletNavigation {
 
     /** Leaving a demo for an account of one's own: the sign-in page opens on creating one. */
     fun createAccount()
+
+    /** Update on a copy from the Play Store: Play's own update screen. */
+    fun updateFromPlay() {}
 }
 
 @Composable
@@ -226,7 +229,11 @@ private fun Wallet(
         state.update?.let { update ->
             item(key = "update", contentType = "update") {
                 val uri = LocalUriHandler.current
-                UpdateCard(update.versionName, onInstall = { uri.openUri(update.url) }, onLater = onUpdateLater)
+                UpdateCard(
+                    update.versionName,
+                    onInstall = { if (update.fromPlay) navigation.updateFromPlay() else uri.openUri(update.url) },
+                    onLater = onUpdateLater,
+                )
             }
         }
         state.setup?.let { setup ->

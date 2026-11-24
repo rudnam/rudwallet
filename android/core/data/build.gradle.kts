@@ -18,6 +18,8 @@ dependencies {
     implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
     implementation(libs.kotlinx.serialization.json)
+    // Updates of a copy installed from the Play Store, from Play (PlayStoreUpdates).
+    implementation(libs.play.app.update)
     testImplementation(project(":core:testing"))
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.work.testing)
