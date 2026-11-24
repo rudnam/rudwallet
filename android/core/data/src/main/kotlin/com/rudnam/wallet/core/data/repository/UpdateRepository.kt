@@ -19,9 +19,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Whether the server offers a newer build than this one (GET /api/downloads
- * reads the APK's versionCode). A copy from the Play Store is left to the
- * Play Store; "Later" hides an update until a newer one.
+ * Whether there's a newer build than this one: the server's (GET /api/downloads
+ * reads the APK's versionCode), or for a copy from the Play Store, Play's
+ * ([PlayStoreUpdates]). "Later" hides an update until a newer one.
  */
 interface UpdateRepository {
     suspend fun check(): AppUpdate?
@@ -36,9 +36,12 @@ internal class ServerUpdateRepository @Inject constructor(
     private val preferences: UserPreferencesRepository,
     @Dispatcher(WalletDispatchers.IO) private val io: CoroutineDispatcher,
     private val server: Server,
+    private val play: PlayStoreUpdates,
 ) : UpdateRepository {
     override suspend fun check(): AppUpdate? = withContext(io) {
-        if (installer() == "com.android.vending") return@withContext null
+        if (installer() == "com.android.vending") {
+            return@withContext play.available(skipped = preferences.preferences.first().updateLaterVersion)
+        }
         val apk = try {
             network.downloads().android
         } catch (e: CancellationException) {
