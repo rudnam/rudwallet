@@ -196,20 +196,20 @@ class InsightsScreenshotTest {
                 listOf(pay(3, "2026-10-13", 1_280, "Youtube Premium")), LocalDate.of(2026, 11, 13), true,
             ),
             Recurring(
-                3, RecurringInput("中部電力ミライズ", RecurringKind.Bill, listOf("中部電力"), 3_000, 1, today, 12, null, true), 4_616,
-                listOf(pay(4, "2026-10-28", 2_798, "中部電力ミライズ"), pay(5, "2026-09-03", 6_433, "中部電力ミライズ")), LocalDate.of(2026, 11, 28), false,
+                3, RecurringInput("中部電力ミライズ", RecurringKind.Bill, listOf("中部電力"), 3_000, 1, today, 12, null, true), 4_500,
+                listOf(pay(4, "2026-10-28", 2_700, "中部電力ミライズ"), pay(5, "2026-09-03", 6_300, "中部電力ミライズ")), LocalDate.of(2026, 11, 28), false,
             ),
         ),
         suggestions = listOf(
             RecurringSuggestion(
-                "expense:ソフトバンクм",
-                RecurringInput("ソフトバンク", RecurringKind.Bill, listOf("ソフトバンク"), 7_050, 1, LocalDate.of(2026, 12, 14), 12, null, true),
-                listOf(pay(6, "2026-11-14", 7_021, "ソフトバンク"), pay(7, "2026-10-14", 7_065, "ソフトバンク"), pay(8, "2026-09-14", 7_219, "ソフトバンク"), pay(9, "2026-08-14", 7_100, "ソフトバンク")),
+                "expense:phone",
+                RecurringInput("Mobile", RecurringKind.Bill, listOf("Mobile"), 7_050, 1, LocalDate.of(2026, 12, 14), 12, null, true),
+                listOf(pay(6, "2026-11-14", 6_980, "Mobile"), pay(7, "2026-10-14", 7_040, "Mobile"), pay(8, "2026-09-14", 7_150, "Mobile"), pay(9, "2026-08-14", 7_100, "Mobile")),
             ),
         ),
         month = RecurringMonth(
-            LocalDate.of(2026, 11, 1), paid = 1_590, upcoming = 5_896,
-            due = listOf(RecurringDue(2, "YouTube Premium", LocalDate.of(2026, 11, 13), 1_280, true), RecurringDue(3, "中部電力ミライズ", LocalDate.of(2026, 11, 28), 4_616, false)),
+            LocalDate.of(2026, 11, 1), paid = 1_590, upcoming = 5_780,
+            due = listOf(RecurringDue(2, "YouTube Premium", LocalDate.of(2026, 11, 13), 1_280, true), RecurringDue(3, "中部電力ミライズ", LocalDate.of(2026, 11, 28), 4_500, false)),
         ),
     )
 

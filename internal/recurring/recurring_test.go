@@ -98,12 +98,12 @@ func TestStatusMatchesTextAndAmount(t *testing.T) {
 	// A bill is expected to cost the average of its last three.
 	b := Recurring{Kind: "bill", Matches: []string{"中部電力"}, Amount: 3000, Months: 1, StartDate: day("2026-01-01"), Active: true}
 	b.status(newestFirst([]Payment{
-		pay(1, "2026-08-01", 4617, "中部電力ミライズ"),
-		pay(2, "2026-09-03", 6433, "中部電力ミライズ"),
+		pay(1, "2026-08-01", 4500, "中部電力ミライズ"),
+		pay(2, "2026-09-03", 6300, "中部電力ミライズ"),
 		pay(3, "2026-09-03", 26, "中部電力ミライズ"), // the points part: too small to be the bill
-		pay(4, "2026-10-28", 2798, "中部電力ミライズ"),
+		pay(4, "2026-10-28", 2700, "中部電力ミライズ"),
 	}), day("2026-11-10"))
-	if len(b.Payments) != 3 || b.Estimate != 4616 || *b.NextDue != day("2026-11-28") {
+	if len(b.Payments) != 3 || b.Estimate != 4500 || *b.NextDue != day("2026-11-28") {
 		t.Errorf("bill: %d payments, estimate %d, next %s", len(b.Payments), b.Estimate, b.NextDue)
 	}
 }
