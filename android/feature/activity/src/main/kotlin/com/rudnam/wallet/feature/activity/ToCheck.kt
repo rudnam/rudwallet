@@ -212,7 +212,7 @@ private fun CategoryPicker(item: ReviewItem, state: ActivityUiState.Ready, actio
     val t = item.record
     val category = state.wallet.category(item.categoryId)
     val label = if (category == null) stringResource(R.string.feature_activity_choose_category)
-    else stringResource(R.string.feature_activity_change_category, category.name)
+    else stringResource(R.string.feature_activity_change_category, state.wallet.categoryPath(category.id) ?: category.name)
     Box(
         Modifier.size(48.dp).clip(MaterialTheme.shapes.small)
             .clickable(role = Role.Button) { open = true }

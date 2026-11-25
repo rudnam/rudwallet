@@ -60,12 +60,19 @@ test('a subcategory is made in Settings, picked under its main category, and cou
   const picker = page.getByRole('dialog', { name: 'Choose a category' });
   const foodRow = picker.getByRole('button', { name: /^Food & Drinks/ });
   await expect(foodRow).toContainText('Groceries · Eating out · Delivery · Bakeries');
-  await expect(foodRow).toHaveAttribute('aria-expanded', 'false');
-  // Food & Drinks opens in place: it in general first, then its subcategories.
+  // A row without subcategories picks; Food & Drinks, with a chevron, opens its own page:
+  // it in general first, then its subcategories, every row the same shape.
   await foodRow.click();
-  const subs = picker.getByRole('group', { name: 'Subcategories of Food & Drinks' });
-  await expect(subs.getByRole('button')).toHaveText(['Food & Drinks (general)', 'Groceries', 'Eating out', 'Delivery', 'Bakeries']);
+  const page1 = picker.getByRole('list', { name: 'Food & Drinks' });
+  await expect(page1.getByRole('button')).toHaveText(['Food & Drinks (general)', 'Groceries', 'Eating out', 'Delivery', 'Bakeries']);
   await page.screenshot({ path: test.info().outputPath('picker-open.png'), fullPage: true });
+  // Back, and Escape, return to the main categories without closing the picker.
+  await picker.getByRole('button', { name: 'Back' }).click();
+  await expect(foodRow).toBeVisible();
+  await foodRow.click();
+  await page.keyboard.press('Escape');
+  await expect(picker).toBeVisible();
+  await expect(foodRow).toBeVisible();
   // Searching lists every match directly, subcategories too.
   await picker.getByRole('searchbox', { name: 'Find a category' }).fill('bake');
   await expect(picker.getByRole('listitem')).toHaveCount(1);
