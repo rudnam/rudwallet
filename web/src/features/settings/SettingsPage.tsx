@@ -103,7 +103,7 @@ export function SettingsPage({
     accounts: tn(active, '{n} account', '{n} accounts'),
     categories: tn(w.categories.length, '{n} category', '{n} categories'),
     general: w.settings.currency,
-    import: 'PayPay, MUFG, BudgetBakers',
+    import: 'PayPay, MUFG, Vpass, BudgetBakers',
     widgets: 'Android',
     language: languages.find((l) => l.code === language())!.name,
     appearance: t(appearanceNames[appearance]),
@@ -857,8 +857,9 @@ function Import() {
     <>
       <p className="muted">{t('Import from a file or a card. What’s already in RudWallet is skipped, and you can undo any import.')}</p>
       <RecentImports />
-      <PayPayImport />
+      <PaymentsImport source={payPaySource} />
       <MUFGImport />
+      <PaymentsImport source={vpassSource} />
       <ICCardImport />
       <BudgetBakersImport />
     </>
@@ -905,11 +906,52 @@ const payPayMethodNames: Record<string, string> = {
 };
 
 /**
- * PayPay's transaction history: the file is read first, then each way of
- * paying in it (balance, card, a bank for charges) gets an account, with
- * the app's best guess picked, before anything is recorded.
+ * A file of payments by way of paying, which the server previews and
+ * imports alike: PayPay's transaction history (its ways of paying: balance,
+ * card, a bank for charges), or a Vpass statement (its cards).
  */
-function PayPayImport() {
+interface PaymentsFile {
+  title: string;
+  how: Key;
+  file: Key;
+  /** Reads the chosen file as text. */
+  read: (file: File) => Promise<string>;
+  preview: typeof api.previewPayPayWith;
+  run: typeof api.importPayPay;
+  /** A way of paying can be left out of the import (PayPay's points, say). */
+  canSkip: boolean;
+  /** English names for the ways of paying the file lists most often. */
+  methodNames: Record<string, string>;
+}
+
+const payPaySource: PaymentsFile = {
+  title: 'PayPay',
+  how: 'In the PayPay app, open 取引履歴 (transaction history), tap the download button, pick a period of up to a year, and save the CSV file. Payments already recorded from their emails are skipped, and importing an overlapping period adds each payment once.',
+  file: 'PayPay CSV file',
+  read: (file) => file.text(),
+  preview: api.previewPayPayWith,
+  run: api.importPayPay,
+  canSkip: true,
+  methodNames: payPayMethodNames,
+};
+
+const vpassSource: PaymentsFile = {
+  title: 'Vpass',
+  how: 'In Vpass (三井住友カード), open ご利用明細, pick the month, and download the CSV file. Each card gets an account, and purchases already recorded from their notifications are skipped.',
+  file: 'Vpass CSV file',
+  read: readJapaneseText,
+  preview: api.previewVpassWith,
+  run: api.importVpass,
+  canSkip: false,
+  methodNames: {},
+};
+
+/**
+ * A file of payments (PaymentsFile): the file is read first, then each way
+ * of paying in it gets an account, with the app's best guess picked, before
+ * anything is recorded.
+ */
+function PaymentsImport({ source }: { source: PaymentsFile }) {
   const w = useWallet();
   const [csv, setCsv] = useState('');
   const [preview, setPreview] = useState<PayPayPreview | null>(null);
@@ -924,7 +966,7 @@ function PayPayImport() {
   const recheck = useRecheck(preview !== null, [choice, names], async () => {
     setChecking(true);
     try {
-      const p = await api.previewPayPayWith(csv, accountChoices(choice, names), []);
+      const p = await source.preview(csv, accountChoices(choice, names), []);
       return () => setPreview((cur) => cur && { ...cur, new: p.new, duplicates: p.duplicates, matched: p.matched, skipped: p.skipped, file_rows: p.file_rows });
     } finally {
       setChecking(false);
@@ -942,8 +984,8 @@ function PayPayImport() {
     setError('');
     setResult(null);
     try {
-      const text = await file.text();
-      const p = await api.previewPayPay(text);
+      const text = await source.read(file);
+      const p = await source.preview(text, [], []);
       setCsv(text);
       recheck.skipNext();
       setPreview(p);
@@ -963,7 +1005,7 @@ function PayPayImport() {
     setBusy(true);
     setError('');
     try {
-      setResult(await api.importPayPay(csv, accountChoices(choice, names), categoryChoices(preview?.categories ?? [], cats)));
+      setResult(await source.run(csv, accountChoices(choice, names), categoryChoices(preview?.categories ?? [], cats)));
       reset();
       importsChanged();
       await w.refresh();
@@ -977,15 +1019,11 @@ function PayPayImport() {
   const accounts = w.accounts.filter((a) => !a.archived || Object.values(choice).includes(a.id));
   return (
     <div className="card stack">
-      <h2>PayPay</h2>
-      <p className="small muted">
-        {t(
-          'In the PayPay app, open 取引履歴 (transaction history), tap the download button, pick a period of up to a year, and save the CSV file. Payments already recorded from their emails are skipped, and importing an overlapping period adds each payment once.',
-        )}
-      </p>
+      <h2>{source.title}</h2>
+      <p className="small muted">{t(source.how)}</p>
       {!preview && (
         <label className="field">
-          {t('PayPay CSV file')}
+          {t(source.file)}
           <input key={fileKey} type="file" accept=".csv,text/csv" disabled={busy} onChange={(e) => e.target.files?.[0] && read(e.target.files[0])} />
         </label>
       )}
@@ -1020,7 +1058,7 @@ function PayPayImport() {
               label={
                 <>
                   {m.method}
-                  {language() === 'en' && payPayMethodNames[m.method] && <span className="muted"> · {payPayMethodNames[m.method]}</span>}
+                  {language() === 'en' && source.methodNames[m.method] && <span className="muted"> · {source.methodNames[m.method]}</span>}
                   <span className="muted small"> · {tn(m.count, '{n} record', '{n} records')}</span>
                 </>
               }
@@ -1029,7 +1067,7 @@ function PayPayImport() {
               onChange={(id) => setChoice({ ...choice, [m.method]: id })}
               newName={names[m.method] ?? ''}
               onNewName={(n) => setNames({ ...names, [m.method]: n })}
-              canSkip
+              canSkip={source.canSkip}
             />
           ))}
           {preview.categories.length > 0 && (

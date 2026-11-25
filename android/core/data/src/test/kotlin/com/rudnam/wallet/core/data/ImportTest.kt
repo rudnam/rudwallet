@@ -56,5 +56,21 @@ class ImportTest {
         assertEquals("PayPay残高", payPay.accounts.single().key)
         assertEquals(3, payPay.new)
         assertEquals(13L, payPay.categories.single().categoryId)
+
+        // A Vpass statement comes in PayPay's shape, each card a way of paying.
+        val vpass = json.decodeFromString<NetworkImportPreview>(
+            """{"records":2,"from":"2026-11-08T12:00:00+09:00","to":"2026-11-10T12:00:00+09:00",
+            "methods":[{"method":"Amazonマスター","count":2,"account_id":7,"new_name":"Amazonマスター","new_kind":"credit_card","skip":false}],
+            "categories":[],"new_categories":[],"problems":[],"new":1,"duplicates":0,"matched":1,"skipped":0,
+            "file_rows":[{"occurred_at":"2026-11-08T12:00:00+09:00","kind":"expense","amount":1798,"payee":"AMAZON.CO.JP","account":"Amazon Mastercard","status":"matched"},
+                         {"occurred_at":"2026-11-10T12:00:00+09:00","kind":"income","amount":318,"payee":"AMAZON.CO.JP","account":"Amazon Mastercard","status":"new"}]}""",
+        ).asModel(ImportSource.Vpass)
+        assertEquals("Amazonマスター", vpass.accounts.single().key)
+        assertEquals(1, vpass.new)
+        assertEquals(1, vpass.matched)
+        assertEquals(ImportRowStatus.Matched, vpass.rows[0].status)
+        assertEquals(318L, vpass.rows[1].amount)
+        assertEquals(ImportSource.Vpass, ImportSource.fromServer("vpass"))
+        assertEquals(true, ImportSource.Vpass.previewsChoices)
     }
 }

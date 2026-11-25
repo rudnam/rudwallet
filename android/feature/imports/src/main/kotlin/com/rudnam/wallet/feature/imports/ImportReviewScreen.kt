@@ -92,6 +92,7 @@ private fun sourceName(source: ImportSource) = when (source) {
     ImportSource.Mufg -> "MUFG"
     ImportSource.BudgetBakers -> "BudgetBakers"
     ImportSource.IcCard -> stringResource(R.string.feature_imports_ic_card)
+    ImportSource.Vpass -> "Vpass"
 }
 
 /**
@@ -170,7 +171,7 @@ private fun LazyListScope.review(
     if (p.records == 0) {
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(if (p.source == ImportSource.PayPay) R.string.feature_imports_no_payments else R.string.feature_imports_no_records))
+                Text(stringResource(if (p.source == ImportSource.PayPay || p.source == ImportSource.Vpass) R.string.feature_imports_no_payments else R.string.feature_imports_no_records))
                 OutlinedButton(onClick = navigation::back) { Text(stringResource(R.string.feature_imports_choose_another)) }
             }
         }
@@ -192,7 +193,7 @@ private fun LazyListScope.review(
             Text(
                 stringResource(
                     when (p.source) {
-                        ImportSource.PayPay -> R.string.feature_imports_paypay_categories
+                        ImportSource.PayPay, ImportSource.Vpass -> R.string.feature_imports_paypay_categories
                         ImportSource.Mufg -> R.string.feature_imports_mufg_categories
                         ImportSource.BudgetBakers -> R.string.feature_imports_budgetbakers_categories
                         ImportSource.IcCard -> R.string.feature_imports_ic_categories
@@ -333,7 +334,7 @@ private fun Intro(p: ImportPreview, wallet: Wallet) {
     val from = p.from?.let { format.date(it) }.orEmpty()
     val to = p.to?.let { format.date(it) }.orEmpty()
     val text = when (p.source) {
-        ImportSource.PayPay -> pluralStringResource(R.plurals.feature_imports_payments_range, p.records, p.records, from, to)
+        ImportSource.PayPay, ImportSource.Vpass -> pluralStringResource(R.plurals.feature_imports_payments_range, p.records, p.records, from, to)
         ImportSource.Mufg -> pluralStringResource(R.plurals.feature_imports_rows_range, p.records, p.records, from, to)
         ImportSource.BudgetBakers -> pluralStringResource(R.plurals.feature_imports_records_range, p.records, p.records, from, to)
         ImportSource.IcCard -> pluralStringResource(R.plurals.feature_imports_entries_range, p.records, p.records, from, to, p.card.orEmpty())
@@ -688,7 +689,7 @@ private fun ImportBar(stage: ReviewStage.Ready, actions: ReviewActions, navigati
     val c = stage.choices
     val label = when {
         p.new == 0 -> stringResource(R.string.feature_imports_import_nothing)
-        p.source == ImportSource.PayPay -> pluralStringResource(R.plurals.feature_imports_import_payments, p.new, p.new)
+        p.source == ImportSource.PayPay || p.source == ImportSource.Vpass -> pluralStringResource(R.plurals.feature_imports_import_payments, p.new, p.new)
         p.source == ImportSource.Mufg -> pluralStringResource(R.plurals.feature_imports_import_rows, p.new, p.new)
         p.source == ImportSource.BudgetBakers -> pluralStringResource(R.plurals.feature_imports_import_records, p.new, p.new)
         else -> pluralStringResource(R.plurals.feature_imports_import_entries, p.new, p.new)

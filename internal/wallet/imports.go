@@ -17,6 +17,7 @@ const (
 	SourceMUFG         = "mufg"
 	SourceICCard       = "iccard"
 	SourceBudgetBakers = "budgetbakers"
+	SourceVpass        = "vpass"
 )
 
 // ImportRow is one row of a PayPay or BudgetBakers file as an import

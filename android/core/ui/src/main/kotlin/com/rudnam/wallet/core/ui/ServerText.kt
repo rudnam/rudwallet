@@ -100,6 +100,8 @@ object ServerText {
         "{name} is an expense category" to "{name}は支出のカテゴリです",
         "{name} is an income category" to "{name}は収入のカテゴリです",
         "PayPay amounts are in yen, and your main currency is {currency}" to "PayPayの金額は円ですが、メインの通貨が{currency}になっています",
+        "Vpass amounts are in yen, and your main currency is {currency}" to "Vpassの金額は円ですが、メインの通貨が{currency}になっています",
+        "this doesn't look like a Vpass statement (ご利用明細): no line naming the card before the purchases" to "Vpassのご利用明細ではないようです（利用の前にカードを示す行がありません）",
         "IC card amounts are in yen, and your main currency is {currency}" to "交通系ICカードの金額は円ですが、メインの通貨が{currency}になっています",
         "the card's IDm must be 8 bytes in hex" to "カードのIDmが正しくありません",
         "the card has no history" to "カードに履歴がありません",

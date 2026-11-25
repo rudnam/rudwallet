@@ -137,8 +137,19 @@ data class Budget(
     val amount: Long,
 )
 
-/** A newer build of the app than the one installed (GET /api/downloads). */
-data class AppUpdate(val versionCode: Int, val versionName: String, val url: String)
+/**
+ * A newer build of the app than the one installed: the one the server offers
+ * (GET /api/downloads), or for a copy installed from the Play Store, Play's.
+ */
+data class AppUpdate(
+    val versionCode: Int,
+    /** e.g. "2.1.42"; empty when Play offers it (Play doesn't say). */
+    val versionName: String,
+    /** Where to download it; empty when Play offers it. */
+    val url: String,
+    /** Installed through Play's own update screen rather than downloaded. */
+    val fromPlay: Boolean = false,
+)
 
 /**
  * The categories as the app shows them: a subcategory wears its main

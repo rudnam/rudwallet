@@ -652,26 +652,32 @@ li.record:hover:not(:disabled) { background: none; } /* a row to read, not to ta
 /* Under a subcategory's name, its main category's, small; an empty line for a main one keeps the rows even. */
 .category-main { font-size: 0.65rem; line-height: 1.2; min-height: 1.2em; color: var(--muted); text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* The category picker: a row per category, a subcategory indented under its main one. */
+/* The category picker: a row per category; one with a chevron opens its page of subcategories. Every row has one shape. */
 .picker-list { list-style: none; margin: 0; padding: 0; }
+.picker-list > li + li { border-top: 1px solid var(--border); }
 .picker-list > li > button {
-  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 6px 10px;
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 56px; padding: 8px 10px;
   border: 0; border-radius: 10px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
   justify-content: flex-start; font-weight: 400; white-space: normal;
 }
 .picker-list > li > button:hover:not(:disabled) { background: var(--sunken); }
-.picker-list > li > button.sub { padding-left: 44px; }
 .picker-list > li > button.on { background: var(--sunken); font-weight: 600; }
-.picker-group + .picker-group { border-top: 1px solid var(--border); }
-.picker-list > li.picker-group > button { min-height: 56px; padding: 8px 10px; }
-.picker-list > li.picker-group > button.holds .picker-main > span:first-child { font-weight: 600; }
+.picker-list > li > button.holds .picker-main > span:first-child { font-weight: 600; }
+.picker-list > li > button.holds .picker-main .small { color: var(--accent); }
 .picker-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.picker-main .small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.picker-main .small { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.picker-caret, .picker-tick { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .picker-caret { color: var(--muted); }
-/* An open main category's chips: it in general first, then its subcategories. */
-.picker-subs { padding: 0 10px 12px 58px; }
-.picker-subs .chip { font-weight: 400; }
-.picker-subs .chip.on { background: var(--accent-soft); border-color: var(--accent); font-weight: 600; }
+.picker-tick { color: var(--accent); }
+/* A page slides in, as on the phone; Back returns to the main categories. */
+.picker-page { animation: picker-in 0.18s ease-out; }
+@keyframes picker-in { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .picker-page { animation: none; } }
+.picker-back {
+  display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; padding: 6px 8px 6px 2px;
+  border: 0; background: none; color: var(--muted); font: inherit; cursor: pointer;
+}
+.picker-back .glyph { width: 20px; height: 20px; }
 
 /* The rest of a record: one box, a row per detail, label beside the value. */
 .details { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }

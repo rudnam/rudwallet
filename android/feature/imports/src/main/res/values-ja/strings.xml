@@ -4,6 +4,7 @@
     <string name="feature_imports_back">設定</string>
     <string name="feature_imports_paypay_how">PayPayアプリで「取引履歴」を開き、ダウンロードボタンから最大1年分の期間を選んでCSVファイルを保存してください。メールから記録済みの支払いはスキップされ、期間が重なっても同じ支払いは1回だけ追加されます。</string>
     <string name="feature_imports_mufg_how">三菱UFJダイレクトで入出金明細を開き、期間を選んでCSVファイルをダウンロードしてください。取り込み済みの行や、通知から記録済みの行は飛ばします。</string>
+    <string name="feature_imports_vpass_how">Vpass（三井住友カード）で「ご利用明細」を開き、月を選んでCSVファイルをダウンロードしてください。カードごとに口座を選べます。通知から記録済みの利用はスキップされます。</string>
     <string name="feature_imports_budgetbakers_how">BudgetBakersのWalletアプリで記録をCSVに書き出し（Web版: Records → Export）、ここでそのファイルを選んでください。取り込む前に、口座とカテゴリの行き先を選べます。同じファイルを2回取り込んでも重複はしません。</string>
     <string name="feature_imports_ic_how">Suica・PASMO・ICOCAなどの交通系ICカードをスマホの背面にかざすと、電車やバスの運賃、買い物、チャージを取り込めます。カードには直近20件しか残らないので、1〜2週間ごとに読み取ってください。このスマホのモバイルSuicaは、この方法では読み取れません。</string>
     <string name="feature_imports_choose_file">CSVファイルを選ぶ</string>
@@ -190,6 +191,7 @@
     <string name="feature_imports_sources_intro">ファイルやカードから取り込みます。RudWalletにすでにある記録は飛ばし、どのインポートも取り消せます。</string>
     <string name="feature_imports_paypay_hint">PayPayアプリの取引履歴CSV</string>
     <string name="feature_imports_mufg_hint">三菱UFJダイレクトの入出金明細CSV</string>
+    <string name="feature_imports_vpass_hint">Vpass（三井住友カード）のご利用明細CSV</string>
     <string name="feature_imports_ic_hint">Suica・PASMO・ICOCAなどをスマホの背面にかざす</string>
     <string name="feature_imports_budgetbakers_hint">BudgetBakers WalletのCSVエクスポート</string>
     <string name="feature_imports_how">入手方法</string>

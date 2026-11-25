@@ -314,7 +314,7 @@ export interface ImportOutlook {
 /** An import that changed something, for the import page's history. */
 export interface ImportBatch {
   id: number;
-  source: 'paypay' | 'mufg' | 'iccard' | 'budgetbakers';
+  source: 'paypay' | 'mufg' | 'iccard' | 'budgetbakers' | 'vpass';
   /** An IC card's last digits. */
   label: string;
   from: string | null;
@@ -885,6 +885,12 @@ export const api = {
   /** Records the difference between the account's balance and balance (minor units); null if none. */
   reconcileAccount: (id: number, balance: number) =>
     request<{ transaction: Transaction | null }>('POST', `/api/accounts/${id}/reconcile`, { balance }),
+  /** A Vpass statement (ご利用明細), answered as a PayPay file is: each card is a way of paying. */
+  previewVpassWith: (csv: string, accounts: AccountChoice[], categories: CategoryChoice[]) =>
+    request<PayPayPreview>('POST', '/api/import/vpass?preview=1', { csv, accounts, categories }),
+  /** accounts says which account each card goes to. */
+  importVpass: (csv: string, accounts: AccountChoice[], categories: CategoryChoice[]) =>
+    request<ImportResult>('POST', '/api/import/vpass', { csv, accounts, categories }),
   previewPayPay: (csv: string) => request<PayPayPreview>('POST', '/api/import/paypay?preview=1', csv, 'text/csv'),
   /** The preview again for these choices: what importing with them does. */
   previewPayPayWith: (csv: string, accounts: AccountChoice[], categories: CategoryChoice[]) =>

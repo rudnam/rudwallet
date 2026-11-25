@@ -427,6 +427,7 @@ const sourceNames: Record<ImportBatch['source'], () => string> = {
   mufg: () => 'MUFG',
   iccard: () => t('IC card'),
   budgetbakers: () => 'BudgetBakers',
+  vpass: () => 'Vpass',
 };
 
 /** The latest imports, each with what it added and found already there, and Undo. */

@@ -27,7 +27,7 @@ import java.time.YearMonth
 import javax.inject.Inject
 
 /**
- * Importing records from elsewhere: a PayPay, MUFG or BudgetBakers file, or
+ * Importing records from elsewhere: a PayPay, MUFG, Vpass or BudgetBakers file, or
  * a transit IC card. Each is previewed first (how it would be recorded, and
  * where each part is suggested to go), then imported with the user's choices.
  * The server does the reading and the recording.
@@ -46,7 +46,7 @@ interface ImportRepository {
     suspend fun importCard(card: IcCardRead, choices: ImportChoices): Fetched<ImportResult>
 
     /**
-     * The preview again for the user's choices (PayPay, BudgetBakers): the
+     * The preview again for the user's choices (PayPay, BudgetBakers, Vpass): the
      * server runs the import and rolls it back, so its counts and rows are
      * what importing with them does.
      */

@@ -173,9 +173,9 @@ for (const [name, viewport] of [
     // All: the picker with every category, main ones and their subcategories, indented.
     await add.getByRole('button', { name: 'All', exact: true }).click();
     const picker = page.getByRole('dialog', { name: 'Choose a category' });
-    // Main categories, each naming its subcategories; Travel opens to its own.
+    // Main categories, each naming its subcategories; Travel opens its own page.
     await picker.getByRole('button', { name: /^Travel/ }).click();
-    const travel = picker.getByRole('group', { name: 'Subcategories of Travel' });
+    const travel = picker.getByRole('list', { name: 'Travel' });
     await expect(travel.getByRole('button', { name: 'Trip transport' })).toBeVisible();
     await shot('5-new-record-all-categories');
     await travel.getByRole('button', { name: 'Trip transport' }).click();
@@ -241,6 +241,19 @@ for (const [name, viewport] of [
     await expect(page.getByRole('button', { name: 'Import 4 rows' })).toBeVisible();
     await page.getByRole('table', { name: 'Statement rows' }).scrollIntoViewIfNeeded();
     await shot('10-import-mufg');
+    await page.getByRole('button', { name: 'Cancel' }).click();
+
+    const vpassDay = (d) => `${now.getFullYear()}/${p(now.getMonth() + 1)}/${p(d)}`;
+    const vpass = [
+      'ヤマダ　タロウ　様,5334-91**-****-****,Ａｍａｚｏｎマスター',
+      `${vpassDay(1)},ＡＭＡＺＯＮ．ＣＯ．ＪＰ,1798,１,１,1798,`,
+      `${vpassDay(2)},ＧＯＯＧＬＥ　ＹＯＵＴＵＢＥＰＲＥＭＩＵ,1280,１,１,1280,`,
+      `${vpassDay(3)},ローソン,550,１,１,550,`,
+      ',,,,,3628,',
+    ].join('\r\n');
+    await page.getByLabel('Vpass CSV file').setInputFiles({ name: 'vpass.csv', mimeType: 'text/csv', buffer: Buffer.from(vpass) });
+    await expect(page.getByRole('button', { name: 'Import 3 payments' })).toBeVisible();
+    await shot('10-import-vpass');
     await page.getByRole('button', { name: 'Cancel' }).click();
 
     const bbDay = `${now.getFullYear()}-${p(now.getMonth() + 1)}-02 08:00:00`;

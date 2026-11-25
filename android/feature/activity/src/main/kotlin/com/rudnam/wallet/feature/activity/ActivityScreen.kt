@@ -349,6 +349,7 @@ private fun CategoryFilterChip(state: ActivityUiState.Ready, categoryId: Long?, 
             onPick = { actions.setCategory(it.id) },
             onDismiss = { open = false },
             title = stringResource(R.string.feature_activity_category),
+            mainTakesInSubs = true,
             extras = listOf(
                 CategoryPickerExtra(stringResource(R.string.feature_activity_all_categories), categoryId == null) { actions.setCategory(null) },
                 CategoryPickerExtra(stringResource(R.string.feature_activity_no_category), categoryId == RecordFilter.NO_CATEGORY) {

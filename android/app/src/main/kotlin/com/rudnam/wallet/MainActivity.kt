@@ -1,5 +1,6 @@
 package com.rudnam.wallet
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.Color
 import android.nfc.NfcAdapter
@@ -12,10 +13,12 @@ import com.rudnam.wallet.core.data.ic.IcCardTap
 import com.rudnam.wallet.core.data.ic.IcCards
 import com.rudnam.wallet.core.data.repository.GoogleReturn
 import com.rudnam.wallet.core.data.repository.GoogleReturns
+import com.rudnam.wallet.core.data.repository.PlayStoreUpdates
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
 import androidx.activity.SystemBarStyle
@@ -51,6 +54,8 @@ class MainActivity : AppCompatActivity() {
     @Inject lateinit var googleReturns: GoogleReturns
 
     @Inject lateinit var widgets: WidgetUpdater
+
+    @Inject lateinit var playUpdates: PlayStoreUpdates
 
     // Leaving the app: the home screen widgets show what changed in it.
     override fun onStop() {
@@ -97,7 +102,20 @@ class MainActivity : AppCompatActivity() {
                     settings = settings,
                     onUndo = viewModel::undo,
                     signOuts = viewModel.signOuts,
+                    onPlayUpdate = ::updateFromPlay,
                 )
+            }
+        }
+    }
+
+    /** Play's update screen; if Play has nothing to install after all, the app's Play Store page. */
+    private fun updateFromPlay() {
+        lifecycleScope.launch {
+            if (playUpdates.start(this@MainActivity)) return@launch
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$packageName")))
+            } catch (e: ActivityNotFoundException) {
+                // Neither the Play Store nor a browser: nothing more to offer.
             }
         }
     }

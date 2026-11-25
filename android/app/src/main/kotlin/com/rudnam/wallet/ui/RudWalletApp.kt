@@ -102,6 +102,8 @@ fun RudWalletApp(
     onUndo: suspend (RecordEvent) -> SaveResult,
     signOuts: Flow<SignOutReason> = emptyFlow(),
     appState: RudWalletAppState = rememberRudWalletAppState(),
+    /** Update tapped on a copy from the Play Store: Play's own update screen. */
+    onPlayUpdate: () -> Unit = {},
 ) {
     val snackbar = remember { SnackbarHostState() }
     RecordMessages(recordEvents, settings, snackbar, onUndo)
@@ -153,6 +155,7 @@ fun RudWalletApp(
                             override fun createAccount() {
                                 appState.signUpNext = true
                             }
+                            override fun updateFromPlay() = onPlayUpdate()
                         },
                         snackbar = snackbar,
                     )

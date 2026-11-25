@@ -181,7 +181,7 @@ private fun BudgetCard(row: BudgetRow, wallet: Wallet, format: MoneyFormat, acti
                 BudgetMark(category, allSpending = b.categoryId == null, size = 40.dp)
                 Column(Modifier.weight(1f)) {
                     Text(b.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(category?.name ?: stringResource(R.string.feature_insights_all_spending), style = MaterialTheme.typography.bodySmall, color = WalletTheme.colors.muted)
+                    Text(wallet.categoryPath(category?.id) ?: stringResource(R.string.feature_insights_all_spending), style = MaterialTheme.typography.bodySmall, color = WalletTheme.colors.muted)
                 }
                 LineIcon(WalletIcons.chevron, contentDescription = null, tint = WalletTheme.colors.muted, size = 18.dp)
             }
@@ -243,6 +243,7 @@ private fun BudgetSheet(wallet: Wallet, editor: BudgetEditor, actions: BudgetsAc
                     onPick = { actions.setCategory(it.id) },
                     onDismiss = { open = false },
                     title = stringResource(R.string.feature_insights_category),
+                    mainTakesInSubs = true,
                     extras = listOf(CategoryPickerExtra(allSpending, chosen == null) { actions.setCategory(null) }),
                 )
             }
