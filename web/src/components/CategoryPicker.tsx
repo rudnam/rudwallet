@@ -5,7 +5,7 @@
 // shape; Back (or Escape) returns to the main categories. Nothing opens in
 // place, so nothing moves under the pointer. Searching lists every match,
 // subcategories with their main category's name.
-import { useState, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { Category, CategoryKind } from '../api';
 import { inOrder, isSubcategory, mainCategoryId, subcategoriesOf } from '../categories';
 import { t } from '../i18n';
@@ -44,6 +44,21 @@ export function CategoryPicker({
   const kinds: CategoryKind[] = kind ? [kind] : ['expense', 'income'];
   const openMain = all.find((c) => c.id === open && subcategoriesOf(c.id, categories).length > 0);
   const holding = mainCategoryId(selected, categories);
+  // Focus follows the page: its Back button when it opens, the row it came from when it closes,
+  // so the keyboard (and Escape) stay in the picker and a screen reader lands where it should.
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const cameFrom = useRef<number | null>(null);
+  useEffect(() => {
+    const el = pickerRef.current;
+    if (!el) return;
+    if (openMain) {
+      cameFrom.current = openMain.id;
+      el.querySelector<HTMLElement>('.picker-back')?.focus();
+    } else if (cameFrom.current !== null) {
+      el.querySelector<HTMLElement>(`[data-main="${cameFrom.current}"]`)?.focus();
+      cameFrom.current = null;
+    }
+  }, [openMain]);
   const mainLabel = (c: Category) => (mainTakesInSubs ? t('All of {name}', { name: c.name }) : t('{name} (general)', { name: c.name }));
 
   // Escape on a page goes back to the main categories, as the phone's back does; on the list, it closes.
@@ -119,6 +134,7 @@ export function CategoryPicker({
                   <button
                     type="button"
                     className={holds ? 'holds' : undefined}
+                    data-main={c.id}
                     aria-label={`${c.name}, ${detail}`}
                     onClick={() => setOpen(c.id)}
                   >
@@ -141,7 +157,7 @@ export function CategoryPicker({
 
   return (
     <Dialog title={title ?? t('Choose a category')} onClose={onClose}>
-      <div className="stack picker" onKeyDown={onKeyDown}>
+      <div className="stack picker" ref={pickerRef} onKeyDown={onKeyDown}>
         {all.length > searchFrom && (
           <input
             type="search"

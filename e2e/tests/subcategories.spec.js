@@ -60,6 +60,7 @@ test('a subcategory is made in Settings, picked under its main category, and cou
   const picker = page.getByRole('dialog', { name: 'Choose a category' });
   const foodRow = picker.getByRole('button', { name: /^Food & Drinks/ });
   await expect(foodRow).toContainText('Groceries · Eating out · Delivery · Bakeries');
+  await page.screenshot({ path: test.info().outputPath('picker-list.png'), fullPage: true });
   // A row without subcategories picks; Food & Drinks, with a chevron, opens its own page:
   // it in general first, then its subcategories, every row the same shape.
   await foodRow.click();
