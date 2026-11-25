@@ -234,6 +234,19 @@ for (const [name, viewport] of [
     await shot('10-import-mufg');
     await page.getByRole('button', { name: 'Cancel' }).click();
 
+    const vpassDay = (d) => `${now.getFullYear()}/${p(now.getMonth() + 1)}/${p(d)}`;
+    const vpass = [
+      'ヤマダ　タロウ　様,5334-91**-****-****,Ａｍａｚｏｎマスター',
+      `${vpassDay(1)},ＡＭＡＺＯＮ．ＣＯ．ＪＰ,1798,１,１,1798,`,
+      `${vpassDay(2)},ＧＯＯＧＬＥ　ＹＯＵＴＵＢＥＰＲＥＭＩＵ,1280,１,１,1280,`,
+      `${vpassDay(3)},ローソン,550,１,１,550,`,
+      ',,,,,3628,',
+    ].join('\r\n');
+    await page.getByLabel('Vpass CSV file').setInputFiles({ name: 'vpass.csv', mimeType: 'text/csv', buffer: Buffer.from(vpass) });
+    await expect(page.getByRole('button', { name: 'Import 3 payments' })).toBeVisible();
+    await shot('10-import-vpass');
+    await page.getByRole('button', { name: 'Cancel' }).click();
+
     const bbDay = `${now.getFullYear()}-${p(now.getMonth() + 1)}-02 08:00:00`;
     const bb = [
       'account;category;currency;amount;ref_currency_amount;type;payment_type;note;date;transfer;payee;labels',

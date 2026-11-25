@@ -186,7 +186,7 @@ private fun summary(id: String, state: SettingsUiState): String {
         "accounts" -> w.activeAccounts.size.let { pluralStringResource(R.plurals.feature_settings_account_count, it, it) }
         "categories" -> w.categories.size.let { pluralStringResource(R.plurals.feature_settings_category_count, it, it) }
         "notifications" -> if (w.settings.autoConfirm) stringResource(R.string.feature_settings_auto_confirm_on) else ""
-        "import" -> "PayPay, MUFG, BudgetBakers"
+        "import" -> "PayPay, MUFG, Vpass, BudgetBakers"
         "appearance" -> stringResource(appearanceName(state.appearance))
         "language" -> currentLanguage()?.let(::languageName) ?: stringResource(R.string.feature_settings_automatic)
         else -> ""

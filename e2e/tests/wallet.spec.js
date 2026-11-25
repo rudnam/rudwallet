@@ -487,6 +487,47 @@ test('import an MUFG statement, then reconcile cash', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Edit account Cash' })).toContainText('¥4,000');
 });
 
+/**
+ * A Vpass ご利用明細 export, in Shift_JIS as Vpass sends it: the card's line,
+ * three purchases in November 2026, and the bill's lines (a revolving
+ * payment and the total), which aren't purchases.
+ */
+const vpassStatement = Buffer.from(
+  'g4SDfYNfgUCDXoONg0WBQJdsLDUzMzQtOTEqKi0qKioqLSoqKiosgmCCjYKBgpqCj4KOg32DWINegVsNCjIwMjYvMTEvMDMsgmaCboJugmaCa4JkgUCCeIJugnSCc4J0gmGCZIJvgnGCZIJsgmiCdCwxMjgwLIJQLIJQLDEyODAsDQoyMDI2LzExLzA4LIJggmyCYIJ5gm6CbYFEgmKCboFEgmmCbywxNzk4LIJQLIJQLDE3OTgsDQoyMDI2LzExLzA5LIONgVuDXIOTLDU1MCyCUCyCUCw1NTAsDQosgaaDioN7laWCooKojniVpYKiinqBaZXZjc+L4IFqgaYsLCwsNTUyMyyOY42CgsiCx4LNgqiOeJWll1yS6Ja+jdeXk4LwgrKXl4Ktgr6Cs4KiDQosLCwsLDkxNTEsDQo=',
+  'base64',
+);
+
+test('import a Vpass statement', async ({ page }) => {
+  await signUp(page);
+  const api = page.request;
+  const amazon = (await (await api.post('/api/accounts', { data: { name: 'Amazon Mastercard', kind: 'credit_card' } })).json()).id;
+  // The ¥1,798 purchase, recorded from its notification: the import must skip it.
+  const notified = { kind: 'expense', amount: 1798, account_id: amazon, occurred_at: '2026-11-08T10:22:00+09:00', payee: 'AMAZON.CO.JP' };
+  expect((await api.post('/api/transactions', { data: notified })).status()).toBe(201);
+
+  await page.goto('/app/#/settings?section=import');
+  await page.getByLabel('Vpass CSV file').setInputFiles({ name: '202612.csv', mimeType: 'text/csv', buffer: vpassStatement });
+  await expect(page.getByText(/^3 payments/)).toBeVisible();
+  // The card, read from Shift_JIS, goes to the card account named like it.
+  await expect(page.getByLabel(/^Amazonマスター/)).toHaveValue(String(amazon));
+  await expect(page.getByText('2 new records to add')).toBeVisible();
+  await expect(page.getByText('1 is already recorded another way (a notification, by hand, or another import)')).toBeVisible();
+  await expect(page.getByLabel('Category for ローソン').locator('option:checked')).toHaveText('Food & Drinks');
+  await page.screenshot({ path: test.info().outputPath('vpass-review.png'), fullPage: true });
+  await page.getByRole('button', { name: 'Import 2 payments' }).click();
+  await expect(page.getByRole('status')).toContainText('Imported 2 records, skipped 1 already recorded from notifications or by hand');
+  await expect(page.getByRole('list').filter({ hasText: '2 added' })).toContainText('Vpass');
+
+  // The same statement again: nothing new.
+  await page.getByLabel('Vpass CSV file').setInputFiles({ name: '202612.csv', mimeType: 'text/csv', buffer: vpassStatement });
+  await expect(page.getByText('Nothing new to add')).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel' }).click();
+
+  await page.goto('/app/#/records?month=2026-11');
+  await expect(page.getByRole('button', { name: /ローソン, −¥550/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /AMAZON\.CO\.JP/ })).toHaveCount(1);
+});
+
 test('choose records to recategorise, move and delete them together', async ({ page }) => {
   await signUp(page);
   const api = page.request;

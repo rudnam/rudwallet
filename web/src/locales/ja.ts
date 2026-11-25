@@ -556,6 +556,9 @@ export const ja = {
   'In the PayPay app, open 取引履歴 (transaction history), tap the download button, pick a period of up to a year, and save the CSV file. Payments already recorded from their emails are skipped, and importing an overlapping period adds each payment once.':
     'PayPayアプリで「取引履歴」を開き、ダウンロードボタンから最大1年分の期間を選んでCSVファイルを保存してください。メールから記録済みの支払いはスキップされ、期間が重なっても同じ支払いは1回だけ追加されます。',
   'PayPay CSV file': 'PayPayのCSVファイル',
+  'In Vpass (三井住友カード), open ご利用明細, pick the month, and download the CSV file. Each card gets an account, and purchases already recorded from their notifications are skipped.':
+    'Vpass（三井住友カード）で「ご利用明細」を開き、月を選んでCSVファイルをダウンロードしてください。カードごとに口座を選べます。通知から記録済みの利用はスキップされます。',
+  'Vpass CSV file': 'VpassのCSVファイル',
   'There are no payments in this file.': 'このファイルには支払いがありません。',
   'Choose another file': '別のファイルを選ぶ',
   '{n} payment. Choose where each way of paying is recorded:': '支払い{n}件。支払い方法ごとに記録する口座を選んでください:',
@@ -880,6 +883,8 @@ export const jaServer: Record<string, string> = {
   '{name} is an expense category': '{name}は支出のカテゴリです',
   '{name} is an income category': '{name}は収入のカテゴリです',
   'PayPay amounts are in yen, and your main currency is {currency}': 'PayPayの金額は円ですが、メインの通貨が{currency}になっています',
+  'Vpass amounts are in yen, and your main currency is {currency}': 'Vpassの金額は円ですが、メインの通貨が{currency}になっています',
+  "this doesn't look like a Vpass statement (ご利用明細): no line naming the card before the purchases": 'Vpassのご利用明細ではないようです（利用の前にカードを示す行がありません）',
   'IC card amounts are in yen, and your main currency is {currency}': '交通系ICカードの金額は円ですが、メインの通貨が{currency}になっています',
   "the card's IDm must be 8 bytes in hex": 'カードのIDmが正しくありません',
   'the card has no history': 'カードに履歴がありません',

@@ -76,6 +76,7 @@ func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) ht
 	route("POST /api/import/paypay", h.importPayPay)
 	route("POST /api/import/mufg", h.importMUFG)
 	route("POST /api/import/ic-card", h.importICCard)
+	route("POST /api/import/vpass", h.importVpass)
 	route("GET /api/imports", h.listImports)
 	route("POST /api/imports/{id}/undo", h.undoImport)
 }
@@ -754,6 +755,43 @@ func (h *Handler) importMUFG(w http.ResponseWriter, r *http.Request) error {
 		match = match || choices.MatchBalance
 	}
 	res, err := h.store.ImportMUFG(r.Context(), userID(r), data, accounts, categories, match)
+	if err := storeErr(err, "account"); err != nil {
+		return err
+	}
+	httpx.WriteJSON(w, http.StatusOK, res)
+	return nil
+}
+
+// importVpass takes a Vpass statement CSV (ご利用明細, as Vpass sends it in
+// Shift_JIS) as the request body, or JSON: {"csv", "accounts":
+// [AccountChoice] by card name, "categories": [CategoryChoice]}; JSON
+// carries the file as text, so it must be UTF-8 there. It answers as
+// importPayPay does, each card being a way of paying: with ?preview=1, an
+// account suggested for each card, a category for each shop, and what
+// importing with the choices given would do, row by row; otherwise it
+// imports (Store.ImportVpass).
+func (h *Handler) importVpass(w http.ResponseWriter, r *http.Request) error {
+	data, choices, err := readImport(w, r)
+	if err != nil {
+		return err
+	}
+	accounts := map[string]AccountPick{}
+	var categories []CategoryChoice
+	if choices != nil {
+		if err := accountPicks(choices.Accounts, 0, accounts); err != nil {
+			return storeErr(err, "account")
+		}
+		categories = choices.Categories
+	}
+	if r.URL.Query().Get("preview") == "1" {
+		p, err := h.store.PreviewVpass(r.Context(), userID(r), data, accounts, categories)
+		if err := storeErr(err, "account"); err != nil {
+			return err
+		}
+		httpx.WriteJSON(w, http.StatusOK, p)
+		return nil
+	}
+	res, err := h.store.ImportVpass(r.Context(), userID(r), data, accounts, categories)
 	if err := storeErr(err, "account"); err != nil {
 		return err
 	}

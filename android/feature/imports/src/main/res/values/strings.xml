@@ -5,6 +5,7 @@
     <string name="feature_imports_back">Settings</string>
     <string name="feature_imports_paypay_how">In the PayPay app, open 取引履歴 (transaction history), tap the download button, pick a period of up to a year, and save the CSV file. Payments already recorded from their emails are skipped, and importing an overlapping period adds each payment once.</string>
     <string name="feature_imports_mufg_how">In 三菱UFJダイレクト, open 入出金明細, pick the period, and download the CSV file. Rows already imported, or already recorded from notifications, are skipped.</string>
+    <string name="feature_imports_vpass_how">In Vpass (三井住友カード), open ご利用明細, pick the month, and download the CSV file. Each card gets an account, and purchases already recorded from their notifications are skipped.</string>
     <string name="feature_imports_budgetbakers_how">In BudgetBakers’ Wallet app, export your records as CSV (on the web app: Records → Export), then choose the file here. You can choose where its accounts and categories go before anything is imported. Importing the same file twice adds nothing new.</string>
     <string name="feature_imports_ic_how">Hold a Suica, PASMO, ICOCA or other transit IC card to the back of the phone to import its train and bus fares, shop payments and top-ups. The card keeps only its last 20 entries, so read it every week or two. Mobile Suica on this phone can’t be read this way.</string>
     <string name="feature_imports_choose_file">Choose the CSV file</string>
@@ -219,6 +220,7 @@
     <string name="feature_imports_sources_intro">Import from a file or a card. What’s already in RudWallet is skipped, and you can undo any import.</string>
     <string name="feature_imports_paypay_hint">取引履歴 (transaction history) CSV from the PayPay app</string>
     <string name="feature_imports_mufg_hint">入出金明細 CSV from 三菱UFJダイレクト</string>
+    <string name="feature_imports_vpass_hint">ご利用明細 (statement) CSV from Vpass (三井住友カード)</string>
     <string name="feature_imports_ic_hint">Suica, PASMO, ICOCA… held to the back of the phone</string>
     <string name="feature_imports_budgetbakers_hint">CSV export from BudgetBakers’ Wallet</string>
     <string name="feature_imports_how">How to get it</string>

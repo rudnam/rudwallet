@@ -174,6 +174,7 @@ internal fun ImportScreen(
                     val sources = listOf(
                         Triple(ImportSource.PayPay, R.string.feature_imports_paypay_hint, R.string.feature_imports_paypay_how),
                         Triple(ImportSource.Mufg, R.string.feature_imports_mufg_hint, R.string.feature_imports_mufg_how),
+                        Triple(ImportSource.Vpass, R.string.feature_imports_vpass_hint, R.string.feature_imports_vpass_how),
                         Triple(ImportSource.IcCard, R.string.feature_imports_ic_hint, R.string.feature_imports_ic_how),
                         Triple(ImportSource.BudgetBakers, R.string.feature_imports_budgetbakers_hint, R.string.feature_imports_budgetbakers_how),
                     )
@@ -220,6 +221,7 @@ private fun sourceLabel(source: ImportSource) = when (source) {
     ImportSource.Mufg -> "MUFG"
     ImportSource.BudgetBakers -> "BudgetBakers"
     ImportSource.IcCard -> stringResource(R.string.feature_imports_ic_card)
+    ImportSource.Vpass -> "Vpass"
 }
 
 /** A source: its name and what to bring, tapped to pick the file (or read the card); how to get it opens below. */
