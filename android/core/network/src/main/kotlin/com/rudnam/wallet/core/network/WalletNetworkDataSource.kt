@@ -59,6 +59,18 @@ interface WalletNetworkDataSource {
      */
     suspend fun stats(from: Instant, to: Instant, zone: String, accountId: Long? = null): NetworkStats
 
+    /** Recurring payments, suggestions and the month going on's, dated in the IANA time zone [zone]. */
+    suspend fun recurring(zone: String): com.rudnam.wallet.core.network.model.NetworkRecurringOverview
+
+    suspend fun createRecurring(input: com.rudnam.wallet.core.network.model.NetworkRecurringInput)
+
+    suspend fun updateRecurring(id: Long, input: com.rudnam.wallet.core.network.model.NetworkRecurringInput)
+
+    suspend fun deleteRecurring(id: Long)
+
+    /** Stops a suggestion being made again. */
+    suspend fun dismissRecurring(key: String)
+
     /** Payment notifications the phone has sent (for the first-run checklist). */
     suspend fun notifications(): NetworkNotifications
 

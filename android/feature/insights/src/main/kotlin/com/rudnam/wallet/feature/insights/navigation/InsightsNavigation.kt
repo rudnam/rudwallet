@@ -7,6 +7,7 @@ import com.rudnam.wallet.core.ui.Page
 import com.rudnam.wallet.feature.insights.BudgetsDestination
 import com.rudnam.wallet.feature.insights.InsightsDestination
 import com.rudnam.wallet.feature.insights.InsightsNavigation
+import com.rudnam.wallet.feature.insights.RecurringDestination
 import kotlinx.serialization.Serializable
 
 /**
@@ -35,7 +36,12 @@ data class InsightsRoute(
 @Serializable
 data object BudgetsRoute
 
+/** Recurring payments (subscriptions, bills, income), the website's #/recurring, opened from Insights. */
+@Serializable
+data object RecurringRoute
+
 fun NavGraphBuilder.insightsScreen(navigation: InsightsNavigation, snackbar: SnackbarHostState) {
     composable<InsightsRoute> { Page { InsightsDestination(navigation) } }
     composable<BudgetsRoute> { Page { BudgetsDestination(navigation, snackbar) } }
+    composable<RecurringRoute> { Page { RecurringDestination(navigation, snackbar) } }
 }

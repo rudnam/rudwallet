@@ -11,10 +11,13 @@ import com.rudnam.wallet.core.model.BudgetInput
 import com.rudnam.wallet.core.model.CategoryKind
 import com.rudnam.wallet.core.model.CategoryTotal
 import com.rudnam.wallet.core.model.DayTotal
+import com.rudnam.wallet.core.model.RecurringMonth
+import com.rudnam.wallet.core.model.RecurringOverview
 import com.rudnam.wallet.core.model.Stats
 import com.rudnam.wallet.core.testing.MainDispatcherRule
 import com.rudnam.wallet.core.testing.SampleWallet
 import com.rudnam.wallet.core.testing.TestInsightsRepository
+import com.rudnam.wallet.core.testing.TestRecurringRepository
 import com.rudnam.wallet.core.testing.TestWalletRepository
 import com.rudnam.wallet.feature.insights.navigation.InsightsRoute
 import kotlinx.coroutines.flow.first
@@ -51,8 +54,10 @@ class InsightsViewModelTest {
         }
     }
 
+    private val recurring = TestRecurringRepository()
+
     private fun viewModel(route: InsightsRoute = InsightsRoute()) =
-        InsightsViewModel(SavedStateHandle(route), wallet, insights, events, clock)
+        InsightsViewModel(SavedStateHandle(route), wallet, insights, recurring, events, clock)
 
     private suspend fun InsightsViewModel.loaded() = uiState.first { it is InsightsUiState.Ready && it.stats != null } as InsightsUiState.Ready
 
@@ -69,6 +74,16 @@ class InsightsViewModelTest {
         assertTrue(state.atLatest)
         // The month and the three before it, each up to the same day.
         assertTrue(insights.asked.size >= 4)
+    }
+
+    @Test
+    fun `where the month is heading counts its subscriptions and bills once`() = runTest {
+        recurring.answer = RecurringOverview(emptyList(), emptyList(), RecurringMonth(LocalDate.of(2026, 11, 1), paid = 9_570, upcoming = 5_000, due = emptyList()))
+        val state = viewModel().uiState.first { it is InsightsUiState.Ready && it.ahead?.upcoming != null } as InsightsUiState.Ready
+        assertEquals(5_000L, state.ahead!!.upcoming)
+        // The other ¥10,000 over 14 days, for 30; with the ¥9,570 paid and the ¥5,000 to come.
+        assertEquals(21_429L + 9_570 + 5_000, state.ahead!!.heading)
+        assertTrue(recurring.refreshes > 0)
     }
 
     @Test

@@ -60,8 +60,8 @@ test('stats over other periods, and how spending compares with usual', async ({ 
   await page.getByText('Range', { exact: true }).click();
   const p = (n) => String(n).padStart(2, '0');
   const day = (d) => `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-  await page.getByLabel('From').fill(day(new Date(now.getFullYear(), now.getMonth() - 3, 1)));
-  await page.getByLabel('To').fill(day(now));
+  await page.getByLabel('From', { exact: true }).fill(day(new Date(now.getFullYear(), now.getMonth() - 3, 1)));
+  await page.getByLabel('To', { exact: true }).fill(day(now));
   await expect(page.locator('.hero-figure')).toHaveText('¥11,000');
   await expect(page.getByRole('list', { name: 'Spending by category' })).toContainText('Food & Drinks');
 });

@@ -2,7 +2,7 @@
 // with the period before.
 import { useEffect, useState } from 'react';
 import { byMainCategory, withSubcategories } from '../../categories';
-import { api, errorMessage, type Budget, type Stats } from '../../api';
+import { api, errorMessage, type Budget, type RecurringMonth, type Stats } from '../../api';
 import { CategoryBars, DailyColumns, type BarItem } from '../../components/charts';
 import { CategoryIcon, Icon, icons } from '../../components/Icon';
 import { addMonths, dayKey, formatCompact, formatMonth } from '../../money';
@@ -44,11 +44,15 @@ export function StatsPage({ route }: { route: Route }) {
   const ahead = period.span === 'month' && ongoing && !account;
   const [stats, setStats] = useState<{ now: Stats; past: Stats[] } | null>(() => seenStats(period, account));
   const [budgets, setBudgets] = useState<Budget[]>(() => api.seen.budgets() ?? []);
+  const [recurring, setRecurring] = useState<{ month: RecurringMonth; count: number } | null>(() => recurringMonth(api.seen.recurring()));
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (ahead) api.budgets().then(setBudgets, () => {});
-  }, [ahead]);
+    if (!ahead) return;
+    api.budgets().then(setBudgets, () => {});
+    // Asked again with the figures: a record added may be a bill paid.
+    api.recurring().then((o) => setRecurring(recurringMonth(o)), () => {});
+  }, [ahead, stats?.now]);
 
   const key = `${period.from.getTime()}-${period.to.getTime()}-${days}-${account}`;
   useEffect(() => {
@@ -192,7 +196,7 @@ export function StatsPage({ route }: { route: Route }) {
       </div>
 
       {stats && ahead && (
-        <MonthAhead now={stats.now} budgets={budgets} days={days} period={period} />
+        <MonthAhead now={stats.now} budgets={budgets} recurring={recurring} days={days} period={period} />
       )}
 
       <div className="card stack">
@@ -469,11 +473,26 @@ function Trends({ now: raw, past, period, days, ongoing }: { now: Stats; past: S
  * The month in progress: where its spending is heading at the same rate per
  * day as so far, and how much each budget leaves to spend per day.
  */
-function MonthAhead({ now, budgets, days, period }: { now: Stats; budgets: Budget[]; days: number; period: Period }) {
+function MonthAhead({
+  now,
+  budgets,
+  recurring,
+  days,
+  period,
+}: {
+  now: Stats;
+  budgets: Budget[];
+  recurring: { month: RecurringMonth; count: number } | null;
+  days: number;
+  period: Period;
+}) {
   const w = useWallet();
   const len = lengthInDays(period);
   const left = len - days + 1; // today included
-  const heading = (spentIn: (s: Stats) => number) => Math.round((spentIn(now) / days) * len);
+  // Subscriptions and bills come once, not every day: the rest of the
+  // spending goes on at its rate so far, and they add what they still take.
+  const m = recurring?.month.start === dayKey(period.from) ? recurring.month : null;
+  const heading = m ? Math.round((Math.max(0, now.spent - m.paid) / days) * len) + m.paid + m.upcoming : Math.round((now.spent / days) * len);
   const forBudget = (b: Budget) => (s: Stats) =>
     b.category_id === null
       ? s.spent
@@ -488,7 +507,17 @@ function MonthAhead({ now, budgets, days, period }: { now: Stats; budgets: Budge
         <h2>{title}</h2>
         <a href={href('budgets')}>{budgets.length > 0 ? t('Edit budgets') : t('Set a budget')}</a>
       </div>
-      <strong className="block">{t('Heading for about {amount}', { amount: w.money(heading((s) => s.spent)) })}</strong>
+      <strong className="block">{t('Heading for about {amount}', { amount: w.money(heading) })}</strong>
+      <p className="small muted recurring-line">
+        {m && m.upcoming > 0
+          ? tx('With {amount} of bills and subscriptions still to come. {link}', {
+              amount: <strong>{w.money(m.upcoming)}</strong>,
+              link: <a href={href('recurring')}>{t('See them')}</a>,
+            })
+          : m && recurring!.count > 0
+            ? tx('Your bills and subscriptions are paid for this month. {link}', { link: <a href={href('recurring')}>{t('See them')}</a> })
+            : tx('Add your subscriptions and bills for a better estimate. {link}', { link: <a href={href('recurring')}>{t('Recurring payments')}</a> })}
+      </p>
       {budgets.length > 0 && (
         <div className="stack tight">
           <h3 className="small muted">{tn(left, 'To stay within budget, {n} day left', 'To stay within budget, {n} days left')}</h3>
@@ -641,4 +670,10 @@ function categoryBars(s: Stats, kind: 'expense' | 'income', w: ReturnType<typeof
         amount: total.amount,
       };
     });
+}
+
+/** This month's recurring payments, and how many are tracked, from GET /api/recurring. */
+function recurringMonth(o: { month: RecurringMonth; recurring: { active: boolean; kind: string }[] } | undefined) {
+  if (!o) return null;
+  return { month: o.month, count: o.recurring.filter((r) => r.active && r.kind !== 'income').length };
 }

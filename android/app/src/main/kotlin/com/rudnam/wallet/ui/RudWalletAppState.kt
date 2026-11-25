@@ -15,6 +15,7 @@ import com.rudnam.wallet.feature.activity.navigation.DuplicatesRoute
 import com.rudnam.wallet.feature.imports.navigation.CardRoute
 import com.rudnam.wallet.feature.imports.navigation.ImportRoute
 import com.rudnam.wallet.feature.insights.navigation.BudgetsRoute
+import com.rudnam.wallet.feature.insights.navigation.RecurringRoute
 import com.rudnam.wallet.feature.signin.navigation.SignInRoute
 import com.rudnam.wallet.feature.insights.navigation.InsightsRoute
 import com.rudnam.wallet.feature.settings.navigation.SettingsSectionRoute
@@ -83,6 +84,10 @@ class RudWalletAppState(val navController: NavHostController) {
         }
         if (page == "budgets") {
             navController.navigate(BudgetsRoute)
+            return
+        }
+        if (page == "recurring") {
+            navController.navigate(RecurringRoute)
             return
         }
         // Importing records, and a transit IC card's page.

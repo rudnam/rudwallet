@@ -6,6 +6,8 @@ import com.rudnam.wallet.core.data.repository.AuthRepository
 import com.rudnam.wallet.core.data.repository.ServerAuthRepository
 import com.rudnam.wallet.core.data.repository.ImportRepository
 import com.rudnam.wallet.core.data.repository.InsightsRepository
+import com.rudnam.wallet.core.data.repository.RecurringRepository
+import com.rudnam.wallet.core.data.repository.ServerRecurringRepository
 import com.rudnam.wallet.core.data.repository.ServerImportRepository
 import com.rudnam.wallet.core.data.repository.ServerSettingsRepository
 import com.rudnam.wallet.core.data.repository.ServerUserRepository
@@ -47,6 +49,9 @@ internal interface DataModule {
 
     @Binds
     fun insightsRepository(impl: ServerInsightsRepository): InsightsRepository
+
+    @Binds
+    fun recurringRepository(impl: ServerRecurringRepository): RecurringRepository
 
     @Binds
     fun settingsRepository(impl: ServerSettingsRepository): SettingsRepository

@@ -6,6 +6,7 @@ import com.rudnam.wallet.core.database.dao.BudgetDao
 import com.rudnam.wallet.core.database.model.asEntity
 
 import com.rudnam.wallet.core.model.BudgetInput
+import com.rudnam.wallet.core.model.RecurringOverview
 import com.rudnam.wallet.core.model.Stats
 import com.rudnam.wallet.core.network.ApiException
 import com.rudnam.wallet.core.network.SignedOutException
@@ -14,6 +15,7 @@ import com.rudnam.wallet.core.network.model.asModel
 import com.rudnam.wallet.core.network.model.asNetwork
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
 import java.io.IOException
@@ -56,9 +58,15 @@ interface InsightsRepository {
     suspend fun deleteBudget(id: Long): ChangeResult
 }
 
-/** Stats seen since the app started, the most recent few; emptied when someone signs out. */
+/**
+ * Stats seen since the app started, the most recent few, and the last
+ * answer about recurring payments; emptied when someone signs out.
+ */
 @Singleton
 class StatsCache @Inject constructor() {
+    /** The last GET /api/recurring answer (RecurringRepository). */
+    val recurring = MutableStateFlow<RecurringOverview?>(null)
+
     private val entries = object : LinkedHashMap<StatsQuery, Stats>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<StatsQuery, Stats>) = size > 96
     }
@@ -72,7 +80,10 @@ class StatsCache @Inject constructor() {
     }
 
     @Synchronized
-    fun clear() = entries.clear()
+    fun clear() {
+        entries.clear()
+        recurring.value = null
+    }
 }
 
 internal class ServerInsightsRepository @Inject constructor(

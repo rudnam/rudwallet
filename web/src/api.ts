@@ -117,6 +117,70 @@ export interface Budget {
   amount: number;
 }
 
+export type RecurringKind = 'subscription' | 'bill' | 'income';
+
+/** A recurring payment as saved: what POST and PUT /api/recurring take. */
+export interface RecurringInput {
+  name: string;
+  kind: RecurringKind;
+  /** Texts its records' payee (or note) contain. */
+  matches: string[];
+  amount: number;
+  /** How often: 1, 2, 3, 6 or 12 months. */
+  months: number;
+  /** YYYY-MM-DD: when it's due if it has no payments yet. */
+  start_date: string;
+  category_id: number | null;
+  account_id: number | null;
+  /** False once it stopped (a cancelled subscription). */
+  active: boolean;
+}
+
+/** One of a recurring payment's records. */
+export interface RecurringPayment {
+  transaction_id: number;
+  /** YYYY-MM-DD, in the time zone asked for. */
+  date: string;
+  amount: number;
+  label: string;
+  /** False for a record still to review. */
+  confirmed: boolean;
+}
+
+export interface Recurring extends RecurringInput {
+  id: number;
+  /** What the next payment should be. */
+  estimate: number;
+  /** Newest first, up to 12. */
+  payments: RecurringPayment[];
+  last_paid: RecurringPayment | null;
+  next_due: string | null;
+  late: boolean;
+}
+
+/** A recurring payment found in the records, ready to add. */
+export interface RecurringSuggestion extends Omit<RecurringInput, 'active'> {
+  key: string;
+  payments: RecurringPayment[];
+}
+
+/** What the active subscriptions and bills do to the month going on. */
+export interface RecurringMonth {
+  start: string;
+  end: string;
+  /** Their confirmed payments this month: spending already counted. */
+  paid: number;
+  /** What's still expected this month. */
+  upcoming: number;
+  due: { id: number; name: string; date: string; amount: number; late: boolean }[];
+}
+
+export interface RecurringOverview {
+  recurring: Recurring[];
+  suggestions: RecurringSuggestion[];
+  month: RecurringMonth;
+}
+
 export interface TransactionFilter {
   from?: Date;
   to?: Date;
@@ -608,6 +672,10 @@ function statsPath(from: Date, to: Date, accountId?: number): string {
   return `/api/stats?${p}`;
 }
 
+function recurringPath(): string {
+  return `/api/recurring?${new URLSearchParams({ tz: Intl.DateTimeFormat().resolvedOptions().timeZone })}`;
+}
+
 /** Who is signed in, for the outbox. */
 const owner = () => savedMe.get()?.email ?? '';
 
@@ -746,6 +814,14 @@ export const api = {
   updateBudget: (id: number, b: Omit<Budget, 'id'>) => request<Budget>('PUT', `/api/budgets/${id}`, b),
   deleteBudget: (id: number) => request<void>('DELETE', `/api/budgets/${id}`),
 
+  /** Recurring payments, suggestions and this month's, with dates in this device's time zone. */
+  recurring: () => request<RecurringOverview>('GET', recurringPath()),
+  createRecurring: (r: RecurringInput) => request<Recurring>('POST', '/api/recurring', r),
+  updateRecurring: (id: number, r: RecurringInput) => request<Recurring>('PUT', `/api/recurring/${id}`, r),
+  deleteRecurring: (id: number) => request<void>('DELETE', `/api/recurring/${id}`),
+  /** Don't suggest it again. */
+  dismissRecurring: (key: string) => request<void>('POST', '/api/recurring/dismiss', { key }),
+
   notifications: () => request<{ notifications: PaymentNotification[] }>('GET', '/api/notifications'),
 
   rules: () => request<Rules>('GET', '/api/rules'),
@@ -759,6 +835,7 @@ export const api = {
     overview: () => lastSeen.get('/api/wallet') as Overview | undefined,
     transactions: (f: TransactionFilter = {}) => lastSeen.get(`/api/transactions${query(f)}`) as Transaction[] | undefined,
     budgets: () => lastSeen.get('/api/budgets') as Budget[] | undefined,
+    recurring: () => lastSeen.get(recurringPath()) as RecurringOverview | undefined,
     tags: () => lastSeen.get('/api/tags') as Tag[] | undefined,
     stats: (from: Date, to: Date, accountId?: number) => lastSeen.get(statsPath(from, to, accountId)) as Stats | undefined,
     rules: () => lastSeen.get('/api/rules') as Rules | undefined,
@@ -771,6 +848,7 @@ export const api = {
     transactions: (f: TransactionFilter = {}) => prefetch(`/api/transactions${query(f)}`),
     stats: (from: Date, to: Date, accountId?: number) => prefetch(statsPath(from, to, accountId)),
     budgets: () => prefetch('/api/budgets'),
+    recurring: () => prefetch(recurringPath()),
     tags: () => prefetch('/api/tags'),
   },
 

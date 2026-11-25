@@ -193,6 +193,15 @@ for (const [name, viewport] of [
     await expect(page.getByRole('list', { name: 'Budgets' })).toBeVisible();
     await shot('6-budgets');
 
+    // Rent and the electricity bill come back each month: suggested, then added.
+    await page.goto('/app/#/recurring');
+    await expect(page.getByRole('list', { name: 'Suggestions' })).toBeVisible();
+    await shot('6-recurring-suggested');
+    await page.getByRole('button', { name: 'Add all' }).click();
+    await expect(page.getByRole('list', { name: 'Suggestions' })).toBeHidden();
+    await expect(page.getByLabel('This month')).toBeVisible();
+    await shot('6-recurring');
+
     await page.goto('/app/#/settings');
     await expect(page.getByRole('navigation', { name: 'Settings sections' })).toBeVisible();
     await shot('7-settings');

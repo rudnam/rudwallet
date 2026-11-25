@@ -130,6 +130,21 @@ internal interface WalletApi {
         @Query("account_id") accountId: Long? = null,
     ): NetworkStats
 
+    @GET("api/recurring")
+    suspend fun recurring(@Query("tz") zone: String): com.rudnam.wallet.core.network.model.NetworkRecurringOverview
+
+    @POST("api/recurring")
+    suspend fun createRecurring(@Body input: com.rudnam.wallet.core.network.model.NetworkRecurringInput): Response<Unit>
+
+    @PUT("api/recurring/{id}")
+    suspend fun updateRecurring(@Path("id") id: Long, @Body input: com.rudnam.wallet.core.network.model.NetworkRecurringInput): Response<Unit>
+
+    @DELETE("api/recurring/{id}")
+    suspend fun deleteRecurring(@Path("id") id: Long): Response<Unit>
+
+    @POST("api/recurring/dismiss")
+    suspend fun dismissRecurring(@Body body: com.rudnam.wallet.core.network.model.NetworkRecurringDismiss): Response<Unit>
+
     @GET("api/notifications")
     suspend fun notifications(): NetworkNotifications
 
@@ -292,6 +307,18 @@ internal class RetrofitWalletNetwork @Inject constructor(retrofit: Retrofit, pri
 
     override suspend fun stats(from: Instant, to: Instant, zone: String, accountId: Long?) =
         call { api.stats(rfc3339(from), rfc3339(to), zone, accountId) }
+
+    override suspend fun recurring(zone: String) = call { api.recurring(zone) }
+
+    override suspend fun createRecurring(input: com.rudnam.wallet.core.network.model.NetworkRecurringInput) = call { api.createRecurring(input).orThrow() }
+
+    override suspend fun updateRecurring(id: Long, input: com.rudnam.wallet.core.network.model.NetworkRecurringInput) =
+        call { api.updateRecurring(id, input).orThrow() }
+
+    override suspend fun deleteRecurring(id: Long) = call { api.deleteRecurring(id).orThrow() }
+
+    override suspend fun dismissRecurring(key: String) =
+        call { api.dismissRecurring(com.rudnam.wallet.core.network.model.NetworkRecurringDismiss(key)).orThrow() }
 
     override suspend fun notifications() = call { api.notifications() }
 
