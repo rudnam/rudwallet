@@ -39,7 +39,7 @@ class CategoryPickerTest {
     }
 
     @Test
-    fun `a main category with subcategories opens its page, which picks; back returns`() {
+    fun `a main category with subcategories opens its page, which picks, and back returns`() {
         val picked = show()
         compose.onNodeWithText("Food & Drinks").performClick()
         assertNull("opening a page picks nothing", picked())
