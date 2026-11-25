@@ -207,7 +207,7 @@ class ImportReviewViewModel @Inject constructor(
      * the last change. The choices the user made stay.
      */
     private fun recheck() {
-        if (source != ImportSource.PayPay && source != ImportSource.BudgetBakers) return
+        if (!source.previewsChoices) return
         val text = csv ?: return
         checking?.cancel()
         ready { it.copy(checking = true) }

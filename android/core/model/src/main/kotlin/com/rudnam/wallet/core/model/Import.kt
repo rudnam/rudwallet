@@ -8,7 +8,13 @@ enum class ImportSource(val key: String) {
     Mufg("mufg"),
     BudgetBakers("budgetbakers"),
     IcCard("ic"),
+
+    /** A Vpass (三井住友カード) statement, which the server answers as it does a PayPay file: each card is a way of paying. */
+    Vpass("vpass"),
     ;
+
+    /** Its preview takes the choices, and is the import run and rolled back (PayPay's shape). */
+    val previewsChoices get() = this == PayPay || this == BudgetBakers || this == Vpass
 
     companion object {
         fun fromKey(key: String?) = entries.firstOrNull { it.key == key }
@@ -36,7 +42,7 @@ data class IcCardRead(val idm: String, val history: List<String>) {
 
 /**
  * A group of an import's records that goes to one account: a PayPay way of
- * paying, an MUFG or IC card role, a BudgetBakers account ([key]). The
+ * paying, an MUFG or IC card role, a BudgetBakers account, a Vpass card ([key]). The
  * suggestion is [accountId], or (null) a new account named [newName].
  */
 data class ImportAccountGroup(
