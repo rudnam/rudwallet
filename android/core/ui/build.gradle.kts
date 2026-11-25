@@ -8,6 +8,7 @@ android { namespace = "com.rudnam.wallet.core.ui" }
 dependencies {
     api(project(":core:model"))
     api(project(":core:designsystem"))
+    implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     testImplementation(project(":core:testing"))

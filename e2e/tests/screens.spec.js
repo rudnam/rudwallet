@@ -173,9 +173,9 @@ for (const [name, viewport] of [
     // All: the picker with every category, main ones and their subcategories, indented.
     await add.getByRole('button', { name: 'All', exact: true }).click();
     const picker = page.getByRole('dialog', { name: 'Choose a category' });
-    // Main categories, each naming its subcategories; Travel opens to its own.
+    // Main categories, each naming its subcategories; Travel opens its own page.
     await picker.getByRole('button', { name: /^Travel/ }).click();
-    const travel = picker.getByRole('group', { name: 'Subcategories of Travel' });
+    const travel = picker.getByRole('list', { name: 'Travel' });
     await expect(travel.getByRole('button', { name: 'Trip transport' })).toBeVisible();
     await shot('5-new-record-all-categories');
     await travel.getByRole('button', { name: 'Trip transport' }).click();

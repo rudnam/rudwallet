@@ -220,10 +220,10 @@ private fun RuleRow(title: String, records: Int, onForget: () -> Unit, choice: @
 private fun CategoryChoice(wallet: Wallet, chosen: Long?, label: String, onChoose: (Long) -> Unit) {
     var open by remember { mutableStateOf(false) }
     val current = wallet.category(chosen)
-    TextButton(onClick = { open = true }, modifier = Modifier.widthIn(max = 168.dp).semantics { contentDescription = "$label: ${current?.name.orEmpty()}" }) {
+    TextButton(onClick = { open = true }, modifier = Modifier.widthIn(max = 168.dp).semantics { contentDescription = "$label: ${wallet.categoryPath(chosen).orEmpty()}" }) {
         current?.let { CategoryIcon(it, Modifier.size(24.dp)) }
         Text(
-            current?.name ?: stringResource(R.string.feature_settings_pick_category),
+            wallet.categoryPath(chosen) ?: stringResource(R.string.feature_settings_pick_category),
             Modifier.padding(start = 8.dp),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
