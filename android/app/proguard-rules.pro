@@ -19,3 +19,8 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# ViewModels keep their class names. Hilt finds a page's ViewModel by its name, and
+# check-viewmodels.sh checks every @HiltViewModel's name is in the built APK, which only
+# works if R8 leaves the names as written. It also makes a crash name the class.
+-keepnames class * extends androidx.lifecycle.ViewModel

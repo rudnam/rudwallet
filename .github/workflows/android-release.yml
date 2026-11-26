@@ -126,6 +126,10 @@ jobs:
       - name: Build
         run: ./android/build.sh
 
+      # A page whose ViewModel isn't in Hilt's map crashes opening: never publish such a build.
+      - name: Check every Hilt ViewModel is in the app
+        run: ./android/check-viewmodels.sh android/wallet.apk
+
       - name: Check the signature
         run: |
           apksigner=$(printf "%s\n" "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)

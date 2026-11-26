@@ -1,3 +1,4 @@
+import com.rudnam.wallet.configureKsp
 import com.rudnam.wallet.libs
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -13,5 +14,6 @@ class HiltConventionPlugin : Plugin<Project> {
             add("testImplementation", libs.findLibrary("hilt-android-testing").get())
             add("kspTest", libs.findLibrary("hilt-compiler").get())
         }
+        configureKsp()
     }
 }

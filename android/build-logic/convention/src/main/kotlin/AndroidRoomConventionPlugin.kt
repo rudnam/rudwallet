@@ -1,4 +1,5 @@
 import androidx.room.gradle.RoomExtension
+import com.rudnam.wallet.configureKsp
 import com.rudnam.wallet.libs
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -19,5 +20,6 @@ class AndroidRoomConventionPlugin : Plugin<Project> {
             add("ksp", libs.findLibrary("androidx-room-compiler").get())
             add("testImplementation", libs.findLibrary("androidx-room-testing").get())
         }
+        configureKsp()
     }
 }
