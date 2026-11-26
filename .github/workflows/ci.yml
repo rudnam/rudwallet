@@ -86,6 +86,11 @@ jobs:
       # (below), and the job still fails.
       - run: ./gradlew assemblePreview testDebugUnitTest lintNative --continue -Proborazzi.test.record=true
         working-directory: android
+      # Every @HiltViewModel must be in the preview's Hilt map, or its page crashes opening
+      # (2.1.43 to 2.1.47 shipped without Settings' and Account's).
+      - name: Check every Hilt ViewModel is in the app
+        if: ${{ !cancelled() && hashFiles('android/app/build/outputs/apk/preview/app-preview.apk') != '' }}
+        run: android/check-viewmodels.sh android/app/build/outputs/apk/preview/app-preview.apk
       # On a pull request, the preview build as a
       # pre-release asset: a plain download link a phone can open, which artifacts aren't.
       # Updated on every push; android-preview-cleanup.yml deletes it when the pull request closes.
