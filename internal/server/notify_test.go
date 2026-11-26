@@ -527,3 +527,60 @@ func TestUnfinishedNotificationRetried(t *testing.T) {
 		t.Errorf("%d records of the payment, want 1", n)
 	}
 }
+
+// A payment from a card the user hasn't placed, with no default account,
+// goes to the account named like the card, never to cash first, and waits
+// for review even with auto-confirm on and the shop's category known.
+func TestNotificationFromUnknownCard(t *testing.T) {
+	ts := newTestServer(t)
+	c := newClient(t, ts)
+	c.signup("a@example.com")
+	o := overview(t, c)
+	cash := o.Accounts[0].ID
+	card := newAccount(t, c, "PayPay Card", "credit_card")
+	balance := newAccount(t, c, "PayPay Balance", "e_money")
+	amazon := newAccount(t, c, "Amazon Mastercard", "credit_card")
+	if code := c.do("PUT", "/api/settings", map[string]any{"currency": "JPY", "auto_confirm": true}, nil); code != 200 {
+		t.Fatalf("settings: %d", code)
+	}
+	shopping := categoryID(t, o, "Shopping")
+	c.do("PUT", "/api/rules/payees", map[string]any{"payee": "ＡＭＡＺＯＮ．ＣＯ．ＪＰ", "category_id": shopping}, nil)
+	c.do("PUT", "/api/rules/payees", map[string]any{"payee": "ブルボン", "category_id": shopping}, nil)
+
+	when := time.Date(2026, 11, 8, 1, 30, 0, 0, time.UTC)
+	got := post(t, c,
+		notify.Incoming{Package: vpass, When: when.UnixMilli(), Title: "ご利用のお知らせ", Text: vpassAlert},
+		notify.Incoming{Package: payPay, When: when.Add(time.Hour).UnixMilli(),
+			Title: "支払いを受け付けました", Text: "お店：ブルボン\n金額：200円\n日時：2026年11月08日 11:30"},
+		notify.Incoming{Package: payPay, When: when.Add(2 * time.Hour).UnixMilli(),
+			Title: "PayPay", Text: "取引が完了しました。\n金額：190円\n取引番号：1\n店舗名：ブルボン"},
+		notify.Incoming{Package: googleWallet, When: when.Add(3 * time.Hour).UnixMilli(), Title: "Lawson", Text: "¥550 with Visa •••• 1234"},
+	)
+	byID := map[int64]wallet.Transaction{}
+	for _, r := range records(t, c) {
+		byID[r.ID] = r
+	}
+	for i, want := range []int64{amazon, card, balance, card} {
+		r := byID[*got[i].TransactionID]
+		if r.AccountID != want || r.AccountID == cash || r.Status != "review" {
+			t.Errorf("notification %d: account %d status %s, want account %d in review", i, r.AccountID, r.Status, want)
+		}
+	}
+
+	// Confirming the guess places the card: its next payment is confirmed
+	// as before.
+	first := byID[*got[0].TransactionID]
+	if code := c.do("PUT", fmt.Sprintf("/api/transactions/%d", first.ID), map[string]any{
+		"kind": "expense", "amount": first.Amount, "account_id": amazon, "category_id": shopping,
+		"occurred_at": first.OccurredAt, "payee": first.Payee, "status": "confirmed",
+	}, nil); code != 200 {
+		t.Fatalf("confirm: %d", code)
+	}
+	next := post(t, c, notify.Incoming{Package: vpass, When: when.Add(48 * time.Hour).UnixMilli(), Title: "ご利用のお知らせ",
+		Text: "◇ご利用カード：Ａｍａｚｏｎマスター　◇日時：2026/11/10 10:22　◇利用先：ＡＭＡＺＯＮ．ＣＯ．ＪＰ　◇金額：980円"})
+	for _, r := range records(t, c) {
+		if r.ID == *next[0].TransactionID && (r.AccountID != amazon || r.Status != "confirmed") {
+			t.Errorf("payment by a placed card %+v", r)
+		}
+	}
+}

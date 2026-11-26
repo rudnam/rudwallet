@@ -129,6 +129,8 @@ type payPayRow struct {
 	method string
 	note   string
 	key    string
+	// total is the whole payment, of which amount is this method's share.
+	total int64
 	// foreign: paid in another currency, so the yen amount is the one
 	// billed, which a notification at the time of paying only estimated.
 	foreign bool
@@ -455,6 +457,18 @@ func (s *Store) importPayPay(ctx context.Context, userID int64, data []byte, acc
 			}
 		}
 		if status == "" {
+			// A notification of this payment whose record is in another
+			// account, or has the whole amount where points paid part.
+			if nid, ok, err := run.notified(t, r.total, notifiedWindow); err != nil {
+				return res, err
+			} else if ok {
+				if err := run.correctNotified(nid, t); err != nil {
+					return res, err
+				}
+				status, id = "matched", nid
+			}
+		}
+		if status == "" {
 			if t.Kind != "transfer" {
 				if t.CategoryID, err = category(r); err != nil {
 					return res, err
@@ -777,6 +791,7 @@ func readPayPay(data []byte, res *ImportResult) ([]payPayRow, error) {
 			sum := sha256.Sum256([]byte(strings.Join(rec, "\x1f")))
 			id = hex.EncodeToString(sum[:12])
 		}
+		row.total = row.amount
 		parts, ok := payPayMethodParts(get(rec, "取引方法"), row.amount)
 		if !ok {
 			problem(line, "the amounts paid by each method don't add up to %d", row.amount)
