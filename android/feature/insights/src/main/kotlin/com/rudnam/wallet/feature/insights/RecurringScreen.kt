@@ -148,7 +148,8 @@ internal fun RecurringScreen(state: RecurringUiState, editor: RecurringEditor?, 
             )
         },
         floatingActionButton = {
-            if (overview != null && overview.recurring.isNotEmpty()) {
+            // As the website's Add: whenever there's a list (the empty page has its own button).
+            if (overview != null && (overview.recurring.isNotEmpty() || overview.suggestions.isNotEmpty())) {
                 ExtendedFloatingActionButton(
                     onClick = actions::create,
                     icon = { LineIcon(WalletIcons.plus, contentDescription = null, stroke = 2.2f) },
@@ -222,7 +223,7 @@ private fun ThisMonth(overview: RecurringOverview, format: MoneyFormat) {
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(due.name, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(due.name, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(
                     if (due.late) stringResource(R.string.feature_insights_was_due, format.date(due.date, "MMMd")) else format.date(due.date, "MMMd"),
                     style = MaterialTheme.typography.bodySmall,
@@ -273,9 +274,9 @@ private fun Suggestions(suggestions: List<RecurringSuggestion>, wallet: Wallet, 
         suggestions.forEachIndexed { i, s ->
             if (i > 0) HorizontalDivider(color = WalletTheme.colors.border)
             val review = stringResource(R.string.feature_insights_review_named, s.input.name)
-            Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+            Column(Modifier.fillMaxWidth()) {
                 Row(
-                    Modifier.fillMaxWidth().clickable(role = Role.Button, onClickLabel = review) { actions.review(s) }.padding(vertical = 4.dp),
+                    Modifier.fillMaxWidth().clickable(role = Role.Button, onClickLabel = review) { actions.review(s) }.padding(top = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
