@@ -3,10 +3,10 @@
 # page can't ship whose ViewModel Hilt can't make. Hilt finds a ViewModel by its class name
 # (proguard-rules.pro keeps the names), so each one's name must be in the APK as a string.
 #
-# Why: from 2.1.43 to 2.1.47, KSP's incremental and cached output left some modules' Hilt
-# modules out of the release build, and opening those pages crashed ("Cannot create an
-# instance of class …"). The JVM tests don't build the app's Hilt graph, so nothing else
-# catches it.
+# Why: from 2.1.43 to 2.1.47, overlapping KSP runs, kept by the build cache, left some
+# modules' Hilt modules out of the release build, and opening those pages crashed ("Cannot
+# create an instance of class …"). The JVM tests don't build the app's Hilt graph, so
+# nothing else catches it. build-logic's Ksp.kt now runs KSP one task at a time.
 #
 #   android/check-viewmodels.sh android/app/build/outputs/apk/preview/app-preview.apk
 set -euo pipefail
@@ -25,7 +25,7 @@ done < <(grep -rl --include='*.kt' '^@HiltViewModel' app/src/main feature/*/src/
 [ "$expected" -gt 0 ] || { echo "::error::found no @HiltViewModel classes to check"; exit 1; }
 if [ ${#missing[@]} -gt 0 ]; then
   printf '::error::Not in the APK'"'"'s Hilt map, so its page would crash: %s\n' "${missing[@]}"
-  echo "A KSP output was probably stale; rebuild without the cache (./gradlew clean, --no-build-cache)."
+  echo "A KSP run probably went wrong; see build-logic/.../Ksp.kt, and rebuild with ./gradlew clean --no-build-cache."
   exit 1
 fi
 echo "All $expected Hilt ViewModels are in $apk."
