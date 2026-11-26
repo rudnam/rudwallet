@@ -28,7 +28,6 @@
     <string name="feature_settings_type_email">確認のためメールアドレスを入力</string>
     <string name="feature_settings_delete_everything">すべて削除</string>
     <string name="feature_settings_deleted_account">アカウントとすべてのデータを削除しました。</string>
-    <string name="feature_settings_back">設定</string>
     <string name="feature_settings_add_account">口座を追加</string>
     <string name="feature_settings_accounts_intro">お金のある場所すべて。タップすると変更できます。</string>
     <string name="feature_settings_edit_account_named">口座「%s」を編集</string>
@@ -218,7 +217,6 @@
     <string name="feature_settings_copy">コピー</string>
     <string name="feature_settings_copied">コピーしました</string>
     <string name="feature_settings_failed_load">このページを読み込めませんでした。</string>
-    <string name="feature_settings_try_again">再試行</string>
     <plurals name="feature_settings_record_count">
         <item quantity="other">%d件</item>
     </plurals>

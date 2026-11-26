@@ -31,7 +31,6 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberDateRangePickerState
@@ -40,7 +39,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import com.rudnam.wallet.core.designsystem.component.PageLoading
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -54,7 +52,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rudnam.wallet.core.designsystem.component.PageLoading
+import com.rudnam.wallet.core.designsystem.component.ProblemMessage
 import com.rudnam.wallet.core.designsystem.component.WalletPanel
+import com.rudnam.wallet.core.designsystem.component.WalletTopBar
 import com.rudnam.wallet.core.designsystem.icon.LineIcon
 import com.rudnam.wallet.core.designsystem.icon.WalletIcons
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
@@ -66,11 +67,11 @@ import com.rudnam.wallet.core.model.Wallet
 import com.rudnam.wallet.core.ui.CategoryIcon
 import com.rudnam.wallet.core.ui.MoneyFormat
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
+import com.rudnam.wallet.core.ui.serverText
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneOffset
-import com.rudnam.wallet.core.ui.serverText
 
 /** Where Insights' and the budgets' taps lead. */
 interface InsightsNavigation {
@@ -105,11 +106,10 @@ internal fun InsightsScreen(state: InsightsUiState.Ready, actions: InsightsActio
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         contentWindowInsets = TopAppBarDefaults.windowInsets,
         topBar = {
-            TopAppBar(
+            WalletTopBar(
                 title = { Text(stringResource(R.string.feature_insights_title)) },
                 actions = { AccountChoice(state.wallet, state.accountId, actions::setAccount) },
                 scrollBehavior = scroll,
-                colors = TopAppBarDefaults.topAppBarColors(scrolledContainerColor = WalletTheme.colors.surface),
             )
         },
     ) { padding ->
@@ -274,7 +274,7 @@ internal fun Problem(problem: InsightsProblem, hasFigures: Boolean) {
         InsightsProblem.Offline -> stringResource(if (hasFigures) R.string.feature_insights_offline else R.string.feature_insights_offline_nothing)
         is InsightsProblem.Failed -> problem.message.ifEmpty { null }?.let { serverText(it) } ?: stringResource(R.string.feature_insights_failed)
     }
-    Text(text, style = MaterialTheme.typography.bodySmall, color = WalletTheme.colors.attention)
+    ProblemMessage(text)
 }
 
 /** What was spent, a day on average, and (when there was any) income and net. */

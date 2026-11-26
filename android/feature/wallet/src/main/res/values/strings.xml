@@ -16,7 +16,6 @@
     <string name="feature_wallet_nothing_recorded">Nothing recorded this month yet.</string>
     <string name="feature_wallet_add_a_record">Add a record</string>
     <string name="feature_wallet_unavailable">Couldn’t load your wallet.</string>
-    <string name="feature_wallet_try_again">Try again</string>
     <string name="feature_wallet_offline">Can’t reach the server. Showing what was saved.</string>
     <string name="feature_wallet_failed">Couldn’t refresh your wallet.</string>
     <string name="feature_wallet_update">RudWallet %s is available.</string>

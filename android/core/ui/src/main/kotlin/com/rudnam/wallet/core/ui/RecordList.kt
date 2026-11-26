@@ -2,41 +2,37 @@ package com.rudnam.wallet.core.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.rudnam.wallet.core.designsystem.component.IconTile
+import com.rudnam.wallet.core.designsystem.component.WalletListItem
 import com.rudnam.wallet.core.designsystem.component.WalletPanel
-import com.rudnam.wallet.core.designsystem.icon.LineIcon
 import com.rudnam.wallet.core.designsystem.icon.WalletIcons
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
 import com.rudnam.wallet.core.designsystem.theme.figures
@@ -144,7 +140,7 @@ fun RecordRow(
         null -> null
     }
     val spoken = listOfNotNull(title, status, subtitle, amount, account?.name).joinToString(", ")
-    ListItem(
+    WalletListItem(
         modifier = if (chosen != null) {
             Modifier.toggleable(chosen, role = Role.Checkbox) { onClick() }.clearAndSetSemantics {
                 contentDescription = spoken
@@ -154,20 +150,18 @@ fun RecordRow(
         } else {
             Modifier.clickable(onClick = onClick).clearAndSetSemantics { contentDescription = spoken }
         },
-        colors = ListItemDefaults.colors(containerColor = if (chosen == true) colors.sunken else colors.surface),
-        leadingContent = {
+        selected = chosen == true,
+        leading = {
             if (chosen != null) {
                 Checkbox(checked = chosen, onCheckedChange = null)
             } else if (t.kind == TransactionKind.Transfer) {
-                Box(Modifier.size(40.dp).clip(MaterialTheme.shapes.small).background(colors.sunken), contentAlignment = Alignment.Center) {
-                    LineIcon(WalletIcons.transfer, contentDescription = null, tint = colors.muted, size = 20.dp)
-                }
+                IconTile(WalletIcons.transfer, tint = colors.muted)
             } else {
                 // Without a category (to review or not), the dashed tile, so it stands out (web: CategoryIcon).
                 CategoryIcon(category, waiting = category == null)
             }
         },
-        headlineContent = {
+        headline = {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(title, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 // Added on this phone and not on the server yet (or refused by it).
@@ -178,7 +172,7 @@ fun RecordRow(
                 }
             }
         },
-        supportingContent = {
+        supporting = {
             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = if (waiting) colors.attention else colors.muted)
                 if (t.tags.isNotEmpty()) {
@@ -192,7 +186,7 @@ fun RecordRow(
                 }
             }
         },
-        trailingContent = {
+        trailing = {
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     amount,

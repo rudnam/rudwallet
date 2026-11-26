@@ -33,7 +33,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -45,6 +44,7 @@ import com.rudnam.wallet.core.data.ic.IcCardException
 import com.rudnam.wallet.core.data.ic.IcCardProblem
 import com.rudnam.wallet.core.data.ic.IcCardReader
 import com.rudnam.wallet.core.data.ic.IcCardTap
+import com.rudnam.wallet.core.designsystem.component.SectionHeader
 import com.rudnam.wallet.core.designsystem.component.WalletPanel
 import com.rudnam.wallet.core.designsystem.component.rememberHaptics
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
@@ -193,11 +193,7 @@ internal fun CardScreen(
             }
         }
         item {
-            Text(
-                stringResource(R.string.feature_imports_latest_entries),
-                style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp).semantics { heading() },
-            )
+            SectionHeader(stringResource(R.string.feature_imports_latest_entries), Modifier.padding(vertical = 4.dp))
         }
         item {
             WalletPanel(Modifier.fillMaxWidth()) {

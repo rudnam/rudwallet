@@ -5,9 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -29,7 +29,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -71,6 +70,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rudnam.wallet.core.designsystem.component.FieldLabel
+import com.rudnam.wallet.core.designsystem.component.Notice
+import com.rudnam.wallet.core.designsystem.component.NoticeTone
 import com.rudnam.wallet.core.designsystem.component.rememberHaptics
 import com.rudnam.wallet.core.designsystem.icon.LineIcon
 import com.rudnam.wallet.core.designsystem.icon.WalletIcons
@@ -87,8 +89,8 @@ import com.rudnam.wallet.core.ui.CategoryIcon
 import com.rudnam.wallet.core.ui.CategoryPickerSheet
 import com.rudnam.wallet.core.ui.MoneyFormat
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
-import java.time.Instant
 import com.rudnam.wallet.core.ui.serverText
+import java.time.Instant
 
 @Composable
 internal fun RecordSheetDestination(onDone: () -> Unit, viewModel: RecordViewModel = hiltViewModel()) {
@@ -250,21 +252,13 @@ private fun Notices(state: RecordUiState.Ready) {
             else stringResource(R.string.feature_record_notice),
         )
     }
-    if (record.duplicateOfId != null) Notice(stringResource(R.string.feature_record_duplicate), attention = true)
+    if (record.duplicateOfId != null) Notice(stringResource(R.string.feature_record_duplicate), tone = NoticeTone.Attention)
     if (record.pending != null) {
         val refused = record.refusal
         Notice(
             if (refused != null) stringResource(R.string.feature_record_refused, serverText(refused)) else stringResource(R.string.feature_record_waiting),
-            attention = refused != null,
+            tone = if (refused != null) NoticeTone.Attention else NoticeTone.Info,
         )
-    }
-}
-
-@Composable
-private fun Notice(text: String, attention: Boolean = false) {
-    val colors = WalletTheme.colors
-    Surface(shape = MaterialTheme.shapes.small, color = if (attention) colors.attentionSoft else colors.sunken) {
-        Text(text, Modifier.padding(12.dp), style = MaterialTheme.typography.bodySmall, color = if (attention) colors.attention else colors.text)
     }
 }
 
@@ -442,7 +436,7 @@ private fun PayeeField(state: RecordUiState.Ready, actions: RecordActions) {
 private fun AccountChips(label: String, wallet: Wallet, chosen: Long, onChoose: (Long) -> Unit) {
     val accounts: List<Account> = wallet.accounts.filter { !it.archived || it.id == chosen }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = WalletTheme.colors.muted)
+        FieldLabel(label)
         FlowRow(Modifier.semantics { contentDescription = label }, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for (a in accounts) {
                 FilterChip(
@@ -624,7 +618,7 @@ private fun ChangesDialog(changes: List<Change>, wallet: Wallet, actions: Record
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 for (c in changes) {
                     Column {
-                        Text(stringResource(c.field.label()), style = MaterialTheme.typography.labelMedium, color = WalletTheme.colors.muted)
+                        FieldLabel(stringResource(c.field.label()))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(describe(c.before, wallet, format), style = MaterialTheme.typography.bodyMedium, color = WalletTheme.colors.muted, textDecoration = TextDecoration.LineThrough)
                             LineIcon(WalletIcons.level, contentDescription = null, size = 16.dp, tint = WalletTheme.colors.muted)

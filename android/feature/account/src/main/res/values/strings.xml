@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Worded as the website words them; web/src/locales/ja.ts has the Japanese. -->
 <resources>
-    <string name="feature_account_back">Wallet</string>
     <string name="feature_account_edit">Edit %s</string>
     <string name="feature_account_gone">This account no longer exists.</string>
     <string name="feature_account_count">Count cash</string>

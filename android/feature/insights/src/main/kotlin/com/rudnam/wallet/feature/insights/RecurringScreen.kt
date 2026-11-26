@@ -31,7 +31,6 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -44,7 +43,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberDatePickerState
@@ -68,13 +66,18 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rudnam.wallet.core.designsystem.component.EmptyState
+import com.rudnam.wallet.core.designsystem.component.FieldLabel
 import com.rudnam.wallet.core.designsystem.component.PageLoading
+import com.rudnam.wallet.core.designsystem.component.SectionHeader
+import com.rudnam.wallet.core.designsystem.component.StatFigure
+import com.rudnam.wallet.core.designsystem.component.WalletListItem
 import com.rudnam.wallet.core.designsystem.component.WalletPanel
+import com.rudnam.wallet.core.designsystem.component.WalletTopBar
 import com.rudnam.wallet.core.designsystem.component.rememberHaptics
 import com.rudnam.wallet.core.designsystem.icon.LineIcon
 import com.rudnam.wallet.core.designsystem.icon.WalletIcons
@@ -138,13 +141,10 @@ internal fun RecurringScreen(state: RecurringUiState, editor: RecurringEditor?, 
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         contentWindowInsets = TopAppBarDefaults.windowInsets,
         topBar = {
-            TopAppBar(
+            WalletTopBar(
                 title = { Text(stringResource(R.string.feature_insights_recurring)) },
-                navigationIcon = {
-                    IconButton(onClick = navigation::back) { LineIcon(WalletIcons.back, contentDescription = stringResource(R.string.feature_insights_back)) }
-                },
+                onBack = navigation::back,
                 scrollBehavior = scroll,
-                colors = TopAppBarDefaults.topAppBarColors(scrolledContainerColor = WalletTheme.colors.surface),
             )
         },
         floatingActionButton = {
@@ -192,19 +192,17 @@ internal fun RecurringScreen(state: RecurringUiState, editor: RecurringEditor?, 
 
 @Composable
 private fun NoRecurring(actions: RecurringActions) {
-    Column(
-        Modifier.fillMaxWidth().padding(vertical = 48.dp, horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        LineIcon(WalletIcons.repeat, contentDescription = null, tint = WalletTheme.colors.muted, size = 40.dp)
-        Text(stringResource(R.string.feature_insights_no_recurring), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
-        Text(stringResource(R.string.feature_insights_no_recurring_detail), color = WalletTheme.colors.muted, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
-        Button(
-            onClick = actions::create,
-            colors = ButtonDefaults.buttonColors(containerColor = WalletTheme.colors.action, contentColor = WalletTheme.colors.onAction),
-        ) { Text(stringResource(R.string.feature_insights_add_recurring)) }
-    }
+    EmptyState(
+        stringResource(R.string.feature_insights_no_recurring_detail),
+        title = stringResource(R.string.feature_insights_no_recurring),
+        icon = { LineIcon(WalletIcons.repeat, contentDescription = null, tint = WalletTheme.colors.muted, size = 40.dp) },
+        action = {
+            Button(
+                onClick = actions::create,
+                colors = ButtonDefaults.buttonColors(containerColor = WalletTheme.colors.action, contentColor = WalletTheme.colors.onAction),
+            ) { Text(stringResource(R.string.feature_insights_add_recurring)) }
+        },
+    )
 }
 
 /** What this month's subscriptions and bills have taken, and what's still to come, each with its day. */
@@ -214,8 +212,8 @@ private fun ThisMonth(overview: RecurringOverview, format: MoneyFormat) {
     val colors = WalletTheme.colors
     Section(stringResource(R.string.feature_insights_this_month)) {
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Figure(stringResource(R.string.feature_insights_paid_this_month), format.money(month.paid), Modifier.weight(1f))
-            Figure(stringResource(R.string.feature_insights_still_to_come), format.money(month.upcoming), Modifier.weight(1f))
+            StatFigure(stringResource(R.string.feature_insights_paid_this_month), format.money(month.paid), Modifier.weight(1f))
+            StatFigure(stringResource(R.string.feature_insights_still_to_come), format.money(month.upcoming), Modifier.weight(1f))
         }
         for (due in month.due) {
             Row(
@@ -232,14 +230,6 @@ private fun ThisMonth(overview: RecurringOverview, format: MoneyFormat) {
                 Text(format.money(due.amount), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium.figures())
             }
         }
-    }
-}
-
-@Composable
-private fun Figure(label: String, value: String, modifier: Modifier) {
-    Column(modifier.semantics(mergeDescendants = true) {}) {
-        Text(label, style = MaterialTheme.typography.bodySmall, color = WalletTheme.colors.muted)
-        Text(value, style = MaterialTheme.typography.titleLarge.figures(), fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -280,9 +270,9 @@ private fun Suggestions(suggestions: List<RecurringSuggestion>, wallet: Wallet, 
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    CategoryIcon(wallet.category(s.input.categoryId), Modifier.size(36.dp))
+                    CategoryIcon(wallet.category(s.input.categoryId))
                     Column(Modifier.weight(1f)) {
-                        Text(s.input.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(s.input.name, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
                             "${kindName(s.input.kind)} · ${everyName(s.input.months)} · " +
                                 pluralStringResource(R.plurals.feature_insights_payments, s.payments.size, s.payments.size),
@@ -290,7 +280,7 @@ private fun Suggestions(suggestions: List<RecurringSuggestion>, wallet: Wallet, 
                             color = WalletTheme.colors.muted,
                         )
                     }
-                    Text(format.money(s.input.amount), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium.figures())
+                    Text(format.money(s.input.amount), style = MaterialTheme.typography.bodyMedium.figures())
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                     TextButton(onClick = { actions.dismiss(s) }) { Text(stringResource(R.string.feature_insights_not_recurring), color = WalletTheme.colors.muted) }
@@ -328,22 +318,22 @@ private fun Group(title: String, items: List<Recurring>, state: RecurringUiState
 private fun RecurringRow(r: Recurring, state: RecurringUiState.Ready, format: MoneyFormat, onClick: () -> Unit) {
     val colors = WalletTheme.colors
     val edit = stringResource(R.string.feature_insights_edit_named, r.name)
-    Row(
-        Modifier.fillMaxWidth().clickable(role = Role.Button, onClickLabel = edit, onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        CategoryIcon(state.wallet.category(r.input.categoryId), Modifier.size(36.dp))
-        Column(Modifier.weight(1f)) {
-            Text(r.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(status(r, format), style = MaterialTheme.typography.bodySmall, color = if (r.active && r.late) colors.danger else colors.muted)
-        }
-        Column(horizontalAlignment = Alignment.End) {
-            val approx = if (r.kind == RecurringKind.Bill && r.payments.size > 1) "≈ " else ""
-            Text(approx + format.money(r.estimate), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium.figures())
-            Text(everyName(r.input.months), style = MaterialTheme.typography.bodySmall, color = colors.muted)
-        }
-    }
+    val line = status(r, format)
+    WalletListItem(
+        modifier = Modifier.clickable(role = Role.Button, onClickLabel = edit, onClick = onClick),
+        leading = { CategoryIcon(state.wallet.category(r.input.categoryId)) },
+        headline = { Text(r.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        supporting = if (line.isEmpty()) null else {
+            { Text(line, color = if (r.active && r.late) colors.danger else colors.muted) }
+        },
+        trailing = {
+            Column(horizontalAlignment = Alignment.End) {
+                val approx = if (r.kind == RecurringKind.Bill && r.payments.size > 1) "≈ " else ""
+                Text(approx + format.money(r.estimate))
+                Text(everyName(r.input.months), style = MaterialTheme.typography.bodySmall, color = colors.muted)
+            }
+        },
+    )
 }
 
 /** When it was last paid and when it's next due, in a line. */
@@ -431,7 +421,7 @@ private fun RecurringSheet(wallet: Wallet, editor: RecurringEditor, actions: Rec
             )
 
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(stringResource(R.string.feature_insights_how_often), style = MaterialTheme.typography.labelLarge, color = colors.muted)
+                FieldLabel(stringResource(R.string.feature_insights_how_often))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     for (m in recurringMonths) {
                         FilterChip(selected = editor.months == m, onClick = { actions.setMonths(m) }, label = { Text(everyName(m)) })
@@ -505,7 +495,7 @@ private fun RecurringSheet(wallet: Wallet, editor: RecurringEditor, actions: Rec
 
             if (editor.payments.isNotEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(stringResource(R.string.feature_insights_its_records), style = MaterialTheme.typography.labelLarge, color = colors.muted)
+                    SectionHeader(stringResource(R.string.feature_insights_its_records))
                     for (p in editor.payments) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Text(format.date(p.date, "MMMd"), style = MaterialTheme.typography.bodySmall, color = colors.muted)

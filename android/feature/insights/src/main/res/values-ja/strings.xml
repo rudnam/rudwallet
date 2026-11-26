@@ -85,7 +85,6 @@
     <string name="feature_insights_failed">分析を読み込めませんでした。</string>
 
     <string name="feature_insights_budgets">予算</string>
-    <string name="feature_insights_back">分析</string>
     <string name="feature_insights_new_budget">新しい予算</string>
     <string name="feature_insights_no_budgets">予算はまだありません</string>
     <string name="feature_insights_no_budgets_detail">カテゴリごと、または支出全体に月の上限を決めて、使った分を見守りましょう。</string>

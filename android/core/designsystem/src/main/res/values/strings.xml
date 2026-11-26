@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The top bar's way back, the same on every page (TalkBack: "Back, button"). -->
+    <string name="designsystem_back">Back</string>
+    <string name="designsystem_try_again">Try again</string>
+</resources>

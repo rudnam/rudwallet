@@ -2,7 +2,6 @@
 <!-- Worded as the website words them; web/src/locales/ja.ts has the Japanese. -->
 <resources>
     <string name="feature_imports_title">Import records</string>
-    <string name="feature_imports_back">Settings</string>
     <string name="feature_imports_paypay_how">In the PayPay app, open 取引履歴 (transaction history), tap the download button, pick a period of up to a year, and save the CSV file. Payments already recorded from their emails are skipped, and importing an overlapping period adds each payment once.</string>
     <string name="feature_imports_mufg_how">In 三菱UFJダイレクト, open 入出金明細, pick the period, and download the CSV file. Rows already imported, or already recorded from notifications, are skipped.</string>
     <string name="feature_imports_vpass_how">In Vpass (三井住友カード), open ご利用明細, pick the month, and download the CSV file. Each card gets an account, and purchases already recorded from their notifications are skipped.</string>
@@ -96,7 +95,6 @@
     <string name="feature_imports_couldnt_check">Couldn’t check for new entries: %s</string>
     <string name="feature_imports_offline">Can’t reach the server. Importing needs a connection.</string>
     <string name="feature_imports_failed">Couldn’t read this import.</string>
-    <string name="feature_imports_try_again">Try again</string>
     <plurals name="feature_imports_payments_range">
         <item quantity="one">%1$d payment, %2$s to %3$s. Choose where each way of paying is recorded:</item>
         <item quantity="other">%1$d payments, %2$s to %3$s. Choose where each way of paying is recorded:</item>

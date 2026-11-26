@@ -11,15 +11,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,10 +30,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rudnam.wallet.core.designsystem.component.EmptyState
 import com.rudnam.wallet.core.designsystem.component.PageLoading
+import com.rudnam.wallet.core.designsystem.component.ProblemMessage
 import com.rudnam.wallet.core.designsystem.component.WalletPanel
-import com.rudnam.wallet.core.designsystem.icon.LineIcon
-import com.rudnam.wallet.core.designsystem.icon.WalletIcons
+import com.rudnam.wallet.core.designsystem.component.WalletTopBar
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
 import com.rudnam.wallet.core.designsystem.theme.figures
 import com.rudnam.wallet.core.model.SetAsideRecord
@@ -83,13 +81,10 @@ internal fun DuplicatesScreen(state: DuplicatesUiState.Ready, actions: Duplicate
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         contentWindowInsets = TopAppBarDefaults.windowInsets,
         topBar = {
-            TopAppBar(
+            WalletTopBar(
                 title = { Text(stringResource(R.string.feature_activity_duplicates_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) { LineIcon(WalletIcons.back, contentDescription = stringResource(R.string.feature_activity_back)) }
-                },
+                onBack = onBack,
                 scrollBehavior = scroll,
-                colors = TopAppBarDefaults.topAppBarColors(scrolledContainerColor = WalletTheme.colors.surface),
             )
         },
     ) { padding ->
@@ -104,21 +99,13 @@ internal fun DuplicatesScreen(state: DuplicatesUiState.Ready, actions: Duplicate
             val records = state.records
             when {
                 records == null -> item(key = "offline") {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            stringResource(if (state.offline) R.string.feature_activity_duplicates_offline else R.string.feature_activity_duplicates_failed),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                        TextButton(onClick = { actions.load() }) { Text(stringResource(R.string.feature_activity_try_again)) }
-                    }
+                    ProblemMessage(
+                        stringResource(if (state.offline) R.string.feature_activity_duplicates_offline else R.string.feature_activity_duplicates_failed),
+                        onRetry = actions::load,
+                    )
                 }
                 records.isEmpty() -> item(key = "empty") {
-                    Text(
-                        stringResource(R.string.feature_activity_duplicates_none),
-                        Modifier.fillMaxWidth().padding(vertical = 24.dp),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = WalletTheme.colors.muted,
-                    )
+                    EmptyState(stringResource(R.string.feature_activity_duplicates_none))
                 }
                 else -> items(records, key = { it.record.id }) { r -> CaughtRow(r, state, format, actions, now, Modifier.animateItem()) }
             }

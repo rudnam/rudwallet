@@ -23,7 +23,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -32,7 +31,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -41,7 +39,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import com.rudnam.wallet.core.designsystem.component.PageLoading
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -53,12 +50,14 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rudnam.wallet.core.designsystem.component.EmptyState
+import com.rudnam.wallet.core.designsystem.component.PageLoading
 import com.rudnam.wallet.core.designsystem.component.WalletPanel
+import com.rudnam.wallet.core.designsystem.component.WalletTopBar
 import com.rudnam.wallet.core.designsystem.component.rememberHaptics
 import com.rudnam.wallet.core.designsystem.icon.LineIcon
 import com.rudnam.wallet.core.designsystem.icon.WalletIcons
@@ -66,8 +65,8 @@ import com.rudnam.wallet.core.designsystem.theme.WalletTheme
 import com.rudnam.wallet.core.designsystem.theme.figures
 import com.rudnam.wallet.core.model.CategoryKind
 import com.rudnam.wallet.core.model.Wallet
-import com.rudnam.wallet.core.ui.CategoryPickerSheet
 import com.rudnam.wallet.core.ui.CategoryPickerExtra
+import com.rudnam.wallet.core.ui.CategoryPickerSheet
 import com.rudnam.wallet.core.ui.MoneyFormat
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
 import com.rudnam.wallet.core.ui.serverText
@@ -103,7 +102,7 @@ internal fun BudgetsScreen(state: BudgetsUiState, editor: BudgetEditor?, actions
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         contentWindowInsets = TopAppBarDefaults.windowInsets,
         topBar = {
-            TopAppBar(
+            WalletTopBar(
                 title = {
                     Column {
                         Text(stringResource(R.string.feature_insights_budgets))
@@ -112,11 +111,8 @@ internal fun BudgetsScreen(state: BudgetsUiState, editor: BudgetEditor?, actions
                         }
                     }
                 },
-                navigationIcon = {
-                    IconButton(onClick = navigation::back) { LineIcon(WalletIcons.back, contentDescription = stringResource(R.string.feature_insights_back)) }
-                },
+                onBack = navigation::back,
                 scrollBehavior = scroll,
-                colors = TopAppBarDefaults.topAppBarColors(scrolledContainerColor = WalletTheme.colors.surface),
             )
         },
         floatingActionButton = {
@@ -153,19 +149,18 @@ internal fun BudgetsScreen(state: BudgetsUiState, editor: BudgetEditor?, actions
 
 @Composable
 private fun NoBudgets(actions: BudgetsActions, modifier: Modifier) {
-    Column(
-        modifier.fillMaxSize().padding(32.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        BudgetMark(null, allSpending = true, size = 56.dp)
-        Text(stringResource(R.string.feature_insights_no_budgets), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
-        Text(stringResource(R.string.feature_insights_no_budgets_detail), color = WalletTheme.colors.muted, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
-        Button(
-            onClick = actions::create,
-            colors = ButtonDefaults.buttonColors(containerColor = WalletTheme.colors.action, contentColor = WalletTheme.colors.onAction),
-        ) { Text(stringResource(R.string.feature_insights_create_budget)) }
-    }
+    EmptyState(
+        stringResource(R.string.feature_insights_no_budgets_detail),
+        modifier.fillMaxSize(),
+        title = stringResource(R.string.feature_insights_no_budgets),
+        icon = { BudgetMark(null, allSpending = true, size = 56.dp) },
+        action = {
+            Button(
+                onClick = actions::create,
+                colors = ButtonDefaults.buttonColors(containerColor = WalletTheme.colors.action, contentColor = WalletTheme.colors.onAction),
+            ) { Text(stringResource(R.string.feature_insights_create_budget)) }
+        },
+    )
 }
 
 /** A budget: its mark, name and category, and how much of it this month has used. Tapping it changes it. */

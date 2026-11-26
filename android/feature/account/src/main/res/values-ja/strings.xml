@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="feature_account_back">ウォレット</string>
     <string name="feature_account_edit">%sを編集</string>
     <string name="feature_account_gone">この口座はもうありません。</string>
     <string name="feature_account_count">現金を数える</string>

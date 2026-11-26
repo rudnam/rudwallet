@@ -29,7 +29,6 @@
     <string name="feature_settings_type_email">Type your email to confirm</string>
     <string name="feature_settings_delete_everything">Delete everything</string>
     <string name="feature_settings_deleted_account">Your account and everything in it were deleted.</string>
-    <string name="feature_settings_back">Settings</string>
     <string name="feature_settings_add_account">Add account</string>
     <string name="feature_settings_accounts_intro">Everywhere your money lives. Tap one to change it.</string>
     <string name="feature_settings_edit_account_named">Edit account %s</string>
@@ -221,7 +220,6 @@
     <string name="feature_settings_copy">Copy</string>
     <string name="feature_settings_copied">Copied</string>
     <string name="feature_settings_failed_load">Couldn’t load this page.</string>
-    <string name="feature_settings_try_again">Try again</string>
     <plurals name="feature_settings_record_count">
         <item quantity="one">%d record</item>
         <item quantity="other">%d records</item>

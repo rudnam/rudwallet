@@ -106,8 +106,6 @@
     <string name="feature_activity_duplicates_none">No duplicates caught lately.</string>
     <string name="feature_activity_duplicates_offline">Can’t reach the server. The caught duplicates need a connection.</string>
     <string name="feature_activity_duplicates_failed">Couldn’t load the caught duplicates.</string>
-    <string name="feature_activity_try_again">Try again</string>
-    <string name="feature_activity_back">Back</string>
     <string name="feature_activity_looked_like">Looked like this record you already have:</string>
     <string name="feature_activity_match_gone">The record it looked like has since been deleted.</string>
     <string name="feature_activity_not_duplicate">Not a duplicate</string>

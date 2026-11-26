@@ -1,6 +1,7 @@
 package com.rudnam.wallet.feature.wallet
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
@@ -27,17 +30,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import com.rudnam.wallet.core.ui.serverText
-import com.rudnam.wallet.core.designsystem.component.PageLoading
-import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Button
-import androidx.compose.foundation.background
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -46,14 +41,20 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rudnam.wallet.core.designsystem.component.EmptyState
+import com.rudnam.wallet.core.designsystem.component.PageLoading
+import com.rudnam.wallet.core.designsystem.component.SectionHeader
 import com.rudnam.wallet.core.designsystem.component.WalletPanel
+import com.rudnam.wallet.core.designsystem.component.WalletTopBar
 import com.rudnam.wallet.core.designsystem.icon.LineIcon
 import com.rudnam.wallet.core.designsystem.icon.WalletIcons
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
@@ -61,10 +62,12 @@ import com.rudnam.wallet.core.designsystem.theme.figures
 import com.rudnam.wallet.core.model.Transaction
 import com.rudnam.wallet.core.ui.MoneyFormat
 import com.rudnam.wallet.core.ui.openNotificationAccess
-import com.rudnam.wallet.core.ui.rememberNotificationAccess
 import com.rudnam.wallet.core.ui.recordDays
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
+import com.rudnam.wallet.core.ui.rememberNotificationAccess
+import com.rudnam.wallet.core.ui.serverText
 import java.time.Instant
+import com.rudnam.wallet.core.designsystem.R as DesignSystemR
 
 /** Where Wallet's taps lead: other pages, by the website's paths for them (the app's openPath). */
 interface WalletNavigation {
@@ -146,7 +149,7 @@ internal fun WalletScreen(
         // The app's scaffold already keeps clear of the navigation bar.
         contentWindowInsets = TopAppBarDefaults.windowInsets,
         topBar = {
-            TopAppBar(
+            WalletTopBar(
                 title = { Text(stringResource(R.string.feature_wallet_title)) },
                 actions = {
                     IconButton(onClick = { navigation.openPage("records") }) {
@@ -154,7 +157,6 @@ internal fun WalletScreen(
                     }
                 },
                 scrollBehavior = scroll,
-                colors = TopAppBarDefaults.topAppBarColors(scrolledContainerColor = WalletTheme.colors.surface),
             )
         },
         floatingActionButton = {
@@ -189,10 +191,11 @@ private fun Unavailable(onRetry: () -> Unit) {
     // A list, so pulling down to refresh works here too.
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(24.dp)) {
         item {
-            Column(Modifier.fillMaxWidth().padding(top = 64.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(stringResource(R.string.feature_wallet_unavailable), color = WalletTheme.colors.muted)
-                OutlinedButton(onClick = onRetry) { Text(stringResource(R.string.feature_wallet_try_again)) }
-            }
+            EmptyState(
+                stringResource(R.string.feature_wallet_unavailable),
+                Modifier.padding(top = 40.dp),
+                action = { OutlinedButton(onClick = onRetry) { Text(stringResource(DesignSystemR.string.designsystem_try_again)) } },
+            )
         }
     }
 }
@@ -251,7 +254,7 @@ private fun Wallet(
         }
         item(key = "month", contentType = "month") {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SectionLabel(format.monthName(state.month))
+                SectionHeader(format.monthName(state.month))
                 WalletPanel(Modifier.fillMaxWidth(), onClick = { navigation.openPage("stats") }) {
                     Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -264,8 +267,7 @@ private fun Wallet(
             }
         }
         item(key = "latest", contentType = "heading") {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                SectionLabel(stringResource(R.string.feature_wallet_latest_records), Modifier.weight(1f))
+            SectionHeader(stringResource(R.string.feature_wallet_latest_records)) {
                 TextButton(onClick = { navigation.openPage("records") }) {
                     Text(stringResource(R.string.feature_wallet_all_records), color = colors.muted)
                 }
@@ -274,10 +276,10 @@ private fun Wallet(
         if (state.latest.isEmpty()) {
             item(key = "empty", contentType = "empty") {
                 WalletPanel(Modifier.fillMaxWidth()) {
-                    Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(stringResource(R.string.feature_wallet_nothing_recorded), color = colors.muted)
-                        OutlinedButton(onClick = navigation::addRecord) { Text(stringResource(R.string.feature_wallet_add_a_record)) }
-                    }
+                    EmptyState(
+                        stringResource(R.string.feature_wallet_nothing_recorded),
+                        action = { OutlinedButton(onClick = navigation::addRecord) { Text(stringResource(R.string.feature_wallet_add_a_record)) } },
+                    )
                 }
             }
         } else {
@@ -294,15 +296,6 @@ private fun headline(h: MonthHeadline, format: MoneyFormat, state: WalletUiState
     is MonthHeadline.SpentSoFar -> stringResource(R.string.feature_wallet_spent_so_far, format.money(h.amount), format.monthName(state.month))
 }
 
-@Composable
-internal fun SectionLabel(text: String, modifier: Modifier = Modifier) {
-    Text(
-        text,
-        modifier.semantics { heading() },
-        style = MaterialTheme.typography.labelMedium,
-        color = WalletTheme.colors.muted,
-    )
-}
 
 @Composable
 private fun UpdateCard(versionName: String, onInstall: () -> Unit, onLater: () -> Unit) {

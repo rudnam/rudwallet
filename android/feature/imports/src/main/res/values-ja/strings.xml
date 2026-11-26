@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="feature_imports_title">記録のインポート</string>
-    <string name="feature_imports_back">設定</string>
     <string name="feature_imports_paypay_how">PayPayアプリで「取引履歴」を開き、ダウンロードボタンから最大1年分の期間を選んでCSVファイルを保存してください。メールから記録済みの支払いはスキップされ、期間が重なっても同じ支払いは1回だけ追加されます。</string>
     <string name="feature_imports_mufg_how">三菱UFJダイレクトで入出金明細を開き、期間を選んでCSVファイルをダウンロードしてください。取り込み済みの行や、通知から記録済みの行は飛ばします。</string>
     <string name="feature_imports_vpass_how">Vpass（三井住友カード）で「ご利用明細」を開き、月を選んでCSVファイルをダウンロードしてください。カードごとに口座を選べます。通知から記録済みの利用はスキップされます。</string>
@@ -95,7 +94,6 @@
     <string name="feature_imports_couldnt_check">新しい履歴を確認できませんでした: %s</string>
     <string name="feature_imports_offline">サーバーに接続できません。取り込みには接続が必要です。</string>
     <string name="feature_imports_failed">読み込めませんでした。</string>
-    <string name="feature_imports_try_again">再試行</string>
     <plurals name="feature_imports_payments_range">
         <item quantity="other">%2$s〜%3$sの支払い%1$d件。支払い方法ごとに記録する口座を選んでください:</item>
     </plurals>

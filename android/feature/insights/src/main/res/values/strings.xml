@@ -94,7 +94,6 @@
     <string name="feature_insights_failed">Couldn’t load your insights.</string>
 
     <string name="feature_insights_budgets">Budgets</string>
-    <string name="feature_insights_back">Insights</string>
     <string name="feature_insights_new_budget">New budget</string>
     <string name="feature_insights_no_budgets">No budgets yet</string>
     <string name="feature_insights_no_budgets_detail">Set a monthly limit for a category, or for all your spending, and watch it fill up.</string>
