@@ -76,6 +76,9 @@ import com.rudnam.wallet.core.ui.serverText
 interface InsightsNavigation {
     fun openBudgets()
 
+    /** The recurring payments: subscriptions, bills and income. */
+    fun openRecurring()
+
     /** Activity, for one category's records in [month]; [categoryId] [RecordFilter.NO_CATEGORY] is "no category". */
     fun openRecords(month: YearMonth, categoryId: Long, accountId: Long?)
 
@@ -266,7 +269,7 @@ private fun RangePicker(period: Period, onDismiss: () -> Unit, onPick: (LocalDat
 }
 
 @Composable
-private fun Problem(problem: InsightsProblem, hasFigures: Boolean) {
+internal fun Problem(problem: InsightsProblem, hasFigures: Boolean) {
     val text = when (problem) {
         InsightsProblem.Offline -> stringResource(if (hasFigures) R.string.feature_insights_offline else R.string.feature_insights_offline_nothing)
         is InsightsProblem.Failed -> problem.message.ifEmpty { null }?.let { serverText(it) } ?: stringResource(R.string.feature_insights_failed)
@@ -302,7 +305,7 @@ private fun Figure(label: String, value: String) {
 
 /** A titled panel. */
 @Composable
-private fun Section(title: String, action: (@Composable () -> Unit)? = null, content: @Composable () -> Unit) {
+internal fun Section(title: String, action: (@Composable () -> Unit)? = null, content: @Composable () -> Unit) {
     WalletPanel(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -359,6 +362,23 @@ private fun RestOfMonth(ahead: MonthAhead, state: InsightsUiState.Ready, format:
         },
     ) {
         Text(stringResource(R.string.feature_insights_heading, format.money(ahead.heading)), fontWeight = FontWeight.SemiBold)
+        // What subscriptions and bills still take, which the estimate counts once; or an invitation to add them.
+        val upcoming = ahead.upcoming
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                when {
+                    upcoming != null && upcoming > 0 -> stringResource(R.string.feature_insights_recurring_to_come, format.money(upcoming))
+                    upcoming != null && ahead.tracked > 0 -> stringResource(R.string.feature_insights_recurring_paid)
+                    else -> stringResource(R.string.feature_insights_recurring_invite)
+                },
+                Modifier.weight(1f),
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.muted,
+            )
+            TextButton(onClick = navigation::openRecurring) {
+                Text(stringResource(if (ahead.tracked > 0 || (upcoming ?: 0) > 0) R.string.feature_insights_see_them else R.string.feature_insights_recurring))
+            }
+        }
         if (ahead.budgets.isNotEmpty()) {
             Text(
                 pluralStringResource(R.plurals.feature_insights_stay_within, ahead.daysLeft, ahead.daysLeft),

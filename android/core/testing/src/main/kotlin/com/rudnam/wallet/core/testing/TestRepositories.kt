@@ -145,6 +145,36 @@ class TestInsightsRepository(private val wallet: TestWalletRepository? = null) :
     override suspend fun deleteBudget(id: Long) = budgetResult.also { deleted += id }
 }
 
+/**
+ * A [RecurringRepository] that answers [answer] (or [failure]) and keeps
+ * what's saved; saving changes nothing until it's asked again.
+ */
+class TestRecurringRepository(
+    var answer: com.rudnam.wallet.core.model.RecurringOverview = com.rudnam.wallet.core.model.RecurringOverview(emptyList(), emptyList(), com.rudnam.wallet.core.model.RecurringMonth.Empty),
+) : com.rudnam.wallet.core.data.repository.RecurringRepository {
+    var failure: com.rudnam.wallet.core.data.repository.Fetched<com.rudnam.wallet.core.model.RecurringOverview>? = null
+    var result: com.rudnam.wallet.core.data.repository.ChangeResult = com.rudnam.wallet.core.data.repository.ChangeResult.Saved
+    val created = mutableListOf<com.rudnam.wallet.core.model.RecurringInput>()
+    val updated = mutableListOf<Pair<Long, com.rudnam.wallet.core.model.RecurringInput>>()
+    val deleted = mutableListOf<Long>()
+    val dismissed = mutableListOf<String>()
+    var refreshes = 0
+
+    override val overview = kotlinx.coroutines.flow.MutableStateFlow<com.rudnam.wallet.core.model.RecurringOverview?>(null)
+
+    override suspend fun refresh(zone: java.time.ZoneId): com.rudnam.wallet.core.data.repository.Fetched<com.rudnam.wallet.core.model.RecurringOverview> {
+        refreshes++
+        failure?.let { return it }
+        overview.value = answer
+        return com.rudnam.wallet.core.data.repository.Fetched.Done(answer)
+    }
+
+    override suspend fun create(input: com.rudnam.wallet.core.model.RecurringInput) = result.also { created += input }
+    override suspend fun update(id: Long, input: com.rudnam.wallet.core.model.RecurringInput) = result.also { updated += id to input }
+    override suspend fun delete(id: Long) = result.also { deleted += id }
+    override suspend fun dismiss(key: String) = result.also { dismissed += key }
+}
+
 /** A [SettingsRepository] that keeps what it's asked, and answers [result]. */
 class TestSettingsRepository : com.rudnam.wallet.core.data.repository.SettingsRepository {
     var result: com.rudnam.wallet.core.data.repository.ChangeResult = com.rudnam.wallet.core.data.repository.ChangeResult.Saved

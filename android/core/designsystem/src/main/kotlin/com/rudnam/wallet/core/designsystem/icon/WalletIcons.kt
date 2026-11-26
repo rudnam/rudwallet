@@ -56,6 +56,7 @@ object WalletIcons {
     const val up = "M4 17l6-6 4 4 6-7M15 8h5v5"
     const val down = "M4 7l6 6 4-4 6 7M15 16h5v-5"
     const val budgets = "M12 3a9 9 0 1 0 9 9h-9zM15 3.5A9 9 0 0 1 20.5 9H15z"
+    const val repeat = "M17 2.5l3 3-3 3M4 11.5v-2a4 4 0 0 1 4-4h12M7 21.5l-3-3 3-3M20 12.5v2a4 4 0 0 1-4 4H4"
     const val appearance = "M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 1 0 0-17M12 3.5v17"
     const val globe = "M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18M3.5 9h17M3.5 15h17M12 3c-2.4 2.6-3.6 5.6-3.6 9s1.2 6.4 3.6 9M12 3c2.4 2.6 3.6 5.6 3.6 9s-1.2 6.4-3.6 9"
     const val spark = "M12 3l1.8 5.7L19.5 10.5l-5.7 1.8L12 18l-1.8-5.7L4.5 10.5l5.7-1.8zM18.5 15.5l.7 2.1 2.1.7-2.1.7-.7 2.1-.7-2.1-2.1-.7 2.1-.7z"

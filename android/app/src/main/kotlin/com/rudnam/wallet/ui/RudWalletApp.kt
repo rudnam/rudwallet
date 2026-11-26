@@ -67,6 +67,7 @@ import com.rudnam.wallet.feature.imports.navigation.importsScreens
 import com.rudnam.wallet.feature.insights.InsightsNavigation
 import com.rudnam.wallet.feature.signin.navigation.signInScreen
 import com.rudnam.wallet.feature.insights.navigation.BudgetsRoute
+import com.rudnam.wallet.feature.insights.navigation.RecurringRoute
 import com.rudnam.wallet.feature.insights.navigation.insightsScreen
 import com.rudnam.wallet.feature.settings.SettingsNavigation
 import com.rudnam.wallet.feature.settings.navigation.settingsScreen
@@ -183,6 +184,7 @@ fun RudWalletApp(
                     insightsScreen(
                         navigation = object : InsightsNavigation {
                             override fun openBudgets() = appState.navController.navigate(BudgetsRoute)
+                            override fun openRecurring() = appState.navController.navigate(RecurringRoute)
                             override fun openRecords(month: YearMonth, categoryId: Long, accountId: Long?) =
                                 appState.navController.navigate(ActivityRoute(month = month.toString(), account = accountId, category = categoryId))
                             override fun back() {

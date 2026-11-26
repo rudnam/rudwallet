@@ -6,6 +6,7 @@ import { Splash } from './components/Splash';
 import { Icon, icons, Logo, Plus } from './components/Icon';
 import { TransactionForm } from './components/TransactionForm';
 import { BudgetsPage } from './features/budgets/BudgetsPage';
+import { RecurringPage } from './features/recurring/RecurringPage';
 import { ConnectPage, rememberConnect, resumeConnect } from './features/settings/ConnectPage';
 import { HomePage } from './features/home/HomePage';
 import { ActivityPage } from './features/records/ActivityPage';
@@ -226,12 +227,13 @@ function prefetchPages() {
   api.prefetch.transactions({ ...thisMonth, status: 'confirmed' });
   api.prefetch.transactions({ status: 'review' });
   api.prefetch.budgets();
+  api.prefetch.recurring();
   api.prefetch.tags();
   prefetchStats();
 }
 
 /** Pages outside the main navigation, and the entry they belong under. */
-const subpages: Record<string, string> = { card: 'home', account: 'home', review: 'records', duplicates: 'records', budgets: 'stats' };
+const subpages: Record<string, string> = { card: 'home', account: 'home', review: 'records', duplicates: 'records', budgets: 'stats', recurring: 'stats' };
 
 function Shell({
   me,
@@ -318,6 +320,9 @@ function Shell({
       break;
     case 'budgets':
       page = <BudgetsPage />;
+      break;
+    case 'recurring':
+      page = <RecurringPage />;
       break;
     case 'account':
       page = <AccountPage route={route} />;

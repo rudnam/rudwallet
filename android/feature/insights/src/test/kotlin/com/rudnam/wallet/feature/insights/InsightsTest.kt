@@ -5,6 +5,11 @@ import com.rudnam.wallet.core.model.Category
 import com.rudnam.wallet.core.model.CategoryKind
 import com.rudnam.wallet.core.model.CategoryTotal
 import com.rudnam.wallet.core.model.DayTotal
+import com.rudnam.wallet.core.model.Recurring
+import com.rudnam.wallet.core.model.RecurringInput
+import com.rudnam.wallet.core.model.RecurringKind
+import com.rudnam.wallet.core.model.RecurringMonth
+import com.rudnam.wallet.core.model.RecurringOverview
 import com.rudnam.wallet.core.model.Stats
 import com.rudnam.wallet.core.testing.SampleWallet
 import org.junit.Assert.assertEquals
@@ -88,6 +93,28 @@ class InsightsTest {
         assertEquals(2_000, everything.perDayNow)
         assertTrue(everything.tooFast)
         assertTrue(eating.over)
+    }
+
+    @Test
+    fun `subscriptions and bills count once, not as a daily rate`() {
+        val month = Period.at(Span.Month, today)
+        // ¥28,000 in 14 days, ¥14,000 of it the rent and phone bill; ¥8,000 of bills still to come.
+        val recurring = RecurringOverview(
+            recurring = listOf(
+                Recurring(1, RecurringInput("Rent", RecurringKind.Bill, listOf("rent"), 10_000, 1, today, null, null, true), 10_000, emptyList(), null, false),
+                Recurring(2, RecurringInput("Gym", RecurringKind.Subscription, listOf("gym"), 7_000, 1, today, null, null, false), 7_000, emptyList(), null, false),
+            ),
+            suggestions = emptyList(),
+            month = RecurringMonth(LocalDate.of(2026, 11, 1), paid = 14_000, upcoming = 8_000, due = emptyList()),
+        )
+        val ahead = monthAhead(stats(28_000), emptyList(), month, today, SampleWallet.wallet, recurring)
+        assertEquals(14_000L + 30_000 + 8_000, ahead.heading) // the other 14,000 over 14 days, for 30
+        assertEquals(8_000L, ahead.upcoming)
+        assertEquals(1, ahead.tracked) // the stopped one isn't counted
+
+        // Another month's answer (the app was left open over midnight) isn't used.
+        val stale = recurring.copy(month = recurring.month.copy(start = LocalDate.of(2026, 10, 1)))
+        assertEquals(60_000L, monthAhead(stats(28_000), emptyList(), month, today, SampleWallet.wallet, stale).heading)
     }
 
     @Test

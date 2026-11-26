@@ -2,6 +2,7 @@ package com.rudnam.wallet.feature.insights
 
 import com.rudnam.wallet.core.model.Budget
 import com.rudnam.wallet.core.model.CategoryKind
+import com.rudnam.wallet.core.model.RecurringOverview
 import com.rudnam.wallet.core.model.Stats
 import com.rudnam.wallet.core.model.Wallet
 import java.time.LocalDate
@@ -97,19 +98,41 @@ data class BudgetPace(val budget: Budget, val spent: Long, val allowedPerDay: Lo
     val tooFast: Boolean get() = !over && perDayNow > allowedPerDay
 }
 
-/** The rest of the month still going: where its spending is heading, and each budget's pace. */
-data class MonthAhead(val heading: Long, val daysLeft: Int, val budgets: List<BudgetPace>)
+/**
+ * The rest of the month still going: where its spending is heading, and each
+ * budget's pace. [upcoming] is what subscriptions and bills still take this
+ * month, null when none are tracked; [tracked] how many are.
+ */
+data class MonthAhead(val heading: Long, val daysLeft: Int, val budgets: List<BudgetPace>, val upcoming: Long? = null, val tracked: Int = 0)
 
 /**
- * Where the month is heading at the same rate per day as so far, and what
- * each budget allows a day. A main category's budget counts its subcategories.
+ * Where the month is heading, and what each budget allows a day. A main
+ * category's budget counts its subcategories. Subscriptions and bills
+ * ([recurring], this month's) come once, not every day: the rest of the
+ * spending goes on at its rate so far, and they add what they still take.
+ * Without them, all of it goes on at the rate so far.
  */
-fun monthAhead(now: Stats, budgets: List<Budget>, period: Period, today: LocalDate, wallet: Wallet): MonthAhead {
+fun monthAhead(
+    now: Stats,
+    budgets: List<Budget>,
+    period: Period,
+    today: LocalDate,
+    wallet: Wallet,
+    recurring: RecurringOverview? = null,
+): MonthAhead {
     val days = period.elapsedDays(today)
     val len = period.lengthInDays
     val left = len - days + 1 // today included
+    val month = recurring?.month?.takeIf { it.start == period.from }
+    val heading = if (month != null) {
+        ((now.spent - month.paid).coerceAtLeast(0).toDouble() / days * len).roundToLong() + month.paid + month.upcoming
+    } else {
+        (now.spent.toDouble() / days * len).roundToLong()
+    }
     return MonthAhead(
-        heading = (now.spent.toDouble() / days * len).roundToLong(),
+        heading = heading,
+        upcoming = month?.upcoming,
+        tracked = recurring?.expensesTracked ?: 0,
         daysLeft = left,
         budgets = budgets.map { b ->
             val spent = now.spentOn(b.categoryId, wallet)

@@ -79,6 +79,11 @@ class OfflineFirstWalletRepositoryTest {
         }
 
         override suspend fun notifications() = NetworkNotifications()
+        override suspend fun recurring(zone: String) = error("not used")
+        override suspend fun createRecurring(input: com.rudnam.wallet.core.network.model.NetworkRecurringInput) = Unit
+        override suspend fun updateRecurring(id: Long, input: com.rudnam.wallet.core.network.model.NetworkRecurringInput) = Unit
+        override suspend fun deleteRecurring(id: Long) = Unit
+        override suspend fun dismissRecurring(key: String) = Unit
 
         override suspend fun downloads() = NetworkDownloads(NetworkApk("/download/wallet.apk", 5))
 

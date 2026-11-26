@@ -16,6 +16,7 @@ import com.rudnam.wallet.feature.activity.navigation.ActivityRoute
 import com.rudnam.wallet.feature.imports.navigation.CardRoute
 import com.rudnam.wallet.feature.imports.navigation.ImportRoute
 import com.rudnam.wallet.feature.insights.navigation.BudgetsRoute
+import com.rudnam.wallet.feature.insights.navigation.RecurringRoute
 import com.rudnam.wallet.feature.signin.navigation.SignInRoute
 import com.rudnam.wallet.feature.insights.navigation.InsightsRoute
 import com.rudnam.wallet.feature.settings.navigation.SettingsRoute
@@ -53,6 +54,7 @@ class RudWalletAppStateTest {
                 composable<AccountRoute> {}
                 composable<InsightsRoute> {}
                 composable<BudgetsRoute> {}
+                composable<RecurringRoute> {}
                 composable<ImportRoute> {}
                 composable<CardRoute> {}
                 composable<SignInRoute> {}
@@ -93,6 +95,15 @@ class RudWalletAppStateTest {
             state.openPath("connect?client=claude")
         }
         compose.runOnIdle { assertEquals(TopLevelDestination.Wallet, tab) }
+    }
+
+    @Test
+    fun `recurring payments open from their website path`() {
+        compose.runOnIdle { state.openPath("recurring") }
+        compose.runOnIdle {
+            assertTrue(showing<RecurringRoute>())
+            assertEquals(null, tab)
+        }
     }
 
     @Test

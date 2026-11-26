@@ -6,10 +6,12 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import com.rudnam.wallet.core.data.repository.InsightsRepository
 import com.rudnam.wallet.core.data.repository.RecordEvents
+import com.rudnam.wallet.core.data.repository.RecurringRepository
 import com.rudnam.wallet.core.data.repository.StatsQuery
 import com.rudnam.wallet.core.data.repository.StatsResult
 import com.rudnam.wallet.core.data.repository.WalletRepository
 import com.rudnam.wallet.core.model.Budget
+import com.rudnam.wallet.core.model.RecurringOverview
 import com.rudnam.wallet.core.model.Stats
 import com.rudnam.wallet.core.model.Wallet
 import com.rudnam.wallet.feature.insights.navigation.InsightsRoute
@@ -90,6 +92,7 @@ class InsightsViewModel @Inject constructor(
     private val savedState: SavedStateHandle,
     private val wallet: WalletRepository,
     private val insights: InsightsRepository,
+    private val recurring: RecurringRepository,
     recordEvents: RecordEvents,
     private val clock: Clock,
 ) : ViewModel(), InsightsActions {
@@ -129,8 +132,8 @@ class InsightsViewModel @Inject constructor(
         load(sel, asked)
     }
 
-    val uiState: StateFlow<InsightsUiState> = combine(wallet.wallet, wallet.budgets, loaded) { w, budgets, l ->
-        if (w == null) InsightsUiState.Loading else ready(w, budgets, l)
+    val uiState: StateFlow<InsightsUiState> = combine(wallet.wallet, wallet.budgets, loaded, recurring.overview) { w, budgets, l, r ->
+        if (w == null) InsightsUiState.Loading else ready(w, budgets, l, r)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), InsightsUiState.Loading)
 
     init {
@@ -140,7 +143,7 @@ class InsightsViewModel @Inject constructor(
         viewModelScope.launch { refreshWallet() }
     }
 
-    private fun ready(w: Wallet, budgets: List<Budget>, l: Loaded): InsightsUiState.Ready {
+    private fun ready(w: Wallet, budgets: List<Budget>, l: Loaded, r: RecurringOverview?): InsightsUiState.Ready {
         val period = l.selection.period
         val now = today
         val days = period.elapsedDays(now)
@@ -154,7 +157,7 @@ class InsightsViewModel @Inject constructor(
             // Categories that moved are main categories, their subcategories counted in.
             trend = if (stats != null && l.past != null && days > 0) trend(stats.byMainCategory(w), l.past.map { it.byMainCategory(w) }) else null,
             ahead = if (stats != null && period.span == Span.Month && period.ongoing(now) && l.selection.accountId == null) {
-                monthAhead(stats, budgets, period, now, w)
+                monthAhead(stats, budgets, period, now, w, r)
             } else {
                 null
             },
@@ -170,6 +173,8 @@ class InsightsViewModel @Inject constructor(
     /** What was seen before at once, then the server's answer; then the periods either side, so stepping is instant. */
     private fun load(sel: Selection, userAsked: Boolean): Flow<Loaded> = flow {
         val queries = queries(sel)
+        // The month going on: its subscriptions and bills, for where it's heading.
+        if (sel.period.span == Span.Month && sel.period.ongoing(today)) viewModelScope.launch { recurring.refresh(clock.zone) }
         val seen = queries.map(insights::seen)
         val shown = if (seen.all { it != null }) seen.filterNotNull() else null
         emit(Loaded(sel, shown?.first(), shown?.drop(1), problem = null, refreshing = userAsked))
