@@ -39,6 +39,9 @@ type ImportRow struct {
 	Status string `json:"status"`
 	// MatchedID is the record an imported or matched row is.
 	MatchedID *int64 `json:"matched_id,omitempty"`
+	// AllDay: the file gives the row's day but not its time (a Vpass
+	// statement), so OccurredAt's time of day means nothing to show.
+	AllDay bool `json:"all_day,omitempty"`
 }
 
 // importRun is an import being recorded: its duplicate checks, and the

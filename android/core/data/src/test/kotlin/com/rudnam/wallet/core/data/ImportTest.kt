@@ -63,13 +63,16 @@ class ImportTest {
             "methods":[{"method":"Amazonマスター","count":2,"account_id":7,"new_name":"Amazonマスター","new_kind":"credit_card","skip":false}],
             "categories":[],"new_categories":[],"problems":[],"new":1,"duplicates":0,"matched":1,"skipped":0,
             "file_rows":[{"occurred_at":"2026-11-08T12:00:00+09:00","kind":"expense","amount":1798,"payee":"AMAZON.CO.JP","account":"Amazon Mastercard","status":"matched"},
-                         {"occurred_at":"2026-11-10T12:00:00+09:00","kind":"income","amount":318,"payee":"AMAZON.CO.JP","account":"Amazon Mastercard","status":"new"}]}""",
+                         {"occurred_at":"2026-11-10T12:00:00+09:00","kind":"income","amount":318,"payee":"AMAZON.CO.JP","account":"Amazon Mastercard","status":"new","all_day":true}]}""",
         ).asModel(ImportSource.Vpass)
         assertEquals("Amazonマスター", vpass.accounts.single().key)
         assertEquals(1, vpass.new)
         assertEquals(1, vpass.matched)
         assertEquals(ImportRowStatus.Matched, vpass.rows[0].status)
         assertEquals(318L, vpass.rows[1].amount)
+        // The statement gives the day only: no time, and the day it says.
+        assertEquals(null, vpass.rows[1].time)
+        assertEquals(LocalDate.of(2026, 11, 10), vpass.rows[1].date)
         assertEquals(ImportSource.Vpass, ImportSource.fromServer("vpass"))
         assertEquals(true, ImportSource.Vpass.previewsChoices)
     }
