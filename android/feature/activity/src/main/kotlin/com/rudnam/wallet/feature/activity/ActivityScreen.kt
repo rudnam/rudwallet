@@ -76,6 +76,7 @@ import com.rudnam.wallet.core.ui.recordDays
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
 import java.time.Instant
 import java.time.YearMonth
+import com.rudnam.wallet.core.designsystem.R as DesignSystemR
 
 /** Where Activity's taps lead. */
 interface ActivityNavigation {
@@ -155,7 +156,7 @@ internal fun ActivityScreen(state: ActivityUiState.Ready, actions: ActivityActio
                 actions = {
                     if (!state.records.isNullOrEmpty()) {
                         TextButton(onClick = { actions.startChoosing() }) {
-                            Text(stringResource(if (choosing) R.string.feature_activity_done else R.string.feature_activity_select))
+                            Text(stringResource(if (choosing) DesignSystemR.string.designsystem_done else R.string.feature_activity_select))
                         }
                     }
                 },
@@ -295,7 +296,7 @@ private fun Filters(state: ActivityUiState.Ready, actions: ActivityActions) {
                     IconButton(onClick = {
                         text = ""
                         actions.search("")
-                    }) { LineIcon(WalletIcons.close, contentDescription = stringResource(R.string.feature_activity_cancel), size = 18.dp) }
+                    }) { LineIcon(WalletIcons.close, contentDescription = stringResource(DesignSystemR.string.designsystem_cancel), size = 18.dp) }
                 }
             },
             singleLine = true,
@@ -420,7 +421,7 @@ private fun BulkBar(state: ActivityUiState.Ready, actions: ActivityActions) {
                     }
                     TextButton(onClick = { tagging = true }, enabled = !state.busy) { Text(stringResource(R.string.feature_activity_tag)) }
                     TextButton(onClick = { deleting = true }, enabled = !state.busy) {
-                        Text(stringResource(R.string.feature_activity_delete), color = WalletTheme.colors.danger)
+                        Text(stringResource(DesignSystemR.string.designsystem_delete), color = WalletTheme.colors.danger)
                     }
                 }
             }
@@ -434,9 +435,9 @@ private fun BulkBar(state: ActivityUiState.Ready, actions: ActivityActions) {
                 TextButton(onClick = {
                     deleting = false
                     actions.bulk(BulkChange.Delete(ids))
-                }) { Text(stringResource(R.string.feature_activity_delete), color = WalletTheme.colors.danger) }
+                }) { Text(stringResource(DesignSystemR.string.designsystem_delete), color = WalletTheme.colors.danger) }
             },
-            dismissButton = { TextButton(onClick = { deleting = false }) { Text(stringResource(R.string.feature_activity_cancel)) } },
+            dismissButton = { TextButton(onClick = { deleting = false }) { Text(stringResource(DesignSystemR.string.designsystem_cancel)) } },
         )
     }
     if (tagging) {
@@ -516,7 +517,7 @@ private fun TagDialog(state: ActivityUiState.Ready, chosen: Set<Long>, onDismiss
                 Text(stringResource(R.string.feature_activity_add_tag))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.feature_activity_cancel)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(DesignSystemR.string.designsystem_cancel)) } },
     )
 }
 

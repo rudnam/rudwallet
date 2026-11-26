@@ -17,7 +17,6 @@
     <string name="feature_insights_next_range">Next period</string>
     <string name="feature_insights_choose_range">Choose dates</string>
     <string name="feature_insights_ok">OK</string>
-    <string name="feature_insights_cancel">Cancel</string>
     <string name="feature_insights_account">Account</string>
     <string name="feature_insights_all_accounts">All accounts</string>
     <string name="feature_insights_spent">Spent</string>
@@ -105,8 +104,6 @@
     <string name="feature_insights_monthly_limit">Monthly limit (%s)</string>
     <string name="feature_insights_enter_limit">Enter a monthly limit.</string>
     <string name="feature_insights_name_optional">Name (optional)</string>
-    <string name="feature_insights_save">Save</string>
-    <string name="feature_insights_delete">Delete</string>
     <string name="feature_insights_delete_question">Delete the budget “%s”?</string>
     <string name="feature_insights_deleted">Deleted “%s”.</string>
     <string name="feature_insights_budget_offline">Can’t reach the server. Budgets need a connection.</string>
@@ -125,7 +122,6 @@
     <string name="feature_insights_found">Found in your records</string>
     <string name="feature_insights_found_detail">These come back regularly. Add them to see what’s due and to estimate the month better.</string>
     <string name="feature_insights_add_all">Add all</string>
-    <string name="feature_insights_add">Add</string>
     <string name="feature_insights_add_named">Add %s</string>
     <string name="feature_insights_review_named">Review %s</string>
     <string name="feature_insights_edit_named">Edit %s</string>

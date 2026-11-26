@@ -65,6 +65,7 @@ import com.rudnam.wallet.core.designsystem.theme.WalletTheme
 import com.rudnam.wallet.core.ui.ServerText
 import com.rudnam.wallet.core.ui.serverText
 import java.util.Locale
+import com.rudnam.wallet.core.designsystem.R as DesignSystemR
 
 /** Where Settings' rows lead. */
 interface SettingsNavigation {
@@ -262,7 +263,7 @@ private fun DeleteAccountDialog(email: String, hasPassword: Boolean, state: Dele
                 Text(stringResource(R.string.feature_settings_delete_everything), color = WalletTheme.colors.danger)
             }
         },
-        dismissButton = { TextButton(onClick = actions::cancelDeleting) { Text(stringResource(R.string.feature_settings_cancel)) } },
+        dismissButton = { TextButton(onClick = actions::cancelDeleting) { Text(stringResource(DesignSystemR.string.designsystem_cancel)) } },
     )
 }
 

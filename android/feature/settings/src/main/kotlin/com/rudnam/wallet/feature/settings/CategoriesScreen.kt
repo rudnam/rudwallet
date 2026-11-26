@@ -78,6 +78,7 @@ import com.rudnam.wallet.core.model.CategoryKind
 import com.rudnam.wallet.core.model.Wallet
 import com.rudnam.wallet.core.ui.CategoryIcon
 import com.rudnam.wallet.core.ui.serverText
+import com.rudnam.wallet.core.designsystem.R as DesignSystemR
 
 /** Each glyph a category can wear, and its name for TalkBack. */
 private val glyphNames = mapOf(
@@ -413,7 +414,7 @@ private fun CategorySheet(editor: CategoryEditor, wallet: Wallet?, actions: Cate
             SheetButtons(
                 deletable = editor.id != null,
                 busy = editor.busy,
-                saveLabel = stringResource(R.string.feature_settings_save),
+                saveLabel = stringResource(DesignSystemR.string.designsystem_save),
                 onDelete = { actions.askDelete(true) },
                 onSave = actions::save,
             )

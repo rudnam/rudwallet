@@ -2,4 +2,9 @@
 <resources>
     <string name="designsystem_back">戻る</string>
     <string name="designsystem_try_again">再試行</string>
+    <string name="designsystem_cancel">キャンセル</string>
+    <string name="designsystem_save">保存</string>
+    <string name="designsystem_delete">削除</string>
+    <string name="designsystem_done">完了</string>
+    <string name="designsystem_add">追加</string>
 </resources>

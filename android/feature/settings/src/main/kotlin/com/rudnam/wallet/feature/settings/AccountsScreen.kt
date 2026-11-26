@@ -78,6 +78,7 @@ import com.rudnam.wallet.core.ui.MoneyFormat
 import com.rudnam.wallet.core.ui.kindName
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
 import com.rudnam.wallet.core.ui.serverText
+import com.rudnam.wallet.core.designsystem.R as DesignSystemR
 
 /** Each kind of account: its icon and colour, and names people often use. */
 internal data class KindMeta(val glyph: String, val color: String, val names: List<Int>)
@@ -286,7 +287,7 @@ private fun AccountSheet(wallet: Wallet, editor: AccountEditor, actions: Account
             SheetButtons(
                 deletable = editor.id != null,
                 busy = editor.busy,
-                saveLabel = stringResource(if (editor.id == null) R.string.feature_settings_add_account else R.string.feature_settings_save),
+                saveLabel = stringResource(if (editor.id == null) R.string.feature_settings_add_account else DesignSystemR.string.designsystem_save),
                 onDelete = { actions.askDelete(true) },
                 onSave = { actions.save(defaultName, meta?.color ?: "#6f6c63") },
             )
@@ -302,7 +303,7 @@ private fun AccountSheet(wallet: Wallet, editor: AccountEditor, actions: Account
 internal fun SheetButtons(deletable: Boolean, busy: Boolean, saveLabel: String, onDelete: () -> Unit, onSave: () -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
         if (deletable) {
-            OutlinedButton(onClick = onDelete, enabled = !busy) { Text(stringResource(R.string.feature_settings_delete), color = WalletTheme.colors.danger) }
+            OutlinedButton(onClick = onDelete, enabled = !busy) { Text(stringResource(DesignSystemR.string.designsystem_delete), color = WalletTheme.colors.danger) }
         }
         Box(Modifier.weight(1f))
         Button(
@@ -320,8 +321,8 @@ internal fun ConfirmDelete(question: String, onConfirm: () -> Unit, onCancel: ()
     AlertDialog(
         onDismissRequest = onCancel,
         text = { Text(question) },
-        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.feature_settings_delete), color = WalletTheme.colors.danger) } },
-        dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.feature_settings_cancel)) } },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(DesignSystemR.string.designsystem_delete), color = WalletTheme.colors.danger) } },
+        dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(DesignSystemR.string.designsystem_cancel)) } },
     )
 }
 

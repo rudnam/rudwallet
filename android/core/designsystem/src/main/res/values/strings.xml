@@ -3,4 +3,9 @@
     <!-- The top bar's way back, the same on every page (TalkBack: "Back, button"). -->
     <string name="designsystem_back">Back</string>
     <string name="designsystem_try_again">Try again</string>
+    <string name="designsystem_cancel">Cancel</string>
+    <string name="designsystem_save">Save</string>
+    <string name="designsystem_delete">Delete</string>
+    <string name="designsystem_done">Done</string>
+    <string name="designsystem_add">Add</string>
 </resources>

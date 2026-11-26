@@ -16,7 +16,6 @@
     <string name="feature_insights_next_range">次の期間</string>
     <string name="feature_insights_choose_range">日付を選択</string>
     <string name="feature_insights_ok">OK</string>
-    <string name="feature_insights_cancel">キャンセル</string>
     <string name="feature_insights_account">口座</string>
     <string name="feature_insights_all_accounts">すべての口座</string>
     <string name="feature_insights_spent">支出</string>
@@ -96,8 +95,6 @@
     <string name="feature_insights_monthly_limit">月の上限（%s）</string>
     <string name="feature_insights_enter_limit">月の上限を入力してください。</string>
     <string name="feature_insights_name_optional">名前（任意）</string>
-    <string name="feature_insights_save">保存</string>
-    <string name="feature_insights_delete">削除</string>
     <string name="feature_insights_delete_question">予算「%s」を削除しますか？</string>
     <string name="feature_insights_deleted">「%s」を削除しました。</string>
     <string name="feature_insights_budget_offline">サーバーに接続できません。予算の変更には接続が必要です。</string>
@@ -116,7 +113,6 @@
     <string name="feature_insights_found">記録から見つかったもの</string>
     <string name="feature_insights_found_detail">定期的に支払われているようです。追加すると、次の支払日がわかり、月の見込みもより正確になります。</string>
     <string name="feature_insights_add_all">すべて追加</string>
-    <string name="feature_insights_add">追加</string>
     <string name="feature_insights_add_named">%sを追加</string>
     <string name="feature_insights_review_named">%sを確認</string>
     <string name="feature_insights_edit_named">%sを編集</string>

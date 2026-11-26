@@ -32,11 +32,8 @@
     </plurals>
     <string name="feature_record_remove_tag">Remove tag %s</string>
     <string name="feature_record_extras">Add a note or tags</string>
-    <string name="feature_record_save">Save</string>
     <string name="feature_record_confirm">Confirm</string>
-    <string name="feature_record_delete">Delete</string>
     <string name="feature_record_delete_ask">Delete this record?</string>
-    <string name="feature_record_cancel">Cancel</string>
     <string name="feature_record_changes_title">Save changes?</string>
     <string name="feature_record_changes_save">Save changes</string>
     <string name="feature_record_back">Back</string>

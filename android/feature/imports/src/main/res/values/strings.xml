@@ -15,8 +15,6 @@
     <string name="feature_imports_reading_file">Reading the file…</string>
     <string name="feature_imports_importing">Importing…</string>
     <string name="feature_imports_import_rest">Import the rest</string>
-    <string name="feature_imports_cancel">Cancel</string>
-    <string name="feature_imports_done">Done</string>
     <string name="feature_imports_paypay_categories">Choose a category for each shop. A shop’s category is remembered, so its next payments are sorted too.</string>
     <string name="feature_imports_mufg_categories">Choose a category for each payee, such as your employer for salary. It is remembered for the next statement; payees left without one are imported without a category, to sort later.</string>
     <string name="feature_imports_budgetbakers_categories">And where each category’s records go. Close matches are picked; BudgetBakers’ categories that fit none of yours can be added as they are.</string>

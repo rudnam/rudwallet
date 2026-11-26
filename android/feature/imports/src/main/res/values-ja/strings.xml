@@ -14,8 +14,6 @@
     <string name="feature_imports_reading_file">ファイルを読み込んでいます…</string>
     <string name="feature_imports_importing">取り込み中…</string>
     <string name="feature_imports_import_rest">残りを取り込む</string>
-    <string name="feature_imports_cancel">キャンセル</string>
-    <string name="feature_imports_done">完了</string>
     <string name="feature_imports_paypay_categories">お店ごとにカテゴリを選んでください。お店のカテゴリは記憶され、次からの支払いも仕分けられます。</string>
     <string name="feature_imports_mufg_categories">相手ごとにカテゴリを選んでください（給与なら勤務先など）。次の明細でも使われます。選ばなかった相手はカテゴリなしで取り込むので、あとで整理できます。</string>
     <string name="feature_imports_budgetbakers_categories">カテゴリごとの行き先も選んでください。近いものを選んであります。どれにも合わないBudgetBakersのカテゴリは、そのまま追加できます。</string>

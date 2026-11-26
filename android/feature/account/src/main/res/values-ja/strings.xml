@@ -13,6 +13,4 @@
     <string name="feature_account_no_amount_yen">金額を入力してください（例: 1200）。</string>
     <string name="feature_account_no_amount_cents">金額を入力してください（例: 12.50）。</string>
     <string name="feature_account_offline">サーバーに接続できません。数えるには接続が必要です。</string>
-    <string name="feature_account_save">保存</string>
-    <string name="feature_account_cancel">キャンセル</string>
 </resources>

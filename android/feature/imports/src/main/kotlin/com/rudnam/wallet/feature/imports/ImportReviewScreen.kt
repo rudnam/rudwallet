@@ -81,6 +81,7 @@ import com.rudnam.wallet.core.ui.CategoryPickerExtra
 import com.rudnam.wallet.core.ui.CategoryPickerSheet
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
 import com.rudnam.wallet.core.ui.serverText
+import com.rudnam.wallet.core.designsystem.R as DesignSystemR
 
 @Composable
 internal fun ImportReviewDestination(navigation: ImportsNavigation, @Suppress("UNUSED_PARAMETER") snackbar: SnackbarHostState, viewModel: ImportReviewViewModel = hiltViewModel()) {
@@ -685,7 +686,7 @@ private fun ImportBar(stage: ReviewStage.Ready, actions: ReviewActions, navigati
             horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = navigation::back, enabled = !stage.busy) { Text(stringResource(R.string.feature_imports_cancel)) }
+            TextButton(onClick = navigation::back, enabled = !stage.busy) { Text(stringResource(DesignSystemR.string.designsystem_cancel)) }
             Button(
                 onClick = actions::submit,
                 enabled = enabled,
@@ -732,7 +733,7 @@ private fun LazyListScope.done(stage: ReviewStage.Done, wallet: Wallet, actions:
             Button(
                 onClick = navigation::back,
                 colors = ButtonDefaults.buttonColors(containerColor = WalletTheme.colors.action, contentColor = WalletTheme.colors.onAction),
-            ) { Text(stringResource(R.string.feature_imports_done)) }
+            ) { Text(stringResource(DesignSystemR.string.designsystem_done)) }
         }
     }
 }

@@ -72,6 +72,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneOffset
+import com.rudnam.wallet.core.designsystem.R as DesignSystemR
 
 /** Where Insights' and the budgets' taps lead. */
 interface InsightsNavigation {
@@ -258,7 +259,7 @@ private fun RangePicker(period: Period, onDismiss: () -> Unit, onPick: (LocalDat
                 Text(stringResource(R.string.feature_insights_ok))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.feature_insights_cancel)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(DesignSystemR.string.designsystem_cancel)) } },
     ) {
         DateRangePicker(
             state,

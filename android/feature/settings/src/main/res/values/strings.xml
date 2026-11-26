@@ -92,9 +92,6 @@
     <string name="feature_settings_automatic_language">Automatic (%s)</string>
     <string name="feature_settings_language_detail">Automatic follows the language your phone is set to. Names you gave accounts and categories stay as they are.</string>
     <string name="feature_settings_offline">Can’t reach the server. Changes need a connection.</string>
-    <string name="feature_settings_cancel">Cancel</string>
-    <string name="feature_settings_save">Save</string>
-    <string name="feature_settings_delete">Delete</string>
     <string name="feature_settings_glyph_food">Food</string>
     <string name="feature_settings_glyph_grocery">Groceries</string>
     <string name="feature_settings_glyph_shopping">Shopping</string>
@@ -162,7 +159,6 @@
     <string name="feature_settings_add_shop">Add a shop</string>
     <string name="feature_settings_shop_name">Shop name</string>
     <string name="feature_settings_shop_name_hint">e.g. ローソン</string>
-    <string name="feature_settings_add">Add</string>
     <string name="feature_settings_cards">Cards</string>
     <string name="feature_settings_no_cards">No cards yet. A card is remembered when you confirm its first payment.</string>
     <string name="feature_settings_account_for">Account for %s</string>

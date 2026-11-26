@@ -30,6 +30,7 @@ import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZoneOffset
+import com.rudnam.wallet.core.designsystem.R as DesignSystemR
 
 /**
  * When it happened: a chip with the day and time, which opens Material's
@@ -61,7 +62,7 @@ internal fun DateTimeRow(at: Instant, format: MoneyFormat, onChange: (Instant) -
                     step = 2
                 }) { Text(stringResource(android.R.string.ok)) }
             },
-            dismissButton = { TextButton(onClick = { step = 0 }) { Text(stringResource(R.string.feature_record_cancel)) } },
+            dismissButton = { TextButton(onClick = { step = 0 }) { Text(stringResource(DesignSystemR.string.designsystem_cancel)) } },
         ) { DatePicker(state) }
     }
     if (step == 2) {
@@ -77,7 +78,7 @@ internal fun DateTimeRow(at: Instant, format: MoneyFormat, onChange: (Instant) -
                     step = 0
                 }) { Text(stringResource(android.R.string.ok)) }
             },
-            dismissButton = { TextButton(onClick = { step = 0 }) { Text(stringResource(R.string.feature_record_cancel)) } },
+            dismissButton = { TextButton(onClick = { step = 0 }) { Text(stringResource(DesignSystemR.string.designsystem_cancel)) } },
         )
     }
 }

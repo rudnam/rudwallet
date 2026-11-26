@@ -91,9 +91,6 @@
     <string name="feature_settings_automatic_language">自動（%s）</string>
     <string name="feature_settings_language_detail">自動にすると、スマホの言語に合わせます。口座やカテゴリにつけた名前はそのままです。</string>
     <string name="feature_settings_offline">サーバーに接続できません。変更には接続が必要です。</string>
-    <string name="feature_settings_cancel">キャンセル</string>
-    <string name="feature_settings_save">保存</string>
-    <string name="feature_settings_delete">削除</string>
     <string name="feature_settings_glyph_food">食事</string>
     <string name="feature_settings_glyph_grocery">食料品</string>
     <string name="feature_settings_glyph_shopping">買い物</string>
@@ -159,7 +156,6 @@
     <string name="feature_settings_add_shop">お店を追加</string>
     <string name="feature_settings_shop_name">お店の名前</string>
     <string name="feature_settings_shop_name_hint">例: ローソン</string>
-    <string name="feature_settings_add">追加</string>
     <string name="feature_settings_cards">カード</string>
     <string name="feature_settings_no_cards">まだカードはありません。最初の支払いを確定すると、そのカードを覚えます。</string>
     <string name="feature_settings_account_for">%sの口座</string>

@@ -58,6 +58,7 @@ import com.rudnam.wallet.core.ui.recordDays
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
 import com.rudnam.wallet.core.ui.sharedBounds
 import java.time.Instant
+import com.rudnam.wallet.core.designsystem.R as DesignSystemR
 
 /** Where the account page's taps lead. */
 interface AccountNavigation {
@@ -221,7 +222,7 @@ private fun CountCashDialog(state: AccountUiState.Ready, counting: AccountViewMo
                 )
             }
         },
-        confirmButton = { TextButton(onClick = actions::save, enabled = !counting.busy) { Text(stringResource(R.string.feature_account_save)) } },
-        dismissButton = { TextButton(onClick = actions::cancel) { Text(stringResource(R.string.feature_account_cancel)) } },
+        confirmButton = { TextButton(onClick = actions::save, enabled = !counting.busy) { Text(stringResource(DesignSystemR.string.designsystem_save)) } },
+        dismissButton = { TextButton(onClick = actions::cancel) { Text(stringResource(DesignSystemR.string.designsystem_cancel)) } },
     )
 }

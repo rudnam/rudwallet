@@ -45,6 +45,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rudnam.wallet.core.designsystem.component.SectionHeader
+import com.rudnam.wallet.core.designsystem.component.WalletListItem
 import com.rudnam.wallet.core.designsystem.component.WalletPanel
 import com.rudnam.wallet.core.designsystem.component.WalletTopBar
 import com.rudnam.wallet.core.designsystem.icon.LineIcon
@@ -257,23 +258,20 @@ private fun BatchRow(b: ImportBatch, wallet: Wallet, undoing: Boolean, onUndo: (
         add(pluralStringResource(R.plurals.feature_imports_batch_added, b.imported, b.imported))
         if (already > 0) add(pluralStringResource(R.plurals.feature_imports_batch_already, already, already))
     }.joinToString(" · ")
-    Row(
-        Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = if (b.undone) WalletTheme.colors.muted else WalletTheme.colors.text)
-            Text(
-                listOfNotNull(format.dateTime(b.createdAt), period).joinToString(" · "),
-                style = MaterialTheme.typography.bodySmall,
-                color = WalletTheme.colors.muted,
-            )
-            Text(what, style = MaterialTheme.typography.bodySmall, color = WalletTheme.colors.muted)
-        }
-        when {
-            b.undone -> Text(stringResource(R.string.feature_imports_batch_undone), style = MaterialTheme.typography.labelMedium, color = WalletTheme.colors.muted, modifier = Modifier.padding(end = 8.dp))
-            undoing -> CircularProgressIndicator(Modifier.padding(end = 12.dp).size(18.dp), strokeWidth = 2.dp)
-            onUndo != null && b.remaining > 0 -> TextButton(onClick = onUndo) { Text(stringResource(R.string.feature_imports_undo_short)) }
-        }
-    }
+    WalletListItem(
+        headline = { Text(title, color = if (b.undone) WalletTheme.colors.muted else WalletTheme.colors.text) },
+        supporting = {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(listOfNotNull(format.dateTime(b.createdAt), period).joinToString(" · "))
+                Text(what)
+            }
+        },
+        trailing = {
+            when {
+                b.undone -> Text(stringResource(R.string.feature_imports_batch_undone), style = MaterialTheme.typography.labelMedium, color = WalletTheme.colors.muted)
+                undoing -> CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                onUndo != null && b.remaining > 0 -> TextButton(onClick = onUndo) { Text(stringResource(R.string.feature_imports_undo_short)) }
+            }
+        },
+    )
 }

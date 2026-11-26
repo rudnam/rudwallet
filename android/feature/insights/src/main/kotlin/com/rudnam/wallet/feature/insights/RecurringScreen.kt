@@ -97,6 +97,7 @@ import com.rudnam.wallet.core.ui.serverText
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
+import com.rudnam.wallet.core.designsystem.R as DesignSystemR
 
 @Composable
 internal fun RecurringDestination(navigation: InsightsNavigation, snackbar: SnackbarHostState, viewModel: RecurringViewModel = hiltViewModel()) {
@@ -153,7 +154,7 @@ internal fun RecurringScreen(state: RecurringUiState, editor: RecurringEditor?, 
                 ExtendedFloatingActionButton(
                     onClick = actions::create,
                     icon = { LineIcon(WalletIcons.plus, contentDescription = null, stroke = 2.2f) },
-                    text = { Text(stringResource(R.string.feature_insights_add)) },
+                    text = { Text(stringResource(DesignSystemR.string.designsystem_add)) },
                     containerColor = WalletTheme.colors.action,
                     contentColor = WalletTheme.colors.onAction,
                     shape = RoundedCornerShape(18.dp),
@@ -286,7 +287,7 @@ private fun Suggestions(suggestions: List<RecurringSuggestion>, wallet: Wallet, 
                     TextButton(onClick = { actions.dismiss(s) }) { Text(stringResource(R.string.feature_insights_not_recurring), color = WalletTheme.colors.muted) }
                     val add = stringResource(R.string.feature_insights_add_named, s.input.name)
                     TextButton(onClick = { actions.add(s) }, modifier = Modifier.semantics { contentDescription = add }) {
-                        Text(stringResource(R.string.feature_insights_add))
+                        Text(stringResource(DesignSystemR.string.designsystem_add))
                     }
                 }
             }
@@ -511,7 +512,7 @@ private fun RecurringSheet(wallet: Wallet, editor: RecurringEditor, actions: Rec
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (editor.id != null) {
                     OutlinedButton(onClick = { actions.askDelete(true) }, enabled = !editor.busy) {
-                        Text(stringResource(R.string.feature_insights_delete), color = colors.danger)
+                        Text(stringResource(DesignSystemR.string.designsystem_delete), color = colors.danger)
                     }
                 }
                 Box(Modifier.weight(1f))
@@ -523,7 +524,7 @@ private fun RecurringSheet(wallet: Wallet, editor: RecurringEditor, actions: Rec
                     if (editor.busy) {
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = colors.onAction)
                     } else {
-                        Text(stringResource(if (editor.id == null) R.string.feature_insights_add else R.string.feature_insights_save))
+                        Text(stringResource(if (editor.id == null) DesignSystemR.string.designsystem_add else DesignSystemR.string.designsystem_save))
                     }
                 }
             }
@@ -533,8 +534,8 @@ private fun RecurringSheet(wallet: Wallet, editor: RecurringEditor, actions: Rec
         AlertDialog(
             onDismissRequest = { actions.askDelete(false) },
             text = { Text(stringResource(R.string.feature_insights_delete_recurring_question, editor.name)) },
-            confirmButton = { TextButton(onClick = actions::delete) { Text(stringResource(R.string.feature_insights_delete), color = colors.danger) } },
-            dismissButton = { TextButton(onClick = { actions.askDelete(false) }) { Text(stringResource(R.string.feature_insights_cancel)) } },
+            confirmButton = { TextButton(onClick = actions::delete) { Text(stringResource(DesignSystemR.string.designsystem_delete), color = colors.danger) } },
+            dismissButton = { TextButton(onClick = { actions.askDelete(false) }) { Text(stringResource(DesignSystemR.string.designsystem_cancel)) } },
         )
     }
 }
@@ -576,6 +577,6 @@ private fun DuePicker(date: LocalDate, onDismiss: () -> Unit, onPick: (LocalDate
                 Text(stringResource(R.string.feature_insights_ok))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.feature_insights_cancel)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(DesignSystemR.string.designsystem_cancel)) } },
     ) { DatePicker(state) }
 }

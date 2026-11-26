@@ -56,6 +56,7 @@ import com.rudnam.wallet.core.model.TransactionKind
 import com.rudnam.wallet.core.model.Wallet
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
 import com.rudnam.wallet.core.ui.serverText
+import com.rudnam.wallet.core.designsystem.R as DesignSystemR
 
 /** Whether this phone can read a card now. */
 enum class NfcState { NoNfc, Off, Ready }
@@ -225,7 +226,7 @@ private fun Reader(state: CardUiState, nfc: NfcState, actions: CardActions, onTu
                 ) {
                     CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                     Text(stringResource(R.string.feature_imports_hold_card), Modifier.weight(1f))
-                    TextButton(onClick = { actions.waitForCard(false) }) { Text(stringResource(R.string.feature_imports_cancel)) }
+                    TextButton(onClick = { actions.waitForCard(false) }) { Text(stringResource(DesignSystemR.string.designsystem_cancel)) }
                 }
                 else -> {
                     if (state.read == null) Text(stringResource(R.string.feature_imports_tap_card))

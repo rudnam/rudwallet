@@ -91,6 +91,7 @@ import com.rudnam.wallet.core.ui.MoneyFormat
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
 import com.rudnam.wallet.core.ui.serverText
 import java.time.Instant
+import com.rudnam.wallet.core.designsystem.R as DesignSystemR
 
 @Composable
 internal fun RecordSheetDestination(onDone: () -> Unit, viewModel: RecordViewModel = hiltViewModel()) {
@@ -187,9 +188,9 @@ internal fun RecordSheet(state: RecordUiState.Ready, actions: RecordActions, onD
             onDismissRequest = actions::cancelDelete,
             title = { Text(stringResource(R.string.feature_record_delete_ask)) },
             confirmButton = {
-                TextButton(onClick = actions::delete) { Text(stringResource(R.string.feature_record_delete), color = WalletTheme.colors.danger) }
+                TextButton(onClick = actions::delete) { Text(stringResource(DesignSystemR.string.designsystem_delete), color = WalletTheme.colors.danger) }
             },
-            dismissButton = { TextButton(onClick = actions::cancelDelete) { Text(stringResource(R.string.feature_record_cancel)) } },
+            dismissButton = { TextButton(onClick = actions::cancelDelete) { Text(stringResource(DesignSystemR.string.designsystem_cancel)) } },
         )
     }
 }
@@ -216,7 +217,7 @@ internal fun RecordSheetContent(state: RecordUiState.Ready, actions: RecordActio
             )
             if (!state.isNew) {
                 TextButton(onClick = actions::askDelete, enabled = !state.busy) {
-                    Text(stringResource(R.string.feature_record_delete), color = colors.danger)
+                    Text(stringResource(DesignSystemR.string.designsystem_delete), color = colors.danger)
                 }
             }
         }
@@ -547,7 +548,7 @@ private fun SaveButton(state: RecordUiState.Ready, actions: RecordActions, modif
         contentPadding = PaddingValues(horizontal = 4.dp),
     ) {
         Text(
-            stringResource(if (state.reviewing) R.string.feature_record_confirm else R.string.feature_record_save),
+            stringResource(if (state.reviewing) R.string.feature_record_confirm else DesignSystemR.string.designsystem_save),
             maxLines = 1,
             softWrap = false,
             style = MaterialTheme.typography.labelLarge,

@@ -70,6 +70,7 @@ import com.rudnam.wallet.core.ui.CategoryPickerSheet
 import com.rudnam.wallet.core.ui.MoneyFormat
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
 import com.rudnam.wallet.core.ui.serverText
+import com.rudnam.wallet.core.designsystem.R as DesignSystemR
 
 @Composable
 internal fun BudgetsDestination(navigation: InsightsNavigation, snackbar: SnackbarHostState, viewModel: BudgetsViewModel = hiltViewModel()) {
@@ -275,7 +276,7 @@ private fun BudgetSheet(wallet: Wallet, editor: BudgetEditor, actions: BudgetsAc
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (editor.id != null) {
                     OutlinedButton(onClick = { actions.askDelete(true) }, enabled = !editor.busy) {
-                        Text(stringResource(R.string.feature_insights_delete), color = WalletTheme.colors.danger)
+                        Text(stringResource(DesignSystemR.string.designsystem_delete), color = WalletTheme.colors.danger)
                     }
                 }
                 Box(Modifier.weight(1f))
@@ -285,7 +286,7 @@ private fun BudgetSheet(wallet: Wallet, editor: BudgetEditor, actions: BudgetsAc
                     colors = ButtonDefaults.buttonColors(containerColor = WalletTheme.colors.action, contentColor = WalletTheme.colors.onAction),
                 ) {
                     if (editor.busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = WalletTheme.colors.onAction)
-                    else Text(stringResource(R.string.feature_insights_save))
+                    else Text(stringResource(DesignSystemR.string.designsystem_save))
                 }
             }
         }
@@ -295,8 +296,8 @@ private fun BudgetSheet(wallet: Wallet, editor: BudgetEditor, actions: BudgetsAc
         AlertDialog(
             onDismissRequest = { actions.askDelete(false) },
             text = { Text(stringResource(R.string.feature_insights_delete_question, name)) },
-            confirmButton = { TextButton(onClick = actions::delete) { Text(stringResource(R.string.feature_insights_delete), color = WalletTheme.colors.danger) } },
-            dismissButton = { TextButton(onClick = { actions.askDelete(false) }) { Text(stringResource(R.string.feature_insights_cancel)) } },
+            confirmButton = { TextButton(onClick = actions::delete) { Text(stringResource(DesignSystemR.string.designsystem_delete), color = WalletTheme.colors.danger) } },
+            dismissButton = { TextButton(onClick = { actions.askDelete(false) }) { Text(stringResource(DesignSystemR.string.designsystem_cancel)) } },
         )
     }
 }
