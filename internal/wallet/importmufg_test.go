@@ -182,6 +182,30 @@ func TestClassifyMUFG(t *testing.T) {
 	}
 }
 
+// A new account's statement starts with ご新規, a deposit of 0: it moves no
+// money, so it's skipped, not refused. Debit card purchases (デビット１)
+// start with an approval number, which isn't part of the payee.
+func TestMUFGNewAccountAndDebit(t *testing.T) {
+	rows, err := readMUFG(shiftJIS(t, []string{
+		mufgStatement[0],
+		`"2025/10/14","ご新規","Ｓフツウダンカイキンリ","","0","0","","","振替入金"`,
+		`"2025/10/22","振込ＩＢ１","ヤマダ　タロウ","","2,000","2,000","","","振替入金"`,
+		`"2025/11/20","デビット１","９４０９４９　ＮＩＨＯＮＫＵＲ","138","","1,862","","","振替支払い"`,
+		`"2025/11/21","デビット２","６４３６７９　ＳＵＧＩ　ＰＨＡ","105","","1,757","","","振替支払い"`,
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 3 || rows[0].line != 3 {
+		t.Fatalf("want the 3 rows after ご新規, got %+v", rows)
+	}
+	for i, want := range []string{"ヤマダ タロウ", "NIHONKUR", "SUGI PHA"} {
+		if got := classifyMUFG(rows[i]).group; got != want {
+			t.Errorf("line %d: payee %q, want %q", rows[i].line, got, want)
+		}
+	}
+}
+
 func TestParseMinor(t *testing.T) {
 	for _, c := range []struct {
 		in, cur string
