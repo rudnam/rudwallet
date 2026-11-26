@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.selection.selectable
@@ -193,23 +192,14 @@ private fun MenuRow(section: Section, summary: String, onClick: () -> Unit) {
     WalletListItem(
         modifier = Modifier.clickable(onClick = onClick),
         leading = { IconTile(section.glyph) },
+        // The summary sits under the name, not beside it: ListItem gives trailing content all the
+        // room it asks for, so a long one ("PayPay, MUFG, Vpass, BudgetBakers") squeezed the name
+        // down to a letter or two a line.
         headline = { Text(stringResource(section.label)) },
-        trailing = {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                // At most half the row, so a long summary (Import's sources) never squeezes the name.
-                if (summary.isNotEmpty()) {
-                    Text(
-                        summary,
-                        Modifier.widthIn(max = 160.dp),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = WalletTheme.colors.muted,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                LineIcon(WalletIcons.chevron, contentDescription = null, tint = WalletTheme.colors.muted, size = 18.dp)
-            }
+        supporting = if (summary.isEmpty()) null else {
+            { Text(summary, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         },
+        trailing = { LineIcon(WalletIcons.chevron, contentDescription = null, tint = WalletTheme.colors.muted, size = 18.dp) },
     )
 }
 
