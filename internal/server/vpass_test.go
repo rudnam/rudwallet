@@ -57,6 +57,16 @@ func TestImportVpass(t *testing.T) {
 	if r := p.Rows[3]; r.Kind != "income" || r.Amount != 318 || r.Payee != "AMAZON.CO.JP" || !r.AllDay {
 		t.Errorf("refund row %+v", r)
 	}
+	// Categories are asked for the rows to record: the notified Nov 8
+	// purchase already has a record, so Amazon's purchases count one.
+	groups := map[string]wallet.ImportCategory{}
+	for _, g := range p.Categories {
+		groups[g.Kind+" "+g.Name] = g
+	}
+	if len(p.Categories) != 3 || groups["expense AMAZON.CO.JP"].Count != 1 || groups["expense AMAZON.CO.JP"].Total != 2690 ||
+		groups["income AMAZON.CO.JP"].Count != 1 || groups["expense GOOGLE YOUTUBEPREMIU"].Count != 1 {
+		t.Errorf("categories %+v", p.Categories)
+	}
 
 	// Another user can't send records to this user's account.
 	if code := other.do("POST", "/api/import/vpass", map[string]any{"csv": vpassCSV,
@@ -92,6 +102,10 @@ func TestImportVpass(t *testing.T) {
 	}
 	if res.Imported != 0 || res.Duplicates != 3 || res.Matched != 1 {
 		t.Errorf("import again %+v", res)
+	}
+	// Nor does its preview ask for any categories.
+	if code := c.send("/api/import/vpass?preview=1", "text/csv", sjis, nil, &p); code != 200 || p.New != 0 || len(p.Categories) != 0 {
+		t.Errorf("preview again: %d, %d new, categories %+v", code, p.New, p.Categories)
 	}
 	got = post(t, c, notify.Incoming{Package: vpass, When: time.Date(2026, 11, 20, 1, 0, 0, 0, time.UTC).UnixMilli(),
 		Title: "ご利用のお知らせ", Text: strings.Replace(vpassAlert, "2026/11/08 10:22", "2026/11/20 10:00", 1)})
