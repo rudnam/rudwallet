@@ -153,6 +153,14 @@ func classifyMUFG(r mufgRow) mufgRecord {
 // mufgPayee is who a row was paid to or by, as its records name them.
 func mufgPayee(r mufgRow) string {
 	if d := tidyMUFG(r.detail); d != "" {
+		// デビット１ rows start with the card payment's approval number
+		// ("940949 NIHONKUR"), different on every purchase; without it,
+		// purchases at one shop share a payee and its category.
+		if strings.HasPrefix(normalizeMUFG(r.summary), "デビット") {
+			if num, rest, ok := strings.Cut(d, " "); ok && rest != "" && strings.Trim(num, "0123456789") == "" {
+				d = rest
+			}
+		}
 		return clip(d, maxName)
 	}
 	return clip(tidyMUFG(r.summary), maxName)
@@ -214,7 +222,12 @@ func readMUFG(data []byte) ([]mufgRow, error) {
 		if errs[0] != nil || errs[1] != nil || errs[2] != nil {
 			return nil, invalid("line %d: amount not understood", line)
 		}
-		if (row.out > 0) == (row.in > 0) {
+		if row.out == 0 && row.in == 0 {
+			// Moves no money, so there's nothing to record and the balance
+			// is unchanged: ご新規 (account opened) with a deposit of 0.
+			continue
+		}
+		if row.out > 0 && row.in > 0 {
 			return nil, invalid("line %d: a row must have either 支払い金額 or 預かり金額", line)
 		}
 		row.key = mufgKey(row)
