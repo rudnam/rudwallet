@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -317,9 +318,9 @@ const SameMoment = 15 * time.Minute
 // notification, so two equal payments in a row stay two.
 //
 // A new record gets the account learned for the card (else the default
-// account, else the first one) and the category learned for the merchant.
-// It waits for review unless the user turned on auto-confirm and the
-// category is known. A record with the same amount within a day is flagged
+// account, else a guess: see guessAccount) and the category learned for the
+// merchant. It waits for review unless the user turned on auto-confirm, the
+// category is known and the account wasn't a guess. A record with the same amount within a day is flagged
 // as a possible duplicate, and never confirmed automatically.
 func (s *Store) CreateFromNotification(ctx context.Context, userID int64, p Payment) (Transaction, bool, error) {
 	st, err := s.Settings(ctx, userID)
@@ -354,13 +355,19 @@ func (s *Store) CreateFromNotification(ctx context.Context, userID int64, p Paym
 		return same, ok, err
 	}
 
+	// guessed: no rule for the card and no default account, so the account
+	// is a guess the user should see before it counts.
+	guessed := false
 	switch {
 	case learned != nil:
 		t.AccountID = *learned
+	case st.DefaultAccountID != nil:
+		t.AccountID = *st.DefaultAccountID
 	default:
-		if t.AccountID, err = s.defaultAccount(ctx, userID, st); err != nil {
+		if t.AccountID, err = s.guessAccount(ctx, userID, p.Source); err != nil {
 			return t, false, err
 		}
+		guessed = true
 	}
 	if t.Kind == "expense" {
 		t.CategoryID, err = s.ruleCategory(ctx, userID, p.Merchant)
@@ -390,7 +397,7 @@ func (s *Store) CreateFromNotification(ctx context.Context, userID int64, p Paym
 	case !errors.Is(err, sql.ErrNoRows):
 		return t, false, err
 	}
-	if st.AutoConfirm && t.CategoryID != nil && t.DuplicateOfID == nil && t.Amount > 0 {
+	if st.AutoConfirm && !guessed && t.CategoryID != nil && t.DuplicateOfID == nil && t.Amount > 0 {
 		t.Status = "confirmed"
 	}
 	t, err = s.Create(ctx, userID, t)
@@ -465,7 +472,7 @@ func (s *Store) learnedAccount(ctx context.Context, userID int64, source string)
 	return &id, nil
 }
 
-// defaultAccount is where payments from an unknown card go.
+// defaultAccount is the user's default account, else their first.
 func (s *Store) defaultAccount(ctx context.Context, userID int64, st Settings) (int64, error) {
 	if st.DefaultAccountID != nil {
 		return *st.DefaultAccountID, nil
@@ -480,6 +487,67 @@ func (s *Store) defaultAccount(ctx context.Context, userID int64, st Settings) (
 			 ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name RETURNING id`, userID).Scan(&id)
 	}
 	return id, err
+}
+
+// cardWords are the words of a card's name that can name an account:
+// "amazon" in Vpass's "Ａｍａｚｏｎマスター", "paypay" and "card" in "PayPay Card".
+var cardWords = regexp.MustCompile(`[a-z0-9]{3,}`)
+
+// guessAccount is where a payment from a card the user hasn't placed yet
+// goes when they chose no default account: the account whose name fits the
+// card best, preferring a card account for a card and an e-money one for a
+// wallet's balance; else the first that isn't cash, since a notification
+// is never a cash payment; else the first.
+func (s *Store) guessAccount(ctx context.Context, userID int64, source string) (int64, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT a.id, a.name, a.kind FROM wallet_accounts a WHERE a.user_id = $1 AND NOT a.archived ORDER BY `+accountOrder, userID)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+	label := source
+	if _, card, ok := strings.Cut(source, " · "); ok {
+		label = card // "Vpass · Ａｍａｚｏｎマスター": the card, not the app
+	}
+	key := PayeeKey(label)
+	words := cardWords.FindAllString(key, -1)
+	fits := "e_money"
+	if isCard(key) || strings.Contains(label, "••") || strings.HasPrefix(source, "Vpass") {
+		fits = "credit_card"
+	}
+	best, bestScore := int64(0), -1
+	for rows.Next() {
+		var id int64
+		var name, kind string
+		if err := rows.Scan(&id, &name, &kind); err != nil {
+			return 0, err
+		}
+		score, named := 0, PayeeKey(name)
+		if kind != "cash" {
+			score = 1
+		}
+		if key != "" && named == key {
+			score += 8
+		}
+		for _, w := range words {
+			if strings.Contains(named, w) {
+				score += 4
+			}
+		}
+		if score > 1 && kind == fits {
+			score += 2
+		}
+		if score > bestScore {
+			best, bestScore = id, score
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+	if bestScore < 0 { // every account archived or deleted
+		return s.defaultAccount(ctx, userID, Settings{})
+	}
+	return best, nil
 }
 
 // ruleCategory finds the expense category learned for a merchant: an exact

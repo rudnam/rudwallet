@@ -143,6 +143,51 @@ func (d *importDedup) recordedNear(t Transaction, window time.Duration, slack fl
 		d.userID, t.Kind, t.AccountID, t.Amount, diff, t.OccurredAt, int64(window/time.Second), d.prefix, pq.Array(d.taken))
 }
 
+// notifiedWindow is how far apart a statement row and the notification of
+// the same payment may be when the notification's record is in another
+// account or has the whole amount: PayPay's notification can come minutes
+// after the time its statement gives.
+const notifiedWindow = 30 * time.Minute
+
+// notified finds the record a phone notification made of this expense in
+// any account, within window: of the same amount, or of total, the whole
+// payment, when points paid part of it (the notification gives the whole,
+// the statement each share). The notification may have guessed the account
+// (a card the user hadn't placed yet) or been confirmed there; the
+// statement knows. The nearest in time is taken.
+func (d *importDedup) notified(t Transaction, total int64, window time.Duration) (int64, bool, error) {
+	if t.AccountID == 0 || t.ToAccountID != nil || t.Kind != "expense" {
+		return 0, false, nil
+	}
+	return d.find(
+		`SELECT id FROM transactions
+		 WHERE user_id = $1 AND kind = $2 AND to_account_id IS NULL AND source = 'notification'
+		   AND (amount = $3 OR amount = $4)
+		   AND occurred_at BETWEEN $5::timestamptz - $6 * interval '1 second' AND $5::timestamptz + $6 * interval '1 second'
+		   AND NOT (id = ANY($7::bigint[]))
+		 ORDER BY abs(extract(epoch FROM occurred_at - $5::timestamptz)), (amount = $3) DESC, id LIMIT 1`,
+		d.userID, t.Kind, t.Amount, total, t.OccurredAt, int64(window/time.Second), pq.Array(d.taken))
+}
+
+// correctNotified puts a notification's record found by notified in the
+// row's account with the row's amount, and keeps that account for the
+// notification's card if the user hasn't placed the card yet.
+func (d *importDedup) correctNotified(id int64, t Transaction) error {
+	var label string
+	if err := d.tx.QueryRowContext(d.ctx,
+		`UPDATE transactions SET account_id = $3, amount = $4 WHERE user_id = $1 AND id = $2 RETURNING source_label`,
+		d.userID, id, t.AccountID, t.Amount).Scan(&label); err != nil {
+		return err
+	}
+	if label == "" {
+		return nil
+	}
+	_, err := d.tx.ExecContext(d.ctx,
+		`INSERT INTO source_rules (user_id, source, account_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+		d.userID, label, t.AccountID)
+	return err
+}
+
 // find runs a query for one record's id and takes it.
 func (d *importDedup) find(q string, args ...any) (int64, bool, error) {
 	var id int64
