@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.selection.selectable
@@ -195,7 +196,17 @@ private fun MenuRow(section: Section, summary: String, onClick: () -> Unit) {
         headline = { Text(stringResource(section.label)) },
         trailing = {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (summary.isNotEmpty()) Text(summary, style = MaterialTheme.typography.bodySmall, color = WalletTheme.colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                // At most half the row, so a long summary (Import's sources) never squeezes the name.
+                if (summary.isNotEmpty()) {
+                    Text(
+                        summary,
+                        Modifier.widthIn(max = 160.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = WalletTheme.colors.muted,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
                 LineIcon(WalletIcons.chevron, contentDescription = null, tint = WalletTheme.colors.muted, size = 18.dp)
             }
         },

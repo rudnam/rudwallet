@@ -302,8 +302,7 @@ private fun Group(title: String, items: List<Recurring>, state: RecurringUiState
     // What they come to in a month: a yearly one counts a twelfth.
     val perMonth = items.sumOf { it.estimate / it.input.months }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(title, Modifier.weight(1f).semantics { heading() }, style = MaterialTheme.typography.titleMedium)
+        SectionHeader(title) {
             if (active) Text(stringResource(R.string.feature_insights_per_month_about, format.money(perMonth)), style = MaterialTheme.typography.bodySmall, color = WalletTheme.colors.muted)
         }
         WalletPanel(Modifier.fillMaxWidth()) {
