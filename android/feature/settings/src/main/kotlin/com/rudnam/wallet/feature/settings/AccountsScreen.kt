@@ -29,8 +29,6 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -61,6 +59,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rudnam.wallet.core.designsystem.component.FieldLabel
+import com.rudnam.wallet.core.designsystem.component.WalletListItem
 import com.rudnam.wallet.core.designsystem.component.WalletPanel
 import com.rudnam.wallet.core.designsystem.component.rememberHaptics
 import com.rudnam.wallet.core.designsystem.icon.LineIcon
@@ -78,6 +78,7 @@ import com.rudnam.wallet.core.ui.MoneyFormat
 import com.rudnam.wallet.core.ui.kindName
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
 import com.rudnam.wallet.core.ui.serverText
+import com.rudnam.wallet.core.designsystem.R as DesignSystemR
 
 /** Each kind of account: its icon and colour, and names people often use. */
 internal data class KindMeta(val glyph: String, val color: String, val names: List<Int>)
@@ -168,11 +169,10 @@ internal fun Intro(text: String) {
 @Composable
 private fun AccountRow(account: Account, format: MoneyFormat, onClick: () -> Unit) {
     val edit = stringResource(R.string.feature_settings_edit_account_named, account.name)
-    ListItem(
+    WalletListItem(
         modifier = Modifier.clickable(onClick = onClick).semantics { onClick(label = edit) { onClick(); true } },
-        colors = ListItemDefaults.colors(containerColor = WalletTheme.colors.surface),
-        leadingContent = { AccountMark(account) },
-        headlineContent = {
+        leading = { AccountMark(account) },
+        headline = {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(account.name, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 if (account.archived) {
@@ -185,8 +185,8 @@ private fun AccountRow(account: Account, format: MoneyFormat, onClick: () -> Uni
                 }
             }
         },
-        supportingContent = { Text(stringResource(kindName(account.kind)), color = WalletTheme.colors.muted) },
-        trailingContent = { Text(format.money(account.balance), style = MaterialTheme.typography.bodyLarge.figures()) },
+        supporting = { Text(stringResource(kindName(account.kind))) },
+        trailing = { Text(format.money(account.balance)) },
     )
 }
 
@@ -213,9 +213,8 @@ private fun AccountSheet(wallet: Wallet, editor: AccountEditor, actions: Account
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.semantics { heading() },
             )
-            Text(
+            FieldLabel(
                 stringResource(if (editor.id == null) R.string.feature_settings_what_kind else R.string.feature_settings_type),
-                style = MaterialTheme.typography.labelLarge,
                 color = if (editor.problem == AccountProblem.NoKind) WalletTheme.colors.danger else WalletTheme.colors.muted,
             )
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -288,7 +287,7 @@ private fun AccountSheet(wallet: Wallet, editor: AccountEditor, actions: Account
             SheetButtons(
                 deletable = editor.id != null,
                 busy = editor.busy,
-                saveLabel = stringResource(if (editor.id == null) R.string.feature_settings_add_account else R.string.feature_settings_save),
+                saveLabel = stringResource(if (editor.id == null) R.string.feature_settings_add_account else DesignSystemR.string.designsystem_save),
                 onDelete = { actions.askDelete(true) },
                 onSave = { actions.save(defaultName, meta?.color ?: "#6f6c63") },
             )
@@ -304,7 +303,7 @@ private fun AccountSheet(wallet: Wallet, editor: AccountEditor, actions: Account
 internal fun SheetButtons(deletable: Boolean, busy: Boolean, saveLabel: String, onDelete: () -> Unit, onSave: () -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
         if (deletable) {
-            OutlinedButton(onClick = onDelete, enabled = !busy) { Text(stringResource(R.string.feature_settings_delete), color = WalletTheme.colors.danger) }
+            OutlinedButton(onClick = onDelete, enabled = !busy) { Text(stringResource(DesignSystemR.string.designsystem_delete), color = WalletTheme.colors.danger) }
         }
         Box(Modifier.weight(1f))
         Button(
@@ -322,8 +321,8 @@ internal fun ConfirmDelete(question: String, onConfirm: () -> Unit, onCancel: ()
     AlertDialog(
         onDismissRequest = onCancel,
         text = { Text(question) },
-        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.feature_settings_delete), color = WalletTheme.colors.danger) } },
-        dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(R.string.feature_settings_cancel)) } },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(DesignSystemR.string.designsystem_delete), color = WalletTheme.colors.danger) } },
+        dismissButton = { TextButton(onClick = onCancel) { Text(stringResource(DesignSystemR.string.designsystem_cancel)) } },
     )
 }
 
@@ -334,7 +333,7 @@ internal fun ColourPicker(color: String, onChoose: (String) -> Unit) {
     val haptics = rememberHaptics()
     val options = if (swatches.any { it.equals(color, ignoreCase = true) }) swatches else swatches + color
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(stringResource(R.string.feature_settings_colour), style = MaterialTheme.typography.labelLarge, color = WalletTheme.colors.muted)
+        FieldLabel(stringResource(R.string.feature_settings_colour))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             for (c in options) {
                 val on = c.equals(color, ignoreCase = true)

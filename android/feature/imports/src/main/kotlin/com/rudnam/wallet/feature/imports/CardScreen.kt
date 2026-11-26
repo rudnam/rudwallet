@@ -33,7 +33,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -45,6 +44,7 @@ import com.rudnam.wallet.core.data.ic.IcCardException
 import com.rudnam.wallet.core.data.ic.IcCardProblem
 import com.rudnam.wallet.core.data.ic.IcCardReader
 import com.rudnam.wallet.core.data.ic.IcCardTap
+import com.rudnam.wallet.core.designsystem.component.SectionHeader
 import com.rudnam.wallet.core.designsystem.component.WalletPanel
 import com.rudnam.wallet.core.designsystem.component.rememberHaptics
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
@@ -56,6 +56,7 @@ import com.rudnam.wallet.core.model.TransactionKind
 import com.rudnam.wallet.core.model.Wallet
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
 import com.rudnam.wallet.core.ui.serverText
+import com.rudnam.wallet.core.designsystem.R as DesignSystemR
 
 /** Whether this phone can read a card now. */
 enum class NfcState { NoNfc, Off, Ready }
@@ -193,11 +194,7 @@ internal fun CardScreen(
             }
         }
         item {
-            Text(
-                stringResource(R.string.feature_imports_latest_entries),
-                style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp).semantics { heading() },
-            )
+            SectionHeader(stringResource(R.string.feature_imports_latest_entries), Modifier.padding(vertical = 4.dp))
         }
         item {
             WalletPanel(Modifier.fillMaxWidth()) {
@@ -229,7 +226,7 @@ private fun Reader(state: CardUiState, nfc: NfcState, actions: CardActions, onTu
                 ) {
                     CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                     Text(stringResource(R.string.feature_imports_hold_card), Modifier.weight(1f))
-                    TextButton(onClick = { actions.waitForCard(false) }) { Text(stringResource(R.string.feature_imports_cancel)) }
+                    TextButton(onClick = { actions.waitForCard(false) }) { Text(stringResource(DesignSystemR.string.designsystem_cancel)) }
                 }
                 else -> {
                     if (state.read == null) Text(stringResource(R.string.feature_imports_tap_card))

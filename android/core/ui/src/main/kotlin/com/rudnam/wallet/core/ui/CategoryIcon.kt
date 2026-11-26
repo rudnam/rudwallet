@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
+import com.rudnam.wallet.core.designsystem.component.ListLeadingSize
 import com.rudnam.wallet.core.designsystem.icon.LineIcon
 import com.rudnam.wallet.core.designsystem.icon.WalletIcons
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
@@ -37,7 +38,7 @@ fun CategoryIcon(category: Category?, modifier: Modifier = Modifier, waiting: Bo
     if (waiting) {
         val dash = colors.muted.copy(alpha = 0.45f)
         Box(
-            modifier.size(40.dp).drawBehind {
+            modifier.size(ListLeadingSize).drawBehind {
                 val w = 1.5.dp.toPx()
                 drawRoundRect(
                     color = dash,
@@ -56,7 +57,7 @@ fun CategoryIcon(category: Category?, modifier: Modifier = Modifier, waiting: Bo
     val ink = hue?.mixedWith(colors.text, 0.72f) ?: colors.muted
     val edge = hue?.copy(alpha = 0.26f) ?: Color.Transparent
     Box(
-        modifier.size(40.dp).clip(shape).background(background).border(1.dp, edge, shape),
+        modifier.size(ListLeadingSize).clip(shape).background(background).border(1.dp, edge, shape),
         contentAlignment = Alignment.Center,
     ) {
         val glyph = WalletIcons.glyph(category?.icon)

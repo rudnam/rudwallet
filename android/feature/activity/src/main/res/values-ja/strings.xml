@@ -2,7 +2,6 @@
 <resources>
     <string name="feature_activity_title">明細</string>
     <string name="feature_activity_select">選択</string>
-    <string name="feature_activity_done">完了</string>
     <string name="feature_activity_add_record">記録を追加</string>
     <string name="feature_activity_every_month">すべての月の検索結果</string>
     <string name="feature_activity_tag_every_month">すべての月の #%s</string>
@@ -44,8 +43,6 @@
     <string name="feature_activity_new_tag">新しいタグ…</string>
     <string name="feature_activity_remove_tag">タグを外す</string>
     <string name="feature_activity_tag_with">選んだ記録に付けるタグ：</string>
-    <string name="feature_activity_delete">削除</string>
-    <string name="feature_activity_cancel">キャンセル</string>
     <string name="feature_activity_undo">元に戻す</string>
     <string name="feature_activity_confirmed_payee">%sを確定しました</string>
     <string name="feature_activity_deleted_payee">%sを削除しました</string>
@@ -69,8 +66,6 @@
     <string name="feature_activity_duplicates_none">最近検出された重複はありません。</string>
     <string name="feature_activity_duplicates_offline">サーバーに接続できません。検出された重複の表示には接続が必要です。</string>
     <string name="feature_activity_duplicates_failed">検出された重複を読み込めませんでした。</string>
-    <string name="feature_activity_try_again">再試行</string>
-    <string name="feature_activity_back">戻る</string>
     <string name="feature_activity_looked_like">すでにある次の記録と同じに見えました:</string>
     <string name="feature_activity_match_gone">同じに見えた記録はその後削除されました。</string>
     <string name="feature_activity_not_duplicate">重複ではない</string>

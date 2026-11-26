@@ -67,6 +67,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rudnam.wallet.core.designsystem.component.FieldLabel
+import com.rudnam.wallet.core.designsystem.component.SectionHeader
 import com.rudnam.wallet.core.designsystem.component.WalletPanel
 import com.rudnam.wallet.core.designsystem.icon.LineIcon
 import com.rudnam.wallet.core.designsystem.icon.WalletIcons
@@ -76,6 +78,7 @@ import com.rudnam.wallet.core.model.CategoryKind
 import com.rudnam.wallet.core.model.Wallet
 import com.rudnam.wallet.core.ui.CategoryIcon
 import com.rudnam.wallet.core.ui.serverText
+import com.rudnam.wallet.core.designsystem.R as DesignSystemR
 
 /** Each glyph a category can wear, and its name for TalkBack. */
 private val glyphNames = mapOf(
@@ -195,12 +198,7 @@ private fun CategoryList(wallet: Wallet, kind: CategoryKind, actions: Categories
     val mains = wallet.categoriesInOrder().filter { it.kind == kind && !wallet.isSubcategory(it) }
     var open by rememberSaveable { mutableStateOf<Long?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            stringResource(if (kind == CategoryKind.Expense) R.string.feature_settings_expenses else R.string.feature_settings_income),
-            style = MaterialTheme.typography.labelLarge,
-            color = colors.muted,
-            modifier = Modifier.padding(horizontal = 4.dp).semantics { heading() },
-        )
+        SectionHeader(stringResource(if (kind == CategoryKind.Expense) R.string.feature_settings_expenses else R.string.feature_settings_income))
         WalletPanel(Modifier.fillMaxWidth()) {
             Column {
                 mains.forEachIndexed { i, main ->
@@ -295,7 +293,7 @@ private fun DefaultsSheet(wallet: Wallet, missing: List<Category>, regroup: List
             Text(stringResource(R.string.feature_settings_defaults_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
             Text(stringResource(R.string.feature_settings_defaults_intro), style = MaterialTheme.typography.bodyMedium)
             if (regroup.isNotEmpty()) {
-                Text(stringResource(R.string.feature_settings_defaults_move), style = MaterialTheme.typography.labelLarge, color = colors.muted, modifier = Modifier.padding(top = 8.dp))
+                SectionHeader(stringResource(R.string.feature_settings_defaults_move), Modifier.padding(top = 8.dp))
                 for (c in regroup) {
                     // Under a main category, or (no parent) a main category of its own.
                     val label = wallet.category(c.parentId)?.let { stringResource(R.string.feature_settings_regroup_move, c.name, it.name) }
@@ -307,7 +305,7 @@ private fun DefaultsSheet(wallet: Wallet, missing: List<Category>, regroup: List
                 Text(stringResource(R.string.feature_settings_regroup_note), style = MaterialTheme.typography.bodySmall, color = colors.muted)
             }
             if (missing.isNotEmpty()) {
-                Text(stringResource(R.string.feature_settings_defaults_add), style = MaterialTheme.typography.labelLarge, color = colors.muted, modifier = Modifier.padding(top = 8.dp))
+                SectionHeader(stringResource(R.string.feature_settings_defaults_add), Modifier.padding(top = 8.dp))
                 for (c in missing) {
                     val key = "${c.kind}:${c.name}"
                     // A default subcategory goes under the main category the wallet has.
@@ -393,7 +391,7 @@ private fun CategorySheet(editor: CategoryEditor, wallet: Wallet?, actions: Cate
             } else {
                 Text(stringResource(R.string.feature_settings_main_colour), style = MaterialTheme.typography.bodySmall, color = WalletTheme.colors.muted)
             }
-            Text(stringResource(R.string.feature_settings_icon), style = MaterialTheme.typography.labelLarge, color = WalletTheme.colors.muted)
+            FieldLabel(stringResource(R.string.feature_settings_icon))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 IconChoice(editor.icon.isEmpty(), stringResource(R.string.feature_settings_initial_only), onClick = { actions.setIcon("") }) {
                     Text(editor.name.ifEmpty { "A" }.take(1).uppercase(), style = MaterialTheme.typography.titleSmall)
@@ -416,7 +414,7 @@ private fun CategorySheet(editor: CategoryEditor, wallet: Wallet?, actions: Cate
             SheetButtons(
                 deletable = editor.id != null,
                 busy = editor.busy,
-                saveLabel = stringResource(R.string.feature_settings_save),
+                saveLabel = stringResource(DesignSystemR.string.designsystem_save),
                 onDelete = { actions.askDelete(true) },
                 onSave = actions::save,
             )
@@ -440,7 +438,7 @@ private fun ParentPicker(editor: CategoryEditor, wallet: Wallet, actions: Catego
     if (mains.isEmpty()) return
     val title = stringResource(R.string.feature_settings_under)
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(title, style = MaterialTheme.typography.labelLarge, color = WalletTheme.colors.muted)
+        FieldLabel(title)
         if (editor.hasSubcategories) {
             Text(stringResource(R.string.feature_settings_has_subcategories), style = MaterialTheme.typography.bodySmall, color = WalletTheme.colors.muted)
             return@Column

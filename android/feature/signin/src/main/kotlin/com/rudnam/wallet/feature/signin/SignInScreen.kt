@@ -68,6 +68,8 @@ import androidx.core.net.toUri
 import androidx.core.os.LocaleListCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rudnam.wallet.core.designsystem.component.Notice
+import com.rudnam.wallet.core.designsystem.component.NoticeTone
 import com.rudnam.wallet.core.designsystem.component.WalletPanel
 import com.rudnam.wallet.core.designsystem.icon.LineIcon
 import com.rudnam.wallet.core.designsystem.icon.WalletIcons
@@ -150,7 +152,7 @@ private fun Brand() {
 }
 
 @Composable
-private fun Notice(notice: SignInNotice?) {
+private fun Message(notice: SignInNotice?) {
     val (text, good) = when (notice) {
         null -> return
         is SignInNotice.Server -> (notice.message.ifEmpty { null }?.let { serverText(it) } ?: stringResource(R.string.feature_signin_refused)) to false
@@ -169,15 +171,7 @@ private fun Notice(notice: SignInNotice?) {
         SignInNotice.Deleted -> stringResource(R.string.feature_signin_deleted) to true
         SignInNotice.ResetSent -> stringResource(R.string.feature_signin_reset_sent) to true
     }
-    Text(
-        text,
-        modifier = Modifier.fillMaxWidth()
-            .background(if (good) WalletTheme.colors.sunken else WalletTheme.colors.attentionSoft, MaterialTheme.shapes.small)
-            .padding(12.dp)
-            .semantics { liveRegion = LiveRegionMode.Polite },
-        color = if (good) WalletTheme.colors.text else WalletTheme.colors.attention,
-        style = MaterialTheme.typography.bodyMedium,
-    )
+    Notice(text, Modifier.semantics { liveRegion = LiveRegionMode.Polite }, tone = if (good) NoticeTone.Info else NoticeTone.Attention)
 }
 
 @Composable
@@ -191,7 +185,7 @@ private fun Form(state: SignInUiState, actions: SignInActions, onGoogle: () -> U
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.semantics { heading() },
             )
-            Notice(state.notice)
+            Message(state.notice)
             if (state.options.google) {
                 OutlinedButton(onClick = onGoogle, enabled = !state.busy, modifier = Modifier.fillMaxWidth().height(48.dp)) {
                     GoogleMark()
@@ -263,7 +257,7 @@ private fun Forgot(state: SignInUiState, actions: SignInActions) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(stringResource(R.string.feature_signin_reset_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
             if (state.notice == null) Text(stringResource(R.string.feature_signin_reset_intro), color = WalletTheme.colors.muted)
-            Notice(state.notice)
+            Message(state.notice)
             OutlinedTextField(
                 value = state.email,
                 onValueChange = actions::setEmail,
