@@ -115,6 +115,11 @@ func TestImportPreviewIsTheImport(t *testing.T) {
 	if p.New != 2 || p.Matched != 1 || p.Skipped != 1 || p.Duplicates != 0 || len(p.Rows) != 4 {
 		t.Errorf("preview: new %d, matched %d, skipped %d, duplicates %d, %d rows", p.New, p.Matched, p.Skipped, p.Duplicates, len(p.Rows))
 	}
+	// Categories only for what will be recorded: not the matched ローソン,
+	// nor the skipped points payment, nor the top-up.
+	if len(p.Categories) != 1 || p.Categories[0].Name != "ファミリーマート" {
+		t.Errorf("categories %+v", p.Categories)
+	}
 	status := map[string]string{}
 	for _, r := range p.Rows {
 		status[r.Payee] = r.Status
@@ -321,11 +326,15 @@ func TestImportBudgetBakersDuplicates(t *testing.T) {
 	}
 	var p wallet.BudgetBakersPreview
 	c.send("/api/import/budgetbakers?preview=1", "text/csv", []byte(csv), nil, &p)
-	if p.New != 2 || p.Matched != 1 {
-		t.Errorf("preview: new %d, matched %d", p.New, p.Matched)
+	if p.New != 2 || p.Matched != 1 || len(p.Categories) != 1 || p.Categories[0].Count != 2 || p.Categories[0].Total != 1218 {
+		t.Errorf("preview: new %d, matched %d, categories %+v (want the cafe left out)", p.New, p.Matched, p.Categories)
 	}
 	if res := bb(csv); res.Imported != 2 || res.Matched != 1 {
 		t.Errorf("import: %+v (want the cafe already recorded)", res)
+	}
+	c.send("/api/import/budgetbakers?preview=1", "text/csv", []byte(csv), nil, &p)
+	if p.New != 0 || len(p.Categories) != 0 {
+		t.Errorf("preview again: new %d, categories %+v", p.New, p.Categories)
 	}
 	edited := strings.Replace(csv, "Cash;Food & Drinks;JPY;318;318;Expense;Cash;;", "Cash;Groceries;JPY;318;318;Expense;Cash;milk;", 1)
 	if res := bb(edited); res.Imported != 0 || res.Duplicates != 2 || res.Matched != 1 {

@@ -379,18 +379,6 @@ func (s *Store) PreviewMUFG(ctx context.Context, userID int64, data []byte) (MUF
 	if err != nil {
 		return p, err
 	}
-	index := map[string]int{}
-	for _, rec := range recs {
-		if rec.kind == "transfer" {
-			continue
-		}
-		k := groupKey(rec.kind, rec.group)
-		if _, ok := index[k]; !ok {
-			index[k] = len(p.Categories)
-			p.Categories = append(p.Categories, suggestMUFG(cats, learned, rec))
-		}
-	}
-
 	// Preview in a transaction that is rolled back, so matching works as
 	// the import's does.
 	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
@@ -422,14 +410,20 @@ func (s *Store) PreviewMUFG(ctx context.Context, userID int64, data []byte) (MUF
 		}
 		p.Rows = append(p.Rows, out)
 	}
-	for i := range p.Categories {
-		g := &p.Categories[i]
-		for j, rec := range recs {
-			if rec.kind != "transfer" && groupKey(rec.kind, rec.group) == groupKey(g.Kind, g.Name) {
-				g.Count++
-				g.Total += rows[j].out + rows[j].in
-			}
+	// Categories for the rows to record: those already recorded keep theirs.
+	index := map[string]int{}
+	for i, rec := range recs {
+		if rec.kind == "transfer" || p.Rows[i].Status != "new" {
+			continue
 		}
+		k := groupKey(rec.kind, rec.group)
+		if _, ok := index[k]; !ok {
+			index[k] = len(p.Categories)
+			p.Categories = append(p.Categories, suggestMUFG(cats, learned, rec))
+		}
+		g := &p.Categories[index[k]]
+		g.Count++
+		g.Total += rows[i].out + rows[i].in
 	}
 	p.Records = len(rows)
 	p.NewCategories = missingDefaults(cats)

@@ -201,18 +201,23 @@ func TestImportMUFG(t *testing.T) {
 		t.Errorf("MUFG's balance: %d, want the statement's 134409", a.Balance)
 	}
 	c.send("/api/import/mufg?preview=1", "text/csv", []byte(mufgCSV), nil, &p)
-	if p.New != 0 {
-		t.Errorf("after the import nothing is new: %d", p.New)
+	if p.New != 0 || len(p.Categories) != 0 {
+		t.Errorf("after the import nothing is new, so no categories to choose: %d new, %+v", p.New, p.Categories)
 	}
 	for _, a := range p.Accounts {
 		if a.Role == wallet.MUFGSMBCCard && (a.AccountID == nil || *a.AccountID != amazon) {
 			t.Errorf("the SMBC card's account should be remembered: %+v", a)
 		}
 	}
-	for _, g := range p.Categories {
-		if g.Name == employer && (!g.Learned || *g.CategoryID != category["Salary"]) {
-			t.Errorf("the employer's category should be remembered: %+v", g)
-		}
+	// The next statement brings one new row: the next salary, its
+	// category remembered.
+	next := mufgCSV + `"2026/11/25","振込１","シービーエステクノ（カ　","","250,000","384,409","","",""` + "\r\n"
+	c.send("/api/import/mufg?preview=1", "text/csv", []byte(next), nil, &p)
+	if p.New != 1 || len(p.Categories) != 1 {
+		t.Fatalf("the next statement: %d new, categories %+v (want the salary alone)", p.New, p.Categories)
+	}
+	if g := p.Categories[0]; g.Name != employer || g.Count != 1 || g.Total != 250000 || !g.Learned || *g.CategoryID != category["Salary"] {
+		t.Errorf("the employer's category should be remembered: %+v", g)
 	}
 	// What the import remembers isn't shown as learned from payments.
 	var rules wallet.Rules
