@@ -513,6 +513,8 @@ test('import a Vpass statement', async ({ page }) => {
   await expect(page.getByText('2 new records to add')).toBeVisible();
   await expect(page.getByText('1 is already recorded another way (a notification, by hand, or another import)')).toBeVisible();
   await expect(page.getByLabel('Category for ローソン').locator('option:checked')).toHaveText('Food & Drinks');
+  // The statement gives days, not times: a row shows its day only.
+  await expect(page.getByText('· Nov 9 · Amazon Mastercard')).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('vpass-review.png'), fullPage: true });
   await page.getByRole('button', { name: 'Import 2 payments' }).click();
   await expect(page.getByRole('status')).toContainText('Imported 2 records, skipped 1 already recorded from notifications or by hand');

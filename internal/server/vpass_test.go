@@ -54,7 +54,7 @@ func TestImportVpass(t *testing.T) {
 	if p.Rows[1].Status != "matched" || p.Rows[1].MatchedID == nil || *p.Rows[1].MatchedID != *got[0].TransactionID {
 		t.Errorf("the notified purchase should match its record: %+v", p.Rows[1])
 	}
-	if r := p.Rows[3]; r.Kind != "income" || r.Amount != 318 || r.Payee != "AMAZON.CO.JP" {
+	if r := p.Rows[3]; r.Kind != "income" || r.Amount != 318 || r.Payee != "AMAZON.CO.JP" || !r.AllDay {
 		t.Errorf("refund row %+v", r)
 	}
 

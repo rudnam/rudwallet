@@ -475,7 +475,7 @@ func (s *Store) importVpass(ctx context.Context, userID int64, data []byte, acco
 	res.Rows = []ImportRow{}
 	for _, r := range rows {
 		t := Transaction{Kind: r.kind, Amount: r.amount, AccountID: account[r.card], OccurredAt: r.when, Payee: r.payee, Note: r.note}
-		row := ImportRow{OccurredAt: r.when, Kind: r.kind, Amount: r.amount, Payee: r.payee, Note: r.note, Account: names[t.AccountID]}
+		row := ImportRow{OccurredAt: r.when, Kind: r.kind, Amount: r.amount, Payee: r.payee, Note: r.note, Account: names[t.AccountID], AllDay: true}
 		run.period(r.when)
 
 		// A purchase is on the statement by its day only; its notification

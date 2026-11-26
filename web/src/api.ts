@@ -298,6 +298,8 @@ export interface ImportFileRow {
   account: string;
   to_account?: string;
   status: 'new' | 'imported' | 'matched' | 'skipped';
+  /** The file gives the day only (Vpass): occurred_at's time isn't real. */
+  all_day?: boolean;
 }
 
 /**

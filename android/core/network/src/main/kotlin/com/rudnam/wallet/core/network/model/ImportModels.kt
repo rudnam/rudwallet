@@ -87,6 +87,8 @@ data class NetworkImportFileRow(
     val account: String = "",
     @SerialName("to_account") val toAccount: String? = null,
     val status: String = "new",
+    /** The file gives the day only (Vpass): the time isn't real. */
+    @SerialName("all_day") val allDay: Boolean = false,
 )
 
 @Serializable
@@ -226,8 +228,9 @@ private fun status(text: String) = when (text) {
 private fun NetworkImportFileRow.asModel(): ImportRow {
     val kind = TransactionKind.fromApi(kind)
     return ImportRow(
-        date = day(occurredAt)!!,
-        time = OffsetDateTime.parse(occurredAt).atZoneSameInstant(ZoneId.systemDefault()).toLocalTime().toString().take(5),
+        // A day-only row is the day the file says, wherever the phone is.
+        date = if (allDay) OffsetDateTime.parse(occurredAt).toLocalDate() else day(occurredAt)!!,
+        time = if (allDay) null else OffsetDateTime.parse(occurredAt).atZoneSameInstant(ZoneId.systemDefault()).toLocalTime().toString().take(5),
         text = payee.ifEmpty { note },
         amount = if (kind == TransactionKind.Expense) -amount else amount,
         kind = kind,

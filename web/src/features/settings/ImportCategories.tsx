@@ -408,7 +408,7 @@ export function FileRows({ rows }: { rows: ImportFileRow[] }) {
                     {r.payee || r.note || t(r.kind === 'transfer' ? 'Transfer' : r.kind === 'expense' ? 'Expense' : 'Income')}
                     <span className="small muted">
                       {' '}
-                      · {new Date(r.occurred_at).toLocaleString(locale(), { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · {r.to_account ? `${r.account} → ${r.to_account}` : r.account}
+                      · {new Date(r.occurred_at).toLocaleString(locale(), r.all_day ? { month: 'short', day: 'numeric', timeZone: 'Asia/Tokyo' } : { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · {r.to_account ? `${r.account} → ${r.to_account}` : r.account}
                     </span>
                   </span>
                   <span className="amount">{w.money(r.kind === 'expense' ? -r.amount : r.amount, r.kind !== 'transfer')}</span>
