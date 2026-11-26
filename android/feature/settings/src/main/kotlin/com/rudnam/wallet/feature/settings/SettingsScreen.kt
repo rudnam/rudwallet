@@ -203,13 +203,14 @@ private fun MenuRow(section: Section, summary: String, onClick: () -> Unit) {
                 LineIcon(section.glyph, contentDescription = null, tint = WalletTheme.colors.text, size = 20.dp)
             }
         },
+        // The summary sits under the name, not beside it: ListItem gives trailing content all the
+        // room it asks for, so a long one ("PayPay, MUFG, Vpass, BudgetBakers") squeezed the name
+        // down to a letter or two a line.
         headlineContent = { Text(stringResource(section.label)) },
-        trailingContent = {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (summary.isNotEmpty()) Text(summary, style = MaterialTheme.typography.bodySmall, color = WalletTheme.colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                LineIcon(WalletIcons.chevron, contentDescription = null, tint = WalletTheme.colors.muted, size = 18.dp)
-            }
+        supportingContent = if (summary.isEmpty()) null else {
+            { Text(summary, style = MaterialTheme.typography.bodySmall, color = WalletTheme.colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         },
+        trailingContent = { LineIcon(WalletIcons.chevron, contentDescription = null, tint = WalletTheme.colors.muted, size = 18.dp) },
     )
 }
 

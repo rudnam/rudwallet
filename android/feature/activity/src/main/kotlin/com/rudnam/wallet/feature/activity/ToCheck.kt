@@ -5,7 +5,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,6 +29,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -160,34 +165,34 @@ private fun ReviewRow(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    // The card that paid, where it says more than the account's name.
+                    val account = state.wallet.account(t.accountId)?.name
+                    val paidWith = t.sourceLabel.takeIf { it.isNotEmpty() && it != account } ?: account
+                    paidWith?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 }
-                Column(horizontalAlignment = Alignment.End) {
+                // The amount, and Confirm under it rather than on a line of its own, so a card
+                // takes little more room than a record. A possible duplicate is decided below.
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
                         if (t.amount > 0) format.money(if (t.kind == TransactionKind.Income) t.amount else -t.amount, signed = true)
                         else stringResource(R.string.feature_activity_amount_unknown),
                         style = MaterialTheme.typography.bodyMedium.figures(),
                         color = if (t.kind == TransactionKind.Income) colors.positive else colors.text,
+                        maxLines = 1,
                     )
-                    // The card that paid, where it says more than the account's name.
-                    val account = state.wallet.account(t.accountId)?.name
-                    val paidWith = t.sourceLabel.takeIf { it.isNotEmpty() && it != account } ?: account
-                    paidWith?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = colors.muted, maxLines = 1) }
+                    if (t.duplicateOfId == null) {
+                        FilledTonalButton(
+                            onClick = { if (t.amount > 0) actions.confirm(item) else navigation.openRecord(t) },
+                            enabled = !state.busy && item.categoryId != null,
+                            modifier = Modifier.heightIn(min = 36.dp),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                        ) { Text(stringResource(R.string.feature_activity_confirm), maxLines = 1) }
+                    }
                 }
             }
         }
-        // Confirm on a line of its own, so it isn't squeezed by the amount.
-        Row(
-            Modifier.fillMaxWidth().padding(start = 72.dp, end = 16.dp, bottom = 12.dp),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            FilledTonalButton(
-                onClick = { if (t.amount > 0) actions.confirm(item) else navigation.openRecord(t) },
-                enabled = !state.busy && item.record.duplicateOfId == null && item.categoryId != null,
-            ) { Text(stringResource(R.string.feature_activity_confirm), maxLines = 1) }
-        }
         if (t.note.isNotEmpty()) Text(t.note, Modifier.padding(start = 72.dp, end = 16.dp, bottom = 8.dp), style = MaterialTheme.typography.bodySmall, color = colors.muted)
-        if (t.duplicateOfId != null) Duplicate(item, state, format, actions)
+        if (t.duplicateOfId != null) Duplicate(item, state, format, actions, navigation)
         if (item.overriding) {
             Row(Modifier.padding(start = 60.dp, end = 16.dp, bottom = 8.dp).clickable { actions.setRemember(t.id, !item.remember) }, verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = item.remember, onCheckedChange = { actions.setRemember(t.id, it) })
@@ -231,8 +236,9 @@ private fun CategoryPicker(item: ReviewItem, state: ActivityUiState.Ready, actio
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Duplicate(item: ReviewItem, state: ActivityUiState.Ready, format: MoneyFormat, actions: ActivityActions) {
+private fun Duplicate(item: ReviewItem, state: ActivityUiState.Ready, format: MoneyFormat, actions: ActivityActions, navigation: ActivityNavigation) {
     val colors = WalletTheme.colors
     Surface(Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 12.dp), shape = MaterialTheme.shapes.small, color = colors.attentionSoft) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -251,8 +257,17 @@ private fun Duplicate(item: ReviewItem, state: ActivityUiState.Ready, format: Mo
             } else {
                 Text(stringResource(R.string.feature_activity_duplicate), style = MaterialTheme.typography.bodySmall, color = colors.attention)
             }
-            OutlinedButton(onClick = { actions.deleteDuplicate(item) }, enabled = !state.busy) {
-                Text(stringResource(R.string.feature_activity_delete_duplicate))
+            // Either it goes, or it's kept as a record of its own: confirming it tells the
+            // server it isn't a duplicate. Without a category or an amount yet, the record
+            // opens to be finished first.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { actions.deleteDuplicate(item) }, enabled = !state.busy) {
+                    Text(stringResource(R.string.feature_activity_delete_duplicate))
+                }
+                TextButton(
+                    onClick = { if (item.categoryId != null && item.record.amount > 0) actions.confirm(item) else navigation.openRecord(item.record) },
+                    enabled = !state.busy,
+                ) { Text(stringResource(R.string.feature_activity_not_duplicate)) }
             }
         }
     }
