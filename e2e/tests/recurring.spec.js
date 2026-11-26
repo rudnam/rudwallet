@@ -53,7 +53,7 @@ test('recurring payments: suggested from the records, added, and counted in the 
   await add.getByText('Bill', { exact: true }).click();
   await add.getByLabel('Name', { exact: true }).fill('Water');
   await add.getByLabel('About how much (JPY)').fill('2000');
-  await add.getByLabel('How often').selectOption({ label: 'Every 2 months' });
+  await add.getByText('Every 2 months', { exact: true }).click();
   await add.getByRole('button', { name: 'Add' }).click();
   await expect(add).toBeHidden();
   await expect(page.getByRole('list', { name: 'Bills and utilities' })).toContainText('Water');
@@ -68,6 +68,6 @@ test('recurring payments: suggested from the records, added, and counted in the 
     await expect(ahead).toContainText('Heading for about ¥2,000');
     await expect(ahead).toContainText('With ¥2,000 of bills and subscriptions still to come.');
     await ahead.getByRole('link', { name: 'See them' }).click();
-    await expect(page.getByRole('heading', { name: 'Recurring' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Recurring payments' })).toBeVisible();
   }
 });

@@ -1083,7 +1083,8 @@ button.wide .nav-icon { width: 18px; height: 18px; }
 
 /* Recurring payments */
 .recurring-figures { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.recurring-actions { display: flex; justify-content: flex-end; gap: 2px; margin-right: -8px; }
+.recurring-actions { display: flex; justify-content: flex-end; gap: 2px; margin: -6px -8px 0 0; }
+button.link.quiet { color: var(--muted); }
 button.unstyled {
   display: block; background: none; color: inherit; padding: 0; border: 0; border-radius: 0;
   font-weight: inherit; text-align: left; white-space: normal;

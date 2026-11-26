@@ -83,7 +83,7 @@ export function RecurringPage() {
       </a>
       <header className="page-head">
         <div>
-          <h1>{t('Recurring')}</h1>
+          <h1>{t('Recurring payments')}</h1>
         </div>
         <button type="button" className="secondary" onClick={() => setEditing('new')}>
           {t('Add')}
@@ -115,30 +115,30 @@ export function RecurringPage() {
                 {suggestions.map((s) => {
                   const c = w.category(s.category_id);
                   return (
-                    <li key={s.key} className="row">
-                      <CategoryIcon icon={c?.icon} name={c?.name ?? s.name} color={c?.color} />
-                      <button
-                        type="button"
-                        className="grow unstyled"
-                        aria-label={t('Review {name}', { name: s.name })}
-                        onClick={() => setEditing(s)}
-                      >
-                        <strong className="block ellipsis">{s.name}</strong>
-                        <span className="muted small">
-                          {t(kindLabel(s.kind))} · {t(every[s.months])} · {tn(s.payments.length, '{n} payment', '{n} payments')}
-                        </span>
-                      </button>
-                      <span className="recurring-figures">
-                        <strong className="block">{w.money(s.amount)}</strong>
-                        <span className="recurring-actions">
-                          <button type="button" className="link" onClick={() => act(() => api.dismissRecurring(s.key))}>
-                            {t('Not recurring')}
-                          </button>
-                          <button type="button" className="link" aria-label={t('Add {name}', { name: s.name })} onClick={() => act(() => add(s))}>
-                            {t('Add')}
-                          </button>
-                        </span>
-                      </span>
+                    <li key={s.key} className="stack tight">
+                      <div className="row">
+                        <CategoryIcon icon={c?.icon} name={c?.name ?? s.name} color={c?.color} />
+                        <button
+                          type="button"
+                          className="grow unstyled"
+                          aria-label={t('Review {name}', { name: s.name })}
+                          onClick={() => setEditing(s)}
+                        >
+                          <strong className="block ellipsis">{s.name}</strong>
+                          <span className="muted small">
+                            {t(kindLabel(s.kind))} · {t(every[s.months])} · {tn(s.payments.length, '{n} payment', '{n} payments')}
+                          </span>
+                        </button>
+                        <strong className="recurring-figures">{w.money(s.amount)}</strong>
+                      </div>
+                      <div className="recurring-actions">
+                        <button type="button" className="link quiet" onClick={() => act(() => api.dismissRecurring(s.key))}>
+                          {t('Not recurring')}
+                        </button>
+                        <button type="button" className="link" aria-label={t('Add {name}', { name: s.name })} onClick={() => act(() => add(s))}>
+                          {t('Add')}
+                        </button>
+                      </div>
                     </li>
                   );
                 })}
@@ -192,6 +192,7 @@ function ThisMonth({ data }: { data: RecurringOverview }) {
   const m = data.month;
   return (
     <div className="card stack" aria-label={t('This month')}>
+      <h2>{t('This month')}</h2>
       <div className="row">
         <span className="grow">
           <span className="muted small block">{t('Paid this month')}</span>
@@ -347,22 +348,21 @@ function RecurringForm({
           {kind === 'bill' ? t('About how much ({currency})', { currency: w.settings.currency }) : t('Amount ({currency})', { currency: w.settings.currency })}
           <input inputMode="decimal" required value={amount} onChange={(e) => setAmount(e.target.value)} />
         </label>
-        <div className="row wrap">
-          <label className="field grow">
-            {t('How often')}
-            <select value={months} onChange={(e) => setMonths(Number(e.target.value))}>
-              {Object.entries(every).map(([m, label]) => (
-                <option key={m} value={m}>
-                  {t(label)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field grow">
-            {t('Next due')}
-            <input type="date" required value={start} onChange={(e) => setStart(e.target.value)} />
-          </label>
-        </div>
+        <fieldset className="chip-pick">
+          <legend>{t('How often')}</legend>
+          <div className="chips">
+            {Object.entries(every).map(([m, label]) => (
+              <label key={m} className={months === Number(m) ? 'chip on' : 'chip'}>
+                <input type="radio" name="months" checked={months === Number(m)} onChange={() => setMonths(Number(m))} />
+                {t(label)}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <label className="field">
+          {t('Next due')}
+          <input type="date" required value={start} onChange={(e) => setStart(e.target.value)} />
+        </label>
         <label className="field">
           {t('Category')}
           <select value={categoryId ?? ''} onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : null)}>
