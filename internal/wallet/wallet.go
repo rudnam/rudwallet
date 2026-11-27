@@ -102,7 +102,7 @@ var (
 		{Name: "Food & Drinks", Kind: "expense", Icon: "food", Color: "#d9534f"},
 		{Name: "Groceries", Kind: "expense", Icon: "grocery", Color: "#d9534f"},
 		{Name: "Eating out", Kind: "expense", Icon: "food", Color: "#d9534f"},
-		{Name: "Delivery", Kind: "expense", Icon: "other", Color: "#d9534f"},
+		{Name: "Delivery", Kind: "expense", Icon: "delivery", Color: "#d9534f"},
 		{Name: "Shopping", Kind: "expense", Icon: "shopping", Color: "#c9a227"},
 		{Name: "Daily goods", Kind: "expense", Icon: "clean", Color: "#c9a227"},
 		{Name: "Clothing", Kind: "expense", Icon: "clothes", Color: "#c9a227"},

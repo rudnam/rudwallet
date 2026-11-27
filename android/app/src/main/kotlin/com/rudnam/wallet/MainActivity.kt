@@ -26,6 +26,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -33,6 +34,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.activity.compose.setContent
 import com.rudnam.wallet.core.datastore.Appearance
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
+import com.rudnam.wallet.core.ui.LocalHideAmounts
+import com.rudnam.wallet.core.ui.LocalToggleHideAmounts
 import com.rudnam.wallet.ui.RudWalletApp
 import com.rudnam.wallet.widget.WidgetUpdater
 import dagger.hilt.android.AndroidEntryPoint
@@ -94,16 +97,21 @@ class MainActivity : AppCompatActivity() {
             val reviewCount by viewModel.reviewCount.collectAsStateWithLifecycle()
             WalletTheme(darkTheme = dark) {
                 val settings by viewModel.settings.collectAsStateWithLifecycle()
-                RudWalletApp(
-                    signedIn = ready.signedIn,
-                    reviewCount = reviewCount,
-                    links = links.receiveAsFlow(),
-                    recordEvents = viewModel.recordEvents,
-                    settings = settings,
-                    onUndo = viewModel::undo,
-                    signOuts = viewModel.signOuts,
-                    onPlayUpdate = ::updateFromPlay,
-                )
+                CompositionLocalProvider(
+                    LocalHideAmounts provides ready.hideAmounts,
+                    LocalToggleHideAmounts provides viewModel::toggleHideAmounts,
+                ) {
+                    RudWalletApp(
+                        signedIn = ready.signedIn,
+                        reviewCount = reviewCount,
+                        links = links.receiveAsFlow(),
+                        recordEvents = viewModel.recordEvents,
+                        settings = settings,
+                        onUndo = viewModel::undo,
+                        signOuts = viewModel.signOuts,
+                        onPlayUpdate = ::updateFromPlay,
+                    )
+                }
             }
         }
     }

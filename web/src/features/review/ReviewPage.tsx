@@ -3,8 +3,9 @@
 // category and the card's account), or fix them. A possible duplicate shows
 // the record it matches, and can be deleted in one tap.
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
-import { inOrder, optionLabel } from '../../categories';
+import { categoryPath } from '../../categories';
 import { api, errorMessage, type Transaction } from '../../api';
+import { CategoryPicker } from '../../components/CategoryPicker';
 import { TransactionForm } from '../../components/TransactionForm';
 import { formatDay, formatTime } from '../../money';
 import { href } from '../../router';
@@ -226,6 +227,7 @@ function ReviewItem({
 
   const matchedAt = match && new Date(match.occurred_at);
   const cat = w.category(categoryId);
+  const [picking, setPicking] = useState(false);
   const canConfirm = t.amount > 0 && !t.duplicate_of_id;
   // The card that paid, where it says more than the account's name.
   const paidWith = t.source_label && t.source_label !== w.account(t.account_id)?.name ? t.source_label : w.account(t.account_id)?.name;
@@ -247,21 +249,36 @@ function ReviewItem({
               {formatDay(when)} {formatTime(when)}
             </span>
             <span className="review-actions">
-              <select
+              <button
+                type="button"
                 className={categoryId === null ? 'chip-select attention' : 'chip-select'}
                 aria-label={tr('Category for {name}', { name: title })}
-                value={categoryId ?? ''}
-                onChange={(e) => onPick(e.target.value ? Number(e.target.value) : null)}
+                onClick={() => setPicking(true)}
               >
-                <option value="">{tr('Category')}</option>
-                {inOrder(w.categories)
-                  .filter((c) => c.kind === t.kind)
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {optionLabel(c, w.categories)}
-                    </option>
-                  ))}
-              </select>
+                <span className="ellipsis">{cat ? categoryPath(cat.id, w.categories) : tr('Category')}</span>
+              </button>
+              {picking && (
+                <CategoryPicker
+                  categories={w.categories}
+                  kind={t.kind === 'transfer' ? undefined : t.kind}
+                  selected={categoryId}
+                  extras={[
+                    {
+                      label: tr('No category'),
+                      selected: categoryId === null,
+                      onPick: () => {
+                        onPick(null);
+                        setPicking(false);
+                      },
+                    },
+                  ]}
+                  onPick={(c) => {
+                    onPick(c.id);
+                    setPicking(false);
+                  }}
+                  onClose={() => setPicking(false)}
+                />
+              )}
               <button type="button" className="small-button" disabled={busy} onClick={confirm}>
                 {tr('Confirm')}
               </button>

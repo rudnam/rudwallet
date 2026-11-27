@@ -3,7 +3,7 @@
 // added, each shows its last payment and when the next is due, and Insights
 // counts what's still to come in the month's estimate.
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { inOrder, optionLabel } from '../../categories';
+import { categoryPath } from '../../categories';
 import {
   api,
   errorMessage,
@@ -13,6 +13,7 @@ import {
   type RecurringOverview,
   type RecurringSuggestion,
 } from '../../api';
+import { CategoryPicker } from '../../components/CategoryPicker';
 import { Dialog } from '../../components/Dialog';
 import { CategoryIcon, Icon, icons } from '../../components/Icon';
 import { amountInput, dayKey, parseAmount } from '../../money';
@@ -363,19 +364,12 @@ function RecurringForm({
           {t('Next due')}
           <input type="date" required value={start} onChange={(e) => setStart(e.target.value)} />
         </label>
-        <label className="field">
-          {t('Category')}
-          <select value={categoryId ?? ''} onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : null)}>
-            <option value="">{t('No category')}</option>
-            {inOrder(w.categories)
-              .filter((c) => c.kind === recordKind)
-              .map((c) => (
-                <option key={c.id} value={c.id}>
-                  {optionLabel(c, w.categories)}
-                </option>
-              ))}
-          </select>
-        </label>
+        <RecurringCategoryField
+          categories={w.categories}
+          kind={recordKind}
+          value={categoryId}
+          onChange={setCategoryId}
+        />
         <label className="field">
           {t('Account')}
           <select value={accountId ?? ''} onChange={(e) => setAccountId(e.target.value ? Number(e.target.value) : null)}>
@@ -417,6 +411,59 @@ function RecurringForm({
         </div>
       </form>
     </Dialog>
+  );
+}
+
+function RecurringCategoryField({
+  categories,
+  kind,
+  value,
+  onChange,
+}: {
+  categories: ReturnType<typeof useWallet>['categories'];
+  kind: 'expense' | 'income';
+  value: number | null;
+  onChange: (id: number | null) => void;
+}) {
+  const [picking, setPicking] = useState(false);
+  const chosen = categories.find((c) => c.id === value && c.kind === kind);
+  return (
+    <>
+      <div className="field">
+        <span>{t('Category')}</span>
+        <button
+          type="button"
+          className={chosen ? 'picker-field' : 'picker-field muted'}
+          aria-label={t('Category')}
+          onClick={() => setPicking(true)}
+        >
+          {chosen && <CategoryIcon icon={chosen.icon} name={chosen.name} color={chosen.color} size="small" />}
+          <span className="ellipsis">{chosen ? categoryPath(chosen.id, categories) : t('No category')}</span>
+        </button>
+      </div>
+      {picking && (
+        <CategoryPicker
+          categories={categories}
+          kind={kind}
+          selected={value}
+          extras={[
+            {
+              label: t('No category'),
+              selected: value === null,
+              onPick: () => {
+                onChange(null);
+                setPicking(false);
+              },
+            },
+          ]}
+          onPick={(c) => {
+            onChange(c.id);
+            setPicking(false);
+          }}
+          onClose={() => setPicking(false)}
+        />
+      )}
+    </>
   );
 }
 

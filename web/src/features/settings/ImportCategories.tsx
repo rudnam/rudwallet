@@ -2,8 +2,9 @@
 // row per category in the file (BudgetBakers) or shop (PayPay), with the
 // app's suggestion picked. Ticking rows sets several at once.
 import { useEffect, useState } from "react";
-import { inOrder, optionLabel } from "../../categories";
+import { categoryPath } from "../../categories";
 import { api, errorMessage, type Category, type CategoryChoice, type ImportBatch, type ImportCategory, type ImportFileRow, type ImportOutlook, type ImportResult } from "../../api";
+import { CategoryPicker } from "../../components/CategoryPicker";
 import { CategoryIcon } from "../../components/Icon";
 import { useWallet } from "../../wallet";
 import { serverText, t, tn, tx } from "../../i18n";
@@ -69,6 +70,8 @@ export function ImportCategories({
   const w = useWallet();
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [showAll, setShowAll] = useState(groups.length <= firstRows + 3);
+  const [pickingBulk, setPickingBulk] = useState(false);
+  const [pickingRow, setPickingRow] = useState<string | null>(null);
   const shown = showAll ? groups : groups.slice(0, firstRows);
   const pickedGroups = groups.filter((g) => picked.has(keyOf(g)));
   const all = picked.size === groups.length;
@@ -76,7 +79,7 @@ export function ImportCategories({
 
   /** Existing categories of a kind, and new ones it could have: the missing defaults, and extra (the file's own name). */
   function names(kind: ImportCategory["kind"], extra?: string) {
-    const existing = inOrder(w.categories).filter((c) => c.kind === kind);
+    const existing = w.categories.filter((c) => c.kind === kind);
     const fresh = newCategories
       .filter((c) => c.kind === kind)
       .map((c) => c.name);
@@ -154,39 +157,47 @@ export function ImportCategories({
             </span>
           </label>
           {picked.size > 0 && (
-            <select
-              aria-label={t("Set category for chosen")}
-              value=""
-              onChange={(e) => e.target.value && setForPicked(e.target.value)}
-            >
-              <option value="">{t("Set category…")}</option>
-              <option value="|">{t("No category")}</option>
-              {kinds.map((k) => {
-                const { existing, fresh } = names(k);
-                const title = k === "expense" ? t("Expenses") : t("Income");
-                return [
-                  <optgroup key={k} label={title}>
-                    {existing.map((c) => (
-                      <option key={c.id} value={`${k}|c:${c.id}`}>
-                        {optionLabel(c, w.categories)}
-                      </option>
-                    ))}
-                  </optgroup>,
-                  fresh.length > 0 && (
-                    <optgroup
-                      key={`${k}-new`}
-                      label={k === "expense" ? t("New expense categories") : t("New income categories")}
-                    >
-                      {fresh.map((n) => (
-                        <option key={n} value={`${k}|n:${n}`}>
-                          {n}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ),
-                ];
-              })}
-            </select>
+            <>
+              <button
+                type="button"
+                className="picker-field"
+                aria-label={t("Set category for chosen")}
+                onClick={() => setPickingBulk(true)}
+              >
+                {t("Set category…")}
+              </button>
+              {pickingBulk && (
+                <CategoryPicker
+                  categories={w.categories}
+                  kind={kinds.length === 1 ? kinds[0] : undefined}
+                  selected={null}
+                  extras={[
+                    {
+                      label: t("No category"),
+                      onPick: () => {
+                        setForPicked("|");
+                        setPickingBulk(false);
+                      },
+                    },
+                    ...kinds.flatMap((k) =>
+                      names(k).fresh.map((n) => ({
+                        label: n,
+                        detail: t("new category"),
+                        onPick: () => {
+                          setForPicked(`${k}|n:${n}`);
+                          setPickingBulk(false);
+                        },
+                      })),
+                    ),
+                  ]}
+                  onPick={(c) => {
+                    setForPicked(`${c.kind}|c:${c.id}`);
+                    setPickingBulk(false);
+                  }}
+                  onClose={() => setPickingBulk(false)}
+                />
+              )}
+            </>
           )}
         </div>
       )}
@@ -195,7 +206,7 @@ export function ImportCategories({
           const key = keyOf(g);
           const v = choices[key] ?? "";
           const cat = look(v);
-          const { existing, fresh } = names(g.kind, g.new_name || undefined);
+          const { fresh } = names(g.kind, g.new_name || undefined);
           return (
             <li
               key={key}
@@ -234,31 +245,51 @@ export function ImportCategories({
                   {v.startsWith("n:") && ` · ${t("new category")}`}
                 </span>
               </span>
-              <select
+              <button
+                type="button"
+                className={cat ? "picker-field" : "picker-field muted"}
                 aria-label={t("Category for {name}", { name: g.name })}
-                value={v}
-                onChange={(e) =>
-                  onChange({ ...choices, [key]: e.target.value })
-                }
+                onClick={() => setPickingRow(key)}
               >
-                <option value="">{t("No category")}</option>
-                <optgroup label={t("Your categories")}>
-                  {existing.map((c) => (
-                    <option key={c.id} value={`c:${c.id}`}>
-                      {optionLabel(c, w.categories)}
-                    </option>
-                  ))}
-                </optgroup>
-                {fresh.length > 0 && (
-                  <optgroup label={t("New categories")}>
-                    {fresh.map((n) => (
-                      <option key={n} value={`n:${n}`}>
-                        {n}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-              </select>
+                <span className="ellipsis">
+                  {v.startsWith("c:")
+                    ? categoryPath(Number(v.slice(2)), w.categories) ?? t("No category")
+                    : v.startsWith("n:")
+                      ? v.slice(2)
+                      : t("No category")}
+                </span>
+              </button>
+              {pickingRow === key && (
+                <CategoryPicker
+                  categories={w.categories}
+                  kind={g.kind}
+                  selected={v.startsWith("c:") ? Number(v.slice(2)) : null}
+                  extras={[
+                    {
+                      label: t("No category"),
+                      selected: v === "",
+                      onPick: () => {
+                        onChange({ ...choices, [key]: "" });
+                        setPickingRow(null);
+                      },
+                    },
+                    ...fresh.map((n) => ({
+                      label: n,
+                      detail: t("new category"),
+                      selected: v === `n:${n}`,
+                      onPick: () => {
+                        onChange({ ...choices, [key]: `n:${n}` });
+                        setPickingRow(null);
+                      },
+                    })),
+                  ]}
+                  onPick={(c) => {
+                    onChange({ ...choices, [key]: `c:${c.id}` });
+                    setPickingRow(null);
+                  }}
+                  onClose={() => setPickingRow(null)}
+                />
+              )}
             </li>
           );
         })}
@@ -431,9 +462,12 @@ const sourceNames: Record<ImportBatch['source'], () => string> = {
 };
 
 /** The latest imports, each with what it added and found already there, and Undo. */
+const recentPreview = 3;
+
 export function RecentImports() {
   const w = useWallet();
   const [list, setList] = useState<ImportBatch[]>([]);
+  const [showAll, setShowAll] = useState(false);
   const [busy, setBusy] = useState<number | null>(null);
   const [message, setMessage] = useState<{ text: string; ids?: number[] } | null>(null);
   useEffect(() => {
@@ -471,12 +505,15 @@ export function RecentImports() {
     await w.refresh();
   }
   if (list.length === 0) return null;
+  const visible = showAll ? list : list.slice(0, recentPreview);
   return (
     <div className="card stack">
       <h2>{t('Recent imports')}</h2>
       <ul className="import-history">
-        {list.map((b) => {
+        {visible.map((b) => {
           const already = b.duplicates + b.matched;
+          const range = b.from && b.to ? (shortDate(b.from) === shortDate(b.to) ? shortDate(b.from) : `${shortDate(b.from)} – ${shortDate(b.to)}`) : '';
+          const counts = [tn(b.imported, '{n} added', '{n} added'), already > 0 && tn(already, '{n} already there', '{n} already there')].filter(Boolean).join(' · ');
           return (
             <li key={b.id} className={b.undone_at ? 'muted' : undefined}>
               <span className="stack tight">
@@ -485,18 +522,20 @@ export function RecentImports() {
                   {b.label && ` ••${b.label}`}
                 </strong>
                 <span className="small muted">
-                  {new Date(b.created_at).toLocaleString(locale(), { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                  {b.from && b.to && ` · ${shortDate(b.from) === shortDate(b.to) ? shortDate(b.from) : `${shortDate(b.from)} – ${shortDate(b.to)}`}`}
+                  {[
+                    new Date(b.created_at).toLocaleString(locale(), { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+                    range,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </span>
-                <span className="small muted">
-                  {[tn(b.imported, '{n} added', '{n} added'), already > 0 && tn(already, '{n} already there', '{n} already there')].filter(Boolean).join(' · ')}
-                </span>
+                <span className="small muted">{counts}</span>
               </span>
               {b.undone_at ? (
                 <span className="small muted">{t('Undone')}</span>
               ) : (
                 b.remaining > 0 && (
-                  <button type="button" className="secondary" onClick={() => undo(b)} disabled={busy !== null}>
+                  <button type="button" className="secondary small-button" onClick={() => undo(b)} disabled={busy !== null}>
                     {busy === b.id ? t('Undoing…') : t('Undo')}
                   </button>
                 )
@@ -505,6 +544,11 @@ export function RecentImports() {
           );
         })}
       </ul>
+      {list.length > recentPreview && (
+        <button type="button" className="link" onClick={() => setShowAll((v) => !v)}>
+          {showAll ? t('Show fewer') : t('Show all {n}', { n: list.length })}
+        </button>
+      )}
       {message && (
         <p role="status" className="notice row">
           <span>{message.text}</span>

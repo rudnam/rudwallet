@@ -2,8 +2,10 @@
 // shop's category, each card's account), to check, correct or forget, and
 // shops to add by hand before their first payment.
 import { useEffect, useState, type FormEvent } from 'react';
-import { inOrder, optionLabel } from '../../categories';
+import { categoryPath } from '../../categories';
 import { api, errorMessage, type Category, type Rules } from '../../api';
+import { CategoryPicker } from '../../components/CategoryPicker';
+import { CategoryIcon } from '../../components/Icon';
 import { href } from '../../router';
 import { useToast } from '../../toast';
 import { useWallet } from '../../wallet';
@@ -161,24 +163,33 @@ function CategorySelect({
   value: string;
   onChange: (id: string) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const chosenId = value ? Number(value) : null;
+  const chosen = categories.find((c) => c.id === chosenId);
   return (
-    <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>
-      {value === '' && <option value="">{t('Pick a category')}</option>}
-      <optgroup label={t('Expenses')}>
-        {inOrder(categories).filter((c) => c.kind === 'expense').map((c) => option(c, categories))}
-      </optgroup>
-      <optgroup label={t('Income')}>
-        {inOrder(categories).filter((c) => c.kind === 'income').map((c) => option(c, categories))}
-      </optgroup>
-    </select>
-  );
-}
-
-function option(c: Category, all: Category[]) {
-  return (
-    <option key={c.id} value={c.id}>
-      {optionLabel(c, all)}
-    </option>
+    <>
+      <button
+        type="button"
+        className={chosen ? 'picker-field' : 'picker-field muted'}
+        aria-label={label}
+        onClick={() => setOpen(true)}
+      >
+        {chosen && <CategoryIcon icon={chosen.icon} name={chosen.name} color={chosen.color} size="small" />}
+        <span className="ellipsis">{chosen ? categoryPath(chosen.id, categories) : t('Pick a category')}</span>
+      </button>
+      {open && (
+        <CategoryPicker
+          categories={categories}
+          selected={chosenId}
+          title={label}
+          onPick={(c) => {
+            onChange(String(c.id));
+            setOpen(false);
+          }}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
   );
 }
 

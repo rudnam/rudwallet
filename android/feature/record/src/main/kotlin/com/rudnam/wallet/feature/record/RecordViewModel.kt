@@ -10,7 +10,6 @@ import com.rudnam.wallet.core.data.repository.RecordHabits
 import com.rudnam.wallet.core.data.repository.RecordRepository
 import com.rudnam.wallet.core.data.repository.SaveResult
 import com.rudnam.wallet.core.data.repository.WalletRepository
-import com.rudnam.wallet.core.model.Category
 import com.rudnam.wallet.core.model.Pending
 import com.rudnam.wallet.core.model.RecordInput
 import com.rudnam.wallet.core.model.Transaction
@@ -31,8 +30,7 @@ import kotlinx.coroutines.launch
 import java.time.Clock
 import javax.inject.Inject
 
-/** How many categories the form offers before All, and how many recent payees. */
-internal const val FEW_CATEGORIES = 7
+/** How many recent payees the form offers. */
 internal const val FEW_PAYEES = 4
 
 /** Why the sheet can't do what was asked; each has words of its own. */
@@ -49,14 +47,6 @@ sealed interface RecordUiState {
         val form: RecordForm,
         /** The record being changed, or null for a new one. */
         val record: Transaction?,
-        /**
-         * The categories the form offers: the form's kind's most used, main
-         * categories and subcategories alike (each counts its own records), so
-         * the usual one is a tap away. The chosen one is always among them.
-         */
-        val categories: List<Category>,
-        /** More categories than [categories]: the last box opens the picker with all of them. */
-        val hasMoreCategories: Boolean,
         /** The picker with every category is open. */
         val pickingCategory: Boolean = false,
         /** Recent payees, offered while a new record has none yet. */
@@ -64,8 +54,6 @@ sealed interface RecordUiState {
         /** Payees matching what's typed, for the field's suggestions. */
         val payeeSuggestions: List<String>,
         val tagSuggestions: List<String>,
-        /** Note and tags wait behind one row on a new record until wanted. */
-        val showExtras: Boolean,
         val busy: Boolean,
         /** Why the last save didn't happen: a problem of the app's, or the server's own words. */
         val problem: RecordProblem?,
@@ -97,7 +85,6 @@ class RecordViewModel @Inject constructor(
         // categories open in their order and stay there.
         val habits: RecordHabits? = null,
         val pickingCategory: Boolean = false,
-        val showExtras: Boolean = false,
         val busy: Boolean = false,
         val problem: RecordProblem? = null,
         val serverMessage: String? = null,
@@ -142,7 +129,7 @@ class RecordViewModel @Inject constructor(
                     payee = route.payee.orEmpty(),
                 )
             }
-            sheet.update { it.copy(form = form, record = record, showExtras = record != null || form.note.isNotEmpty() || form.tags.isNotEmpty()) }
+            sheet.update { it.copy(form = form, record = record) }
         }
         viewModelScope.launch {
             val habits = records.habits()
@@ -153,31 +140,15 @@ class RecordViewModel @Inject constructor(
     }
 
     private fun ready(w: Wallet, form: RecordForm, s: Sheet, habits: RecordHabits): RecordUiState.Ready {
-        val ofKind = w.categoriesInOrder().filter { form.kind != TransactionKind.Transfer && it.kind.apiName == form.kind.apiName }
-        // The most used first; unused ones in the list's order, main categories before subcategories.
-        // Habits are read once per sheet, so the boxes don't move while it's open.
-        val ranked = ofKind.withIndex().sortedWith(
-            compareByDescending<IndexedValue<Category>> { habits.categoryUse[it.value.id] ?: 0 }
-                .thenBy { w.isSubcategory(it.value) }
-                .thenBy { it.index },
-        ).map { it.value }
-        val roomy = ranked.size <= FEW_CATEGORIES + 1
-        val few = if (roomy) ranked else ranked.take(FEW_CATEGORIES)
-        val chosen = ofKind.firstOrNull { it.id == form.categoryId }
-        // One chosen from the picker takes the last box, so the others stay where they are.
-        val shown = if (chosen == null || chosen in few) few else few.dropLast(1) + chosen
         val typed = form.payee.trim()
         return RecordUiState.Ready(
             wallet = w,
             form = form,
             record = s.record,
-            categories = shown,
-            hasMoreCategories = !roomy,
             pickingCategory = s.pickingCategory,
             recentPayees = if (s.record == null && typed.isEmpty()) habits.payees.keys.take(FEW_PAYEES) else emptyList(),
             payeeSuggestions = if (typed.isEmpty()) emptyList() else habits.payees.keys.filter { it.contains(typed, ignoreCase = true) && it != typed }.take(5),
             tagSuggestions = habits.tags.filter { t -> form.tags.none { it.equals(t, ignoreCase = true) } },
-            showExtras = s.showExtras,
             busy = s.busy,
             problem = s.problem,
             serverMessage = s.serverMessage,
@@ -202,11 +173,8 @@ class RecordViewModel @Inject constructor(
         edit { it.copy(amount = pressKey(it.amount, key, exponent)) }
     }
 
-    /** A box tapped: it's chosen, or, tapped again, no category is. */
-    fun chooseCategory(id: Long) = edit { it.copy(categoryId = if (it.categoryId == id) null else id) }
-
-    /** A category picked from the picker with all of them: it's chosen, and the picker closes. */
-    fun pickCategory(id: Long) {
+    /** A category picked from the picker (or null to clear it): it's chosen, and the picker closes. */
+    fun pickCategory(id: Long?) {
         sheet.update { it.copy(pickingCategory = false) }
         edit { it.copy(categoryId = id) }
     }
@@ -241,8 +209,6 @@ class RecordViewModel @Inject constructor(
     fun addTag(text: String) = edit { it.copy(tags = addTag(it.tags, text)) }
 
     fun removeTag(tag: String) = edit { it.copy(tags = it.tags - tag) }
-
-    fun showExtras() = sheet.update { it.copy(showExtras = true) }
 
     /** Save (or Confirm). An edit first shows what it changes. */
     fun save(): Boolean {

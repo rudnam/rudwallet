@@ -15,13 +15,22 @@ import { Dialog } from './Dialog';
 /** With more categories than this, the picker has a search field. */
 const searchFrom = 10;
 
+export interface CategoryPickerExtra {
+  label: string;
+  detail?: string;
+  selected?: boolean;
+  onPick: () => void;
+}
+
 export function CategoryPicker({
   categories,
   kind,
   selected,
   title,
   mainTakesInSubs = false,
+  extras,
   onPick,
+  onClear,
   onClose,
 }: {
   categories: Category[];
@@ -31,7 +40,9 @@ export function CategoryPicker({
   title?: string;
   /** Picking a main category means it and its subcategories (a filter): its page says "All of …", not "… (general)". */
   mainTakesInSubs?: boolean;
+  extras?: CategoryPickerExtra[];
   onPick: (c: Category) => void;
+  onClear?: () => void;
   onClose: () => void;
 }) {
   const [query, setQuery] = useState('');
@@ -116,43 +127,67 @@ export function CategoryPicker({
       </div>
     );
   } else {
-    body = kinds.map((k) => {
-      const list = all.filter((c) => !isSubcategory(c, categories) && c.kind === k);
-      if (list.length === 0) return null;
-      return (
-        <div key={k} className="stack tight picker-page">
-          {!kind && <span className="muted small">{k === 'expense' ? t('Expenses') : t('Income')}</span>}
+    const extraList: CategoryPickerExtra[] = [
+      ...(extras ?? []),
+      ...(onClear ? [{ label: t('None'), selected: selected === null, onPick: onClear }] : []),
+    ];
+    body = (
+      <>
+        {extraList.length > 0 && (
           <ul className="picker-list" role="list">
-            {list.map((c) => {
-              const subs = subcategoriesOf(c.id, categories);
-              if (subs.length === 0) return row(c, c.name);
-              const chosenSub = subs.find((s) => s.id === selected);
-              const holds = holding === c.id;
-              const detail = chosenSub ? chosenSub.name : selected === c.id ? mainLabel(c) : subs.map((s) => s.name).join(' · ');
-              return (
-                <li key={c.id}>
-                  <button
-                    type="button"
-                    className={holds ? 'holds' : undefined}
-                    data-main={c.id}
-                    aria-label={`${c.name}, ${detail}`}
-                    onClick={() => setOpen(c.id)}
-                  >
-                    <CategoryIcon icon={c.icon} name={c.name} color={c.color} />
-                    <span className="picker-main">
-                      <span>{c.name}</span>
-                      <span className="small">{detail}</span>
-                    </span>
-                    {holds && <Icon d={icons.check} className="picker-tick" />}
-                    <Icon d={icons.chevron} className="picker-caret" />
-                  </button>
-                </li>
-              );
-            })}
+            {extraList.map((e, idx) => (
+              <li key={`${idx}:${e.label}`}>
+                <button type="button" className={e.selected ? 'on' : undefined} aria-pressed={e.selected} onClick={e.onPick}>
+                  <CategoryIcon />
+                  <span className="picker-main">
+                    <span>{e.label}</span>
+                    {e.detail && <span className="muted small">{e.detail}</span>}
+                  </span>
+                  {e.selected && <Icon d={icons.check} className="picker-tick" />}
+                </button>
+              </li>
+            ))}
           </ul>
-        </div>
-      );
-    });
+        )}
+        {kinds.map((k) => {
+          const list = all.filter((c) => !isSubcategory(c, categories) && c.kind === k);
+          if (list.length === 0) return null;
+          return (
+            <div key={k} className="stack tight picker-page">
+              {!kind && <span className="muted small">{k === 'expense' ? t('Expenses') : t('Income')}</span>}
+              <ul className="picker-list" role="list">
+                {list.map((c) => {
+                  const subs = subcategoriesOf(c.id, categories);
+                  if (subs.length === 0) return row(c, c.name);
+                  const chosenSub = subs.find((s) => s.id === selected);
+                  const holds = holding === c.id;
+                  const detail = chosenSub ? chosenSub.name : selected === c.id ? mainLabel(c) : subs.map((s) => s.name).join(' · ');
+                  return (
+                    <li key={c.id}>
+                      <button
+                        type="button"
+                        className={holds ? 'holds' : undefined}
+                        data-main={c.id}
+                        aria-label={`${c.name}, ${detail}`}
+                        onClick={() => setOpen(c.id)}
+                      >
+                        <CategoryIcon icon={c.icon} name={c.name} color={c.color} />
+                        <span className="picker-main">
+                          <span>{c.name}</span>
+                          <span className="small">{detail}</span>
+                        </span>
+                        {holds && <Icon d={icons.check} className="picker-tick" />}
+                        <Icon d={icons.chevron} className="picker-caret" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })}
+      </>
+    );
   }
 
   return (

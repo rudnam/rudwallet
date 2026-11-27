@@ -11,7 +11,7 @@
     <string name="feature_record_amount">Amount (%s)</string>
     <string name="feature_record_amount_label">Amount</string>
     <string name="feature_record_category">Category</string>
-    <string name="feature_record_all_categories">All</string>
+    <string name="feature_record_choose_category">Choose a category</string>
     <string name="feature_record_payee">Payee</string>
     <string name="feature_record_from_whom">From whom</string>
     <string name="feature_record_payee_hint">Shop or person</string>
@@ -31,7 +31,6 @@
         <item quantity="other">At most %d tags</item>
     </plurals>
     <string name="feature_record_remove_tag">Remove tag %s</string>
-    <string name="feature_record_extras">Add a note or tags</string>
     <string name="feature_record_save">Save</string>
     <string name="feature_record_confirm">Confirm</string>
     <string name="feature_record_delete">Delete</string>

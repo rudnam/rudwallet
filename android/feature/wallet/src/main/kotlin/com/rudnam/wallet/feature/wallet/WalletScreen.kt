@@ -146,9 +146,19 @@ internal fun WalletScreen(
         // The app's scaffold already keeps clear of the navigation bar.
         contentWindowInsets = TopAppBarDefaults.windowInsets,
         topBar = {
+            val hideAmounts = com.rudnam.wallet.core.ui.LocalHideAmounts.current
+            val toggleHide = com.rudnam.wallet.core.ui.LocalToggleHideAmounts.current
             TopAppBar(
                 title = { Text(stringResource(R.string.feature_wallet_title)) },
                 actions = {
+                    if (toggleHide != null) {
+                        IconButton(onClick = toggleHide) {
+                            LineIcon(
+                                if (hideAmounts) WalletIcons.eyeOff else WalletIcons.eye,
+                                contentDescription = stringResource(if (hideAmounts) R.string.feature_wallet_show_amounts else R.string.feature_wallet_hide_amounts),
+                            )
+                        }
+                    }
                     IconButton(onClick = { navigation.openPage("records") }) {
                         LineIcon(WalletIcons.search, contentDescription = stringResource(R.string.feature_wallet_search))
                     }

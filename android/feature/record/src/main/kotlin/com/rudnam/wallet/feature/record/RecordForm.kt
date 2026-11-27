@@ -138,11 +138,11 @@ fun describeChanges(before: Transaction, after: RecordInput): List<Change> {
         Change(Change.Field.Type, Change.Value.Kind(before.kind), Change.Value.Kind(after.kind)),
         Change(Change.Field.Amount, Change.Value.Money(before.amount), Change.Value.Money(after.amount)),
         Change(Change.Field.Category, Change.Value.Category(before.categoryId), Change.Value.Category(after.categoryId)),
-        Change(if (after.kind == TransactionKind.Income) Change.Field.FromWhom else Change.Field.Payee, Change.Value.Text(before.payee), Change.Value.Text(after.payee)),
         Change(if (transfer) Change.Field.From else Change.Field.Account, Change.Value.Account(before.accountId), Change.Value.Account(after.accountId)),
         Change(Change.Field.To, Change.Value.Account(before.toAccountId), Change.Value.Account(after.toAccountId)),
         Change(Change.Field.Date, Change.Value.Time(before.occurredAt), Change.Value.Time(after.occurredAt)),
         Change(Change.Field.Note, Change.Value.Text(before.note), Change.Value.Text(after.note)),
+        Change(if (after.kind == TransactionKind.Income) Change.Field.FromWhom else Change.Field.Payee, Change.Value.Text(before.payee), Change.Value.Text(after.payee)),
         Change(Change.Field.Tags, Change.Value.Tags(before.tags), Change.Value.Tags(after.tags)),
     )
     return fields.filter { it.before != it.after }

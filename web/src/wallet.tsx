@@ -9,9 +9,13 @@ import { wearingMainColours } from './categories';
 import { formatMoney } from './money';
 import { balanceChange, outbox, useUnsent } from './outbox';
 
+const hideAmountsKey = 'wallet:hide-amounts';
+
 interface WalletState extends Overview {
   /** Who is signed in; me.demo for a demo account. */
   me: Me;
+  hideAmounts: boolean;
+  toggleHideAmounts: () => void;
   refresh: () => Promise<void>;
   money: (amount: number, signed?: boolean) => string;
   account: (id: number | null) => Account | undefined;
@@ -23,7 +27,17 @@ const Ctx = createContext<WalletState | null>(null);
 export function WalletProvider({ me, children }: { me: Me; children: ReactNode }) {
   // What the app saw last time, while the fresh answer is on its way.
   const [overview, setOverview] = useState<Overview | null>(() => api.seen.overview() ?? null);
+  const [hideAmounts, setHideAmounts] = useState(() => localStorage.getItem(hideAmountsKey) === '1');
   const [error, setError] = useState('');
+
+  const toggleHideAmounts = useCallback(() => {
+    setHideAmounts((h) => {
+      const next = !h;
+      if (next) localStorage.setItem(hideAmountsKey, '1');
+      else localStorage.removeItem(hideAmountsKey);
+      return next;
+    });
+  }, []);
 
   const refresh = useCallback(async () => {
     try {
@@ -63,8 +77,10 @@ export function WalletProvider({ me, children }: { me: Me; children: ReactNode }
     accounts,
     categories,
     me,
+    hideAmounts,
+    toggleHideAmounts,
     refresh,
-    money: (amount, signed) => formatMoney(amount, overview.settings, signed),
+    money: (amount, signed) => (hideAmounts ? '••••' : formatMoney(amount, overview.settings, signed)),
     account: (id) => accounts.find((a) => a.id === id),
     category: (id) => categories.find((c) => c.id === id),
   };

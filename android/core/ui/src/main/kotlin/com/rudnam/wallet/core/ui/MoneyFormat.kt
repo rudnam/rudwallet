@@ -5,6 +5,7 @@ import android.icu.text.DateIntervalFormat
 import android.icu.util.DateInterval
 import android.icu.util.TimeZone
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalLocale
 import com.rudnam.wallet.core.model.WalletSettings
@@ -19,6 +20,9 @@ import java.time.format.FormatStyle
 import java.util.Currency
 import java.util.Locale
 
+val LocalHideAmounts = compositionLocalOf { false }
+val LocalToggleHideAmounts = compositionLocalOf<(() -> Unit)?>(defaultFactory = { null })
+
 /**
  * Money and dates in the app's language: amounts are whole minor units of
  * the wallet's currency (1250 is ¥1,250 or $12.50). Negative amounts take
@@ -28,6 +32,7 @@ class MoneyFormat(
     val locale: Locale,
     private val settings: WalletSettings,
     private val zone: ZoneId = ZoneId.systemDefault(),
+    private val hidden: Boolean = false,
 ) {
     private val currency: NumberFormat = NumberFormat.getCurrencyInstance(locale).apply {
         runCatching { currency = Currency.getInstance(settings.currency) }
@@ -37,12 +42,14 @@ class MoneyFormat(
 
     /** e.g. 4994 → "¥4,994", −1200 → "−¥1,200"; [signed] adds a plus to amounts above zero. */
     fun money(amount: Long, signed: Boolean = false): String {
+        if (hidden) return "••••"
         val text = tidy(currency.format(BigDecimal.valueOf(amount, settings.currencyExponent)))
         return if (signed && amount > 0) "+$text" else text
     }
 
     /** A short amount for a chart's axis, at most one decimal: "¥12K", "¥1.2万", "$0". */
     fun compact(amount: Long): String {
+        if (hidden) return "••••"
         val number = CompactDecimalFormat.getInstance(locale, CompactDecimalFormat.CompactStyle.SHORT).apply { maximumFractionDigits = 1 }
         val value = BigDecimal.valueOf(amount, settings.currencyExponent)
         return tidy((if (amount < 0) "-" else "") + symbol + number.format(value.abs()))
@@ -106,5 +113,6 @@ class MoneyFormat(
 fun rememberMoneyFormat(settings: WalletSettings): MoneyFormat {
     // Observable: a change of language (Android's per-app language included) redraws with the new one.
     val locale = LocalLocale.current.platformLocale
-    return remember(locale, settings) { MoneyFormat(locale, settings) }
+    val hidden = LocalHideAmounts.current
+    return remember(locale, settings, hidden) { MoneyFormat(locale, settings, hidden = hidden) }
 }

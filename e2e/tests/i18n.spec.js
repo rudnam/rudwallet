@@ -27,7 +27,10 @@ test.describe('on a phone set to Japanese', () => {
     await page.getByRole('navigation', { name: 'メイン' }).getByRole('button', { name: '記録を追加' }).click();
     const dialog = page.getByRole('dialog', { name: '新しい記録' });
     await dialog.getByLabel('金額（JPY）').fill('１，２００');
-    await dialog.getByLabel('食費').check();
+    await dialog.getByRole('group', { name: 'カテゴリ' }).getByRole('button').click();
+    const picker = page.getByRole('dialog', { name: 'カテゴリを選んでください' });
+    await picker.getByRole('button', { name: /^食費/ }).click();
+    await picker.getByRole('button', { name: '食費(全般)' }).click();
     await dialog.getByLabel('支払先').fill('コメダ珈琲店');
     await dialog.getByRole('button', { name: '保存' }).click();
     await expect(page.getByText('¥1,200を追加しました')).toBeVisible();

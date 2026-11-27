@@ -10,7 +10,7 @@
     <string name="feature_record_amount">金額（%s）</string>
     <string name="feature_record_amount_label">金額</string>
     <string name="feature_record_category">カテゴリ</string>
-    <string name="feature_record_all_categories">すべて</string>
+    <string name="feature_record_choose_category">カテゴリを選んでください</string>
     <string name="feature_record_payee">支払先</string>
     <string name="feature_record_from_whom">入金元</string>
     <string name="feature_record_payee_hint">お店や相手</string>
@@ -29,7 +29,6 @@
         <item quantity="other">タグは%d個までです</item>
     </plurals>
     <string name="feature_record_remove_tag">タグ「%s」を外す</string>
-    <string name="feature_record_extras">メモやタグを追加</string>
     <string name="feature_record_save">保存</string>
     <string name="feature_record_confirm">確定</string>
     <string name="feature_record_delete">削除</string>

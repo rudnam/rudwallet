@@ -2,8 +2,9 @@
 // through every month. Records can be chosen to delete, categorise, move or
 // tag many at once.
 import { useEffect, useState, type ReactNode } from 'react';
-import { inOrder, optionLabel } from '../../categories';
+import { categoryPath } from '../../categories';
 import { api, errorMessage, type BulkChange, type Tag, type Transaction, type TransactionFilter } from '../../api';
+import { CategoryPicker } from '../../components/CategoryPicker';
 import { cleanTag } from '../../components/TagField';
 import { TransactionForm } from '../../components/TransactionForm';
 import { TransactionList } from '../../components/TransactionList';
@@ -43,6 +44,7 @@ export function RecordsPage({
   const [tags, setTags] = useState<Tag[]>(() => api.seen.tags() ?? []);
   const [q, setQ] = useState(search);
   const [open, setOpen] = useState<Transaction | null>(null);
+  const [pickingFilter, setPickingFilter] = useState(false);
   // While choosing records: the chosen IDs.
   const [selected, setSelected] = useState<Set<number> | null>(null);
 
@@ -157,15 +159,27 @@ export function RecordsPage({
             </option>
           ))}
         </select>
-        <select aria-label={t('Category')} className={category ? 'set' : undefined} value={category ?? ''} onChange={(e) => set({ category: e.target.value })}>
-          <option value="">{t('Category')}</option>
-          <option value="none">{t('No category')}</option>
-          {inOrder(w.categories).map((c) => (
-            <option key={c.id} value={c.id}>
-              {optionLabel(c, w.categories)}
-            </option>
-          ))}
-        </select>
+        <button
+          type="button"
+          aria-label={t('Category')}
+          className={category ? 'picker-trigger set' : 'picker-trigger'}
+          onClick={() => setPickingFilter(true)}
+        >
+          {category === 'none' ? t('No category') : category ? categoryPath(category, w.categories) ?? t('Category') : t('Category')}
+        </button>
+        {pickingFilter && (
+          <CategoryPicker
+            categories={w.categories}
+            selected={typeof category === 'number' ? category : null}
+            mainTakesInSubs={true}
+            extras={[
+              { label: t('Category'), selected: !category, onPick: () => { set({ category: '' }); setPickingFilter(false); } },
+              { label: t('No category'), selected: category === 'none', onPick: () => { set({ category: 'none' }); setPickingFilter(false); } },
+            ]}
+            onPick={(c) => { set({ category: String(c.id) }); setPickingFilter(false); }}
+            onClose={() => setPickingFilter(false)}
+          />
+        )}
         <form
           className="search"
           role="search"
@@ -306,8 +320,7 @@ function BulkBar({
     } else if (v.startsWith('add:')) apply({ ids, action: 'tag', tag: v.slice(4) });
     else if (v.startsWith('remove:')) apply({ ids, action: 'untag', tag: v.slice(7) });
   }
-  const expenseCats = inOrder(w.categories).filter((c) => c.kind === 'expense');
-  const incomeCats = inOrder(w.categories).filter((c) => c.kind === 'income');
+  const [pickingCat, setPickingCat] = useState(false);
 
   return (
     <div className="card bulk-bar" role="region" aria-label={t('Chosen records')}>
@@ -319,32 +332,29 @@ function BulkBar({
       </button>
       {n > 0 && (
         <div className="bulk-actions">
-          <select
-            aria-label={t('Set category')}
-            value=""
-            disabled={busy}
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v) apply({ ids, action: 'categorize', category_id: v === 'none' ? null : Number(v) });
-            }}
-          >
-            <option value="">{t('Category…')}</option>
-            <option value="none">{t('No category')}</option>
-            <optgroup label={t('Expenses')}>
-              {expenseCats.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {optionLabel(c, w.categories)}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label={t('Income')}>
-              {incomeCats.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {optionLabel(c, w.categories)}
-                </option>
-              ))}
-            </optgroup>
-          </select>
+          <button type="button" className="picker-field" aria-label={t('Set category')} disabled={busy} onClick={() => setPickingCat(true)}>
+            {t('Category…')}
+          </button>
+          {pickingCat && (
+            <CategoryPicker
+              categories={w.categories}
+              selected={null}
+              extras={[
+                {
+                  label: t('No category'),
+                  onPick: () => {
+                    setPickingCat(false);
+                    apply({ ids, action: 'categorize', category_id: null });
+                  },
+                },
+              ]}
+              onPick={(c) => {
+                setPickingCat(false);
+                apply({ ids, action: 'categorize', category_id: c.id });
+              }}
+              onClose={() => setPickingCat(false)}
+            />
+          )}
           <select
             aria-label={t('Move to account')}
             value=""

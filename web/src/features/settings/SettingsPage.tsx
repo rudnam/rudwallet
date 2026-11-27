@@ -852,16 +852,105 @@ function General() {
 
 // ---------- Import ----------
 
+interface ImportSourceEntry {
+  id: string;
+  name: string | (() => string);
+  hint: Key;
+  render: () => ReactNode;
+}
+
+const importSources: ImportSourceEntry[] = [
+  {
+    id: 'paypay',
+    name: 'PayPay',
+    hint: '取引履歴 (transaction history) CSV from the PayPay app',
+    render: () => <PaymentsImport source={payPaySource} />,
+  },
+  {
+    id: 'mufg',
+    name: 'MUFG',
+    hint: '入出金明細 CSV from 三菱UFJダイレクト',
+    render: () => <MUFGImport />,
+  },
+  {
+    id: 'vpass',
+    name: 'Vpass',
+    hint: 'ご利用明細 (statement) CSV from Vpass (三井住友カード)',
+    render: () => <PaymentsImport source={vpassSource} />,
+  },
+  {
+    id: 'ic',
+    name: () => t('IC card'),
+    hint: 'Suica, PASMO, ICOCA… held to the back of the phone',
+    render: () => <ICCardImport />,
+  },
+  {
+    id: 'budgetbakers',
+    name: 'BudgetBakers',
+    hint: "CSV export from BudgetBakers' Wallet",
+    render: () => <BudgetBakersImport />,
+  },
+];
+
 function Import() {
+  const [active, setActive] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const selected = importSources.find((s) => s.id === active);
+  const q = query.trim().toLowerCase();
+  const filtered = importSources.filter((s) => {
+    if (!q) return true;
+    const name = typeof s.name === 'function' ? s.name() : s.name;
+    return name.toLowerCase().includes(q) || t(s.hint).toLowerCase().includes(q);
+  });
+
+  if (selected) {
+    return (
+      <>
+        <button type="button" className="picker-back" onClick={() => setActive(null)}>
+          <Icon d={icons.back} className="glyph" />
+          <span>{t('All services')}</span>
+        </button>
+        {selected.render()}
+        <RecentImports />
+      </>
+    );
+  }
+
   return (
     <>
       <p className="muted">{t('Import from a file or a card. What’s already in RudWallet is skipped, and you can undo any import.')}</p>
+      <div className="card flush import-sources">
+        <div className="import-search">
+          <input
+            type="search"
+            aria-label={t('Find a service')}
+            placeholder={t('Find a service')}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+        {filtered.length > 0 ? (
+          <ul className="import-source-list" aria-label={t('Import services')}>
+            {filtered.map((s) => {
+              const name = typeof s.name === 'function' ? s.name() : s.name;
+              return (
+                <li key={s.id}>
+                  <button type="button" className="import-source-row" onClick={() => setActive(s.id)}>
+                    <span className="stack tight grow">
+                      <strong>{name}</strong>
+                      <span className="muted small">{t(s.hint)}</span>
+                    </span>
+                    <Icon d={icons.chevron} className="picker-caret" />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="muted small import-empty">{t('No service matches')}</p>
+        )}
+      </div>
       <RecentImports />
-      <PaymentsImport source={payPaySource} />
-      <MUFGImport />
-      <PaymentsImport source={vpassSource} />
-      <ICCardImport />
-      <BudgetBakersImport />
     </>
   );
 }

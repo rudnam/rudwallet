@@ -360,8 +360,19 @@ function Shell({
             )}
           </a>
         ))}
-        <span className="nav-foot ellipsis" title={me.demo ? undefined : me.email}>
-          {me.demo ? t('Demo') : me.email}
+        <span className="nav-foot">
+          <span className="ellipsis grow" title={me.demo ? undefined : me.email}>
+            {me.demo ? t('Demo') : me.email}
+          </span>
+          <button
+            type="button"
+            className="icon-button"
+            aria-label={w.hideAmounts ? t('Show amounts') : t('Hide amounts')}
+            aria-pressed={w.hideAmounts}
+            onClick={w.toggleHideAmounts}
+          >
+            <Icon d={w.hideAmounts ? icons.eyeOff : icons.eye} />
+          </button>
         </span>
       </nav>
       <main className="page" key={`${route.page}-${version}`}>

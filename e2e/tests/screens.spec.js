@@ -131,7 +131,10 @@ for (const [name, viewport] of [
     await expect(page.getByRole('button', { name: 'Confirm 2 with a category' })).toBeVisible();
     // A category other than the shop's rule asks whether to keep it. (The
     // notification's full-width dash is read as a plain one.)
-    await page.getByLabel('Category for セブン-イレブン').selectOption({ label: '\u00a0\u00a0\u00a0Groceries' }) // a subcategory, indented;
+    await page.getByLabel('Category for セブン-イレブン').click();
+    const reviewPicker = page.getByRole('dialog', { name: 'Choose a category' });
+    await reviewPicker.getByRole('button', { name: /^Food & Drinks/ }).click();
+    await reviewPicker.getByRole('button', { name: 'Groceries' }).click();
     await expect(page.getByLabel(/Use Groceries for セブン-イレブン from now on/)).toBeVisible();
     await shot('3-review');
 
@@ -170,8 +173,8 @@ for (const [name, viewport] of [
     const add = page.getByRole('dialog', { name: 'New record' });
     await expect(add).toBeVisible();
     await shot('5-new-record');
-    // All: the picker with every category, main ones and their subcategories, indented.
-    await add.getByRole('button', { name: 'All', exact: true }).click();
+    // Category: the picker with every category, main ones and their subcategories.
+    await add.getByRole('group', { name: 'Category' }).getByRole('button').click();
     const picker = page.getByRole('dialog', { name: 'Choose a category' });
     // Main categories, each naming its subcategories; Travel opens its own page.
     await picker.getByRole('button', { name: /^Travel/ }).click();
@@ -180,8 +183,8 @@ for (const [name, viewport] of [
     await shot('5-new-record-all-categories');
     await travel.getByRole('button', { name: 'Trip transport' }).click();
     await expect(picker).toBeHidden();
-    // Picked there, it's chosen, and in the boxes.
-    await expect(add.getByRole('radio', { name: 'Trip transport' })).toBeChecked();
+    // Picked there, it's shown in the Category row.
+    await expect(add.getByRole('group', { name: 'Category' }).getByRole('button')).toContainText('Travel › Trip transport');
     await add.getByRole('combobox', { name: 'Tags' }).fill('Date night,');
     await add.getByRole('combobox', { name: 'Tags' }).fill('Birthday');
     await add.getByRole('combobox', { name: 'Tags' }).press('Enter');
@@ -225,10 +228,12 @@ for (const [name, viewport] of [
       `${now.getFullYear()}/${p(now.getMonth() + 1)}/01 12:05,"1,280",-,-,-,-,-,支払い,お店,PayPayカード,一回払い,本人,s-002`,
       `${now.getFullYear()}/${p(now.getMonth() + 1)}/01 09:00,-,"5,000",-,-,-,-,チャージ,MUFG,三菱UFJ銀行,-,本人,s-003`,
     ].join('\n');
+    await page.getByRole('button', { name: /^PayPay/ }).click();
     await page.getByLabel('PayPay CSV file').setInputFiles({ name: 'paypay.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
     await expect(page.getByRole('button', { name: 'Import 3 payments' })).toBeVisible();
     await shot('10-import-paypay');
     await page.getByRole('button', { name: 'Cancel' }).click();
+    await page.getByRole('button', { name: 'All services' }).click();
 
     const mufg = [
       '日付,摘要,摘要内容,支払い金額,預かり金額,差引残高,メモ,未資金化区分,入払区分',
@@ -237,11 +242,13 @@ for (const [name, viewport] of [
       `"${now.getFullYear()}/${now.getMonth() + 1}/2","口座振替４","ＰＡＹＰＡＹカード","30,000","","21,897","","",""`,
       `"${now.getFullYear()}/${now.getMonth() + 1}/3","振込２","ヤマダ　タロウ","2,500","","19,397","","",""`,
     ].join('\n');
+    await page.getByRole('button', { name: /^MUFG/ }).click();
     await page.getByLabel('MUFG CSV file').setInputFiles({ name: 'meisai.csv', mimeType: 'text/csv', buffer: Buffer.from(mufg) });
     await expect(page.getByRole('button', { name: 'Import 4 rows' })).toBeVisible();
     await page.getByRole('table', { name: 'Statement rows' }).scrollIntoViewIfNeeded();
     await shot('10-import-mufg');
     await page.getByRole('button', { name: 'Cancel' }).click();
+    await page.getByRole('button', { name: 'All services' }).click();
 
     const vpassDay = (d) => `${now.getFullYear()}/${p(now.getMonth() + 1)}/${p(d)}`;
     const vpass = [
@@ -251,10 +258,12 @@ for (const [name, viewport] of [
       `${vpassDay(3)},ローソン,550,１,１,550,`,
       ',,,,,3628,',
     ].join('\r\n');
+    await page.getByRole('button', { name: /^Vpass/ }).click();
     await page.getByLabel('Vpass CSV file').setInputFiles({ name: 'vpass.csv', mimeType: 'text/csv', buffer: Buffer.from(vpass) });
     await expect(page.getByRole('button', { name: 'Import 3 payments' })).toBeVisible();
     await shot('10-import-vpass');
     await page.getByRole('button', { name: 'Cancel' }).click();
+    await page.getByRole('button', { name: 'All services' }).click();
 
     const bbDay = `${now.getFullYear()}-${p(now.getMonth() + 1)}-02 08:00:00`;
     const bb = [
@@ -265,6 +274,7 @@ for (const [name, viewport] of [
       ].map(([cat, n]) => `Wallet;${cat};JPY;${n};${n};Expense;Cash;;${bbDay};false;;`),
       `Bank;Wage, invoices;JPY;300000;300000;Income;Transfer;;${bbDay};false;;`,
     ].join('\n');
+    await page.getByRole('button', { name: /^BudgetBakers/ }).click();
     await page.getByLabel('CSV file', { exact: true }).setInputFiles({ name: 'records.csv', mimeType: 'text/csv', buffer: Buffer.from(bb) });
     await expect(page.getByRole('button', { name: 'Import 9 records' })).toBeVisible();
     await page.getByLabel('Choose Bar, cafe').check();

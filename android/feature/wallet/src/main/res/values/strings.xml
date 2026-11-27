@@ -3,6 +3,8 @@
 <resources>
     <string name="feature_wallet_title">Wallet</string>
     <string name="feature_wallet_search">Search records</string>
+    <string name="feature_wallet_hide_amounts">Hide amounts</string>
+    <string name="feature_wallet_show_amounts">Show amounts</string>
     <string name="feature_wallet_add_record">Add record</string>
     <string name="feature_wallet_total_balance">Total balance</string>
     <string name="feature_wallet_accounts">Accounts</string>

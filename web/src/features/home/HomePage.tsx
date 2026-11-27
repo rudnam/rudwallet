@@ -40,9 +40,20 @@ export function HomePage({ onAdd }: { onAdd: () => void }) {
       <section className="balance" aria-label={t('Total balance')}>
         <span className="balance-head">
           <span className="balance-label">{t('Total balance')}</span>
-          <a className="icon-button" href={href('records')} aria-label={t('Search records')}>
-            <Icon d={icons.search} />
-          </a>
+          <span className="row tight">
+            <button
+              type="button"
+              className="icon-button"
+              aria-label={w.hideAmounts ? t('Show amounts') : t('Hide amounts')}
+              aria-pressed={w.hideAmounts}
+              onClick={w.toggleHideAmounts}
+            >
+              <Icon d={w.hideAmounts ? icons.eyeOff : icons.eye} />
+            </button>
+            <a className="icon-button" href={href('records')} aria-label={t('Search records')}>
+              <Icon d={icons.search} />
+            </a>
+          </span>
         </span>
         <span className="hero-figure">
           <Figure amount={total} animate />

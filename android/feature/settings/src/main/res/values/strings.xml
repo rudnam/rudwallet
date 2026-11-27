@@ -106,6 +106,7 @@
     <string name="feature_settings_glyph_fun">Entertainment</string>
     <string name="feature_settings_glyph_travel">Travel</string>
     <string name="feature_settings_glyph_other">Other</string>
+    <string name="feature_settings_glyph_delivery">Delivery</string>
     <string name="feature_settings_glyph_salary">Salary</string>
     <string name="feature_settings_glyph_money">Money</string>
     <string name="feature_settings_glyph_coffee">Coffee</string>
