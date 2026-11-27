@@ -131,7 +131,10 @@ for (const [name, viewport] of [
     await expect(page.getByRole('button', { name: 'Confirm 2 with a category' })).toBeVisible();
     // A category other than the shop's rule asks whether to keep it. (The
     // notification's full-width dash is read as a plain one.)
-    await page.getByLabel('Category for セブン-イレブン').selectOption({ label: '\u00a0\u00a0\u00a0Groceries' }) // a subcategory, indented;
+    await page.getByLabel('Category for セブン-イレブン').click();
+    const reviewPicker = page.getByRole('dialog', { name: 'Category for セブン-イレブン' });
+    await reviewPicker.getByRole('button', { name: /^Food & Drinks/ }).click();
+    await reviewPicker.getByRole('button', { name: 'Groceries' }).click();
     await expect(page.getByLabel(/Use Groceries for セブン-イレブン from now on/)).toBeVisible();
     await shot('3-review');
 

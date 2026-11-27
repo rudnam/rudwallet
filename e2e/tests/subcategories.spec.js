@@ -156,3 +156,80 @@ test('the add form opens with the most used categories first, and they stay put'
     await expect(rec).toBeHidden();
   }
 });
+
+// The same CategoryPicker is used across Records filter, Recurring payments, and Settings › Shops and cards.
+test('the category picker works consistently across filters, recurring payments, and shop rules', async ({ page }) => {
+  await signUp(page);
+  const api = page.request;
+  const { accounts, categories } = await (await api.get('/api/wallet')).json();
+  const cash = accounts[0].id;
+  const groceries = categories.find((c) => c.name === 'Groceries');
+  const eatingOut = categories.find((c) => c.name === 'Eating out');
+  const now = new Date().toISOString();
+  for (const [payee, category_id] of [['Supermarket', groceries.id], ['Diner', eatingOut.id], ['Mystery', null]]) {
+    expect((await api.post('/api/transactions', { data: { kind: 'expense', amount: 500, account_id: cash, category_id, occurred_at: now, payee } })).status()).toBe(201);
+  }
+
+  // 1. Records filter: All categories, No category, All of Food & Drinks, and a subcategory.
+  await page.goto('/app/#/records');
+  await expect(page.getByRole('button', { name: /Supermarket/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Category' }).click();
+  let picker = page.getByRole('dialog', { name: 'Category' });
+  await picker.getByRole('button', { name: 'No category' }).click();
+  await expect(page.getByRole('button', { name: /Mystery/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Supermarket/ })).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Category' }).click();
+  picker = page.getByRole('dialog', { name: 'Category' });
+  await picker.getByRole('button', { name: /^Food & Drinks/ }).click();
+  // Subpage header shows the main category's name beside Back.
+  await expect(picker.locator('.picker-subhead-title')).toHaveText('Food & Drinks');
+  await picker.getByRole('button', { name: 'All of Food & Drinks' }).click();
+  await expect(page.getByRole('button', { name: /Supermarket/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Diner/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Mystery/ })).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Category' }).click();
+  picker = page.getByRole('dialog', { name: 'Category' });
+  await picker.getByRole('button', { name: /^Food & Drinks/ }).click();
+  await picker.getByRole('button', { name: 'Groceries' }).click();
+  await expect(page.getByRole('button', { name: /Supermarket/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Diner/ })).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Category' }).click();
+  picker = page.getByRole('dialog', { name: 'Category' });
+  await picker.getByRole('button', { name: 'All categories' }).click();
+  await expect(page.getByRole('button', { name: /Mystery/ })).toBeVisible();
+
+  // 2. Recurring payment form: No category extra and Food & Drinks (general).
+  await page.goto('/app/#/recurring');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  const recDialog = page.getByRole('dialog', { name: 'New recurring payment' });
+  await recDialog.getByLabel('Category').click();
+  picker = page.getByRole('dialog', { name: 'Category' });
+  await picker.getByRole('button', { name: /^Food & Drinks/ }).click();
+  await picker.getByRole('button', { name: 'Food & Drinks (general)' }).click();
+  await expect(recDialog.getByLabel('Category')).toHaveText('Food & Drinks');
+  await recDialog.getByLabel('Category').click();
+  picker = page.getByRole('dialog', { name: 'Category' });
+  await picker.getByRole('button', { name: 'No category' }).click();
+  await expect(recDialog.getByLabel('Category')).toHaveText('No category');
+  await recDialog.getByRole('button', { name: 'Close' }).click();
+
+  // 3. Settings › Shops and cards: add a shop and change its category with CategoryPicker.
+  await page.goto('/app/#/settings?section=rules');
+  await page.getByLabel('Shop name').fill('Komeda');
+  await page.getByLabel('Category for the new shop').click();
+  picker = page.getByRole('dialog', { name: 'Category for the new shop' });
+  await picker.getByRole('button', { name: /^Food & Drinks/ }).click();
+  await picker.getByRole('button', { name: 'Eating out' }).click();
+  await expect(page.getByLabel('Category for the new shop')).toHaveText('Food & Drinks › Eating out');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await expect(page.getByLabel('Category for Komeda')).toHaveText('Food & Drinks › Eating out');
+
+  await page.getByLabel('Category for Komeda').click();
+  picker = page.getByRole('dialog', { name: 'Category for Komeda' });
+  await picker.getByRole('button', { name: /^Food & Drinks/ }).click();
+  await picker.getByRole('button', { name: 'Groceries' }).click();
+  await expect(page.getByLabel('Category for Komeda')).toHaveText('Food & Drinks › Groceries');
+});

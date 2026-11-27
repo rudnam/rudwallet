@@ -1,7 +1,8 @@
 // Monthly spending limits, per category or for everything.
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { inOrder, optionLabel } from '../../categories';
+import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
+import { categoryPath } from '../../categories';
 import { api, errorMessage, type Budget } from '../../api';
+import { CategoryPicker } from '../../components/CategoryPicker';
 import { Meter } from '../../components/charts';
 import { Dialog } from '../../components/Dialog';
 import { CategoryIcon, Icon, icons } from '../../components/Icon';
@@ -106,7 +107,10 @@ function BudgetForm({ budget, onClose, onSaved }: { budget?: Budget; onClose: ()
   const [name, setName] = useState(budget?.name ?? '');
   const [categoryId, setCategoryId] = useState<number | null>(budget?.category_id ?? null);
   const [amount, setAmount] = useState(budget ? amountInput(budget.amount, exp) : '');
+  const [picking, setPicking] = useState(false);
   const [error, setError] = useState('');
+  const catId = useId();
+  const chosen = w.category(categoryId);
 
   async function save(e: FormEvent) {
     e.preventDefault();
@@ -136,44 +140,61 @@ function BudgetForm({ budget, onClose, onSaved }: { budget?: Budget; onClose: ()
   }
 
   return (
-    <Dialog title={budget ? t('Edit budget') : t('New budget')} onClose={onClose}>
-      <form className="stack" onSubmit={save}>
-        <label className="field">
-          {t('Category')}
-          <select value={categoryId ?? ''} onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : null)}>
-            <option value="">{t('All spending')}</option>
-            {inOrder(w.categories)
-              .filter((c) => c.kind === 'expense')
-              .map((c) => (
-                <option key={c.id} value={c.id}>
-                  {optionLabel(c, w.categories)}
-                </option>
-              ))}
-          </select>
-        </label>
-        <label className="field">
-          {t('Monthly limit ({currency})', { currency: w.settings.currency })}
-          <input inputMode="decimal" required value={amount} onChange={(e) => setAmount(e.target.value)} />
-        </label>
-        <label className="field">
-          {t('Name (optional)')}
-          <input value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
-        </label>
-        {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
-        )}
-        <div className="row end">
-          {budget && (
-            <button type="button" className="link danger" onClick={remove}>
-              {t('Delete')}
+    <>
+      <Dialog title={budget ? t('Edit budget') : t('New budget')} onClose={onClose}>
+        <form className="stack" onSubmit={save}>
+          <div className="field">
+            <label htmlFor={catId}>{t('Category')}</label>
+            <button id={catId} type="button" className="picker-trigger" aria-haspopup="dialog" aria-describedby={`${catId}-val`} onClick={() => setPicking(true)}>
+              {chosen ? (
+                <CategoryIcon icon={chosen.icon} name={chosen.name} color={chosen.color} size="small" />
+              ) : (
+                <span className="cat-icon small" aria-hidden="true">
+                  <Icon d={icons.budgets} className="glyph" />
+                </span>
+              )}
+              <span id={`${catId}-val`} className="ellipsis grow">
+                {categoryPath(categoryId, w.categories) ?? t('All spending')}
+              </span>
+              <Icon d={icons.expand} className="picker-caret" />
             </button>
+          </div>
+          <label className="field">
+            {t('Monthly limit ({currency})', { currency: w.settings.currency })}
+            <input inputMode="decimal" required value={amount} onChange={(e) => setAmount(e.target.value)} />
+          </label>
+          <label className="field">
+            {t('Name (optional)')}
+            <input value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
+          </label>
+          {error && (
+            <p role="alert" className="error">
+              {error}
+            </p>
           )}
-          <span className="grow" />
-          <button type="submit">{t('Save')}</button>
-        </div>
-      </form>
-    </Dialog>
+          <div className="row end">
+            {budget && (
+              <button type="button" className="link danger" onClick={remove}>
+                {t('Delete')}
+              </button>
+            )}
+            <span className="grow" />
+            <button type="submit">{t('Save')}</button>
+          </div>
+        </form>
+      </Dialog>
+      {picking && (
+        <CategoryPicker
+          categories={w.categories}
+          kind="expense"
+          selected={categoryId}
+          title={t('Category')}
+          mainTakesInSubs
+          extras={[{ label: t('All spending'), selected: categoryId === null, onPick: () => setCategoryId(null) }]}
+          onPick={(c) => setCategoryId(c.id)}
+          onClose={() => setPicking(false)}
+        />
+      )}
+    </>
   );
 }
