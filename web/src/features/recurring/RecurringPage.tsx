@@ -2,7 +2,7 @@
 // month or few. The server finds them in the records and suggests them; once
 // added, each shows its last payment and when the next is due, and Insights
 // counts what's still to come in the month's estimate.
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
 import { categoryPath } from '../../categories';
 import {
   api,
@@ -287,8 +287,12 @@ function RecurringForm({
   const [accountId, setAccountId] = useState<number | null>(recurring?.account_id ?? null);
   const [matches, setMatches] = useState((recurring?.matches ?? []).join(', '));
   const [active, setActive] = useState(saved?.active ?? true);
+  const [picking, setPicking] = useState(false);
   const [error, setError] = useState('');
+  const catId = useId();
   const recordKind = kind === 'income' ? 'income' : 'expense';
+  const rawChosen = w.category(categoryId);
+  const chosen = rawChosen?.kind === recordKind ? rawChosen : undefined;
 
   async function save(e: FormEvent) {
     e.preventDefault();
@@ -331,135 +335,106 @@ function RecurringForm({
   }
 
   return (
-    <Dialog title={saved ? t('Edit recurring payment') : t('New recurring payment')} onClose={onClose}>
-      <form className="stack" onSubmit={save}>
-        <div className="segmented" role="radiogroup" aria-label={t('Type')}>
-          {kinds.map((k) => (
-            <label key={k.kind} className={kind === k.kind ? 'on' : ''}>
-              <input type="radio" name="kind" value={k.kind} checked={kind === k.kind} onChange={() => setKind(k.kind)} />
-              {t(k.label)}
-            </label>
-          ))}
-        </div>
-        <label className="field">
-          {t('Name')}
-          <input required maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
-        </label>
-        <label className="field">
-          {kind === 'bill' ? t('About how much ({currency})', { currency: w.settings.currency }) : t('Amount ({currency})', { currency: w.settings.currency })}
-          <input inputMode="decimal" required value={amount} onChange={(e) => setAmount(e.target.value)} />
-        </label>
-        <fieldset className="chip-pick">
-          <legend>{t('How often')}</legend>
-          <div className="chips">
-            {Object.entries(every).map(([m, label]) => (
-              <label key={m} className={months === Number(m) ? 'chip on' : 'chip'}>
-                <input type="radio" name="months" checked={months === Number(m)} onChange={() => setMonths(Number(m))} />
-                {t(label)}
+    <>
+      <Dialog title={saved ? t('Edit recurring payment') : t('New recurring payment')} onClose={onClose}>
+        <form className="stack" onSubmit={save}>
+          <div className="segmented" role="radiogroup" aria-label={t('Type')}>
+            {kinds.map((k) => (
+              <label key={k.kind} className={kind === k.kind ? 'on' : ''}>
+                <input type="radio" name="kind" value={k.kind} checked={kind === k.kind} onChange={() => setKind(k.kind)} />
+                {t(k.label)}
               </label>
             ))}
           </div>
-        </fieldset>
-        <label className="field">
-          {t('Next due')}
-          <input type="date" required value={start} onChange={(e) => setStart(e.target.value)} />
-        </label>
-        <RecurringCategoryField
-          categories={w.categories}
-          kind={recordKind}
-          value={categoryId}
-          onChange={setCategoryId}
-        />
-        <label className="field">
-          {t('Account')}
-          <select value={accountId ?? ''} onChange={(e) => setAccountId(e.target.value ? Number(e.target.value) : null)}>
-            <option value="">{t('Any account')}</option>
-            {w.accounts
-              .filter((a) => !a.archived || a.id === accountId)
-              .map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-          </select>
-        </label>
-        <label className="field">
-          {t('Records it matches')}
-          <input value={matches} placeholder={name} onChange={(e) => setMatches(e.target.value)} />
-          <span className="muted small">{t('Shop names or notes that mean this payment, separated by commas. Left empty, its name.')}</span>
-        </label>
-        {saved && (
-          <label className="check">
-            <input type="checkbox" checked={!active} onChange={(e) => setActive(!e.target.checked)} />
-            {t('Stopped (cancelled, or paid off)')}
+          <label className="field">
+            {t('Name')}
+            <input required maxLength={60} value={name} onChange={(e) => setName(e.target.value)} />
           </label>
-        )}
-        {saved && saved.payments.length > 0 && <Payments recurring={saved} />}
-        {error && (
-          <p role="alert" className="error">
-            {error}
-          </p>
-        )}
-        <div className="row end">
-          {saved && (
-            <button type="button" className="link danger" onClick={remove}>
-              {t('Delete')}
+          <label className="field">
+            {kind === 'bill' ? t('About how much ({currency})', { currency: w.settings.currency }) : t('Amount ({currency})', { currency: w.settings.currency })}
+            <input inputMode="decimal" required value={amount} onChange={(e) => setAmount(e.target.value)} />
+          </label>
+          <fieldset className="chip-pick">
+            <legend>{t('How often')}</legend>
+            <div className="chips">
+              {Object.entries(every).map(([m, label]) => (
+                <label key={m} className={months === Number(m) ? 'chip on' : 'chip'}>
+                  <input type="radio" name="months" checked={months === Number(m)} onChange={() => setMonths(Number(m))} />
+                  {t(label)}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <label className="field">
+            {t('Next due')}
+            <input type="date" required value={start} onChange={(e) => setStart(e.target.value)} />
+          </label>
+          <div className="field">
+            <label htmlFor={catId}>{t('Category')}</label>
+            <button
+              id={catId}
+              type="button"
+              className={chosen ? 'picker-trigger' : 'picker-trigger placeholder'}
+              aria-haspopup="dialog"
+              aria-describedby={`${catId}-val`}
+              onClick={() => setPicking(true)}
+            >
+              {chosen && <CategoryIcon icon={chosen.icon} name={chosen.name} color={chosen.color} size="small" />}
+              <span id={`${catId}-val`} className="ellipsis grow">
+                {chosen ? (categoryPath(chosen.id, w.categories) ?? chosen.name) : t('No category')}
+              </span>
+              <Icon d={icons.expand} className="picker-caret" />
             </button>
+          </div>
+          <label className="field">
+            {t('Account')}
+            <select value={accountId ?? ''} onChange={(e) => setAccountId(e.target.value ? Number(e.target.value) : null)}>
+              <option value="">{t('Any account')}</option>
+              {w.accounts
+                .filter((a) => !a.archived || a.id === accountId)
+                .map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <label className="field">
+            {t('Records it matches')}
+            <input value={matches} placeholder={name} onChange={(e) => setMatches(e.target.value)} />
+            <span className="muted small">{t('Shop names or notes that mean this payment, separated by commas. Left empty, its name.')}</span>
+          </label>
+          {saved && (
+            <label className="check">
+              <input type="checkbox" checked={!active} onChange={(e) => setActive(!e.target.checked)} />
+              {t('Stopped (cancelled, or paid off)')}
+            </label>
           )}
-          <span className="grow" />
-          <button type="submit">{saved ? t('Save') : t('Add')}</button>
-        </div>
-      </form>
-    </Dialog>
-  );
-}
-
-function RecurringCategoryField({
-  categories,
-  kind,
-  value,
-  onChange,
-}: {
-  categories: ReturnType<typeof useWallet>['categories'];
-  kind: 'expense' | 'income';
-  value: number | null;
-  onChange: (id: number | null) => void;
-}) {
-  const [picking, setPicking] = useState(false);
-  const chosen = categories.find((c) => c.id === value && c.kind === kind);
-  return (
-    <>
-      <div className="field">
-        <span>{t('Category')}</span>
-        <button
-          type="button"
-          className={chosen ? 'picker-field' : 'picker-field muted'}
-          aria-label={t('Category')}
-          onClick={() => setPicking(true)}
-        >
-          {chosen && <CategoryIcon icon={chosen.icon} name={chosen.name} color={chosen.color} size="small" />}
-          <span className="ellipsis">{chosen ? categoryPath(chosen.id, categories) : t('No category')}</span>
-        </button>
-      </div>
+          {saved && saved.payments.length > 0 && <Payments recurring={saved} />}
+          {error && (
+            <p role="alert" className="error">
+              {error}
+            </p>
+          )}
+          <div className="row end">
+            {saved && (
+              <button type="button" className="link danger" onClick={remove}>
+                {t('Delete')}
+              </button>
+            )}
+            <span className="grow" />
+            <button type="submit">{saved ? t('Save') : t('Add')}</button>
+          </div>
+        </form>
+      </Dialog>
       {picking && (
         <CategoryPicker
-          categories={categories}
-          kind={kind}
-          selected={value}
-          extras={[
-            {
-              label: t('No category'),
-              selected: value === null,
-              onPick: () => {
-                onChange(null);
-                setPicking(false);
-              },
-            },
-          ]}
-          onPick={(c) => {
-            onChange(c.id);
-            setPicking(false);
-          }}
+          categories={w.categories}
+          kind={recordKind}
+          selected={chosen?.id ?? null}
+          title={t('Category')}
+          extras={[{ label: t('No category'), selected: !chosen, onPick: () => setCategoryId(null) }]}
+          onPick={(c) => setCategoryId(c.id)}
           onClose={() => setPicking(false)}
         />
       )}

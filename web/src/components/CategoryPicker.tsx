@@ -12,15 +12,15 @@ import { t } from '../i18n';
 import { CategoryIcon, Icon, icons } from './Icon';
 import { Dialog } from './Dialog';
 
-/** With more categories than this, the picker has a search field. */
-const searchFrom = 10;
-
+/** A choice in the category picker that isn't a category, above them: "All categories", "No category". */
 export interface CategoryPickerExtra {
   label: string;
-  detail?: string;
   selected?: boolean;
   onPick: () => void;
 }
+
+/** With more categories than this, the picker has a search field. */
+const searchFrom = 10;
 
 export function CategoryPicker({
   categories,
@@ -28,9 +28,8 @@ export function CategoryPicker({
   selected,
   title,
   mainTakesInSubs = false,
-  extras,
+  extras = [],
   onPick,
-  onClear,
   onClose,
 }: {
   categories: Category[];
@@ -42,7 +41,6 @@ export function CategoryPicker({
   mainTakesInSubs?: boolean;
   extras?: CategoryPickerExtra[];
   onPick: (c: Category) => void;
-  onClear?: () => void;
   onClose: () => void;
 }) {
   const [query, setQuery] = useState('');
@@ -70,10 +68,17 @@ export function CategoryPicker({
       cameFrom.current = null;
     }
   }, [openMain]);
+  useEffect(() => {
+    pickerRef.current?.querySelector<HTMLElement>('.picker-list button.on, .picker-list button.holds')?.scrollIntoView({ block: 'nearest' });
+  }, []);
   const mainLabel = (c: Category) => (mainTakesInSubs ? t('All of {name}', { name: c.name }) : t('{name} (general)', { name: c.name }));
 
   // Escape on a page goes back to the main categories, as the phone's back does; on the list, it closes.
   const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Enter' && (e.target as HTMLElement).tagName === 'INPUT') {
+      e.preventDefault();
+      return;
+    }
     if (e.key === 'Escape' && openMain && !q) {
       e.preventDefault();
       e.stopPropagation();
@@ -83,7 +88,15 @@ export function CategoryPicker({
 
   const row = (c: Category, label: string, detail?: string) => (
     <li key={c.id}>
-      <button type="button" className={c.id === selected ? 'on' : undefined} aria-pressed={c.id === selected} onClick={() => onPick(c)}>
+      <button
+        type="button"
+        className={c.id === selected ? 'on' : undefined}
+        aria-pressed={c.id === selected}
+        onClick={() => {
+          onPick(c);
+          onClose();
+        }}
+      >
         <CategoryIcon icon={c.icon} name={c.name} color={c.color} />
         <span className="picker-main">
           <span>{label}</span>
@@ -116,10 +129,12 @@ export function CategoryPicker({
   } else if (openMain) {
     body = (
       <div className="stack tight picker-page" key={openMain.id}>
-        <button type="button" className="picker-back" onClick={() => setOpen(null)}>
-          <Icon d={icons.back} className="glyph" />
-          <span>{t('Back')}</span>
-        </button>
+        <div className="picker-subhead">
+          <button type="button" className="picker-back" aria-label={t('Back')} onClick={() => setOpen(null)}>
+            <Icon d={icons.back} className="glyph" />
+          </button>
+          <strong className="picker-subhead-title">{openMain.name}</strong>
+        </div>
         <ul className="picker-list" role="list" aria-label={openMain.name}>
           {row(openMain, mainLabel(openMain))}
           {subcategoriesOf(openMain.id, categories).map((s) => row(s, s.name))}
@@ -127,21 +142,24 @@ export function CategoryPicker({
       </div>
     );
   } else {
-    const extraList: CategoryPickerExtra[] = [
-      ...(extras ?? []),
-      ...(onClear ? [{ label: t('None'), selected: selected === null, onPick: onClear }] : []),
-    ];
     body = (
       <>
-        {extraList.length > 0 && (
-          <ul className="picker-list" role="list">
-            {extraList.map((e, idx) => (
-              <li key={`${idx}:${e.label}`}>
-                <button type="button" className={e.selected ? 'on' : undefined} aria-pressed={e.selected} onClick={e.onPick}>
-                  <CategoryIcon />
+        {extras.length > 0 && (
+          <ul className="picker-list picker-extras" role="list">
+            {extras.map((e) => (
+              <li key={e.label}>
+                <button
+                  type="button"
+                  className={e.selected ? 'on' : undefined}
+                  aria-pressed={!!e.selected}
+                  onClick={() => {
+                    e.onPick();
+                    onClose();
+                  }}
+                >
+                  <span className="picker-blank" aria-hidden="true" />
                   <span className="picker-main">
-                    <span>{e.label}</span>
-                    {e.detail && <span className="muted small">{e.detail}</span>}
+                    <span className={e.selected ? undefined : 'muted'}>{e.label}</span>
                   </span>
                   {e.selected && <Icon d={icons.check} className="picker-tick" />}
                 </button>

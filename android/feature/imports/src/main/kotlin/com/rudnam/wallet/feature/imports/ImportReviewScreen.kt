@@ -22,11 +22,11 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
@@ -54,6 +54,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rudnam.wallet.core.designsystem.component.Notice
+import com.rudnam.wallet.core.designsystem.component.NoticeTone
+import com.rudnam.wallet.core.designsystem.component.ProblemMessage
+import com.rudnam.wallet.core.designsystem.component.SectionHeader
 import com.rudnam.wallet.core.designsystem.component.WalletPanel
 import com.rudnam.wallet.core.designsystem.icon.LineIcon
 import com.rudnam.wallet.core.designsystem.icon.WalletIcons
@@ -72,11 +76,12 @@ import com.rudnam.wallet.core.model.ImportRowStatus
 import com.rudnam.wallet.core.model.ImportSource
 import com.rudnam.wallet.core.model.TransactionKind
 import com.rudnam.wallet.core.model.Wallet
-import com.rudnam.wallet.core.ui.CategoryPickerSheet
-import com.rudnam.wallet.core.ui.CategoryPickerExtra
 import com.rudnam.wallet.core.ui.CategoryIcon
+import com.rudnam.wallet.core.ui.CategoryPickerExtra
+import com.rudnam.wallet.core.ui.CategoryPickerSheet
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
 import com.rudnam.wallet.core.ui.serverText
+import com.rudnam.wallet.core.designsystem.R as DesignSystemR
 
 @Composable
 internal fun ImportReviewDestination(navigation: ImportsNavigation, @Suppress("UNUSED_PARAMETER") snackbar: SnackbarHostState, viewModel: ImportReviewViewModel = hiltViewModel()) {
@@ -118,9 +123,9 @@ internal fun ImportReviewScreen(source: ImportSource, wallet: Wallet?, stage: Re
             ReviewStage.Loading -> item {
                 Loading(stringResource(if (source == ImportSource.IcCard) R.string.feature_imports_reading_card else R.string.feature_imports_reading_file))
             }
-            ReviewStage.Unreadable -> item { Problem(stringResource(R.string.feature_imports_unreadable), onRetry = null) }
+            ReviewStage.Unreadable -> item { ProblemMessage(stringResource(R.string.feature_imports_unreadable)) }
             is ReviewStage.Failed -> item {
-                Problem(
+                ProblemMessage(
                     if (stage.offline) stringResource(R.string.feature_imports_offline) else stage.message.ifEmpty { null }?.let { serverText(it) } ?: stringResource(R.string.feature_imports_failed),
                     onRetry = actions::retry,
                 )
@@ -137,25 +142,6 @@ private fun Loading(text: String? = null) {
         CircularProgressIndicator()
         text?.let { Text(it, color = WalletTheme.colors.muted) }
     }
-}
-
-@Composable
-private fun Problem(text: String, onRetry: (() -> Unit)?) {
-    Column(Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(text, color = WalletTheme.colors.attention)
-        onRetry?.let { TextButton(onClick = it) { Text(stringResource(R.string.feature_imports_try_again)) } }
-    }
-}
-
-@Composable
-private fun Note(text: String, warn: Boolean = false) {
-    Text(
-        text,
-        style = MaterialTheme.typography.bodyMedium,
-        modifier = Modifier.fillMaxWidth()
-            .background(if (warn) WalletTheme.colors.attentionSoft else WalletTheme.colors.sunken, MaterialTheme.shapes.small)
-            .padding(12.dp),
-    )
 }
 
 private fun LazyListScope.review(
@@ -178,8 +164,8 @@ private fun LazyListScope.review(
         return
     }
     item(key = "summary") { Summary(p, wallet, stage.checking) }
-    if (p.gap) item { Note(stringResource(R.string.feature_imports_gap_review), warn = true) }
-    item { SectionTitle(stringResource(R.string.feature_imports_where_they_go)) }
+    if (p.gap) item { Notice(stringResource(R.string.feature_imports_gap_review), tone = NoticeTone.Attention) }
+    item { SectionHeader(stringResource(R.string.feature_imports_where_they_go), Modifier.padding(top = 8.dp)) }
     item(key = "accounts") {
         WalletPanel(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -205,11 +191,11 @@ private fun LazyListScope.review(
         item(key = "categories") { CategoryGroups(p, wallet, stage, actions) }
     }
     if (p.problems.isNotEmpty()) {
-        item { Note(stringResource(R.string.feature_imports_problems) + "\n" + p.problems.joinToString("\n") { "• $it" }, warn = true) }
+        item { Notice(stringResource(R.string.feature_imports_problems) + "\n" + p.problems.joinToString("\n") { "• $it" }, tone = NoticeTone.Attention) }
     }
     if (p.rows.isNotEmpty()) {
         item {
-            SectionTitle(
+            SectionHeader(
                 stringResource(
                     when (p.source) {
                         ImportSource.IcCard -> R.string.feature_imports_card_entries
@@ -217,6 +203,7 @@ private fun LazyListScope.review(
                         else -> R.string.feature_imports_file_rows
                     },
                 ),
+                Modifier.padding(top = 8.dp),
             )
         }
         // A card's entries come oldest first; the newest shows first, as on the card page. A statement stays in its order.
@@ -239,7 +226,7 @@ private fun LazyListScope.review(
             }
         }
     }
-    stage.error?.let { item { Problem(it.ifEmpty { null }?.let { m -> serverText(m) } ?: stringResource(R.string.feature_imports_offline), onRetry = null) } }
+    stage.error?.let { item { ProblemMessage(it.ifEmpty { null }?.let { m -> serverText(m) } ?: stringResource(R.string.feature_imports_offline)) } }
 }
 
 /** Rows by what becomes of them: to add first, then those already there, then the rest. */
@@ -247,11 +234,6 @@ private fun rowGroups(rows: List<ImportRow>): List<Pair<ImportRowStatus, List<Im
     val order = listOf(ImportRowStatus.New, ImportRowStatus.Imported, ImportRowStatus.Matched, ImportRowStatus.Skipped, ImportRowStatus.None)
     val group = { r: ImportRow -> if (r.status == ImportRowStatus.Start) ImportRowStatus.None else r.status }
     return order.mapNotNull { s -> rows.filter { group(it) == s }.takeIf { it.isNotEmpty() }?.let { s to it } }
-}
-
-@Composable
-private fun SectionTitle(text: String) {
-    Text(text, style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 8.dp).semantics { heading() })
 }
 
 @Composable
@@ -679,7 +661,7 @@ private fun BalanceNote(source: ImportSource, b: ImportBalance, wallet: Wallet, 
             if (b.misplaced != 0L) add(stringResource(R.string.feature_imports_misplaced, format.money(b.misplaced, signed = true), account))
         }
     }
-    Note(lines.joinToString("\n"), warn = b.difference != 0L)
+    Notice(lines.joinToString("\n"), tone = if (b.difference != 0L) NoticeTone.Attention else NoticeTone.Info)
 }
 
 /** The import's buttons, kept at the bottom of the screen however long the review. */
@@ -704,7 +686,7 @@ private fun ImportBar(stage: ReviewStage.Ready, actions: ReviewActions, navigati
             horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextButton(onClick = navigation::back, enabled = !stage.busy) { Text(stringResource(R.string.feature_imports_cancel)) }
+            TextButton(onClick = navigation::back, enabled = !stage.busy) { Text(stringResource(DesignSystemR.string.designsystem_cancel)) }
             Button(
                 onClick = actions::submit,
                 enabled = enabled,
@@ -724,14 +706,14 @@ private fun ImportBar(stage: ReviewStage.Ready, actions: ReviewActions, navigati
 
 private fun LazyListScope.done(stage: ReviewStage.Done, wallet: Wallet, actions: ReviewActions, navigation: ImportsNavigation) {
     val undone = stage.undo as? UndoState.Undone
-    item { if (undone == null) ImportSummary(stage.result, navigation) else Note(pluralStringResource(R.plurals.feature_imports_undone, undone.ids.size, undone.ids.size)) }
+    item { if (undone == null) ImportSummary(stage.result, navigation) else Notice(pluralStringResource(R.plurals.feature_imports_undone, undone.ids.size, undone.ids.size)) }
     if (undone == null) {
         stage.result.balance?.takeIf { it.accountId != null }?.let { b ->
             item { BalanceNote(stage.preview.source, b, wallet, stage.matchBalance, done = true, newName = "") }
         }
     }
     (stage.undo as? UndoState.Failed)?.let { f ->
-        item { Problem(f.message.ifEmpty { null }?.let { stringResource(R.string.feature_imports_undo_failed, serverText(it)) } ?: stringResource(R.string.feature_imports_offline), onRetry = null) }
+        item { ProblemMessage(f.message.ifEmpty { null }?.let { stringResource(R.string.feature_imports_undo_failed, serverText(it)) } ?: stringResource(R.string.feature_imports_offline)) }
     }
     item {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
@@ -751,7 +733,7 @@ private fun LazyListScope.done(stage: ReviewStage.Done, wallet: Wallet, actions:
             Button(
                 onClick = navigation::back,
                 colors = ButtonDefaults.buttonColors(containerColor = WalletTheme.colors.action, contentColor = WalletTheme.colors.onAction),
-            ) { Text(stringResource(R.string.feature_imports_done)) }
+            ) { Text(stringResource(DesignSystemR.string.designsystem_done)) }
         }
     }
 }

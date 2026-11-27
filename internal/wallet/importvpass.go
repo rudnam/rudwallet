@@ -231,9 +231,14 @@ func (s *Store) PreviewVpass(ctx context.Context, userID int64, data []byte, acc
 	if err != nil {
 		return p, err
 	}
+	dry, err := s.importVpass(ctx, userID, data, accounts, categories, true)
+	if err != nil {
+		return p, err
+	}
+	p.New, p.Duplicates, p.Matched, p.Skipped, p.Rows = dry.Imported, dry.Duplicates, dry.Matched, dry.Skipped, dry.Rows
 	index := map[string]int{}
-	for _, r := range rows {
-		if PayeeKey(r.payee) == "" {
+	for i, r := range rows {
+		if !dry.added[i] || PayeeKey(r.payee) == "" {
 			continue
 		}
 		k := groupKey(r.kind, r.payee)
@@ -263,11 +268,6 @@ func (s *Store) PreviewVpass(ctx context.Context, userID int64, data []byte, acc
 		return 1
 	})
 	p.NewCategories = missingDefaults(cats)
-	dry, err := s.importVpass(ctx, userID, data, accounts, categories, true)
-	if err != nil {
-		return p, err
-	}
-	p.New, p.Duplicates, p.Matched, p.Skipped, p.Rows = dry.Imported, dry.Duplicates, dry.Matched, dry.Skipped, dry.Rows
 	return p, nil
 }
 
@@ -472,10 +472,10 @@ func (s *Store) importVpass(ctx context.Context, userID int64, data []byte, acco
 	if err != nil {
 		return res, err
 	}
-	res.Rows = []ImportRow{}
-	for _, r := range rows {
+	res.Rows, res.added = []ImportRow{}, map[int]bool{}
+	for i, r := range rows {
 		t := Transaction{Kind: r.kind, Amount: r.amount, AccountID: account[r.card], OccurredAt: r.when, Payee: r.payee, Note: r.note}
-		row := ImportRow{OccurredAt: r.when, Kind: r.kind, Amount: r.amount, Payee: r.payee, Note: r.note, Account: names[t.AccountID]}
+		row := ImportRow{OccurredAt: r.when, Kind: r.kind, Amount: r.amount, Payee: r.payee, Note: r.note, Account: names[t.AccountID], AllDay: true}
 		run.period(r.when)
 
 		// A purchase is on the statement by its day only; its notification
@@ -516,6 +516,7 @@ func (s *Store) importVpass(ctx context.Context, userID int64, data []byte, acco
 			}
 			status = "new"
 			res.Imported++
+			res.added[i] = true
 		} else {
 			row.MatchedID = &id
 			if status == "imported" {

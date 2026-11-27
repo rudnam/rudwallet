@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -114,6 +115,11 @@ func TestImportPreviewIsTheImport(t *testing.T) {
 	p := preview(choices)
 	if p.New != 2 || p.Matched != 1 || p.Skipped != 1 || p.Duplicates != 0 || len(p.Rows) != 4 {
 		t.Errorf("preview: new %d, matched %d, skipped %d, duplicates %d, %d rows", p.New, p.Matched, p.Skipped, p.Duplicates, len(p.Rows))
+	}
+	// Categories only for what will be recorded: not the matched ローソン,
+	// nor the skipped points payment, nor the top-up.
+	if len(p.Categories) != 1 || p.Categories[0].Name != "ファミリーマート" {
+		t.Errorf("categories %+v", p.Categories)
 	}
 	status := map[string]string{}
 	for _, r := range p.Rows {
@@ -321,11 +327,15 @@ func TestImportBudgetBakersDuplicates(t *testing.T) {
 	}
 	var p wallet.BudgetBakersPreview
 	c.send("/api/import/budgetbakers?preview=1", "text/csv", []byte(csv), nil, &p)
-	if p.New != 2 || p.Matched != 1 {
-		t.Errorf("preview: new %d, matched %d", p.New, p.Matched)
+	if p.New != 2 || p.Matched != 1 || len(p.Categories) != 1 || p.Categories[0].Count != 2 || p.Categories[0].Total != 1218 {
+		t.Errorf("preview: new %d, matched %d, categories %+v (want the cafe left out)", p.New, p.Matched, p.Categories)
 	}
 	if res := bb(csv); res.Imported != 2 || res.Matched != 1 {
 		t.Errorf("import: %+v (want the cafe already recorded)", res)
+	}
+	c.send("/api/import/budgetbakers?preview=1", "text/csv", []byte(csv), nil, &p)
+	if p.New != 0 || len(p.Categories) != 0 {
+		t.Errorf("preview again: new %d, categories %+v", p.New, p.Categories)
 	}
 	edited := strings.Replace(csv, "Cash;Food & Drinks;JPY;318;318;Expense;Cash;;", "Cash;Groceries;JPY;318;318;Expense;Cash;milk;", 1)
 	if res := bb(edited); res.Imported != 0 || res.Duplicates != 2 || res.Matched != 1 {
@@ -360,5 +370,70 @@ func TestImportPayPayForeignPaymentMatchesItsNotification(t *testing.T) {
 	res := payPayImport(t, c, csv, map[string]int64{"Credit VISA 8602": card})
 	if res.Matched != 2 || res.Imported != 1 {
 		t.Errorf("import %+v (want the two foreign payments matched to their notifications, the yen one added)", res)
+	}
+}
+
+// A PayPay statement row finds the notification's record of the same
+// payment in another account (the notification guessed it), and the one
+// with the whole amount when points paid part; it moves and corrects that
+// record instead of adding the payment again.
+func TestImportPayPayCorrectsNotifiedRecords(t *testing.T) {
+	ts, conn := newTestServerDB(t)
+	c := newClient(t, ts)
+	c.signup("a@example.com")
+	cash := overview(t, c).Accounts[0].ID
+	card := newAccount(t, c, "Card 8602", "credit_card")
+	for _, r := range []map[string]any{
+		// Same amount, in cash, a few seconds off.
+		{"kind": "expense", "amount": 150, "account_id": cash, "occurred_at": time.Date(2026, 11, 16, 3, 1, 51, 0, time.UTC), "payee": "ブルボン"},
+		// The whole 200, of which points paid 96, twenty minutes off.
+		{"kind": "expense", "amount": 200, "account_id": cash, "occurred_at": time.Date(2026, 11, 16, 3, 20, 0, 0, time.UTC), "payee": "ブルボン"},
+	} {
+		r["status"] = "confirmed"
+		var tx wallet.Transaction
+		if code := c.do("POST", "/api/transactions", r, &tx); code != 201 {
+			t.Fatalf("create record: %d", code)
+		}
+		// Recorded from a notification, as the phone would have.
+		if _, err := conn.Exec(`UPDATE transactions SET source = 'notification', source_label = 'PayPay' WHERE id = $1`, tx.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// A record typed in by hand in another account isn't a notification's.
+	c.do("POST", "/api/transactions", map[string]any{"kind": "expense", "amount": 300, "account_id": cash,
+		"occurred_at": time.Date(2026, 11, 16, 5, 0, 0, 0, time.UTC), "payee": "Lunch"}, nil)
+
+	csv := strings.Join([]string{
+		payPayHeader,
+		`2026/11/16 12:01:50,150,-,-,-,-,-,Payment,ブルボン,Credit VISA 8602,-,-,n-01`,
+		`2026/11/16 12:00:33,200,-,-,-,-,-,Payment,ブルボン,"PayPay Point (96yen), Credit VISA 8602 (104yen)",-,-,n-02`,
+		`2026/11/16 14:00:00,300,-,-,-,-,-,Payment,ランチ,Credit VISA 8602,-,-,n-03`,
+	}, "\n")
+	res := payPayImport(t, c, csv, map[string]int64{"Credit VISA 8602": card, "PayPayポイント": wallet.SkipAccount})
+	if res.Matched != 2 || res.Imported != 1 || res.Skipped != 1 {
+		t.Errorf("import %+v (want both notifications matched, the hand-typed one's row added, points skipped)", res)
+	}
+	var inCash, onCard []int64
+	for _, r := range records(t, c) {
+		if r.AccountID == cash {
+			inCash = append(inCash, r.Amount)
+		} else {
+			onCard = append(onCard, r.Amount)
+		}
+	}
+	slices.Sort(onCard)
+	if !slices.Equal(inCash, []int64{300}) || !slices.Equal(onCard, []int64{104, 150, 300}) {
+		t.Errorf("cash %v, card %v; want cash [300], card [104 150 300]", inCash, onCard)
+	}
+
+	// The card is placed for the next notification, and importing again
+	// adds nothing.
+	var rules wallet.Rules
+	c.do("GET", "/api/rules", nil, &rules)
+	if len(rules.Cards) != 1 || rules.Cards[0].Source != "PayPay" || rules.Cards[0].AccountID != card {
+		t.Errorf("card rules %+v", rules.Cards)
+	}
+	if again := payPayImport(t, c, csv, map[string]int64{"Credit VISA 8602": card, "PayPayポイント": wallet.SkipAccount}); again.Imported != 0 {
+		t.Errorf("import again %+v", again)
 	}
 }

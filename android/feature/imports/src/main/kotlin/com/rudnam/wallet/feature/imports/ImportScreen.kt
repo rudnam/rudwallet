@@ -1,60 +1,62 @@
 package com.rudnam.wallet.feature.imports
 
-import java.time.ZoneId
-import com.rudnam.wallet.core.ui.rememberMoneyFormat
-import com.rudnam.wallet.core.model.Wallet
-import com.rudnam.wallet.core.model.ImportBatch
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.compose.LifecycleResumeEffect
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.platform.LocalResources
-import androidx.compose.ui.Alignment
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.SnackbarResult
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.clickable
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rudnam.wallet.core.designsystem.component.SectionHeader
+import com.rudnam.wallet.core.designsystem.component.WalletListItem
 import com.rudnam.wallet.core.designsystem.component.WalletPanel
+import com.rudnam.wallet.core.designsystem.component.WalletTopBar
 import com.rudnam.wallet.core.designsystem.icon.LineIcon
 import com.rudnam.wallet.core.designsystem.icon.WalletIcons
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
+import com.rudnam.wallet.core.model.ImportBatch
 import com.rudnam.wallet.core.model.ImportSource
+import com.rudnam.wallet.core.model.Wallet
+import com.rudnam.wallet.core.ui.rememberMoneyFormat
+import java.time.ZoneId
 
 /** Where the import pages' taps lead. */
 interface ImportsNavigation {
@@ -84,13 +86,10 @@ internal fun ImportPage(
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         contentWindowInsets = TopAppBarDefaults.windowInsets,
         topBar = {
-            TopAppBar(
+            WalletTopBar(
                 title = { Text(title) },
-                navigationIcon = {
-                    IconButton(onClick = navigation::back) { LineIcon(WalletIcons.back, contentDescription = stringResource(R.string.feature_imports_back)) }
-                },
+                onBack = navigation::back,
                 scrollBehavior = scroll,
-                colors = TopAppBarDefaults.topAppBarColors(scrolledContainerColor = WalletTheme.colors.surface),
             )
         },
         bottomBar = bottomBar,
@@ -214,11 +213,7 @@ internal fun ImportScreen(
         if (wallet != null && history.batches.isNotEmpty()) {
             val visible = if (showAllHistory) history.batches else history.batches.take(RECENT_PREVIEW)
             item {
-                Text(
-                    stringResource(R.string.feature_imports_recent),
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.padding(start = 4.dp, top = 12.dp).semantics { heading() },
-                )
+                SectionHeader(stringResource(R.string.feature_imports_recent), Modifier.padding(top = 12.dp))
             }
             item {
                 WalletPanel(Modifier.fillMaxWidth()) {
@@ -292,23 +287,20 @@ private fun BatchRow(b: ImportBatch, wallet: Wallet, undoing: Boolean, onUndo: (
         add(pluralStringResource(R.plurals.feature_imports_batch_added, b.imported, b.imported))
         if (already > 0) add(pluralStringResource(R.plurals.feature_imports_batch_already, already, already))
     }.joinToString(" · ")
-    Row(
-        Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = if (b.undone) WalletTheme.colors.muted else WalletTheme.colors.text)
-            Text(
-                listOfNotNull(format.dateTime(b.createdAt), period).joinToString(" · "),
-                style = MaterialTheme.typography.bodySmall,
-                color = WalletTheme.colors.muted,
-            )
-            Text(what, style = MaterialTheme.typography.bodySmall, color = WalletTheme.colors.muted)
-        }
-        when {
-            b.undone -> Text(stringResource(R.string.feature_imports_batch_undone), style = MaterialTheme.typography.labelMedium, color = WalletTheme.colors.muted, modifier = Modifier.padding(end = 8.dp))
-            undoing -> CircularProgressIndicator(Modifier.padding(end = 12.dp).size(18.dp), strokeWidth = 2.dp)
-            onUndo != null && b.remaining > 0 -> TextButton(onClick = onUndo) { Text(stringResource(R.string.feature_imports_undo_short)) }
-        }
-    }
+    WalletListItem(
+        headline = { Text(title, color = if (b.undone) WalletTheme.colors.muted else WalletTheme.colors.text) },
+        supporting = {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(listOfNotNull(format.dateTime(b.createdAt), period).joinToString(" · "))
+                Text(what)
+            }
+        },
+        trailing = {
+            when {
+                b.undone -> Text(stringResource(R.string.feature_imports_batch_undone), style = MaterialTheme.typography.labelMedium, color = WalletTheme.colors.muted)
+                undoing -> CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                onUndo != null && b.remaining > 0 -> TextButton(onClick = onUndo) { Text(stringResource(R.string.feature_imports_undo_short)) }
+            }
+        },
+    )
 }

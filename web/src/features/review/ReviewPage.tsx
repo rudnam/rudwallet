@@ -2,8 +2,7 @@
 // confirm them one by one or all at once (which teaches the app the shop's
 // category and the card's account), or fix them. A possible duplicate shows
 // the record it matches, and can be deleted in one tap.
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
-import { categoryPath } from '../../categories';
+import { useEffect, useId, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
 import { api, errorMessage, type Transaction } from '../../api';
 import { CategoryPicker } from '../../components/CategoryPicker';
 import { TransactionForm } from '../../components/TransactionForm';
@@ -169,6 +168,8 @@ function ReviewItem({
   const [error, setError] = useState('');
   const overriding = t.payee !== '' && t.category_id !== null && categoryId !== null && categoryId !== t.category_id;
   const [busy, setBusy] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const catValId = useId();
   const when = new Date(t.occurred_at);
   const title = t.payee || tr('Payment');
 
@@ -227,7 +228,6 @@ function ReviewItem({
 
   const matchedAt = match && new Date(match.occurred_at);
   const cat = w.category(categoryId);
-  const [picking, setPicking] = useState(false);
   const canConfirm = t.amount > 0 && !t.duplicate_of_id;
   // The card that paid, where it says more than the account's name.
   const paidWith = t.source_label && t.source_label !== w.account(t.account_id)?.name ? t.source_label : w.account(t.account_id)?.name;
@@ -253,32 +253,14 @@ function ReviewItem({
                 type="button"
                 className={categoryId === null ? 'chip-select attention' : 'chip-select'}
                 aria-label={tr('Category for {name}', { name: title })}
+                aria-haspopup="dialog"
+                aria-describedby={catValId}
                 onClick={() => setPicking(true)}
               >
-                <span className="ellipsis">{cat ? categoryPath(cat.id, w.categories) : tr('Category')}</span>
+                <span id={catValId} className="ellipsis">
+                  {cat ? cat.name : tr('Category')}
+                </span>
               </button>
-              {picking && (
-                <CategoryPicker
-                  categories={w.categories}
-                  kind={t.kind === 'transfer' ? undefined : t.kind}
-                  selected={categoryId}
-                  extras={[
-                    {
-                      label: tr('No category'),
-                      selected: categoryId === null,
-                      onPick: () => {
-                        onPick(null);
-                        setPicking(false);
-                      },
-                    },
-                  ]}
-                  onPick={(c) => {
-                    onPick(c.id);
-                    setPicking(false);
-                  }}
-                  onClose={() => setPicking(false)}
-                />
-              )}
               <button type="button" className="small-button" disabled={busy} onClick={confirm}>
                 {tr('Confirm')}
               </button>
@@ -327,6 +309,16 @@ function ReviewItem({
         <p role="alert" className="error review-note">
           {error}
         </p>
+      )}
+      {picking && (
+        <CategoryPicker
+          categories={w.categories}
+          kind={t.kind === 'transfer' ? undefined : t.kind}
+          selected={categoryId}
+          title={tr('Category for {name}', { name: title })}
+          onPick={(c) => onPick(c.id)}
+          onClose={() => setPicking(false)}
+        />
       )}
     </li>
   );

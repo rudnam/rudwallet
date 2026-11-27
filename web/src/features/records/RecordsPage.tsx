@@ -1,10 +1,11 @@
 // All records, a month at a time, with filters; a search, or a tag, looks
 // through every month. Records can be chosen to delete, categorise, move or
 // tag many at once.
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 import { categoryPath } from '../../categories';
-import { api, errorMessage, type BulkChange, type Tag, type Transaction, type TransactionFilter } from '../../api';
+import { api, errorMessage, type BulkChange, type CategoryKind, type Tag, type Transaction, type TransactionFilter } from '../../api';
 import { CategoryPicker } from '../../components/CategoryPicker';
+import { Icon, icons } from '../../components/Icon';
 import { cleanTag } from '../../components/TagField';
 import { TransactionForm } from '../../components/TransactionForm';
 import { TransactionList } from '../../components/TransactionList';
@@ -45,6 +46,7 @@ export function RecordsPage({
   const [q, setQ] = useState(search);
   const [open, setOpen] = useState<Transaction | null>(null);
   const [pickingFilter, setPickingFilter] = useState(false);
+  const filterValId = useId();
   // While choosing records: the chosen IDs.
   const [selected, setSelected] = useState<Set<number> | null>(null);
 
@@ -162,21 +164,26 @@ export function RecordsPage({
         <button
           type="button"
           aria-label={t('Category')}
-          className={category ? 'picker-trigger set' : 'picker-trigger'}
+          aria-haspopup="dialog"
+          aria-describedby={filterValId}
+          className={category ? 'filter-trigger set' : 'filter-trigger'}
           onClick={() => setPickingFilter(true)}
         >
-          {category === 'none' ? t('No category') : category ? categoryPath(category, w.categories) ?? t('Category') : t('Category')}
+          <span id={filterValId} className="ellipsis">
+            {category === undefined ? t('Category') : category === 'none' ? t('No category') : (categoryPath(category, w.categories) ?? t('Category'))}
+          </span>
         </button>
         {pickingFilter && (
           <CategoryPicker
             categories={w.categories}
             selected={typeof category === 'number' ? category : null}
-            mainTakesInSubs={true}
+            title={t('Category')}
+            mainTakesInSubs
             extras={[
-              { label: t('Category'), selected: !category, onPick: () => { set({ category: '' }); setPickingFilter(false); } },
-              { label: t('No category'), selected: category === 'none', onPick: () => { set({ category: 'none' }); setPickingFilter(false); } },
+              { label: t('All categories'), selected: category === undefined, onPick: () => set({ category: undefined }) },
+              { label: t('No category'), selected: category === 'none', onPick: () => set({ category: 'none' }) },
             ]}
-            onPick={(c) => { set({ category: String(c.id) }); setPickingFilter(false); }}
+            onPick={(c) => set({ category: c.id })}
             onClose={() => setPickingFilter(false)}
           />
         )}
@@ -265,6 +272,7 @@ function BulkBar({
   const w = useWallet();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
+  const [pickingCategory, setPickingCategory] = useState(false);
   const [error, setError] = useState('');
   const n = selected.size;
   const all = n === records.length;
@@ -320,7 +328,11 @@ function BulkBar({
     } else if (v.startsWith('add:')) apply({ ids, action: 'tag', tag: v.slice(4) });
     else if (v.startsWith('remove:')) apply({ ids, action: 'untag', tag: v.slice(7) });
   }
-  const [pickingCat, setPickingCat] = useState(false);
+  const chosenKinds = new Set(records.filter((r) => selected.has(r.id)).map((r) => r.kind));
+  const bulkKind: CategoryKind | undefined =
+    chosenKinds.size === 1 && (chosenKinds.has('expense') || chosenKinds.has('income'))
+      ? ([...chosenKinds][0] as CategoryKind)
+      : undefined;
 
   return (
     <div className="card bulk-bar" role="region" aria-label={t('Chosen records')}>
@@ -332,29 +344,17 @@ function BulkBar({
       </button>
       {n > 0 && (
         <div className="bulk-actions">
-          <button type="button" className="picker-field" aria-label={t('Set category')} disabled={busy} onClick={() => setPickingCat(true)}>
-            {t('Category…')}
+          <button
+            type="button"
+            className="picker-trigger"
+            aria-label={t('Set category')}
+            aria-haspopup="dialog"
+            disabled={busy}
+            onClick={() => setPickingCategory(true)}
+          >
+            <span className="ellipsis grow">{t('Category…')}</span>
+            <Icon d={icons.expand} className="picker-caret" />
           </button>
-          {pickingCat && (
-            <CategoryPicker
-              categories={w.categories}
-              selected={null}
-              extras={[
-                {
-                  label: t('No category'),
-                  onPick: () => {
-                    setPickingCat(false);
-                    apply({ ids, action: 'categorize', category_id: null });
-                  },
-                },
-              ]}
-              onPick={(c) => {
-                setPickingCat(false);
-                apply({ ids, action: 'categorize', category_id: c.id });
-              }}
-              onClose={() => setPickingCat(false)}
-            />
-          )}
           <select
             aria-label={t('Move to account')}
             value=""
@@ -404,6 +404,17 @@ function BulkBar({
         <p role="alert" className="error small">
           {error}
         </p>
+      )}
+      {pickingCategory && (
+        <CategoryPicker
+          categories={w.categories}
+          kind={bulkKind}
+          selected={null}
+          title={t('Set category')}
+          extras={[{ label: t('No category'), selected: false, onPick: () => apply({ ids, action: 'categorize', category_id: null }) }]}
+          onPick={(c) => apply({ ids, action: 'categorize', category_id: c.id })}
+          onClose={() => setPickingCategory(false)}
+        />
       )}
     </div>
   );

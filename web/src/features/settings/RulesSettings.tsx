@@ -1,11 +1,11 @@
 // Settings › Shops and cards: what confirming payments taught the app (each
 // shop's category, each card's account), to check, correct or forget, and
 // shops to add by hand before their first payment.
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useId, useState, type FormEvent } from 'react';
 import { categoryPath } from '../../categories';
 import { api, errorMessage, type Category, type Rules } from '../../api';
 import { CategoryPicker } from '../../components/CategoryPicker';
-import { CategoryIcon } from '../../components/Icon';
+import { CategoryIcon, Icon, icons } from '../../components/Icon';
 import { href } from '../../router';
 import { useToast } from '../../toast';
 import { useWallet } from '../../wallet';
@@ -164,28 +164,31 @@ function CategorySelect({
   onChange: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const chosenId = value ? Number(value) : null;
-  const chosen = categories.find((c) => c.id === chosenId);
+  const valId = useId();
+  const selectedId = value ? Number(value) : null;
+  const current = selectedId !== null ? categories.find((c) => c.id === selectedId) : undefined;
   return (
     <>
       <button
         type="button"
-        className={chosen ? 'picker-field' : 'picker-field muted'}
+        className={current ? 'picker-trigger' : 'picker-trigger placeholder'}
         aria-label={label}
+        aria-haspopup="dialog"
+        aria-describedby={valId}
         onClick={() => setOpen(true)}
       >
-        {chosen && <CategoryIcon icon={chosen.icon} name={chosen.name} color={chosen.color} size="small" />}
-        <span className="ellipsis">{chosen ? categoryPath(chosen.id, categories) : t('Pick a category')}</span>
+        {current && <CategoryIcon icon={current.icon} name={current.name} color={current.color} size="small" />}
+        <span id={valId} className="ellipsis grow">
+          {current ? (categoryPath(current.id, categories) ?? current.name) : t('Pick a category')}
+        </span>
+        <Icon d={icons.expand} className="picker-caret" />
       </button>
       {open && (
         <CategoryPicker
           categories={categories}
-          selected={chosenId}
+          selected={selectedId}
           title={label}
-          onPick={(c) => {
-            onChange(String(c.id));
-            setOpen(false);
-          }}
+          onPick={(c) => onChange(String(c.id))}
           onClose={() => setOpen(false)}
         />
       )}

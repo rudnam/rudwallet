@@ -181,16 +181,18 @@ func TestMCP(t *testing.T) {
 		t.Errorf("a manual record taught a card %+v", rules.Cards)
 	}
 	day := time.Date(2026, 9, 20, 4, 0, 0, 0, time.UTC)
+	// The PayPay Card's first payment is guessed onto the account named
+	// like it; the user says it's paid in cash.
 	notified := pay(t, alice, "ローソン", 550, day)
-	if notified.AccountID == card.ID {
-		t.Fatalf("payment already on the card %+v", notified)
+	if notified.AccountID != card.ID {
+		t.Fatalf("payment not guessed onto the card %+v", notified)
 	}
-	tool(t, ts.URL, tok.Token, "set_record_account", map[string]any{"record_id": notified.ID, "account_id": card.ID})
-	if alice.do("GET", "/api/rules", nil, &rules); len(rules.Cards) != 1 || rules.Cards[0].AccountID != card.ID {
+	tool(t, ts.URL, tok.Token, "set_record_account", map[string]any{"record_id": notified.ID, "account_id": cash})
+	if alice.do("GET", "/api/rules", nil, &rules); len(rules.Cards) != 1 || rules.Cards[0].AccountID != int64(cash) {
 		t.Errorf("card rules %+v", rules.Cards)
 	}
-	if next := pay(t, alice, "ローソン", 300, day.Add(time.Hour)); next.AccountID != card.ID {
-		t.Errorf("the card's next payment went to %d, not the card", next.AccountID)
+	if next := pay(t, alice, "ローソン", 300, day.Add(time.Hour)); next.AccountID != int64(cash) {
+		t.Errorf("the card's next payment went to %d, not cash", next.AccountID)
 	}
 	sp, _ := tool(t, ts.URL, tok.Token, "spending_by_category", map[string]any{"from": "2026-10-01", "to": "2026-11-01"})
 	if sp["total"] != "8525" || sp["categories"].([]any)[0].(map[string]any)["category"] != "Fitness" {

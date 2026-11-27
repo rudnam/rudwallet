@@ -129,6 +129,8 @@ type payPayRow struct {
 	method string
 	note   string
 	key    string
+	// total is the whole payment, of which amount is this method's share.
+	total int64
 	// foreign: paid in another currency, so the yen amount is the one
 	// billed, which a notification at the time of paying only estimated.
 	foreign bool
@@ -164,10 +166,15 @@ func (s *Store) PreviewPayPay(ctx context.Context, userID int64, data []byte, ac
 	if err != nil {
 		return p, err
 	}
+	dry, err := s.importPayPay(ctx, userID, data, accounts, categories, true)
+	if err != nil {
+		return p, err
+	}
+	p.New, p.Duplicates, p.Matched, p.Skipped, p.Rows = dry.Imported, dry.Duplicates, dry.Matched, dry.Skipped, dry.Rows
 	index := map[string]int{}
-	for _, r := range rows {
+	for i, r := range rows {
 		label := recordLabel(r.payee, r.note)
-		if r.kind == "transfer" || PayeeKey(label) == "" {
+		if !dry.added[i] || r.kind == "transfer" || PayeeKey(label) == "" {
 			continue
 		}
 		k := groupKey(r.kind, label)
@@ -197,11 +204,6 @@ func (s *Store) PreviewPayPay(ctx context.Context, userID int64, data []byte, ac
 		return 1
 	})
 	p.NewCategories = missingDefaults(cats)
-	dry, err := s.importPayPay(ctx, userID, data, accounts, categories, true)
-	if err != nil {
-		return p, err
-	}
-	p.New, p.Duplicates, p.Matched, p.Skipped, p.Rows = dry.Imported, dry.Duplicates, dry.Matched, dry.Skipped, dry.Rows
 	return p, nil
 }
 
@@ -413,8 +415,8 @@ func (s *Store) importPayPay(ctx context.Context, userID int64, data []byte, acc
 	if err != nil {
 		return res, err
 	}
-	res.Rows = []ImportRow{}
-	for _, r := range rows {
+	res.Rows, res.added = []ImportRow{}, map[int]bool{}
+	for i, r := range rows {
 		t := Transaction{Kind: r.kind, Amount: r.amount, AccountID: account[r.method], OccurredAt: r.when, Payee: r.payee, Note: r.note}
 		row := ImportRow{OccurredAt: r.when, Kind: r.kind, Amount: r.amount, Payee: r.payee, Note: r.note, Account: r.method}
 		run.period(r.when)
@@ -455,6 +457,18 @@ func (s *Store) importPayPay(ctx context.Context, userID int64, data []byte, acc
 			}
 		}
 		if status == "" {
+			// A notification of this payment whose record is in another
+			// account, or has the whole amount where points paid part.
+			if nid, ok, err := run.notified(t, r.total, notifiedWindow); err != nil {
+				return res, err
+			} else if ok {
+				if err := run.correctNotified(nid, t); err != nil {
+					return res, err
+				}
+				status, id = "matched", nid
+			}
+		}
+		if status == "" {
 			if t.Kind != "transfer" {
 				if t.CategoryID, err = category(r); err != nil {
 					return res, err
@@ -465,6 +479,7 @@ func (s *Store) importPayPay(ctx context.Context, userID int64, data []byte, acc
 			}
 			status = "new"
 			res.Imported++
+			res.added[i] = true
 		} else {
 			row.MatchedID = &id
 			if status == "imported" {
@@ -776,6 +791,7 @@ func readPayPay(data []byte, res *ImportResult) ([]payPayRow, error) {
 			sum := sha256.Sum256([]byte(strings.Join(rec, "\x1f")))
 			id = hex.EncodeToString(sum[:12])
 		}
+		row.total = row.amount
 		parts, ok := payPayMethodParts(get(rec, "取引方法"), row.amount)
 		if !ok {
 			problem(line, "the amounts paid by each method don't add up to %d", row.amount)

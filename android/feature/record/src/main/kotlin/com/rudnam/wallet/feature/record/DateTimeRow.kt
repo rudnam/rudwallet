@@ -7,7 +7,6 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -22,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.rudnam.wallet.core.designsystem.component.FieldLabel
 import com.rudnam.wallet.core.designsystem.icon.LineIcon
 import com.rudnam.wallet.core.designsystem.icon.WalletIcons
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
@@ -30,6 +30,7 @@ import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
 import java.time.ZoneOffset
+import com.rudnam.wallet.core.designsystem.R as DesignSystemR
 
 /**
  * When it happened: a chip with the day and time, which opens Material's
@@ -42,7 +43,7 @@ internal fun DateTimeRow(at: Instant, format: MoneyFormat, onChange: (Instant) -
     var step by rememberSaveable { mutableIntStateOf(0) } // 0 closed, 1 date, 2 time
     var pickedDay by rememberSaveable { mutableStateOf<Long?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(stringResource(R.string.feature_record_date), style = MaterialTheme.typography.labelMedium, color = WalletTheme.colors.muted)
+        FieldLabel(stringResource(R.string.feature_record_date))
         AssistChip(
             onClick = { step = 1 },
             label = { Text(format.dateTime(at, stringResource(com.rudnam.wallet.core.ui.R.string.core_ui_today), stringResource(com.rudnam.wallet.core.ui.R.string.core_ui_yesterday))) },
@@ -61,7 +62,7 @@ internal fun DateTimeRow(at: Instant, format: MoneyFormat, onChange: (Instant) -
                     step = 2
                 }) { Text(stringResource(android.R.string.ok)) }
             },
-            dismissButton = { TextButton(onClick = { step = 0 }) { Text(stringResource(R.string.feature_record_cancel)) } },
+            dismissButton = { TextButton(onClick = { step = 0 }) { Text(stringResource(DesignSystemR.string.designsystem_cancel)) } },
         ) { DatePicker(state) }
     }
     if (step == 2) {
@@ -77,7 +78,7 @@ internal fun DateTimeRow(at: Instant, format: MoneyFormat, onChange: (Instant) -
                     step = 0
                 }) { Text(stringResource(android.R.string.ok)) }
             },
-            dismissButton = { TextButton(onClick = { step = 0 }) { Text(stringResource(R.string.feature_record_cancel)) } },
+            dismissButton = { TextButton(onClick = { step = 0 }) { Text(stringResource(DesignSystemR.string.designsystem_cancel)) } },
         )
     }
 }

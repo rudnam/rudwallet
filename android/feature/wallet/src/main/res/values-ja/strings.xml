@@ -17,7 +17,6 @@
     <string name="feature_wallet_nothing_recorded">今月の記録はまだありません。</string>
     <string name="feature_wallet_add_a_record">記録を追加</string>
     <string name="feature_wallet_unavailable">データを読み込めませんでした。</string>
-    <string name="feature_wallet_try_again">もう一度</string>
     <string name="feature_wallet_offline">サーバーに接続できません。保存済みの内容を表示しています。</string>
     <string name="feature_wallet_failed">ウォレットを更新できませんでした。</string>
     <string name="feature_wallet_update">RudWallet %s が利用できます。</string>

@@ -34,7 +34,6 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -43,7 +42,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import com.rudnam.wallet.core.designsystem.component.PageLoading
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -58,10 +56,14 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rudnam.wallet.core.designsystem.component.EmptyState
+import com.rudnam.wallet.core.designsystem.component.FigureSize
+import com.rudnam.wallet.core.designsystem.component.PageLoading
+import com.rudnam.wallet.core.designsystem.component.StatFigure
+import com.rudnam.wallet.core.designsystem.component.WalletTopBar
 import com.rudnam.wallet.core.designsystem.icon.LineIcon
 import com.rudnam.wallet.core.designsystem.icon.WalletIcons
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
-import com.rudnam.wallet.core.designsystem.theme.figures
 import com.rudnam.wallet.core.model.BulkChange
 import com.rudnam.wallet.core.model.CategoryKind
 import com.rudnam.wallet.core.model.RecordFilter
@@ -69,11 +71,12 @@ import com.rudnam.wallet.core.model.Transaction
 import com.rudnam.wallet.core.ui.CategoryPickerExtra
 import com.rudnam.wallet.core.ui.CategoryPickerSheet
 import com.rudnam.wallet.core.ui.MoneyFormat
+import com.rudnam.wallet.core.ui.ServerText
 import com.rudnam.wallet.core.ui.recordDays
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
 import java.time.Instant
 import java.time.YearMonth
-import com.rudnam.wallet.core.ui.ServerText
+import com.rudnam.wallet.core.designsystem.R as DesignSystemR
 
 /** Where Activity's taps lead. */
 interface ActivityNavigation {
@@ -148,17 +151,16 @@ internal fun ActivityScreen(state: ActivityUiState.Ready, actions: ActivityActio
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         contentWindowInsets = TopAppBarDefaults.windowInsets,
         topBar = {
-            TopAppBar(
+            WalletTopBar(
                 title = { Text(stringResource(R.string.feature_activity_title)) },
                 actions = {
                     if (!state.records.isNullOrEmpty()) {
                         TextButton(onClick = { actions.startChoosing() }) {
-                            Text(stringResource(if (choosing) R.string.feature_activity_done else R.string.feature_activity_select))
+                            Text(stringResource(if (choosing) DesignSystemR.string.designsystem_done else R.string.feature_activity_select))
                         }
                     }
                 },
                 scrollBehavior = scroll,
-                colors = TopAppBarDefaults.topAppBarColors(scrolledContainerColor = WalletTheme.colors.surface),
             )
         },
         floatingActionButton = {
@@ -202,7 +204,7 @@ internal fun ActivityScreen(state: ActivityUiState.Ready, actions: ActivityActio
                 when {
                     state.searchOffline -> item(key = "offline") { Note(stringResource(R.string.feature_activity_search_offline)) }
                     records == null -> item(key = "loading") { Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() } }
-                    records.isEmpty() -> item(key = "empty") { Note(stringResource(R.string.feature_activity_nothing)) }
+                    records.isEmpty() -> item(key = "empty") { EmptyState(stringResource(R.string.feature_activity_nothing)) }
                     else -> {
                         if (state.capped) item(key = "capped") { Note(stringResource(R.string.feature_activity_capped, "2,000")) }
                         recordDays(
@@ -269,19 +271,11 @@ private fun monthTitle(month: YearMonth, format: MoneyFormat): String =
 private fun Summary(state: ActivityUiState.Ready, format: MoneyFormat) {
     val colors = WalletTheme.colors
     Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-        Figure(stringResource(R.string.feature_activity_spent), format.money(state.spent), colors.text)
+        StatFigure(stringResource(R.string.feature_activity_spent), format.money(state.spent), size = FigureSize.Medium)
         if (state.income > 0) {
-            Figure(stringResource(R.string.feature_activity_income), format.money(state.income), colors.positive)
-            Figure(stringResource(R.string.feature_activity_net), format.money(state.income - state.spent, signed = true), colors.text)
+            StatFigure(stringResource(R.string.feature_activity_income), format.money(state.income), size = FigureSize.Medium, color = colors.positive)
+            StatFigure(stringResource(R.string.feature_activity_net), format.money(state.income - state.spent, signed = true), size = FigureSize.Medium)
         }
-    }
-}
-
-@Composable
-private fun Figure(label: String, value: String, color: androidx.compose.ui.graphics.Color) {
-    Column(Modifier.semantics(mergeDescendants = true) {}) {
-        Text(label, style = MaterialTheme.typography.labelMedium, color = WalletTheme.colors.muted)
-        Text(value, style = MaterialTheme.typography.titleMedium.figures(), color = color)
     }
 }
 
@@ -302,7 +296,7 @@ private fun Filters(state: ActivityUiState.Ready, actions: ActivityActions) {
                     IconButton(onClick = {
                         text = ""
                         actions.search("")
-                    }) { LineIcon(WalletIcons.close, contentDescription = stringResource(R.string.feature_activity_cancel), size = 18.dp) }
+                    }) { LineIcon(WalletIcons.close, contentDescription = stringResource(DesignSystemR.string.designsystem_cancel), size = 18.dp) }
                 }
             },
             singleLine = true,
@@ -427,7 +421,7 @@ private fun BulkBar(state: ActivityUiState.Ready, actions: ActivityActions) {
                     }
                     TextButton(onClick = { tagging = true }, enabled = !state.busy) { Text(stringResource(R.string.feature_activity_tag)) }
                     TextButton(onClick = { deleting = true }, enabled = !state.busy) {
-                        Text(stringResource(R.string.feature_activity_delete), color = WalletTheme.colors.danger)
+                        Text(stringResource(DesignSystemR.string.designsystem_delete), color = WalletTheme.colors.danger)
                     }
                 }
             }
@@ -441,9 +435,9 @@ private fun BulkBar(state: ActivityUiState.Ready, actions: ActivityActions) {
                 TextButton(onClick = {
                     deleting = false
                     actions.bulk(BulkChange.Delete(ids))
-                }) { Text(stringResource(R.string.feature_activity_delete), color = WalletTheme.colors.danger) }
+                }) { Text(stringResource(DesignSystemR.string.designsystem_delete), color = WalletTheme.colors.danger) }
             },
-            dismissButton = { TextButton(onClick = { deleting = false }) { Text(stringResource(R.string.feature_activity_cancel)) } },
+            dismissButton = { TextButton(onClick = { deleting = false }) { Text(stringResource(DesignSystemR.string.designsystem_cancel)) } },
         )
     }
     if (tagging) {
@@ -523,7 +517,7 @@ private fun TagDialog(state: ActivityUiState.Ready, chosen: Set<Long>, onDismiss
                 Text(stringResource(R.string.feature_activity_add_tag))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.feature_activity_cancel)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(DesignSystemR.string.designsystem_cancel)) } },
     )
 }
 

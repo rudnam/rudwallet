@@ -39,6 +39,10 @@ type ImportResult struct {
 	// it. Not "rows", which MUFG and IC card results use for rows of their
 	// own shape, and which older Android builds read as those.
 	Rows []ImportRow `json:"file_rows,omitempty"`
+	// added holds the file's rows (by index) that are recorded as new: a
+	// preview asks about categories for those only, since rows already
+	// recorded keep theirs.
+	added map[int]bool
 }
 
 const maxProblems = 20
@@ -166,23 +170,8 @@ func (s *Store) PreviewBudgetBakers(ctx context.Context, userID int64, data []by
 			p.Accounts = append(p.Accounts, a)
 		}
 		p.Accounts[acctIndex[k]].Count++
-
-		if r.transfer || r.category == "" {
-			continue
-		}
-		k = bbKey(r.kind, r.category)
-		if _, ok := catIndex[k]; !ok {
-			g := ImportCategory{Name: r.category, Kind: r.kind}
-			suggestBudgetBakers(cats, &g)
-			catIndex[k] = len(p.Categories)
-			p.Categories = append(p.Categories, g)
-		}
-		g := &p.Categories[catIndex[k]]
-		g.Count++
-		g.Total += r.amount
 	}
 	slices.SortStableFunc(p.Accounts, func(a, b BudgetBakersAccount) int { return b.Count - a.Count })
-	sortGroups(p.Categories)
 	p.NewCategories = missingDefaults(cats)
 
 	if choices == nil {
@@ -198,6 +187,22 @@ func (s *Store) PreviewBudgetBakers(ctx context.Context, userID int64, data []by
 		return p, err
 	}
 	p.New, p.Duplicates, p.Matched, p.Rows = dry.Imported, dry.Duplicates, dry.Matched, dry.Rows
+	for i, r := range rows {
+		if !dry.added[i] || r.transfer || r.category == "" {
+			continue
+		}
+		k := bbKey(r.kind, r.category)
+		if _, ok := catIndex[k]; !ok {
+			g := ImportCategory{Name: r.category, Kind: r.kind}
+			suggestBudgetBakers(cats, &g)
+			catIndex[k] = len(p.Categories)
+			p.Categories = append(p.Categories, g)
+		}
+		g := &p.Categories[catIndex[k]]
+		g.Count++
+		g.Total += r.amount
+	}
+	sortGroups(p.Categories)
 	return p, nil
 }
 
@@ -254,7 +259,7 @@ func (s *Store) ImportBudgetBakers(ctx context.Context, userID int64, data []byt
 // importBudgetBakers is ImportBudgetBakers, or with dry, what it would do:
 // the same import, rolled back.
 func (s *Store) importBudgetBakers(ctx context.Context, userID int64, data []byte, zone *time.Location, choices *ImportChoices, dry bool) (ImportResult, error) {
-	res := ImportResult{Problems: []string{}, Rows: []ImportRow{}}
+	res := ImportResult{Problems: []string{}, Rows: []ImportRow{}, added: map[int]bool{}}
 	st, err := s.Settings(ctx, userID)
 	if err != nil {
 		return res, err
@@ -415,6 +420,7 @@ func (s *Store) importBudgetBakers(ctx context.Context, userID int64, data []byt
 			}
 			status = "new"
 			res.Imported++
+			res.added[i] = true
 		case "imported":
 			res.Duplicates++
 		default:

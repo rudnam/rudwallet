@@ -336,14 +336,15 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
     );
   }
   return (
-    <Dialog title={title} onClose={onClose}>
-      <form
-        className="stack"
-        onSubmit={save}
-        // The phone's keyboard and the number pad never show together.
-        onFocus={(e) => setTyping(isTextField(e.target))}
-        onBlur={(e) => setTyping(isTextField(e.relatedTarget))}
-      >
+    <>
+      <Dialog title={title} onClose={onClose}>
+        <form
+          className="stack"
+          onSubmit={save}
+          // The phone's keyboard and the number pad never show together.
+          onFocus={(e) => setTyping(isTextField(e.target))}
+          onBlur={(e) => setTyping(isTextField(e.relatedTarget))}
+        >
         {reviewing && (
           <p className="notice small">
             {record.source_label
@@ -388,22 +389,6 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
             onChange={(e) => setAmount(e.target.value)}
           />
         </label>
-        {picking && (
-          <CategoryPicker
-            categories={w.categories}
-            kind={kind === 'transfer' ? undefined : kind}
-            selected={categoryId}
-            onPick={(c) => {
-              setCategoryId(c.id);
-              setPicking(false);
-            }}
-            onClear={() => {
-              setCategoryId(null);
-              setPicking(false);
-            }}
-            onClose={() => setPicking(false)}
-          />
-        )}
         <div className="details">
           {kind === 'transfer' ? (
             <>
@@ -416,11 +401,11 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
                 <span id="record-category">{t('Category')}</span>
                 <button
                   type="button"
-                  className={chosen ? 'category-row' : 'category-row muted'}
+                  className={chosen ? 'category-field' : 'category-field muted'}
                   onClick={() => setPicking(true)}
                 >
                   {chosen && <CategoryIcon icon={chosen.icon} name={chosen.name} color={chosen.color} size="small" />}
-                  <span className="category-row-name">{chosen ? categoryPath(chosen.id, w.categories) : t('Choose a category')}</span>
+                  <span className="category-field-name">{chosen ? categoryPath(chosen.id, w.categories) : t('Choose a category')}</span>
                   <Icon d={icons.chevron} className="picker-caret" />
                 </button>
               </div>
@@ -521,6 +506,17 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
         )}
       </form>
     </Dialog>
+    {picking && (
+      <CategoryPicker
+        categories={w.categories}
+        kind={kind === 'transfer' ? undefined : kind}
+        selected={categoryId}
+        extras={[{ label: t('None'), selected: categoryId === null, onPick: () => setCategoryId(null) }]}
+        onPick={(c) => setCategoryId(c.id)}
+        onClose={() => setPicking(false)}
+      />
+    )}
+    </>
   );
 }
 

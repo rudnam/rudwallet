@@ -1,19 +1,17 @@
 package com.rudnam.wallet.feature.settings
 
+import android.Manifest
 import android.appwidget.AppWidgetManager
 import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
-import android.Manifest
 import android.content.ComponentName
-import android.content.pm.PackageManager
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.compose.LifecycleResumeEffect
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.PersistableBundle
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -37,12 +35,12 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
@@ -66,14 +64,18 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rudnam.wallet.core.designsystem.component.ProblemMessage
+import com.rudnam.wallet.core.designsystem.component.SectionHeader
+import com.rudnam.wallet.core.designsystem.component.WalletListItem
 import com.rudnam.wallet.core.designsystem.component.WalletPanel
 import com.rudnam.wallet.core.designsystem.component.rememberHaptics
 import com.rudnam.wallet.core.designsystem.icon.LineIcon
@@ -86,13 +88,14 @@ import com.rudnam.wallet.core.model.NotificationStatus
 import com.rudnam.wallet.core.model.PaymentNotification
 import com.rudnam.wallet.core.model.Rules
 import com.rudnam.wallet.core.model.Wallet
-import com.rudnam.wallet.core.ui.CategoryPickerSheet
 import com.rudnam.wallet.core.ui.CategoryIcon
+import com.rudnam.wallet.core.ui.CategoryPickerSheet
 import com.rudnam.wallet.core.ui.ServerText
 import com.rudnam.wallet.core.ui.openNotificationAccess
 import com.rudnam.wallet.core.ui.rememberNotificationAccess
 import com.rudnam.wallet.core.ui.serverText
 import java.time.Instant
+import com.rudnam.wallet.core.designsystem.R as DesignSystemR
 
 /** The snackbar for a page's messages. */
 @Composable
@@ -112,12 +115,6 @@ internal fun PageMessages(messages: List<PageMessage>, shown: (PageMessage) -> U
     }
 }
 
-/** A section title inside a page. */
-@Composable
-private fun Heading(text: String) {
-    Text(text, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 4.dp).semantics { heading() })
-}
-
 @Composable
 private fun Muted(text: String, modifier: Modifier = Modifier) {
     Text(text, style = MaterialTheme.typography.bodySmall, color = WalletTheme.colors.muted, modifier = modifier.padding(horizontal = 4.dp))
@@ -128,14 +125,13 @@ private fun Muted(text: String, modifier: Modifier = Modifier) {
 private fun NotReady(state: Loadable<*>, onRetry: (() -> Unit)? = null) {
     when (state) {
         Loadable.Loading -> Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-        Loadable.Offline, is Loadable.Failed -> Column(Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            val text = when (state) {
+        Loadable.Offline, is Loadable.Failed -> ProblemMessage(
+            when (state) {
                 is Loadable.Failed -> state.message.ifEmpty { null }?.let { serverText(it) } ?: stringResource(R.string.feature_settings_failed_load)
                 else -> stringResource(R.string.feature_settings_offline)
-            }
-            Text(text, color = WalletTheme.colors.attention, style = MaterialTheme.typography.bodyMedium)
-            onRetry?.let { TextButton(onClick = it) { Text(stringResource(R.string.feature_settings_try_again)) } }
-        }
+            },
+            onRetry = onRetry,
+        )
         is Loadable.Ready<*> -> Unit
     }
 }
@@ -161,7 +157,7 @@ internal fun RulesScreen(wallet: Wallet?, rules: Loadable<Rules>, actions: Rules
             item { NotReady(rules, actions::reload) }
             return@SettingsPage
         }
-        item { Heading(stringResource(R.string.feature_settings_shops)) }
+        item { SectionHeader(stringResource(R.string.feature_settings_shops), Modifier.padding(top = 8.dp)) }
         item {
             WalletPanel(Modifier.fillMaxWidth()) {
                 if (ready.payees.isEmpty()) {
@@ -182,7 +178,7 @@ internal fun RulesScreen(wallet: Wallet?, rules: Loadable<Rules>, actions: Rules
             }
         }
         item { AddShop(wallet, actions::addShop) }
-        item { Heading(stringResource(R.string.feature_settings_cards)) }
+        item { SectionHeader(stringResource(R.string.feature_settings_cards), Modifier.padding(top = 8.dp)) }
         item {
             WalletPanel(Modifier.fillMaxWidth()) {
                 if (ready.cards.isEmpty()) {
@@ -203,16 +199,18 @@ internal fun RulesScreen(wallet: Wallet?, rules: Loadable<Rules>, actions: Rules
 /** A shop or a card: its name and records, what it's filed under, and Forget. */
 @Composable
 private fun RuleRow(title: String, records: Int, onForget: () -> Unit, choice: @Composable () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(pluralStringResource(R.plurals.feature_settings_record_count, records, records), style = MaterialTheme.typography.bodySmall, color = WalletTheme.colors.muted)
-        }
-        choice()
-        IconButton(onClick = onForget) {
-            LineIcon(WalletIcons.close, contentDescription = stringResource(R.string.feature_settings_forget_named, title), tint = WalletTheme.colors.muted, size = 20.dp)
-        }
-    }
+    WalletListItem(
+        headline = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        supporting = { Text(pluralStringResource(R.plurals.feature_settings_record_count, records, records)) },
+        trailing = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                choice()
+                IconButton(onClick = onForget) {
+                    LineIcon(WalletIcons.close, contentDescription = stringResource(R.string.feature_settings_forget_named, title), tint = WalletTheme.colors.muted, size = 20.dp)
+                }
+            }
+        },
+    )
 }
 
 /** The category chosen, compactly; tapped, the picker (expenses, then income). */
@@ -299,7 +297,7 @@ private fun AddShop(wallet: Wallet, onAdd: (String, Long) -> Unit) {
                     onClick = { add() },
                     enabled = name.isNotBlank() && category != null,
                     colors = ButtonDefaults.buttonColors(containerColor = WalletTheme.colors.action, contentColor = WalletTheme.colors.onAction),
-                ) { Text(stringResource(R.string.feature_settings_add)) }
+                ) { Text(stringResource(DesignSystemR.string.designsystem_add)) }
             }
         }
     }
@@ -415,7 +413,7 @@ internal fun NotificationsScreen(
         }
         val list = (recent as? Loadable.Ready)?.value
         if (!list.isNullOrEmpty()) {
-            item { Heading(stringResource(R.string.feature_settings_recent_notifications)) }
+            item { SectionHeader(stringResource(R.string.feature_settings_recent_notifications), Modifier.padding(top = 8.dp)) }
             item {
                 WalletPanel(Modifier.fillMaxWidth()) {
                     val shown = list.take(10)
@@ -478,29 +476,20 @@ private fun NotificationRow(n: PaymentNotification) {
         NotificationStatus.Ignored -> R.string.feature_settings_status_ignored to WalletTheme.colors.muted
         NotificationStatus.Unparsed -> R.string.feature_settings_status_unparsed to WalletTheme.colors.attention
     }
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp).semantics(mergeDescendants = true) {},
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Column(Modifier.weight(1f)) {
-            Text(n.title.ifEmpty { n.app } + if (n.text.isNotEmpty()) " · ${n.text}" else "", maxLines = 1, overflow = TextOverflow.Ellipsis)
-            val detail = if (n.detail.isNotEmpty() && n.status != NotificationStatus.Matched) " · " + serverText(n.detail) else ""
+    val detail = if (n.detail.isNotEmpty() && n.status != NotificationStatus.Matched) " · " + serverText(n.detail) else ""
+    WalletListItem(
+        modifier = Modifier.semantics(mergeDescendants = true) {},
+        headline = { Text(n.title.ifEmpty { n.app } + if (n.text.isNotEmpty()) " · ${n.text}" else "", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        supporting = { Text(shortDateTime(n.postedAt) + " · " + n.app + detail, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+        trailing = {
             Text(
-                shortDateTime(n.postedAt) + " · " + n.app + detail,
-                style = MaterialTheme.typography.bodySmall,
-                color = WalletTheme.colors.muted,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
+                stringResource(label),
+                style = MaterialTheme.typography.labelSmall,
+                color = tint,
+                modifier = Modifier.background(tint.copy(alpha = 0.12f), RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 3.dp),
             )
-        }
-        Text(
-            stringResource(label),
-            style = MaterialTheme.typography.labelSmall,
-            color = tint,
-            modifier = Modifier.background(tint.copy(alpha = 0.12f), RoundedCornerShape(6.dp)).padding(horizontal = 8.dp, vertical = 3.dp),
-        )
-    }
+        },
+    )
 }
 
 // ---------- Home screen widgets ----------
@@ -626,7 +615,7 @@ internal fun ClaudeScreen(me: Me?, state: ClaudeUiState, actions: ClaudeActions,
         item { HowToConnect(state, onCopy) }
         val tokens = (state.tokens as? Loadable.Ready)?.value
         if (!tokens.isNullOrEmpty()) {
-            item { Heading(stringResource(R.string.feature_settings_connections)) }
+            item { SectionHeader(stringResource(R.string.feature_settings_connections), Modifier.padding(top = 8.dp)) }
             item {
                 WalletPanel(Modifier.fillMaxWidth()) {
                     tokens.forEachIndexed { i, t ->
@@ -644,7 +633,7 @@ internal fun ClaudeScreen(me: Me?, state: ClaudeUiState, actions: ClaudeActions,
             onDismissRequest = { actions.askDisconnect(null) },
             text = { Text(stringResource(R.string.feature_settings_disconnect_question, t.name)) },
             confirmButton = { TextButton(onClick = actions::disconnect) { Text(stringResource(R.string.feature_settings_disconnect), color = WalletTheme.colors.danger) } },
-            dismissButton = { TextButton(onClick = { actions.askDisconnect(null) }) { Text(stringResource(R.string.feature_settings_cancel)) } },
+            dismissButton = { TextButton(onClick = { actions.askDisconnect(null) }) { Text(stringResource(DesignSystemR.string.designsystem_cancel)) } },
         )
     }
 }
@@ -742,11 +731,9 @@ private fun TokenRow(token: McpToken, onDisconnect: () -> Unit) {
     val first = stringResource(if (token.signedIn) R.string.feature_settings_connected_day else R.string.feature_settings_made_day, shortDateTime(token.createdAt, "yMMMd"))
     val used = token.lastUsedAt?.let { stringResource(R.string.feature_settings_last_used_day, shortDateTime(it, "yMMMd")) }
         ?: stringResource(R.string.feature_settings_not_used)
-    Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f).semantics(mergeDescendants = true) {}) {
-            Text(token.name)
-            Text("$first · $used", style = MaterialTheme.typography.bodySmall, color = WalletTheme.colors.muted)
-        }
-        TextButton(onClick = onDisconnect) { Text(stringResource(R.string.feature_settings_disconnect), color = WalletTheme.colors.danger) }
-    }
+    WalletListItem(
+        headline = { Text(token.name) },
+        supporting = { Text("$first · $used") },
+        trailing = { TextButton(onClick = onDisconnect) { Text(stringResource(R.string.feature_settings_disconnect), color = WalletTheme.colors.danger) } },
+    )
 }

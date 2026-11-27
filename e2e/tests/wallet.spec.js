@@ -115,8 +115,8 @@ test('a new account, a transfer, and a budget that runs over', async ({ page }) 
   await page.getByRole('link', { name: 'Set a budget' }).click();
   await page.getByRole('button', { name: 'New budget' }).click();
   const b = page.getByRole('dialog', { name: 'New budget' });
-  await b.getByRole('button', { name: 'Category' }).click();
-  const bPicker = page.getByRole('dialog', { name: 'Choose a category' });
+  await b.getByLabel('Category').click();
+  const bPicker = page.getByRole('dialog', { name: 'Category' });
   await bPicker.getByRole('button', { name: /^Food & Drinks/ }).click();
   await bPicker.getByRole('button', { name: 'All of Food & Drinks' }).click();
   await b.getByLabel('Monthly limit (JPY)').fill('1000');
@@ -216,9 +216,9 @@ test('import records exported from Wallet by BudgetBakers', async ({ page }) => 
   await expect(page.getByText('You already have an account named Cash; its records go there.')).toBeVisible();
   await page.getByLabel('New account name').fill('Rakuten Savings');
   // BudgetBakers' categories are matched to the closest of the user's.
-  await expect(page.getByLabel('Category for Bar, cafe')).toContainText('Eating out');
-  await expect(page.getByLabel('Category for Salary')).toContainText('Salary');
-  await expect(page.getByLabel('Category for Coffee beans')).toContainText('Coffee beans');
+  await expect(page.getByLabel('Category for Bar, cafe')).toHaveText('Eating out');
+  await expect(page.getByLabel('Category for Salary')).toHaveText('Salary');
+  await expect(page.getByLabel('Category for Coffee beans')).toHaveText('Coffee beans');
 
   // Several at once.
   await page.getByLabel('Choose Bar, cafe').check();
@@ -226,11 +226,11 @@ test('import records exported from Wallet by BudgetBakers', async ({ page }) => 
   await expect(page.getByRole('region', { name: 'Chosen categories' })).toContainText('2 chosen');
   // Groceries is a subcategory under Food & Drinks.
   await page.getByLabel('Set category for chosen').click();
-  const bulkPicker = page.getByRole('dialog', { name: 'Choose a category' });
+  const bulkPicker = page.getByRole('dialog', { name: 'Set category for chosen' });
   await bulkPicker.getByRole('button', { name: /^Food & Drinks/ }).click();
   await bulkPicker.getByRole('button', { name: 'Groceries' }).click();
-  await expect(page.getByLabel('Category for Coffee beans')).toContainText('Groceries');
-  await expect(page.getByLabel('Category for Bar, cafe')).toContainText('Groceries');
+  await expect(page.getByLabel('Category for Coffee beans')).toHaveText('Groceries');
+  await expect(page.getByLabel('Category for Bar, cafe')).toHaveText('Groceries');
   await expect(page.getByLabel('Choose Bar, cafe')).not.toBeChecked();
 
   await page.getByRole('button', { name: 'Import 4 records' }).click();
@@ -357,7 +357,7 @@ test('import PayPay transaction history', async ({ page }) => {
   await expect(page.getByLabel(/^PayPayカード/)).toHaveValue(String(card.id));
   await expect(page.getByLabel(/^PayPay残高/).locator('option:checked')).toHaveText('New account: PayPay');
   await expect(page.getByLabel(/^PayPay銀行/).locator('option:checked')).toHaveText('New account: PayPay銀行');
-  await expect(page.getByLabel('Category for ローソン')).toContainText('Food & Drinks');
+  await expect(page.getByLabel('Category for ローソン')).toHaveText('Food & Drinks');
   // Before anything is recorded: what's new, and what's already there.
   await expect(page.getByText('2 new records to add')).toBeVisible();
   await expect(page.getByText('1 is already recorded another way (a notification, by hand, or another import)')).toBeVisible();
@@ -495,9 +495,9 @@ test('import an MUFG statement, then reconcile cash', async ({ page }) => {
   await expect(page.getByLabel("Update the bank account's balance to match the statement")).toBeChecked();
 
   await page.getByLabel('Category for シービーエステクノ(カ').click();
-  const mufgPicker = page.getByRole('dialog', { name: 'Choose a category' });
-  await mufgPicker.getByRole('button', { name: /^Salary/ }).click();
-  await mufgPicker.getByRole('button', { name: 'Salary (general)' }).click();
+  const salaryPicker = page.getByRole('dialog', { name: 'Category for シービーエステクノ(カ' });
+  await salaryPicker.getByRole('button', { name: /^Salary/ }).click();
+  await salaryPicker.getByRole('button', { name: 'Salary (general)' }).click();
   await page.getByRole('button', { name: 'Import 11 rows' }).click();
   await expect(page.getByText(/^Imported 11 records, skipped 1 already recorded/)).toBeVisible();
   await expect(page.getByText(/^MUFG's starting balance was changed by \+¥7, to ¥7/)).toBeVisible();
@@ -540,7 +540,9 @@ test('import a Vpass statement', async ({ page }) => {
   await expect(page.getByLabel(/^Amazonマスター/)).toHaveValue(String(amazon));
   await expect(page.getByText('2 new records to add')).toBeVisible();
   await expect(page.getByText('1 is already recorded another way (a notification, by hand, or another import)')).toBeVisible();
-  await expect(page.getByLabel('Category for ローソン')).toContainText('Food & Drinks');
+  await expect(page.getByLabel('Category for ローソン')).toHaveText('Food & Drinks');
+  // The statement gives days, not times: a row shows its day only.
+  await expect(page.getByText('· Nov 9 · Amazon Mastercard')).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('vpass-review.png'), fullPage: true });
   await page.getByRole('button', { name: 'Import 2 payments' }).click();
   await expect(page.getByRole('status')).toContainText('Imported 2 records, skipped 1 already recorded from notifications or by hand');
@@ -576,9 +578,9 @@ test('choose records to recategorise, move and delete them together', async ({ p
   await page.getByRole('checkbox', { name: /Refund/ }).check();
   await expect(bar).toContainText('2 chosen');
   await bar.getByLabel('Set category').click();
-  const catPicker = page.getByRole('dialog', { name: 'Choose a category' });
-  await catPicker.getByRole('button', { name: /^Food & Drinks/ }).click();
-  await catPicker.getByRole('button', { name: 'Food & Drinks (general)' }).click();
+  const recBulkPicker = page.getByRole('dialog', { name: 'Set category' });
+  await recBulkPicker.getByRole('button', { name: /^Food & Drinks/ }).click();
+  await recBulkPicker.getByRole('button', { name: 'Food & Drinks (general)' }).click();
   await expect(page.getByText('Recategorised 1 record. 1 didn’t fit and stayed as they were.')).toBeVisible();
   await expect(page.getByRole('checkbox', { name: /Bakery/ })).toBeChecked();
 

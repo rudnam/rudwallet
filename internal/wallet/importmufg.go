@@ -153,6 +153,14 @@ func classifyMUFG(r mufgRow) mufgRecord {
 // mufgPayee is who a row was paid to or by, as its records name them.
 func mufgPayee(r mufgRow) string {
 	if d := tidyMUFG(r.detail); d != "" {
+		// デビット１ rows start with the card payment's approval number
+		// ("940949 NIHONKUR"), different on every purchase; without it,
+		// purchases at one shop share a payee and its category.
+		if strings.HasPrefix(normalizeMUFG(r.summary), "デビット") {
+			if num, rest, ok := strings.Cut(d, " "); ok && rest != "" && strings.Trim(num, "0123456789") == "" {
+				d = rest
+			}
+		}
 		return clip(d, maxName)
 	}
 	return clip(tidyMUFG(r.summary), maxName)
@@ -214,7 +222,12 @@ func readMUFG(data []byte) ([]mufgRow, error) {
 		if errs[0] != nil || errs[1] != nil || errs[2] != nil {
 			return nil, invalid("line %d: amount not understood", line)
 		}
-		if (row.out > 0) == (row.in > 0) {
+		if row.out == 0 && row.in == 0 {
+			// Moves no money, so there's nothing to record and the balance
+			// is unchanged: ご新規 (account opened) with a deposit of 0.
+			continue
+		}
+		if row.out > 0 && row.in > 0 {
 			return nil, invalid("line %d: a row must have either 支払い金額 or 預かり金額", line)
 		}
 		row.key = mufgKey(row)
@@ -379,18 +392,6 @@ func (s *Store) PreviewMUFG(ctx context.Context, userID int64, data []byte) (MUF
 	if err != nil {
 		return p, err
 	}
-	index := map[string]int{}
-	for _, rec := range recs {
-		if rec.kind == "transfer" {
-			continue
-		}
-		k := groupKey(rec.kind, rec.group)
-		if _, ok := index[k]; !ok {
-			index[k] = len(p.Categories)
-			p.Categories = append(p.Categories, suggestMUFG(cats, learned, rec))
-		}
-	}
-
 	// Preview in a transaction that is rolled back, so matching works as
 	// the import's does.
 	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
@@ -422,14 +423,20 @@ func (s *Store) PreviewMUFG(ctx context.Context, userID int64, data []byte) (MUF
 		}
 		p.Rows = append(p.Rows, out)
 	}
-	for i := range p.Categories {
-		g := &p.Categories[i]
-		for j, rec := range recs {
-			if rec.kind != "transfer" && groupKey(rec.kind, rec.group) == groupKey(g.Kind, g.Name) {
-				g.Count++
-				g.Total += rows[j].out + rows[j].in
-			}
+	// Categories for the rows to record: those already recorded keep theirs.
+	index := map[string]int{}
+	for i, rec := range recs {
+		if rec.kind == "transfer" || p.Rows[i].Status != "new" {
+			continue
 		}
+		k := groupKey(rec.kind, rec.group)
+		if _, ok := index[k]; !ok {
+			index[k] = len(p.Categories)
+			p.Categories = append(p.Categories, suggestMUFG(cats, learned, rec))
+		}
+		g := &p.Categories[index[k]]
+		g.Count++
+		g.Total += rows[i].out + rows[i].in
 	}
 	p.Records = len(rows)
 	p.NewCategories = missingDefaults(cats)

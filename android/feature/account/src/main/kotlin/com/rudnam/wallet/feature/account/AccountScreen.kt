@@ -23,25 +23,25 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import com.rudnam.wallet.core.designsystem.component.PageLoading
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rudnam.wallet.core.designsystem.component.EmptyState
+import com.rudnam.wallet.core.designsystem.component.PageLoading
+import com.rudnam.wallet.core.designsystem.component.StatFigure
 import com.rudnam.wallet.core.designsystem.component.WalletPanel
+import com.rudnam.wallet.core.designsystem.component.WalletTopBar
 import com.rudnam.wallet.core.designsystem.component.rememberHaptics
 import com.rudnam.wallet.core.designsystem.icon.LineIcon
 import com.rudnam.wallet.core.designsystem.icon.WalletIcons
@@ -50,14 +50,15 @@ import com.rudnam.wallet.core.designsystem.theme.figures
 import com.rudnam.wallet.core.model.AccountKind
 import com.rudnam.wallet.core.model.Transaction
 import com.rudnam.wallet.core.ui.AccountCard
-import com.rudnam.wallet.core.ui.sharedBounds
-import com.rudnam.wallet.core.ui.accountCardKey
 import com.rudnam.wallet.core.ui.MoneyFormat
 import com.rudnam.wallet.core.ui.RecordDetail
+import com.rudnam.wallet.core.ui.ServerText
+import com.rudnam.wallet.core.ui.accountCardKey
 import com.rudnam.wallet.core.ui.recordDays
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
+import com.rudnam.wallet.core.ui.sharedBounds
 import java.time.Instant
-import com.rudnam.wallet.core.ui.ServerText
+import com.rudnam.wallet.core.designsystem.R as DesignSystemR
 
 /** Where the account page's taps lead. */
 interface AccountNavigation {
@@ -128,11 +129,9 @@ internal fun AccountScreen(
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         contentWindowInsets = TopAppBarDefaults.windowInsets,
         topBar = {
-            TopAppBar(
+            WalletTopBar(
                 title = { Text(ready?.account?.name.orEmpty()) },
-                navigationIcon = {
-                    IconButton(onClick = navigation::back) { LineIcon(WalletIcons.back, contentDescription = stringResource(R.string.feature_account_back)) }
-                },
+                onBack = navigation::back,
                 actions = {
                     if (ready != null) {
                         IconButton(onClick = navigation::editAccounts) {
@@ -141,7 +140,6 @@ internal fun AccountScreen(
                     }
                 },
                 scrollBehavior = scroll,
-                colors = TopAppBarDefaults.topAppBarColors(scrolledContainerColor = WalletTheme.colors.surface),
             )
         },
     ) { padding ->
@@ -177,7 +175,7 @@ private fun Account(state: AccountUiState.Ready, navigation: AccountNavigation, 
         }
         item(key = "month") { InAndOut(state, format) }
         if (state.records.isEmpty()) {
-            item(key = "empty") { Text(stringResource(R.string.feature_account_nothing), color = WalletTheme.colors.muted) }
+            item(key = "empty") { EmptyState(stringResource(R.string.feature_account_nothing)) }
         } else {
             recordDays(state.records, state.wallet, format, navigation::openRecord, now, detail = RecordDetail.Time)
         }
@@ -188,18 +186,10 @@ private fun Account(state: AccountUiState.Ready, navigation: AccountNavigation, 
 private fun InAndOut(state: AccountUiState.Ready, format: MoneyFormat) {
     WalletPanel(Modifier.fillMaxWidth()) {
         Row(Modifier.height(androidx.compose.foundation.layout.IntrinsicSize.Min)) {
-            Figure(stringResource(R.string.feature_account_out, format.monthName(state.month)), format.money(state.out), Modifier.weight(1f))
+            StatFigure(stringResource(R.string.feature_account_out, format.monthName(state.month)), format.money(state.out), Modifier.weight(1f).padding(horizontal = 16.dp, vertical = 14.dp))
             VerticalDivider(color = WalletTheme.colors.border)
-            Figure(stringResource(R.string.feature_account_in), format.money(state.into), Modifier.weight(1f))
+            StatFigure(stringResource(R.string.feature_account_in), format.money(state.into), Modifier.weight(1f).padding(horizontal = 16.dp, vertical = 14.dp))
         }
-    }
-}
-
-@Composable
-private fun Figure(label: String, value: String, modifier: Modifier) {
-    Column(modifier.padding(horizontal = 16.dp, vertical = 14.dp).semantics(mergeDescendants = true) {}) {
-        Text(label, style = MaterialTheme.typography.bodySmall, color = WalletTheme.colors.muted)
-        Text(value, style = MaterialTheme.typography.titleLarge.figures())
     }
 }
 
@@ -232,7 +222,7 @@ private fun CountCashDialog(state: AccountUiState.Ready, counting: AccountViewMo
                 )
             }
         },
-        confirmButton = { TextButton(onClick = actions::save, enabled = !counting.busy) { Text(stringResource(R.string.feature_account_save)) } },
-        dismissButton = { TextButton(onClick = actions::cancel) { Text(stringResource(R.string.feature_account_cancel)) } },
+        confirmButton = { TextButton(onClick = actions::save, enabled = !counting.busy) { Text(stringResource(DesignSystemR.string.designsystem_save)) } },
+        dismissButton = { TextButton(onClick = actions::cancel) { Text(stringResource(DesignSystemR.string.designsystem_cancel)) } },
     )
 }

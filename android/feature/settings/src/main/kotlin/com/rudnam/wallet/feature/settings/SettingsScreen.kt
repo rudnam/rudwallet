@@ -22,9 +22,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -33,7 +30,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,7 +43,6 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -57,15 +52,20 @@ import androidx.compose.ui.unit.dp
 import androidx.core.os.LocaleListCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.rudnam.wallet.core.datastore.Appearance
+import com.rudnam.wallet.core.designsystem.component.IconTile
+import com.rudnam.wallet.core.designsystem.component.SectionHeader
+import com.rudnam.wallet.core.designsystem.component.WalletListItem
 import com.rudnam.wallet.core.designsystem.component.WalletPanel
+import com.rudnam.wallet.core.designsystem.component.WalletTopBar
 import com.rudnam.wallet.core.designsystem.component.rememberHaptics
 import com.rudnam.wallet.core.designsystem.icon.LineIcon
 import com.rudnam.wallet.core.designsystem.icon.WalletIcons
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
-import com.rudnam.wallet.core.datastore.Appearance
-import java.util.Locale
 import com.rudnam.wallet.core.ui.ServerText
 import com.rudnam.wallet.core.ui.serverText
+import java.util.Locale
+import com.rudnam.wallet.core.designsystem.R as DesignSystemR
 
 /** Where Settings' rows lead. */
 interface SettingsNavigation {
@@ -134,10 +134,9 @@ internal fun SettingsScreen(
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         contentWindowInsets = TopAppBarDefaults.windowInsets,
         topBar = {
-            TopAppBar(
+            WalletTopBar(
                 title = { Text(stringResource(R.string.feature_settings_title)) },
                 scrollBehavior = scroll,
-                colors = TopAppBarDefaults.topAppBarColors(scrolledContainerColor = WalletTheme.colors.surface),
             )
         },
     ) { padding ->
@@ -148,19 +147,14 @@ internal fun SettingsScreen(
         ) {
             for (group in groups) {
                 item(key = group) {
-                    Text(
-                        stringResource(group),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = WalletTheme.colors.muted,
-                        modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 4.dp).semantics { heading() },
-                    )
+                    SectionHeader(stringResource(group), Modifier.padding(top = 12.dp, bottom = 4.dp))
                 }
                 item(key = "$group-rows") {
                     WalletPanel(Modifier.fillMaxWidth()) {
                         val rows = sections.filter { it.group == group }
                         rows.forEachIndexed { i, s ->
                             MenuRow(s, summary(s.id, state), onClick = { navigation.open(s.path) })
-                            if (i < rows.lastIndex) HorizontalDivider(Modifier.padding(start = 64.dp), color = WalletTheme.colors.border)
+                            if (i < rows.lastIndex) HorizontalDivider(Modifier.padding(start = 72.dp), color = WalletTheme.colors.border)
                         }
                     }
                 }
@@ -195,21 +189,17 @@ private fun summary(id: String, state: SettingsUiState): String {
 
 @Composable
 private fun MenuRow(section: Section, summary: String, onClick: () -> Unit) {
-    ListItem(
+    WalletListItem(
         modifier = Modifier.clickable(onClick = onClick),
-        colors = ListItemDefaults.colors(containerColor = WalletTheme.colors.surface),
-        leadingContent = {
-            Box(Modifier.size(36.dp).background(WalletTheme.colors.sunken, MaterialTheme.shapes.small), contentAlignment = Alignment.Center) {
-                LineIcon(section.glyph, contentDescription = null, tint = WalletTheme.colors.text, size = 20.dp)
-            }
+        leading = { IconTile(section.glyph) },
+        // The summary sits under the name, not beside it: ListItem gives trailing content all the
+        // room it asks for, so a long one ("PayPay, MUFG, Vpass, BudgetBakers") squeezed the name
+        // down to a letter or two a line.
+        headline = { Text(stringResource(section.label)) },
+        supporting = if (summary.isEmpty()) null else {
+            { Text(summary, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         },
-        headlineContent = { Text(stringResource(section.label)) },
-        trailingContent = {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (summary.isNotEmpty()) Text(summary, style = MaterialTheme.typography.bodySmall, color = WalletTheme.colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                LineIcon(WalletIcons.chevron, contentDescription = null, tint = WalletTheme.colors.muted, size = 18.dp)
-            }
-        },
+        trailing = { LineIcon(WalletIcons.chevron, contentDescription = null, tint = WalletTheme.colors.muted, size = 18.dp) },
     )
 }
 
@@ -274,7 +264,7 @@ private fun DeleteAccountDialog(email: String, hasPassword: Boolean, state: Dele
                 Text(stringResource(R.string.feature_settings_delete_everything), color = WalletTheme.colors.danger)
             }
         },
-        dismissButton = { TextButton(onClick = actions::cancelDeleting) { Text(stringResource(R.string.feature_settings_cancel)) } },
+        dismissButton = { TextButton(onClick = actions::cancelDeleting) { Text(stringResource(DesignSystemR.string.designsystem_cancel)) } },
     )
 }
 
@@ -292,13 +282,10 @@ internal fun SettingsPage(
         modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         contentWindowInsets = TopAppBarDefaults.windowInsets,
         topBar = {
-            TopAppBar(
+            WalletTopBar(
                 title = { Text(title) },
-                navigationIcon = {
-                    IconButton(onClick = navigation::back) { LineIcon(WalletIcons.back, contentDescription = stringResource(R.string.feature_settings_back)) }
-                },
+                onBack = navigation::back,
                 scrollBehavior = scroll,
-                colors = TopAppBarDefaults.topAppBarColors(scrolledContainerColor = WalletTheme.colors.surface),
             )
         },
         floatingActionButton = floatingActionButton,

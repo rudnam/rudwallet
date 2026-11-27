@@ -31,9 +31,7 @@
     <string name="feature_record_remove_tag">タグ「%s」を外す</string>
     <string name="feature_record_save">保存</string>
     <string name="feature_record_confirm">確定</string>
-    <string name="feature_record_delete">削除</string>
     <string name="feature_record_delete_ask">この記録を削除しますか？</string>
-    <string name="feature_record_cancel">キャンセル</string>
     <string name="feature_record_changes_title">変更を保存しますか？</string>
     <string name="feature_record_changes_save">変更を保存</string>
     <string name="feature_record_back">戻る</string>
