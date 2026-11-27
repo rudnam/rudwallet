@@ -2,9 +2,10 @@
 // row per category in the file (BudgetBakers) or shop (PayPay), with the
 // app's suggestion picked. Ticking rows sets several at once.
 import { useEffect, useState } from "react";
-import { inOrder, optionLabel } from "../../categories";
+import { inOrder } from "../../categories";
 import { api, errorMessage, type Category, type CategoryChoice, type ImportBatch, type ImportCategory, type ImportFileRow, type ImportOutlook, type ImportResult } from "../../api";
-import { CategoryIcon } from "../../components/Icon";
+import { CategoryPicker } from "../../components/CategoryPicker";
+import { CategoryIcon, Icon, icons } from "../../components/Icon";
 import { useWallet } from "../../wallet";
 import { serverText, t, tn, tx } from "../../i18n";
 import { locale } from "../../language";
@@ -68,6 +69,7 @@ export function ImportCategories({
   const shops = by === "shop";
   const w = useWallet();
   const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [picking, setPicking] = useState<"bulk" | ImportCategory | null>(null);
   const [showAll, setShowAll] = useState(groups.length <= firstRows + 3);
   const shown = showAll ? groups : groups.slice(0, firstRows);
   const pickedGroups = groups.filter((g) => picked.has(keyOf(g)));
@@ -124,6 +126,7 @@ export function ImportCategories({
   );
 
   return (
+    <>
     <div className="card flush mapper">
       {bulk && (
         <div
@@ -154,39 +157,16 @@ export function ImportCategories({
             </span>
           </label>
           {picked.size > 0 && (
-            <select
+            <button
+              type="button"
+              className="picker-trigger"
               aria-label={t("Set category for chosen")}
-              value=""
-              onChange={(e) => e.target.value && setForPicked(e.target.value)}
+              aria-haspopup="dialog"
+              onClick={() => setPicking("bulk")}
             >
-              <option value="">{t("Set category…")}</option>
-              <option value="|">{t("No category")}</option>
-              {kinds.map((k) => {
-                const { existing, fresh } = names(k);
-                const title = k === "expense" ? t("Expenses") : t("Income");
-                return [
-                  <optgroup key={k} label={title}>
-                    {existing.map((c) => (
-                      <option key={c.id} value={`${k}|c:${c.id}`}>
-                        {optionLabel(c, w.categories)}
-                      </option>
-                    ))}
-                  </optgroup>,
-                  fresh.length > 0 && (
-                    <optgroup
-                      key={`${k}-new`}
-                      label={k === "expense" ? t("New expense categories") : t("New income categories")}
-                    >
-                      {fresh.map((n) => (
-                        <option key={n} value={`${k}|n:${n}`}>
-                          {n}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ),
-                ];
-              })}
-            </select>
+              <span className="ellipsis grow">{t("Set category…")}</span>
+              <Icon d={icons.expand} className="picker-caret" />
+            </button>
           )}
         </div>
       )}
@@ -195,7 +175,6 @@ export function ImportCategories({
           const key = keyOf(g);
           const v = choices[key] ?? "";
           const cat = look(v);
-          const { existing, fresh } = names(g.kind, g.new_name || undefined);
           return (
             <li
               key={key}
@@ -234,31 +213,16 @@ export function ImportCategories({
                   {v.startsWith("n:") && ` · ${t("new category")}`}
                 </span>
               </span>
-              <select
+              <button
+                type="button"
+                className={cat ? "picker-trigger" : "picker-trigger placeholder"}
                 aria-label={t("Category for {name}", { name: g.name })}
-                value={v}
-                onChange={(e) =>
-                  onChange({ ...choices, [key]: e.target.value })
-                }
+                aria-haspopup="dialog"
+                onClick={() => setPicking(g)}
               >
-                <option value="">{t("No category")}</option>
-                <optgroup label={t("Your categories")}>
-                  {existing.map((c) => (
-                    <option key={c.id} value={`c:${c.id}`}>
-                      {optionLabel(c, w.categories)}
-                    </option>
-                  ))}
-                </optgroup>
-                {fresh.length > 0 && (
-                  <optgroup label={t("New categories")}>
-                    {fresh.map((n) => (
-                      <option key={n} value={`n:${n}`}>
-                        {n}
-                      </option>
-                    ))}
-                  </optgroup>
-                )}
-              </select>
+                <span className="ellipsis grow">{cat?.name ?? t("No category")}</span>
+                <Icon d={icons.expand} className="picker-caret" />
+              </button>
             </li>
           );
         })}
@@ -273,6 +237,51 @@ export function ImportCategories({
         </button>
       )}
     </div>
+    {picking === "bulk" && (
+      <CategoryPicker
+        categories={w.categories}
+        kind={kinds.length === 1 ? kinds[0] : undefined}
+        selected={null}
+        title={t("Set category for chosen")}
+        extras={[
+          { label: t("No category"), selected: false, onPick: () => setForPicked("|") },
+          ...kinds.flatMap((k) =>
+            names(k).fresh.map((n) => ({
+              label: t("New category: {name}", { name: n }),
+              selected: false,
+              onPick: () => setForPicked(`${k}|n:${n}`),
+            })),
+          ),
+        ]}
+        onPick={(c) => setForPicked(`${c.kind}|c:${c.id}`)}
+        onClose={() => setPicking(null)}
+      />
+    )}
+    {picking !== null && picking !== "bulk" && (() => {
+      const g = picking;
+      const key = keyOf(g);
+      const v = choices[key] ?? "";
+      const { fresh } = names(g.kind, g.new_name || undefined);
+      return (
+        <CategoryPicker
+          categories={w.categories}
+          kind={g.kind}
+          selected={v.startsWith("c:") ? Number(v.slice(2)) : null}
+          title={t("Category for {name}", { name: g.name })}
+          extras={[
+            { label: t("No category"), selected: v === "", onPick: () => onChange({ ...choices, [key]: "" }) },
+            ...fresh.map((n) => ({
+              label: t("New category: {name}", { name: n }),
+              selected: v === `n:${n}`,
+              onPick: () => onChange({ ...choices, [key]: `n:${n}` }),
+            })),
+          ]}
+          onPick={(c) => onChange({ ...choices, [key]: `c:${c.id}` })}
+          onClose={() => setPicking(null)}
+        />
+      );
+    })()}
+    </>
   );
 }
 

@@ -370,14 +370,15 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
     );
   }
   return (
-    <Dialog title={title} onClose={onClose}>
-      <form
-        className="stack"
-        onSubmit={save}
-        // The phone's keyboard and the number pad never show together.
-        onFocus={(e) => setTyping(isTextField(e.target))}
-        onBlur={(e) => setTyping(isTextField(e.relatedTarget))}
-      >
+    <>
+      <Dialog title={title} onClose={onClose}>
+        <form
+          className="stack"
+          onSubmit={save}
+          // The phone's keyboard and the number pad never show together.
+          onFocus={(e) => setTyping(isTextField(e.target))}
+          onBlur={(e) => setTyping(isTextField(e.relatedTarget))}
+        >
         {reviewing && (
           <p className="notice small">
             {record.source_label
@@ -456,18 +457,6 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
               </button>
             )}
           </fieldset>
-        )}
-        {picking && (
-          <CategoryPicker
-            categories={w.categories}
-            kind={kind === 'transfer' ? undefined : kind}
-            selected={categoryId}
-            onPick={(c) => {
-              setCategoryId(c.id);
-              setPicking(false);
-            }}
-            onClose={() => setPicking(false)}
-          />
         )}
         <div className="details">
           {kind === 'transfer' ? (
@@ -579,6 +568,16 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
         )}
       </form>
     </Dialog>
+    {picking && (
+      <CategoryPicker
+        categories={w.categories}
+        kind={kind === 'transfer' ? undefined : kind}
+        selected={categoryId}
+        onPick={(c) => setCategoryId(c.id)}
+        onClose={() => setPicking(false)}
+      />
+    )}
+    </>
   );
 }
 
