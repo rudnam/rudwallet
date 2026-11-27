@@ -5,7 +5,7 @@
 
 services:
   db:
-    image: postgres:18-alpine
+    image: postgres:19-alpine
     environment:
       POSTGRES_USER: app
       POSTGRES_PASSWORD: verify
@@ -66,7 +66,7 @@ services:
   # Catches the app's outgoing email. Tests read it through its API;
   # preview.sh shows its inbox at http://localhost:8025.
   mail:
-    image: axllent/mailpit:v1.32
+    image: axllent/mailpit:v1.34
 
   # go vet plus every Go test, including the HTTP integration tests.
   gotest:
