@@ -7,7 +7,7 @@
 #
 # It runs:
 #   - by itself, once CI has passed on main, when the commit came from a pull
-#     request labelled android-release (CLAUDE.md says when to add it);
+#     request labelled android-release (AGENTS.md says when to add it);
 #   - by hand: Actions → Android release → Run workflow, on main.
 #
 # The signing key is in the android-release environment, which only the

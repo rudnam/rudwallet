@@ -51,7 +51,7 @@ updates:
 
   # The Android app's libraries and plugins (android/gradle/libs.versions.toml).
   # These ship in the app, so the pull request comes labelled android-release:
-  # merging it releases a new APK (CLAUDE.md, "Rules").
+  # merging it releases a new APK (AGENTS.md, "Rules").
   - package-ecosystem: gradle
     directory: /android
     labels: [dependencies, android-release]
