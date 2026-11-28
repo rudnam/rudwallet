@@ -323,6 +323,41 @@ var toolList = []*tool{
 		Annotations: readOnly,
 		run:         budgets,
 	},
+	{
+		Name:  "create_budget",
+		Title: "Create a budget",
+		Description: "Add a monthly budget: a limit on one expense category's spending (its subcategories included), " +
+			"or without category_id on all spending. Check list_budgets first, and ask the user before adding one.",
+		InputSchema: object(map[string]any{
+			"name":        map[string]any{"type": "string", "description": "1 to 60 characters."},
+			"amount":      map[string]any{"type": "string", "description": "The monthly limit, a decimal amount in the user's currency, e.g. \"60000\"."},
+			"category_id": map[string]any{"type": "integer", "description": "Optional: the expense category it limits. Left out: all spending."},
+		}, "name", "amount"),
+		Annotations: map[string]any{"readOnlyHint": false, "destructiveHint": false, "idempotentHint": false, "openWorldHint": false},
+		run:         createBudget,
+	},
+	{
+		Name:  "update_budget",
+		Title: "Update a budget",
+		Description: "Change a budget's name, monthly limit or category (IDs from list_budgets). " +
+			"Give only what changes; category_id null makes it a budget on all spending.",
+		InputSchema: object(map[string]any{
+			"budget_id":   map[string]any{"type": "integer"},
+			"name":        map[string]any{"type": "string", "description": "1 to 60 characters."},
+			"amount":      map[string]any{"type": "string", "description": "The monthly limit, a decimal amount in the user's currency."},
+			"category_id": map[string]any{"type": []string{"integer", "null"}, "description": "The expense category it limits, or null for all spending."},
+		}, "budget_id"),
+		Annotations: changes,
+		run:         updateBudget,
+	},
+	{
+		Name:        "delete_budget",
+		Title:       "Delete a budget",
+		Description: "Delete a budget (IDs from list_budgets). Records aren't touched. It can't be undone: ask the user first.",
+		InputSchema: object(map[string]any{"budget_id": map[string]any{"type": "integer"}}, "budget_id"),
+		Annotations: map[string]any{"readOnlyHint": false, "destructiveHint": true, "idempotentHint": true, "openWorldHint": false},
+		run:         deleteBudget,
+	},
 }
 
 // readOnly reports whether a tool only reads (its readOnlyHint).
@@ -928,4 +963,124 @@ func budgets(c *call, args json.RawMessage) (any, error) {
 		return nil, err
 	}
 	return map[string]any{"currency": c.currency, "month": month.Format("2006-01"), "budgets": out}, nil
+}
+
+// budgetLimit is a budget's monthly limit from a decimal amount.
+func (c *call) budgetLimit(s string) (int64, error) {
+	if _, err := c.money(0); err != nil { // loads the currency
+		return 0, err
+	}
+	n, ok := wallet.ParseMinor(s, c.currency)
+	if !ok || n <= 0 {
+		return 0, toolErrorf("amount must be a decimal amount above zero in %s, e.g. 60000", c.currency)
+	}
+	return n, nil
+}
+
+// budgetName checks a budget's name.
+func budgetName(s string) (string, error) {
+	s = strings.TrimSpace(s)
+	if s == "" || utf8.RuneCountInString(s) > 60 {
+		return "", toolErrorf("a budget name must be 1 to 60 characters")
+	}
+	return s, nil
+}
+
+// outBudget is a budget as the tools show it.
+type outBudget struct {
+	ID         int64  `json:"id"`
+	Name       string `json:"name"`
+	CategoryID *int64 `json:"category_id"`
+	Limit      string `json:"limit"`
+}
+
+func (c *call) outBudget(b wallet.Budget) (any, error) {
+	limit, err := c.money(b.Amount)
+	if err != nil {
+		return nil, err
+	}
+	return outBudget{b.ID, b.Name, b.CategoryID, limit}, nil
+}
+
+func createBudget(c *call, args json.RawMessage) (any, error) {
+	var in struct {
+		Name       string `json:"name"`
+		Amount     string `json:"amount"`
+		CategoryID *int64 `json:"category_id"`
+	}
+	if err := decode(args, &in); err != nil {
+		return nil, err
+	}
+	name, err := budgetName(in.Name)
+	if err != nil {
+		return nil, err
+	}
+	limit, err := c.budgetLimit(in.Amount)
+	if err != nil {
+		return nil, err
+	}
+	b, err := c.h.wallet.CreateBudget(c.r.Context(), c.userID, wallet.Budget{Name: name, CategoryID: in.CategoryID, Amount: limit})
+	if err != nil {
+		return nil, walletErr(err, "budget")
+	}
+	return c.outBudget(b)
+}
+
+func updateBudget(c *call, args json.RawMessage) (any, error) {
+	var in struct {
+		BudgetID   int64           `json:"budget_id"`
+		Name       *string         `json:"name"`
+		Amount     *string         `json:"amount"`
+		CategoryID json.RawMessage `json:"category_id"` // absent: unchanged; null: all spending
+	}
+	if err := decode(args, &in); err != nil {
+		return nil, err
+	}
+	if in.Name == nil && in.Amount == nil && in.CategoryID == nil {
+		return nil, toolErrorf("give a name, amount or category_id to change")
+	}
+	ctx := c.r.Context()
+	list, err := c.h.wallet.Budgets(ctx, c.userID)
+	if err != nil {
+		return nil, err
+	}
+	i := slices.IndexFunc(list, func(b wallet.Budget) bool { return b.ID == in.BudgetID })
+	if i < 0 {
+		return nil, toolErrorf("no such budget")
+	}
+	b := list[i]
+	if in.Name != nil {
+		if b.Name, err = budgetName(*in.Name); err != nil {
+			return nil, err
+		}
+	}
+	if in.Amount != nil {
+		if b.Amount, err = c.budgetLimit(*in.Amount); err != nil {
+			return nil, err
+		}
+	}
+	if in.CategoryID != nil {
+		var cat *int64
+		if err := json.Unmarshal(in.CategoryID, &cat); err != nil {
+			return nil, toolErrorf("category_id must be a category ID or null")
+		}
+		b.CategoryID = cat
+	}
+	if b, err = c.h.wallet.UpdateBudget(ctx, c.userID, b); err != nil {
+		return nil, walletErr(err, "budget")
+	}
+	return c.outBudget(b)
+}
+
+func deleteBudget(c *call, args json.RawMessage) (any, error) {
+	var in struct {
+		BudgetID int64 `json:"budget_id"`
+	}
+	if err := decode(args, &in); err != nil {
+		return nil, err
+	}
+	if err := c.h.wallet.DeleteBudget(c.r.Context(), c.userID, in.BudgetID); err != nil {
+		return nil, walletErr(err, "budget")
+	}
+	return map[string]any{"deleted_budget_id": in.BudgetID}, nil
 }
