@@ -76,7 +76,7 @@ pullpid=''
 pw_image="mcr.microsoft.com/playwright:v${PW_VERSION}-noble"
 if [[ ($mode == all || $mode == e2e) &&
       -z $(docker image inspect -f '{{index .Config.Labels "ccr.proxy-ca"}}' "$pw_image" 2>/dev/null) ]]; then
-  dc --profile e2e pull -q e2e >/dev/null 2>&1 9>&- & pullpid=$!  # 9>&-: not holding the lock
+  docker pull -q "$pw_image" >/dev/null 2>&1 9>&- & pullpid=$!  # 9>&-: not holding the lock
 fi
 
 status=0
@@ -109,7 +109,8 @@ if [[ $mode == all || $mode == e2e ]]; then
     step "Browser tests (Playwright $PW_VERSION)"
     wait "$pullpid" || true   # if the pull failed, the run below pulls again
     # Reinstall only when node_modules is missing or out of date.
-    dc --profile e2e run --rm e2e sh -c \
+    # --build: the browser image with Japanese fonts (compose.yml), cached after the first run.
+    dc --profile e2e run --rm --build e2e sh -c \
       'npm ls @playwright/test >/dev/null 2>&1 || npm ci --no-audit --no-fund --loglevel=error; npx playwright test "$@"' \
       sh "$@" || status=1
   else

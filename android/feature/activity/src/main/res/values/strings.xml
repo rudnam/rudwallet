@@ -34,6 +34,7 @@
     <string name="feature_activity_duplicate">Possible duplicate: you already have a record of this amount around this time.</string>
     <string name="feature_activity_delete_duplicate">Delete duplicate</string>
     <string name="feature_activity_remember">Use %1$s for %2$s from now on, instead of %3$s</string>
+    <string name="feature_activity_remember_short">Remember for this shop</string>
     <string name="feature_activity_choose_records">Choose records</string>
     <string name="feature_activity_choose_none">Choose none</string>
     <string name="feature_activity_choose_all">Choose all %d</string>

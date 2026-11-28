@@ -15,7 +15,12 @@ test('the introduction page opens a demo full of sample data', async ({ page }) 
 
   // It's a real wallet: records can be confirmed and added.
   await page.goto('/app/#/review');
-  await page.getByRole('listitem', { name: 'IKEAオンライン' }).getByRole('button', { name: 'Confirm' }).click();
+  const ikea = page.getByRole('listitem', { name: 'IKEAオンライン' });
+  await ikea.getByLabel('Category for IKEAオンライン').click();
+  const picker = page.getByRole('dialog', { name: 'Category for IKEAオンライン' });
+  await picker.getByRole('button', { name: /^Shopping/ }).click();
+  await picker.getByRole('button', { name: 'Furniture & home' }).click();
+  await ikea.getByRole('button', { name: 'Confirm', exact: true }).click();
   await expect(page.getByText('Confirmed IKEAオンライン')).toBeVisible();
   // Last month is complete whatever today's date, rent (the 27th) included.
   await page.goto('/app/#/records');

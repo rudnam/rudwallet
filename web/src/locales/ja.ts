@@ -897,6 +897,7 @@ export const ja = {
   '{ready} of {total} payments have a category. The rest stay for you.': '{total}件中{ready}件にカテゴリがあります。残りはそのまま残ります。',
   'Confirm {n} with a category': 'カテゴリのある{n}件を確定',
   'Use {category} for {payee} from now on, instead of {old}': '今後{payee}は{old}ではなく{category}にする',
+  'Remember for this shop': '今後もこのお店に使う',
 
   // Settings › Home screen widgets
   'The RudWallet app for Android keeps this month in view from your home screen.': 'Android版のRudWalletアプリなら、今月の様子をホーム画面からいつでも確認できます。',
