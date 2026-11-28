@@ -33,6 +33,8 @@ data class UserPreferences(
     val updateLaterVersion: Int,
     /** The account the last record was added to: a new one starts there. */
     val lastAccountId: Long? = null,
+    /** Mask displayed money values until shown again. */
+    val hideAmounts: Boolean = false,
 )
 
 /** The user's choices about this phone's app, kept on the phone (not part of the wallet). */
@@ -46,6 +48,7 @@ class UserPreferencesRepository @Inject constructor(
             setupDismissed = p[SETUP_DISMISSED] ?: false,
             updateLaterVersion = p[UPDATE_LATER] ?: 0,
             lastAccountId = p[LAST_ACCOUNT],
+            hideAmounts = p[HIDE_AMOUNTS] ?: false,
         )
     }
 
@@ -63,6 +66,10 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setLastAccount(id: Long) {
         dataStore.edit { it[LAST_ACCOUNT] = id }
+    }
+
+    suspend fun setHideAmounts(hide: Boolean) {
+        dataStore.edit { it[HIDE_AMOUNTS] = hide }
     }
 
     /** Who was signed in when the server last said, so Settings can show it offline; null once they sign out. */
@@ -95,5 +102,6 @@ class UserPreferencesRepository @Inject constructor(
         val APPEARANCE = stringPreferencesKey("appearance")
         val SETUP_DISMISSED = booleanPreferencesKey("setup_dismissed")
         val UPDATE_LATER = intPreferencesKey("update_later")
+        val HIDE_AMOUNTS = booleanPreferencesKey("hide_amounts")
     }
 }

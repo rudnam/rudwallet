@@ -19,7 +19,10 @@ test('add, edit and delete a record', async ({ page }) => {
   await dialog.getByRole('radio', { name: 'Transfer' }).check();
   await expect(dialog.getByRole('radiogroup', { name: 'From' }).getByRole('radio', { name: 'Cash' })).toBeChecked();
   await dialog.getByRole('radio', { name: 'Expense' }).check();
-  await dialog.getByRole('radio', { name: 'Food & Drinks' }).check();
+  await dialog.getByRole('group', { name: 'Category' }).getByRole('button').click();
+  const picker = page.getByRole('dialog', { name: 'Choose a category' });
+  await picker.getByRole('button', { name: /^Food & Drinks/ }).click();
+  await picker.getByRole('button', { name: 'Food & Drinks (general)' }).click();
   await dialog.getByLabel('Payee').fill('Ramen Taro');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();
@@ -123,7 +126,10 @@ test('a new account, a transfer, and a budget that runs over', async ({ page }) 
   await page.getByRole('button', { name: 'Add record' }).click();
   const lunch = page.getByRole('dialog', { name: 'New record' });
   await lunch.getByLabel('Amount (JPY)').fill('1200');
-  await lunch.getByRole('radio', { name: 'Food & Drinks' }).check();
+  await lunch.getByRole('group', { name: 'Category' }).getByRole('button').click();
+  const picker = page.getByRole('dialog', { name: 'Choose a category' });
+  await picker.getByRole('button', { name: /^Food & Drinks/ }).click();
+  await picker.getByRole('button', { name: 'Food & Drinks (general)' }).click();
   await lunch.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('list', { name: 'Budgets' })).toContainText('Over by ¥200');
 });
@@ -188,6 +194,7 @@ test('the currency can change until there are records', async ({ page }) => {
 test('import records exported from Wallet by BudgetBakers', async ({ page }) => {
   await signUp(page);
   await page.goto('/app/#/settings?section=import');
+  await page.getByRole('button', { name: /^BudgetBakers/ }).click();
   const now = new Date();
   const p = (n) => String(n).padStart(2, '0');
   const today = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())} 08:00:00`;
@@ -293,7 +300,10 @@ test('a new user is walked through setting up, and daily adding remembers things
   await page.getByRole('button', { name: 'Add record' }).click();
   let rec = page.getByRole('dialog', { name: 'New record' });
   await rec.getByLabel('Amount (JPY)').fill('640');
-  await rec.getByRole('radio', { name: 'Food & Drinks' }).check();
+  await rec.getByRole('group', { name: 'Category' }).getByRole('button').click();
+  const picker = page.getByRole('dialog', { name: 'Choose a category' });
+  await picker.getByRole('button', { name: /^Food & Drinks/ }).click();
+  await picker.getByRole('button', { name: 'Food & Drinks (general)' }).click();
   await rec.getByLabel('Payee').fill('Matsuya');
   await rec.getByRole('radiogroup', { name: 'Account' }).getByRole('radio', { name: 'PayPay Card' }).check();
   await rec.getByRole('button', { name: 'Save' }).click();
@@ -306,7 +316,7 @@ test('a new user is walked through setting up, and daily adding remembers things
   await rec.getByLabel('Amount (JPY)').fill('720');
   await expect(rec.locator('#payees option[value="Matsuya"]')).toHaveCount(1);
   await rec.getByLabel('Payee').fill('Matsuya');
-  await expect(rec.getByRole('radio', { name: 'Food & Drinks' })).toBeChecked();
+  await expect(rec.getByRole('group', { name: 'Category' }).getByRole('button')).toContainText('Food & Drinks');
 
   // Hiding the checklist keeps it hidden.
   await page.keyboard.press('Escape');
@@ -341,6 +351,7 @@ test('import PayPay transaction history', async ({ page }) => {
   expect((await page.request.post('/api/transactions', { data: emailed })).status()).toBe(201);
 
   await page.goto('/app/#/settings?section=import');
+  await page.getByRole('button', { name: /^PayPay/ }).click();
   await page.getByLabel('PayPay CSV file').setInputFiles({ name: 'paypay.csv', mimeType: 'text/csv', buffer: Buffer.from(payPayCsv(day)) });
   await expect(page.getByText(/^3 payments/)).toBeVisible();
   await expect(page.getByLabel(/^PayPayカード/)).toHaveValue(String(card.id));
@@ -385,6 +396,11 @@ test('undo an import from the recent imports', async ({ page }) => {
   expect((await res.json()).imported).toBe(3);
 
   await page.goto('/app/#/settings?section=import');
+  // Service search filters the importable services list.
+  await page.getByRole('searchbox', { name: 'Find a service' }).fill('mufg');
+  await expect(page.getByRole('list', { name: 'Import services' }).getByRole('listitem')).toHaveCount(1);
+  await page.getByRole('searchbox', { name: 'Find a service' }).fill('');
+
   const recent = page.getByRole('list').filter({ hasText: '3 added' });
   await expect(recent).toContainText('PayPay');
   await page.screenshot({ path: test.info().outputPath('recent-imports.png'), fullPage: true });
@@ -409,6 +425,7 @@ test('leave PayPay points out of an import, and remember it', async ({ page }) =
   const upload = () => page.getByLabel('PayPay CSV file').setInputFiles({ name: 'paypay.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
 
   await page.goto('/app/#/settings?section=import');
+  await page.getByRole('button', { name: /^PayPay/ }).click();
   await upload();
   await page.getByLabel(/^PayPayポイント ·/).selectOption({ label: "Don't import" });
   // Counted again for the choice: the points' rows are left out.
@@ -460,6 +477,7 @@ test('import an MUFG statement, then reconcile cash', async ({ page }) => {
   expect((await api.post('/api/transactions', { data: charge })).status()).toBe(201);
 
   await page.goto('/app/#/settings?section=import');
+  await page.getByRole('button', { name: /^MUFG/ }).click();
   await page.getByLabel('MUFG CSV file').setInputFiles({ name: 'meisai.csv', mimeType: 'text/csv', buffer: mufgStatement });
   await expect(page.getByText(/^12 rows/)).toBeVisible();
   await expect(page.getByLabel(/^The MUFG account this statement is for/)).toHaveValue(String(mufg));
@@ -515,6 +533,7 @@ test('import a Vpass statement', async ({ page }) => {
   expect((await api.post('/api/transactions', { data: notified })).status()).toBe(201);
 
   await page.goto('/app/#/settings?section=import');
+  await page.getByRole('button', { name: /^Vpass/ }).click();
   await page.getByLabel('Vpass CSV file').setInputFiles({ name: '202612.csv', mimeType: 'text/csv', buffer: vpassStatement });
   await expect(page.getByText(/^3 payments/)).toBeVisible();
   // The card, read from Shift_JIS, goes to the card account named like it.
@@ -860,7 +879,10 @@ test.describe('on a touch screen', () => {
     expect(box.y + box.height).toBeGreaterThan(844 - 4);
 
     // Picking a category leaves the pad where it is.
-    await dialog.getByRole('radio', { name: 'Food & Drinks' }).check({ force: true });
+    await dialog.getByRole('group', { name: 'Category' }).getByRole('button').tap();
+    const picker = page.getByRole('dialog', { name: 'Choose a category' });
+    await picker.getByRole('button', { name: /^Food & Drinks/ }).tap();
+    await picker.getByRole('button', { name: 'Food & Drinks (general)' }).tap();
     await expect(pad).toBeVisible();
     expect((await pad.boundingBox()).y).toBe(box.y);
     await page.screenshot({ path: test.info().outputPath('phone-add-pad.png'), animations: 'disabled' });
@@ -1011,4 +1033,24 @@ test('with a mouse, every account chip on the record form is in reach', async ({
   expect(chip.x + chip.width).toBeLessThanOrEqual(row.x + row.width + 1);
   await last.click();
   await expect(pick.getByRole('radio', { name: 'Travel Fund' })).toBeChecked();
+});
+
+test('amounts can be hidden and shown with the toggle', async ({ page }) => {
+  await signUp(page);
+  const { accounts } = await (await page.request.get('/api/wallet')).json();
+  expect((await page.request.post('/api/transactions', {
+    data: { kind: 'expense', amount: 1200, account_id: accounts[0].id, occurred_at: new Date().toISOString(), payee: 'Bakery' },
+  })).status()).toBe(201);
+  await page.reload();
+  await expect(page.locator('.hero-figure')).toHaveText(/−¥1,200/);
+
+  await page.getByRole('button', { name: 'Hide amounts' }).first().click();
+  await expect(page.locator('.hero-figure')).toHaveText('••••');
+  await expect(page.getByRole('list', { name: 'Latest records' })).toContainText('••••');
+
+  await page.reload();
+  await expect(page.locator('.hero-figure')).toHaveText('••••');
+
+  await page.getByRole('button', { name: 'Show amounts' }).first().click();
+  await expect(page.locator('.hero-figure')).toHaveText(/−¥1,200/);
 });

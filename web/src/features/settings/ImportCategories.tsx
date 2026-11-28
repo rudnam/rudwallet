@@ -439,10 +439,13 @@ const sourceNames: Record<ImportBatch['source'], () => string> = {
   vpass: () => 'Vpass',
 };
 
+const recentPreview = 3;
+
 /** The latest imports, each with what it added and found already there, and Undo. */
 export function RecentImports() {
   const w = useWallet();
   const [list, setList] = useState<ImportBatch[]>([]);
+  const [showAll, setShowAll] = useState(false);
   const [busy, setBusy] = useState<number | null>(null);
   const [message, setMessage] = useState<{ text: string; ids?: number[] } | null>(null);
   useEffect(() => {
@@ -480,12 +483,15 @@ export function RecentImports() {
     await w.refresh();
   }
   if (list.length === 0) return null;
+  const visible = showAll ? list : list.slice(0, recentPreview);
   return (
     <div className="card stack">
       <h2>{t('Recent imports')}</h2>
       <ul className="import-history">
-        {list.map((b) => {
+        {visible.map((b) => {
           const already = b.duplicates + b.matched;
+          const range = b.from && b.to ? (shortDate(b.from) === shortDate(b.to) ? shortDate(b.from) : `${shortDate(b.from)} – ${shortDate(b.to)}`) : '';
+          const counts = [tn(b.imported, '{n} added', '{n} added'), already > 0 && tn(already, '{n} already there', '{n} already there')].filter(Boolean).join(' · ');
           return (
             <li key={b.id} className={b.undone_at ? 'muted' : undefined}>
               <span className="stack tight">
@@ -494,18 +500,20 @@ export function RecentImports() {
                   {b.label && ` ••${b.label}`}
                 </strong>
                 <span className="small muted">
-                  {new Date(b.created_at).toLocaleString(locale(), { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                  {b.from && b.to && ` · ${shortDate(b.from) === shortDate(b.to) ? shortDate(b.from) : `${shortDate(b.from)} – ${shortDate(b.to)}`}`}
+                  {[
+                    new Date(b.created_at).toLocaleString(locale(), { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+                    range,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
                 </span>
-                <span className="small muted">
-                  {[tn(b.imported, '{n} added', '{n} added'), already > 0 && tn(already, '{n} already there', '{n} already there')].filter(Boolean).join(' · ')}
-                </span>
+                <span className="small muted">{counts}</span>
               </span>
               {b.undone_at ? (
                 <span className="small muted">{t('Undone')}</span>
               ) : (
                 b.remaining > 0 && (
-                  <button type="button" className="secondary" onClick={() => undo(b)} disabled={busy !== null}>
+                  <button type="button" className="secondary small-button" onClick={() => undo(b)} disabled={busy !== null}>
                     {busy === b.id ? t('Undoing…') : t('Undo')}
                   </button>
                 )
@@ -514,6 +522,11 @@ export function RecentImports() {
           );
         })}
       </ul>
+      {list.length > recentPreview && (
+        <button type="button" className="link" onClick={() => setShowAll((v) => !v)}>
+          {showAll ? t('Show fewer') : t('Show all {n}', { n: list.length })}
+        </button>
+      )}
       {message && (
         <p role="status" className="notice row">
           <span>{message.text}</span>

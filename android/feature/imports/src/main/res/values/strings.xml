@@ -220,6 +220,9 @@
     <string name="feature_imports_ic_hint">Suica, PASMO, ICOCA… held to the back of the phone</string>
     <string name="feature_imports_budgetbakers_hint">CSV export from BudgetBakers’ Wallet</string>
     <string name="feature_imports_how">How to get it</string>
+    <string name="feature_imports_find_service">Find a service</string>
+    <string name="feature_imports_show_all">Show all %d</string>
+    <string name="feature_imports_show_fewer">Show fewer</string>
     <string name="feature_imports_recent">Recent imports</string>
     <plurals name="feature_imports_batch_added">
         <item quantity="one">%d added</item>

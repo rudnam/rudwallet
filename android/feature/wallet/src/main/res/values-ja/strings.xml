@@ -2,6 +2,8 @@
 <resources>
     <string name="feature_wallet_title">ウォレット</string>
     <string name="feature_wallet_search">記録を検索</string>
+    <string name="feature_wallet_hide_amounts">金額を隠す</string>
+    <string name="feature_wallet_show_amounts">金額を表示</string>
     <string name="feature_wallet_add_record">記録を追加</string>
     <string name="feature_wallet_total_balance">総残高</string>
     <string name="feature_wallet_accounts">口座</string>

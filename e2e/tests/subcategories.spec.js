@@ -49,14 +49,12 @@ test('a subcategory is made in Settings, picked under its main category, and cou
   expect(cafes.parent_id).toBe(foodId);
   expect((await page.request.post('/api/budgets', { data: { name: 'Eating out', category_id: foodId, amount: 1000 } })).status()).toBe(201);
 
-  // The boxes are the most used categories (none yet: main ones first), then All.
+  // The Category row opens the picker directly: main categories, each naming its subcategories small.
   await page.goto('/app/#/');
   await page.getByRole('button', { name: 'Add record' }).click();
   const rec = page.getByRole('dialog', { name: 'New record' });
   await rec.getByLabel('Amount (JPY)').fill('600');
-  await expect(rec.getByRole('radio', { name: 'Bakeries' })).toHaveCount(0);
-  // All opens the picker: main categories, each naming its subcategories small.
-  await rec.getByRole('button', { name: 'All', exact: true }).click();
+  await rec.getByRole('group', { name: 'Category' }).getByRole('button').click();
   const picker = page.getByRole('dialog', { name: 'Choose a category' });
   const foodRow = picker.getByRole('button', { name: /^Food & Drinks/ });
   await expect(foodRow).toContainText('Groceries · Eating out · Delivery · Bakeries');
@@ -79,8 +77,8 @@ test('a subcategory is made in Settings, picked under its main category, and cou
   await expect(picker.getByRole('listitem')).toHaveCount(1);
   await picker.getByRole('button', { name: /Bakeries/ }).click();
   await expect(picker).toBeHidden();
-  // It's chosen, and takes the last box.
-  await expect(rec.getByRole('radio', { name: 'Bakeries' })).toBeChecked();
+  // It's chosen, and shown in the Category row.
+  await expect(rec.getByRole('group', { name: 'Category' }).getByRole('button')).toContainText('Food & Drinks › Bakeries');
   await page.screenshot({ path: test.info().outputPath('add-subcategory.png'), fullPage: true });
   await rec.getByLabel('Payee').fill('Doutor');
   await rec.getByRole('button', { name: 'Save' }).click();
@@ -131,30 +129,31 @@ test('an old wallet groups its categories like a new one', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Edit category Other', exact: true })).toBeVisible();
 });
 
-// The boxes open in the order of use and stay in it: no jump once the
-// counts come in, on the first form since the page loaded or after.
-test('the add form opens with the most used categories first, and they stay put', async ({ page }) => {
+// No category tiles: the Category row opens the picker directly, can clear back to None,
+// and the form details appear in priority order: Category, Account, Date, Note, Payee, Tags.
+test('the add form opens the category picker directly and orders fields by priority', async ({ page }) => {
   await signUp(page);
-  const { accounts, categories } = await (await page.request.get('/api/wallet')).json();
-  const taxes = categories.find((c) => c.name === 'Taxes & Fees');
-  for (let i = 0; i < 3; i++) {
-    const body = { kind: 'expense', amount: 100, account_id: accounts[0].id, category_id: taxes.id, occurred_at: new Date().toISOString() };
-    expect((await page.request.post('/api/transactions', { data: body })).status()).toBe(201);
-  }
   await page.goto('/app/#/');
-  for (const time of ['first', 'again']) {
-    await page.getByRole('button', { name: 'Add record' }).click();
-    const rec = page.getByRole('dialog', { name: 'New record' });
-    const boxes = rec.getByRole('group', { name: 'Category' });
-    await expect(boxes).toBeVisible();
-    // The moment they show, the most used is first...
-    expect((await boxes.locator('.category-name').first().textContent()), time).toBe('Taxes & Fees');
-    // ...and a moment later it still is.
-    await page.waitForTimeout(1500);
-    expect((await boxes.locator('.category-name').first().textContent()), time).toBe('Taxes & Fees');
-    await rec.getByRole('button', { name: 'Close' }).click();
-    await expect(rec).toBeHidden();
-  }
+  await page.getByRole('button', { name: 'Add record' }).click();
+  const rec = page.getByRole('dialog', { name: 'New record' });
+  await expect(rec.locator('.category-pick')).toHaveCount(0);
+
+  const labels = await rec.locator('.details > .detail > :first-child').allInnerTexts();
+  expect(labels).toEqual(['Category', 'Account', 'Date', 'Note', 'Payee', 'Tags']);
+
+  const categoryBtn = rec.getByRole('group', { name: 'Category' }).getByRole('button');
+  await expect(categoryBtn).toHaveText('Choose a category');
+  await categoryBtn.click();
+  const picker = page.getByRole('dialog', { name: 'Choose a category' });
+  await picker.getByRole('button', { name: /^Shopping/ }).click();
+  await picker.getByRole('button', { name: 'Shopping (general)' }).click();
+  await expect(picker).toBeHidden();
+  await expect(categoryBtn).toContainText('Shopping');
+
+  await categoryBtn.click();
+  await picker.getByRole('button', { name: 'None', exact: true }).click();
+  await expect(picker).toBeHidden();
+  await expect(categoryBtn).toHaveText('Choose a category');
 });
 
 // The same CategoryPicker is used across Records filter, Recurring payments, and Settings › Shops and cards.

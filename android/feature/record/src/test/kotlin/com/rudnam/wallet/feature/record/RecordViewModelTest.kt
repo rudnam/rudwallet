@@ -6,8 +6,6 @@ import com.rudnam.wallet.core.data.repository.RecordEvent
 import com.rudnam.wallet.core.data.repository.RecordEvents
 import com.rudnam.wallet.core.data.repository.RecordHabits
 import com.rudnam.wallet.core.data.repository.SaveResult
-import com.rudnam.wallet.core.model.Category
-import com.rudnam.wallet.core.model.CategoryKind
 import com.rudnam.wallet.core.model.TransactionKind
 import com.rudnam.wallet.core.testing.MainDispatcherRule
 import com.rudnam.wallet.core.testing.SampleWallet
@@ -50,57 +48,23 @@ class RecordViewModelTest {
         records.habits = RecordHabits(mapOf("Doutor" to SampleWallet.records.first { it.payee == "Doutor" }), mapOf(13L to 5), emptyList())
         val vm = viewModel()
         assertEquals(3L, vm.ready().form.accountId)
-        // The most used category comes first.
-        assertEquals(13L, vm.ready().categories.first().id)
         vm.setPayee("Doutor")
         assertEquals(13L, vm.ready().form.categoryId)
     }
 
     @Test
-    fun `the categories keep their order when the server's habits come in`() = runTest {
-        records.habits = RecordHabits(emptyMap(), mapOf(13L to 5), emptyList())
-        val other = SampleWallet.wallet.categories.first { it.id != 13L && it.kind == SampleWallet.wallet.category(13L)!!.kind }.id
-        records.refreshed = RecordHabits(emptyMap(), mapOf(other to 50), emptyList())
+    fun `opening the category picker lets a category be picked or cleared`() = runTest {
         val vm = viewModel()
-        assertEquals(13L, vm.ready().categories.first().id)
-    }
-
-    @Test
-    fun `the boxes are the most used categories, subcategories too, and a tap chooses one`() = runTest {
-        val cafes = Category(20, "Cafés", CategoryKind.Expense, "coffee", "#8a5a3c", parentId = 10)
-        wallet.send(SampleWallet.wallet.copy(categories = SampleWallet.wallet.categories + cafes), SampleWallet.budgets, SampleWallet.records)
-        // Each counts its own records: Cafés first, then Coffee; the unused after, main categories first.
-        records.habits = RecordHabits(emptyMap(), mapOf(20L to 9, 13L to 5), emptyList())
-        val vm = viewModel()
-        assertEquals(listOf(20L, 13L, 10L, 11L, 12L), vm.ready().categories.map { it.id })
-        assertFalse(vm.ready().hasMoreCategories)
-
-        vm.chooseCategory(20)
-        assertEquals(20L, vm.ready().form.categoryId)
-        // Tapped again, no category is chosen.
-        vm.chooseCategory(20)
-        assertEquals(null, vm.ready().form.categoryId)
-    }
-
-    @Test
-    fun `with many categories, All opens the picker, and one picked there takes the last box`() = runTest {
-        val many = SampleWallet.wallet.categories + (1..14).map { Category(100L + it, "Extra $it", CategoryKind.Expense, "other", "#7a7f7c") } +
-            Category(200, "Pets", CategoryKind.Expense, "pet", "#8a6d3b")
-        wallet.send(SampleWallet.wallet.copy(categories = many), SampleWallet.budgets, SampleWallet.records)
-        val vm = viewModel()
-        val before = vm.ready().categories.map { it.id }
-        assertEquals(FEW_CATEGORIES, before.size)
-        assertTrue(vm.ready().hasMoreCategories)
+        vm.ready()
         vm.showAllCategories(true)
         assertTrue(vm.ready().pickingCategory)
-        vm.pickCategory(200)
+        vm.pickCategory(13L)
         assertFalse(vm.ready().pickingCategory)
-        assertEquals(200L, vm.ready().form.categoryId)
-        // The others stay where they were.
-        assertEquals(before.dropLast(1) + 200L, vm.ready().categories.map { it.id })
-        // Picking the chosen one again keeps it.
-        vm.pickCategory(200)
-        assertEquals(200L, vm.ready().form.categoryId)
+        assertEquals(13L, vm.ready().form.categoryId)
+        vm.showAllCategories(true)
+        vm.pickCategory(null)
+        assertFalse(vm.ready().pickingCategory)
+        assertEquals(null, vm.ready().form.categoryId)
     }
 
     @Test
@@ -114,7 +78,7 @@ class RecordViewModelTest {
         val listening = launch(UnconfinedTestDispatcher(testScheduler)) { events.all.collect { sent += it } }
         vm.press(PadKey.Digits("1"))
         vm.press(PadKey.Digits("200"))
-        vm.chooseCategory(10)
+        vm.pickCategory(10)
         vm.save()
         assertEquals(1200L, records.added.single().amount)
         assertEquals(10L, records.added.single().categoryId)

@@ -1,7 +1,7 @@
 package com.rudnam.wallet.feature.record
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,12 +58,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -78,14 +75,13 @@ import com.rudnam.wallet.core.designsystem.icon.LineIcon
 import com.rudnam.wallet.core.designsystem.icon.WalletIcons
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
 import com.rudnam.wallet.core.designsystem.theme.figures
-import com.rudnam.wallet.core.designsystem.theme.mixedWith
 import com.rudnam.wallet.core.designsystem.theme.parseHexColor
 import com.rudnam.wallet.core.model.Account
-import com.rudnam.wallet.core.model.Category
 import com.rudnam.wallet.core.model.CategoryKind
 import com.rudnam.wallet.core.model.TransactionKind
 import com.rudnam.wallet.core.model.Wallet
 import com.rudnam.wallet.core.ui.CategoryIcon
+import com.rudnam.wallet.core.ui.CategoryPickerExtra
 import com.rudnam.wallet.core.ui.CategoryPickerSheet
 import com.rudnam.wallet.core.ui.MoneyFormat
 import com.rudnam.wallet.core.ui.rememberMoneyFormat
@@ -110,8 +106,7 @@ internal fun RecordSheetDestination(onDone: () -> Unit, viewModel: RecordViewMod
         actions = object : RecordActions {
             override fun kind(kind: TransactionKind) { haptics.select(); viewModel.setKind(kind) }
             override fun press(key: PadKey) { haptics.key(); viewModel.press(key) }
-            override fun category(id: Long) { haptics.select(); viewModel.chooseCategory(id) }
-            override fun pickCategory(id: Long) { haptics.select(); viewModel.pickCategory(id) }
+            override fun pickCategory(id: Long?) { haptics.select(); viewModel.pickCategory(id) }
             override fun allCategories(show: Boolean) = viewModel.showAllCategories(show)
             override fun payee(payee: String) = viewModel.setPayee(payee)
             override fun account(id: Long) { haptics.select(); viewModel.setAccount(id) }
@@ -120,7 +115,6 @@ internal fun RecordSheetDestination(onDone: () -> Unit, viewModel: RecordViewMod
             override fun note(note: String) = viewModel.setNote(note)
             override fun addTag(text: String) = viewModel.addTag(text)
             override fun removeTag(tag: String) = viewModel.removeTag(tag)
-            override fun extras() = viewModel.showExtras()
             override fun save() { if (!viewModel.save()) haptics.error() }
             override fun confirmChanges() = viewModel.confirmChanges()
             override fun cancelChanges() = viewModel.cancelChanges()
@@ -136,9 +130,8 @@ internal fun RecordSheetDestination(onDone: () -> Unit, viewModel: RecordViewMod
 internal interface RecordActions {
     fun kind(kind: TransactionKind)
     fun press(key: PadKey)
-    fun category(id: Long)
-    /** A category picked from the picker with all of them. */
-    fun pickCategory(id: Long)
+    /** A category picked from the picker (or null to clear it). */
+    fun pickCategory(id: Long?)
     /** Opens or closes the picker with all the categories. */
     fun allCategories(show: Boolean)
     fun payee(payee: String)
@@ -148,7 +141,6 @@ internal interface RecordActions {
     fun note(note: String)
     fun addTag(text: String)
     fun removeTag(tag: String)
-    fun extras()
     fun save()
     fun confirmChanges()
     fun cancelChanges()
@@ -180,6 +172,13 @@ internal fun RecordSheet(state: RecordUiState.Ready, actions: RecordActions, onD
             selectedId = state.form.categoryId,
             onPick = { actions.pickCategory(it.id) },
             onDismiss = { actions.allCategories(false) },
+            extras = listOf(
+                CategoryPickerExtra(
+                    label = stringResource(R.string.feature_record_none),
+                    selected = state.form.categoryId == null,
+                    onPick = { actions.pickCategory(null) },
+                ),
+            ),
         )
     }
     state.confirming?.let { ChangesDialog(it, state.wallet, actions) }
@@ -228,7 +227,6 @@ internal fun RecordSheetContent(state: RecordUiState.Ready, actions: RecordActio
             Notices(state)
             KindPicker(state.form.kind, actions::kind)
             Amount(state, format)
-            if (state.form.kind != TransactionKind.Transfer) CategoryGrid(state, actions)
             Details(state, format, actions)
             Spacer(Modifier.height(4.dp))
         }
@@ -310,70 +308,21 @@ private fun Amount(state: RecordUiState.Ready, format: MoneyFormat) {
 }
 
 @Composable
-private fun CategoryGrid(state: RecordUiState.Ready, actions: RecordActions) {
-    val label = stringResource(R.string.feature_record_category)
-    // null is the last box: All, which opens the picker with every category.
-    val tiles: List<Category?> = state.categories + if (state.hasMoreCategories) listOf(null) else emptyList()
-    Column(Modifier.semantics { contentDescription = label }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        for (row in tiles.chunked(4)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                for (c in row) {
-                    Box(Modifier.weight(1f)) {
-                        if (c == null) {
-                            ActionTile(WalletIcons.more, stringResource(R.string.feature_record_all_categories)) { actions.allCategories(true) }
-                        } else {
-                            // A subcategory says which main category it's under, small, for names that need it.
-                            CategoryTile(c, state.wallet.category(c.parentId)?.name, c.id == state.form.categoryId) { actions.category(c.id) }
-                        }
-                    }
-                }
-                repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
-            }
-        }
-    }
-}
-
-/** A category to pick: its icon and name (and a subcategory's main one); picked, it fills with its colour. */
-@Composable
-private fun CategoryTile(category: Category, main: String?, picked: Boolean, onClick: () -> Unit) {
-    val colors = WalletTheme.colors
-    val hue = parseHexColor(category.color) ?: colors.muted
-    Surface(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth().semantics {
-            role = Role.RadioButton
-            selected = picked
-        },
-        shape = MaterialTheme.shapes.small,
-        color = if (picked) hue.mixedWith(colors.surface, 0.16f) else colors.surface,
-        border = if (picked) BorderStroke(1.dp, hue.copy(alpha = 0.6f)) else null,
-    ) {
-        Column(Modifier.padding(vertical = 8.dp, horizontal = 2.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            CategoryIcon(category)
-            Text(category.name, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
-            Text(
-                main.orEmpty(),
-                style = MaterialTheme.typography.labelSmall,
-                color = colors.muted,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-            )
-        }
-    }
-}
-
-/** The grid's last box, which does something else: All. */
-@Composable
-private fun ActionTile(icon: String, label: String, onClick: () -> Unit) {
-    val colors = WalletTheme.colors
-    Surface(onClick = onClick, modifier = Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.small, color = colors.surface) {
-        Column(Modifier.padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Box(Modifier.size(40.dp).clip(MaterialTheme.shapes.small).background(colors.sunken), contentAlignment = Alignment.Center) {
-                LineIcon(icon, contentDescription = null, tint = colors.muted, size = 20.dp)
-            }
-            Text(label, style = MaterialTheme.typography.labelMedium)
-        }
+private fun CategoryField(state: RecordUiState.Ready, actions: RecordActions) {
+    val chosen = state.wallet.category(state.form.categoryId)?.takeIf { it.kind.apiName == state.form.kind.apiName }
+    Box {
+        OutlinedTextField(
+            value = state.wallet.categoryPath(chosen?.id).orEmpty(),
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(stringResource(R.string.feature_record_category)) },
+            placeholder = { Text(stringResource(R.string.feature_record_choose_category)) },
+            leadingIcon = chosen?.let { { CategoryIcon(it, Modifier.size(28.dp)) } },
+            trailingIcon = { LineIcon(WalletIcons.expand, contentDescription = null, size = 18.dp) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Box(Modifier.matchParentSize().clickable(role = Role.Button) { actions.allCategories(true) })
     }
 }
 
@@ -386,24 +335,23 @@ private fun Details(state: RecordUiState.Ready, format: MoneyFormat, actions: Re
             AccountChips(stringResource(R.string.feature_record_from), state.wallet, form.accountId, actions::account)
             AccountChips(stringResource(R.string.feature_record_to), state.wallet, form.toAccountId, actions::toAccount)
         } else {
-            PayeeField(state, actions)
+            CategoryField(state, actions)
             AccountChips(stringResource(R.string.feature_record_account), state.wallet, form.accountId, actions::account)
         }
         DateTimeRow(form.occurredAt, format, actions::time)
-        if (state.showExtras) {
-            OutlinedTextField(
-                value = form.note,
-                onValueChange = actions::note,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.feature_record_note)) },
-                placeholder = { Text(stringResource(R.string.feature_record_optional)) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-            )
-            TagField(state, actions)
-        } else {
-            SuggestionChip(onClick = actions::extras, label = { Text(stringResource(R.string.feature_record_extras)) })
+        OutlinedTextField(
+            value = form.note,
+            onValueChange = actions::note,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(stringResource(R.string.feature_record_note)) },
+            placeholder = { Text(stringResource(R.string.feature_record_optional)) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+        )
+        if (form.kind != TransactionKind.Transfer) {
+            PayeeField(state, actions)
         }
+        TagField(state, actions)
     }
 }
 
