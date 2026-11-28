@@ -1047,9 +1047,10 @@ button.chip-select.attention:hover:not(:disabled) { background-color: var(--atte
 .cat-icon.review-initial { background: var(--attention-soft); color: var(--attention); }
 .small-button { padding: 6px 12px; font-size: var(--text-xs); border-radius: var(--radius-xs); flex: none; }
 .review-note { display: block; padding: 0 16px 12px 68px; margin: 0; }
-/* The switch to keep a new category for the shop: beside its text, not above it. */
-.check.review-note { display: flex; align-items: center; gap: 10px; }
-.check.review-note input[type='checkbox'] { flex: none; }
+/* The switch to keep a new category for the shop: under the category it's about,
+   lined up with it, the switch first (not at the far end, as in Settings). */
+.check.review-note { display: flex; align-items: center; gap: 10px; margin-top: -2px; }
+.check.review-note input[type='checkbox'] { flex: none; order: 0; margin-left: 0; }
 .review-item .duplicate { margin: 0 14px 12px; }
 
 /* ---------- Settings: grouped rows, a plain icon each ---------- */
