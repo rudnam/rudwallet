@@ -113,4 +113,29 @@ class RecordSheetTest {
         compose.waitForIdle()
         assertFalse(dismissed)
     }
+
+    @Test
+    fun `gentle downward flick on scrollable body snaps back quickly without stalling`() {
+        var dismissed = false
+        compose.setContent {
+            WalletTheme {
+                RecordSheet(readyState(), actions(), onDismiss = { dismissed = true })
+            }
+        }
+        compose.waitForIdle()
+        val initialTop = compose.onNodeWithText("New record").fetchSemanticsNode().boundsInWindow.top
+
+        compose.mainClock.autoAdvance = false
+        compose.onNodeWithText("Category").performTouchInput {
+            swipeDown(startY = centerY, endY = centerY + 120f, durationMillis = 120L)
+        }
+        // Advance 500ms: well under the 1-2s decay stall if SideEffect deltas were consumed.
+        compose.mainClock.advanceTimeBy(500L)
+        compose.mainClock.autoAdvance = true
+        compose.waitForIdle()
+
+        assertFalse(dismissed)
+        val settledTop = compose.onNodeWithText("New record").fetchSemanticsNode().boundsInWindow.top
+        assertEquals(initialTop, settledTop, 2f)
+    }
 }

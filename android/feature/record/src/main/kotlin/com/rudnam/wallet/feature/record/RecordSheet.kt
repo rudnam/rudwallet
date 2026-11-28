@@ -284,10 +284,10 @@ internal fun RecordSheetContent(state: RecordUiState.Ready, actions: RecordActio
     val preventAccidentalDismiss = remember {
         object : NestedScrollConnection {
             override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset =
-                if (available.y > 0f && (source == NestedScrollSource.SideEffect || consumed.y != 0f)) available else Offset.Zero
+                if (source == NestedScrollSource.UserInput && available.y > 0f && consumed.y != 0f) available else Offset.Zero
 
             override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity =
-                if (available.y > 0f) available else Velocity.Zero
+                if (available.y > 0f && consumed.y != 0f) available else Velocity.Zero
         }
     }
     Column(Modifier.fillMaxWidth()) {

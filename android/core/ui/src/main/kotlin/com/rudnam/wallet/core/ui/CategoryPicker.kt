@@ -2,13 +2,13 @@ package com.rudnam.wallet.core.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,14 +16,21 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -40,6 +47,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -91,7 +99,27 @@ fun CategoryPickerSheet(
     mainTakesInSubs: Boolean = false,
 ) {
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet, containerColor = WalletTheme.colors.surface) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        modifier = Modifier.statusBarsPadding().padding(top = 48.dp),
+        sheetState = sheet,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        containerColor = WalletTheme.colors.surface,
+        contentWindowInsets = { WindowInsets(0) },
+        dragHandle = {
+            Box(
+                Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 6.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    Modifier
+                        .size(width = 36.dp, height = 4.dp)
+                        .clip(CircleShape)
+                        .background(WalletTheme.colors.muted.copy(alpha = 0.35f)),
+                )
+            }
+        },
+    ) {
         CategoryPickerContent(
             wallet = wallet,
             kind = kind,
@@ -100,6 +128,7 @@ fun CategoryPickerSheet(
             title = title,
             extras = extras.map { e -> e.copy(onPick = { e.onPick(); onDismiss() }) },
             mainTakesInSubs = mainTakesInSubs,
+            modifier = Modifier.fillMaxHeight().navigationBarsPadding().imePadding(),
         )
     }
 }
@@ -127,7 +156,7 @@ fun CategoryPickerContent(
     val colors = WalletTheme.colors
     BackHandler(enabled = openMain != null && q.isEmpty()) { open = null }
 
-    Column(modifier.fillMaxWidth().animateContentSize(tween(220))) {
+    Column(modifier.fillMaxWidth()) {
         Text(
             title,
             Modifier.padding(start = 20.dp, end = 20.dp, bottom = 8.dp).semantics { heading() },
@@ -152,16 +181,17 @@ fun CategoryPickerContent(
             )
         }
         if (q.isNotEmpty()) {
-            SearchResults(wallet, all, q, kind, selectedId, onPick)
+            SearchResults(wallet, all, q, kind, selectedId, onPick, Modifier.fillMaxWidth().weight(1f, fill = false))
             return@Column
         }
         // The list of main categories, or one's page: the page slides in from the right, back slides it out.
         AnimatedContent(
             targetState = openMain,
+            modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
             transitionSpec = {
                 val forward = targetState != null
-                (slideInHorizontally(tween(220)) { w -> if (forward) w / 3 else -w / 3 } + fadeIn(tween(220))) togetherWith
-                    (slideOutHorizontally(tween(220)) { w -> if (forward) -w / 3 else w / 3 } + fadeOut(tween(160)))
+                ((slideInHorizontally(tween(220)) { w -> if (forward) w / 3 else -w / 3 } + fadeIn(tween(220))) togetherWith
+                    (slideOutHorizontally(tween(220)) { w -> if (forward) -w / 3 else w / 3 } + fadeOut(tween(160)))) using null
             },
             contentKey = { it?.id },
             label = "category page",
@@ -281,12 +311,20 @@ private fun MainPage(wallet: Wallet, main: Category, selectedId: Long?, mainTake
 
 /** Every category matching [q] by its name or its main category's, a subcategory with its main category's name. */
 @Composable
-private fun SearchResults(wallet: Wallet, all: List<Category>, q: String, kind: CategoryKind?, selectedId: Long?, onPick: (Category) -> Unit) {
+private fun SearchResults(
+    wallet: Wallet,
+    all: List<Category>,
+    q: String,
+    kind: CategoryKind?,
+    selectedId: Long?,
+    onPick: (Category) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val colors = WalletTheme.colors
     val shown = all.filter { c ->
         c.name.contains(q, ignoreCase = true) || wallet.category(c.parentId)?.name?.contains(q, ignoreCase = true) == true
     }
-    LazyColumn(Modifier.fillMaxWidth(), contentPadding = PaddingValues(top = 4.dp, bottom = 24.dp)) {
+    LazyColumn(modifier.fillMaxWidth(), contentPadding = PaddingValues(top = 4.dp, bottom = 24.dp)) {
         var heading: CategoryKind? = null
         for (c in shown) {
             if (kind == null && c.kind != heading) {
