@@ -1,7 +1,11 @@
 package com.rudnam.wallet.feature.record
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,12 +17,17 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -33,25 +42,32 @@ import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SheetState
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -59,14 +75,17 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import com.rudnam.wallet.core.designsystem.component.FieldLabel
 import com.rudnam.wallet.core.designsystem.component.Notice
 import com.rudnam.wallet.core.designsystem.component.NoticeTone
@@ -156,14 +175,55 @@ internal interface RecordActions {
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 internal fun RecordSheet(state: RecordUiState.Ready, actions: RecordActions, onDismiss: () -> Unit) {
-    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val density = LocalDensity.current
+    val scope = rememberCoroutineScope()
+    val positionalThreshold: () -> Float = { with(density) { 180.dp.toPx() } }
+    val velocityThreshold: () -> Float = { with(density) { 1000.dp.toPx() } }
+    val sheet = rememberSaveable(
+        saver = SheetState.Saver(
+            skipPartiallyExpanded = true,
+            positionalThreshold = positionalThreshold,
+            velocityThreshold = velocityThreshold,
+            confirmValueChange = { true },
+            skipHiddenState = false,
+        ),
+    ) {
+        SheetState(
+            skipPartiallyExpanded = true,
+            positionalThreshold = positionalThreshold,
+            velocityThreshold = velocityThreshold,
+            initialValue = SheetValue.Hidden,
+            confirmValueChange = { true },
+            skipHiddenState = false,
+        )
+    }
+    val closeSheet: () -> Unit = {
+        scope.launch { sheet.hide() }.invokeOnCompletion {
+            if (!sheet.isVisible) onDismiss()
+        }
+    }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        modifier = Modifier.statusBarsPadding().padding(top = 48.dp),
         sheetState = sheet,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         containerColor = WalletTheme.colors.surface,
         contentWindowInsets = { WindowInsets(0) },
+        dragHandle = {
+            Box(
+                Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 6.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    Modifier
+                        .size(width = 36.dp, height = 4.dp)
+                        .clip(CircleShape)
+                        .background(WalletTheme.colors.muted.copy(alpha = 0.35f)),
+                )
+            }
+        },
     ) {
-        RecordSheetContent(state, actions)
+        RecordSheetContent(state, actions, onClose = closeSheet)
     }
     if (state.pickingCategory) {
         CategoryPickerSheet(
@@ -197,12 +257,26 @@ internal fun RecordSheet(state: RecordUiState.Ready, actions: RecordActions, onD
 /** The sheet's insides, apart from its window, so they can be drawn on their own (previews, screenshots). */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun RecordSheetContent(state: RecordUiState.Ready, actions: RecordActions) {
+internal fun RecordSheetContent(state: RecordUiState.Ready, actions: RecordActions, onClose: () -> Unit = {}) {
     val format = rememberMoneyFormat(state.wallet.settings)
     val colors = WalletTheme.colors
     val typing = WindowInsets.isImeVisible
-    Column(Modifier.fillMaxWidth().navigationBarsPadding()) {
-        Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+    val scrollState = rememberScrollState()
+    val preventAccidentalDismiss = remember {
+        object : NestedScrollConnection {
+            override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset =
+                if (available.y > 0f && (source == NestedScrollSource.SideEffect || consumed.y != 0f)) available else Offset.Zero
+
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity =
+                if (available.y > 0f) available else Velocity.Zero
+        }
+    }
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 20.dp, end = 16.dp, top = 4.dp, bottom = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             Text(
                 stringResource(
                     when {
@@ -219,21 +293,44 @@ internal fun RecordSheetContent(state: RecordUiState.Ready, actions: RecordActio
                     Text(stringResource(DesignSystemR.string.designsystem_delete), color = colors.danger)
                 }
             }
+            Surface(
+                onClick = onClose,
+                modifier = Modifier.size(36.dp),
+                shape = CircleShape,
+                color = colors.sunken,
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    LineIcon(
+                        WalletIcons.close,
+                        contentDescription = stringResource(R.string.feature_record_close),
+                        tint = colors.muted,
+                        size = 18.dp,
+                    )
+                }
+            }
         }
+        HorizontalDivider(Modifier.alpha(if (scrollState.canScrollBackward) 1f else 0f), color = colors.border)
         Column(
-            Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp),
+            Modifier
+                .weight(1f, fill = false)
+                .nestedScroll(preventAccidentalDismiss)
+                .verticalScroll(scrollState)
+                .padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Notices(state)
             KindPicker(state.form.kind, actions::kind)
             Amount(state, format)
             Details(state, format, actions)
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(12.dp))
         }
         Problem(state)
         if (typing) {
             // The phone's keyboard is up: the pad steps aside, and Save stays in reach.
-            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), horizontalArrangement = Arrangement.End) {
+            Row(
+                Modifier.fillMaxWidth().navigationBarsPadding().imePadding().padding(horizontal = 20.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.End,
+            ) {
                 SaveButton(state, actions)
             }
         } else {
@@ -261,28 +358,48 @@ private fun Notices(state: RecordUiState.Ready) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun KindPicker(kind: TransactionKind, onKind: (TransactionKind) -> Unit) {
+    val colors = WalletTheme.colors
     val kinds = listOf(
         TransactionKind.Expense to R.string.feature_record_expense,
         TransactionKind.Income to R.string.feature_record_income,
         TransactionKind.Transfer to R.string.feature_record_transfer,
     )
     val label = stringResource(R.string.feature_record_type)
-    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().semantics { contentDescription = label }) {
-        kinds.forEachIndexed { i, (k, name) ->
-            SegmentedButton(
-                selected = kind == k,
-                onClick = { onKind(k) },
-                shape = SegmentedButtonDefaults.itemShape(i, kinds.size),
-                icon = {},
-                colors = SegmentedButtonDefaults.colors(
-                    activeContainerColor = WalletTheme.colors.text,
-                    activeContentColor = WalletTheme.colors.surface,
-                    inactiveContainerColor = WalletTheme.colors.surface,
-                ),
-            ) { Text(stringResource(name)) }
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.small,
+        color = colors.sunken,
+        border = BorderStroke(1.dp, colors.border),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(3.dp).selectableGroup().semantics { contentDescription = label },
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            for ((k, name) in kinds) {
+                val selected = kind == k
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(38.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .selectable(selected = selected, role = Role.RadioButton, onClick = { onKind(k) }),
+                    shape = RoundedCornerShape(9.dp),
+                    color = if (selected) colors.surface else Color.Transparent,
+                    border = if (selected) BorderStroke(1.dp, colors.border) else null,
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            stringResource(name),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                            color = if (selected) colors.text else colors.muted,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -308,6 +425,14 @@ private fun Amount(state: RecordUiState.Ready, format: MoneyFormat) {
 }
 
 @Composable
+private fun recordFieldColors() = OutlinedTextFieldDefaults.colors(
+    unfocusedBorderColor = WalletTheme.colors.border,
+    focusedBorderColor = WalletTheme.colors.text.copy(alpha = 0.6f),
+    unfocusedLabelColor = WalletTheme.colors.muted,
+    focusedLabelColor = WalletTheme.colors.text,
+)
+
+@Composable
 private fun CategoryField(state: RecordUiState.Ready, actions: RecordActions) {
     val chosen = state.wallet.category(state.form.categoryId)?.takeIf { it.kind.apiName == state.form.kind.apiName }
     Box {
@@ -320,6 +445,8 @@ private fun CategoryField(state: RecordUiState.Ready, actions: RecordActions) {
             leadingIcon = chosen?.let { { CategoryIcon(it, Modifier.size(28.dp)) } },
             trailingIcon = { LineIcon(WalletIcons.expand, contentDescription = null, size = 18.dp) },
             singleLine = true,
+            shape = MaterialTheme.shapes.small,
+            colors = recordFieldColors(),
             modifier = Modifier.fillMaxWidth(),
         )
         Box(Modifier.matchParentSize().clickable(role = Role.Button) { actions.allCategories(true) })
@@ -346,6 +473,8 @@ private fun Details(state: RecordUiState.Ready, format: MoneyFormat, actions: Re
             label = { Text(stringResource(R.string.feature_record_note)) },
             placeholder = { Text(stringResource(R.string.feature_record_optional)) },
             singleLine = true,
+            shape = MaterialTheme.shapes.small,
+            colors = recordFieldColors(),
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
         )
         if (form.kind != TransactionKind.Transfer) {
@@ -367,6 +496,8 @@ private fun PayeeField(state: RecordUiState.Ready, actions: RecordActions) {
             label = { Text(stringResource(if (income) R.string.feature_record_from_whom else R.string.feature_record_payee)) },
             placeholder = { Text(stringResource(if (income) R.string.feature_record_from_whom_hint else R.string.feature_record_payee_hint)) },
             singleLine = true,
+            shape = MaterialTheme.shapes.small,
+            colors = recordFieldColors(),
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
         )
         // Shops paid before: tapping one fills in its category and account too (on a new record).
@@ -383,19 +514,38 @@ private fun PayeeField(state: RecordUiState.Ready, actions: RecordActions) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AccountChips(label: String, wallet: Wallet, chosen: Long, onChoose: (Long) -> Unit) {
+    val colors = WalletTheme.colors
     val accounts: List<Account> = wallet.accounts.filter { !it.archived || it.id == chosen }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         FieldLabel(label)
-        FlowRow(Modifier.semantics { contentDescription = label }, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        FlowRow(
+            Modifier.semantics { contentDescription = label },
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp),
+        ) {
             for (a in accounts) {
+                val selected = a.id == chosen
                 FilterChip(
-                    selected = a.id == chosen,
+                    selected = selected,
                     onClick = { onChoose(a.id) },
                     label = { Text(a.name) },
                     leadingIcon = {
-                        Box(Modifier.size(10.dp).clip(CircleShape).background(parseHexColor(a.color) ?: WalletTheme.colors.muted))
+                        Box(Modifier.size(10.dp).clip(CircleShape).background(parseHexColor(a.color) ?: colors.muted))
                     },
-                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = WalletTheme.colors.sunken),
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = Color.Transparent,
+                        labelColor = colors.muted,
+                        selectedContainerColor = colors.sunken,
+                        selectedLabelColor = colors.text,
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = true,
+                        selected = selected,
+                        borderColor = colors.border,
+                        selectedBorderColor = colors.text.copy(alpha = 0.45f),
+                        borderWidth = 1.dp,
+                        selectedBorderWidth = 1.dp,
+                    ),
                 )
             }
         }
@@ -445,6 +595,8 @@ private fun TagField(state: RecordUiState.Ready, actions: RecordActions) {
                 )
             },
             singleLine = true,
+            shape = MaterialTheme.shapes.small,
+            colors = recordFieldColors(),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = {
                 actions.addTag(text)
@@ -512,22 +664,30 @@ private fun SaveButton(state: RecordUiState.Ready, actions: RecordActions, modif
 private fun NumberPad(decimal: Boolean, state: RecordUiState.Ready, actions: RecordActions) {
     val colors = WalletTheme.colors
     val label = stringResource(R.string.feature_record_number_pad)
+    val padBackground = if (colors.isDark) colors.ground else colors.sunken
+    val keyColor = if (colors.isDark) colors.sunken else colors.surface
     HorizontalDivider(color = colors.border)
     Row(
-        Modifier.fillMaxWidth().background(colors.sunken).padding(6.dp).semantics { contentDescription = label },
+        Modifier
+            .fillMaxWidth()
+            .background(padBackground)
+            .navigationBarsPadding()
+            .draggable(state = rememberDraggableState {}, orientation = Orientation.Vertical)
+            .padding(8.dp)
+            .semantics { contentDescription = label },
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Column(Modifier.weight(3f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             for (row in listOf(listOf("1", "2", "3"), listOf("4", "5", "6"), listOf("7", "8", "9"))) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    for (k in row) PadButton(k, Modifier.weight(1f)) { actions.press(PadKey.Digits(k)) }
+                    for (k in row) PadButton(k, Modifier.weight(1f), keyColor) { actions.press(PadKey.Digits(k)) }
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                PadButton("0", Modifier.weight(2f)) { actions.press(PadKey.Digits("0")) }
+                PadButton("0", Modifier.weight(2f), keyColor) { actions.press(PadKey.Digits("0")) }
                 // Yen amounts are mostly round thousands; other currencies need cents.
-                if (decimal) PadButton(".", Modifier.weight(1f)) { actions.press(PadKey.Point) }
-                else PadButton("000", Modifier.weight(1f)) { actions.press(PadKey.Digits("000")) }
+                if (decimal) PadButton(".", Modifier.weight(1f), keyColor) { actions.press(PadKey.Point) }
+                else PadButton("000", Modifier.weight(1f), keyColor) { actions.press(PadKey.Digits("000")) }
             }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -536,7 +696,8 @@ private fun NumberPad(decimal: Boolean, state: RecordUiState.Ready, actions: Rec
                 onClick = { actions.press(PadKey.Back) },
                 modifier = Modifier.fillMaxWidth().height(KeyHeight).semantics { contentDescription = delete },
                 shape = MaterialTheme.shapes.small,
-                color = colors.surface,
+                color = keyColor,
+                border = BorderStroke(1.dp, colors.border),
             ) {
                 Box(contentAlignment = Alignment.Center) { LineIcon(WalletIcons.backspace, contentDescription = null, size = 22.dp) }
             }
@@ -548,8 +709,14 @@ private fun NumberPad(decimal: Boolean, state: RecordUiState.Ready, actions: Rec
 private val KeyHeight = 52.dp
 
 @Composable
-private fun PadButton(key: String, modifier: Modifier, onClick: () -> Unit) {
-    Surface(onClick = onClick, modifier = modifier.height(KeyHeight), shape = MaterialTheme.shapes.small, color = WalletTheme.colors.surface) {
+private fun PadButton(key: String, modifier: Modifier, color: Color, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.height(KeyHeight),
+        shape = MaterialTheme.shapes.small,
+        color = color,
+        border = BorderStroke(1.dp, WalletTheme.colors.border),
+    ) {
         Box(contentAlignment = Alignment.Center) {
             Text(key, style = MaterialTheme.typography.titleLarge.figures())
         }

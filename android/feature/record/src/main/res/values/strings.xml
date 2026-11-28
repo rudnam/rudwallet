@@ -37,6 +37,7 @@
     <string name="feature_record_changes_title">Save changes?</string>
     <string name="feature_record_changes_save">Save changes</string>
     <string name="feature_record_back">Back</string>
+    <string name="feature_record_close">Close</string>
     <string name="feature_record_none">None</string>
     <string name="feature_record_no_amount_yen">Enter an amount, like 1200.</string>
     <string name="feature_record_no_amount_cents">Enter an amount, like 12.50.</string>
