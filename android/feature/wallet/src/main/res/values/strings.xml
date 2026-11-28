@@ -24,8 +24,6 @@
     <string name="feature_wallet_update_unnamed">A new version of RudWallet is available.</string>
     <string name="feature_wallet_update_install">Update</string>
     <string name="feature_wallet_update_later">Later</string>
-    <string name="feature_wallet_update_show_all">Show all</string>
-    <string name="feature_wallet_update_show_less">Show less</string>
     <string name="feature_wallet_setup_title">Get set up</string>
     <string name="feature_wallet_setup_progress">%1$d of %2$d</string>
     <string name="feature_wallet_setup_hide">Hide</string>

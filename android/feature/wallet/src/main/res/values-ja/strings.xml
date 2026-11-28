@@ -23,8 +23,6 @@
     <string name="feature_wallet_update_unnamed">RudWallet の新しいバージョンが利用できます。</string>
     <string name="feature_wallet_update_install">アップデート</string>
     <string name="feature_wallet_update_later">あとで</string>
-    <string name="feature_wallet_update_show_all">すべて見る</string>
-    <string name="feature_wallet_update_show_less">閉じる</string>
     <string name="feature_wallet_setup_title">はじめの準備</string>
     <string name="feature_wallet_setup_progress">%1$d / %2$d</string>
     <string name="feature_wallet_setup_hide">閉じる</string>

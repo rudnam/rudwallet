@@ -10,7 +10,6 @@ import com.rudnam.wallet.core.datastore.UserPreferencesRepository
 import com.rudnam.wallet.core.model.AppUpdate
 import com.rudnam.wallet.core.network.Server
 import com.rudnam.wallet.core.network.WalletNetworkDataSource
-import com.rudnam.wallet.core.network.model.asModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -44,7 +43,7 @@ internal class ServerUpdateRepository @Inject constructor(
         if (installer() == "com.android.vending") {
             val playUpdate = play.available(skipped = preferences.preferences.first().updateLaterVersion)
                 ?: return@withContext null
-            // Play doesn't say what's new: the server's APK carries the same releases' notes.
+            // Play doesn't name the version: the server's APK does, when it's the same build.
             val apk = try {
                 network.downloads(since = installed).android
             } catch (e: CancellationException) {
@@ -52,16 +51,12 @@ internal class ServerUpdateRepository @Inject constructor(
             } catch (e: Exception) {
                 null
             }
-            val entries = apk?.changelog
-                ?.filter { it.version in (installed + 1)..playUpdate.versionCode }
-                ?.map { it.asModel() }
-                .orEmpty()
             val name = if (playUpdate.versionName.isEmpty() && apk?.version == playUpdate.versionCode) {
                 apk.versionName.orEmpty()
             } else {
                 playUpdate.versionName
             }
-            return@withContext playUpdate.copy(versionName = name, changelog = entries)
+            return@withContext playUpdate.copy(versionName = name)
         }
         val apk = try {
             network.downloads(since = installed).android
@@ -73,8 +68,7 @@ internal class ServerUpdateRepository @Inject constructor(
         val offered = apk.version ?: return@withContext null
         val skipped = preferences.preferences.first().updateLaterVersion
         if (offered <= installed || offered <= skipped) return@withContext null
-        val entries = apk.changelog.filter { it.version > installed }.map { it.asModel() }
-        AppUpdate(offered, apk.versionName.orEmpty(), server.resolve(apk.url), changelog = entries)
+        AppUpdate(offered, apk.versionName.orEmpty(), server.resolve(apk.url))
     }
 
     override suspend fun later(update: AppUpdate) = preferences.updateLater(update.versionCode)

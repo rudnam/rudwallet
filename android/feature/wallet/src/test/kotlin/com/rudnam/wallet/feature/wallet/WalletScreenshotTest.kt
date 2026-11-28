@@ -5,7 +5,6 @@ import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
 import com.rudnam.wallet.core.model.AppUpdate
-import com.rudnam.wallet.core.model.ChangelogEntry
 import com.rudnam.wallet.core.model.Transaction
 import com.rudnam.wallet.core.testing.SampleWallet
 import org.junit.Before
@@ -100,24 +99,4 @@ class WalletScreenshotTest {
 
     @Test
     fun unavailable() = shot("unavailable", WalletUiState.Unavailable)
-
-    /** An update with what's new since the installed version: three notes, then "Show all". */
-    private val updateWithNotes = AppUpdate(
-        44, "2.1.44", "",
-        changelog = listOf(
-            ChangelogEntry(44, "2.1.44", en = listOf("Show what's new when an update is available", "Faster sync after a payment notification"), ja = listOf("アップデートがあるときに変更内容を表示", "支払い通知の後の同期を高速化")),
-            ChangelogEntry(43, "2.1.43", en = listOf("Budgets show this month's pace", "Fixed a crash opening an archived account")),
-        ),
-    )
-
-    @Test
-    fun updateWithChangelog() = shot("update-changelog", ready(update = updateWithNotes))
-
-    /** Japanese notes where a release has them, else the English ones. */
-    @Test
-    @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
-    fun updateWithChangelogJapanese() = shot("update-changelog-ja", ready(update = updateWithNotes))
-
-    @Test
-    fun updateWithChangelogDark() = shot("update-changelog-dark", ready(update = updateWithNotes), dark = true)
 }
