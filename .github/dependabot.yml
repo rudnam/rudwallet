@@ -45,6 +45,11 @@ updates:
       - /e2e
     schedule:
       interval: monthly
+    # A new PostgreSQL major can't open the last one's data directory: production's
+    # database wouldn't start. Upgrading takes pg_upgrade or a dump and restore, by hand.
+    ignore:
+      - dependency-name: postgres
+        update-types: ["version-update:semver-major"]
     groups:
       docker-compose:
         patterns: ["*"]
