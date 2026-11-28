@@ -127,7 +127,6 @@ object ServerText {
         "a record can have at most {max} tags" to "1件の記録に付けられるタグは{max}個までです",
         "enter a tag" to "タグを入力してください",
         "This sign-in link isn't valid. Go back to the app you were connecting and try again." to "このログインリンクは無効です。接続しようとしていたアプリに戻って、もう一度お試しください。",
-        "you have {n} connections already; disconnect one in Settings → Claude first" to "接続はすでに{n}個あります。先に 設定 → AIアシスタント で1つ解除してください",
         "you have {n} connections already; disconnect one in Settings → AI assistants first" to "接続はすでに{n}個あります。先に 設定 → AIアシスタント で1つ解除してください",
         "Failed to fetch" to "サーバーに接続できませんでした",
         "Already recorded, so it wasn't added again." to "記録済みのため、追加しませんでした。",
