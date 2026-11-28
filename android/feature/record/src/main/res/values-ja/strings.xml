@@ -35,6 +35,7 @@
     <string name="feature_record_changes_title">変更を保存しますか？</string>
     <string name="feature_record_changes_save">変更を保存</string>
     <string name="feature_record_back">戻る</string>
+    <string name="feature_record_close">閉じる</string>
     <string name="feature_record_none">なし</string>
     <string name="feature_record_no_amount_yen">金額を入力してください（例: 1200）。</string>
     <string name="feature_record_no_amount_cents">金額を入力してください（例: 12.50）。</string>

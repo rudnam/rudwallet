@@ -1,6 +1,7 @@
 package com.rudnam.wallet.feature.record
 
 import androidx.compose.material3.Surface
+import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -80,6 +81,29 @@ class RecordSheetScreenshotTest {
 
     @Test
     fun dark() = shot("new-dark", state(newRecord), dark = true)
+
+    @Test
+    fun sheetDark() {
+        compose.setContent {
+            WalletTheme(darkTheme = true) {
+                RecordSheet(state(newRecord), nothing, onDismiss = {})
+            }
+        }
+        compose.waitForIdle()
+        compose.onNode(isDialog()).captureRoboImage("build/outputs/roborazzi/record-sheet-dark.png")
+    }
+
+    @Test
+    fun edit() {
+        val record = SampleWallet.records.first { it.kind == TransactionKind.Expense }
+        shot("edit", state(RecordForm.from(record, 0), record))
+    }
+
+    @Test
+    fun editDark() {
+        val record = SampleWallet.records.first { it.kind == TransactionKind.Expense }
+        shot("edit-dark", state(RecordForm.from(record, 0), record), dark = true)
+    }
 
     @Test
     @Config(qualifiers = "ja-w411dp-h891dp-xxhdpi")
