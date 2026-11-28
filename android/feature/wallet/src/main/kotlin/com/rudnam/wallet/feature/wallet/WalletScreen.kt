@@ -35,13 +35,9 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
@@ -63,7 +59,6 @@ import com.rudnam.wallet.core.designsystem.icon.LineIcon
 import com.rudnam.wallet.core.designsystem.icon.WalletIcons
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
 import com.rudnam.wallet.core.designsystem.theme.figures
-import com.rudnam.wallet.core.model.ChangelogEntry
 import com.rudnam.wallet.core.model.Transaction
 import com.rudnam.wallet.core.ui.MoneyFormat
 import com.rudnam.wallet.core.ui.openNotificationAccess
@@ -249,7 +244,6 @@ private fun Wallet(
                 val uri = LocalUriHandler.current
                 UpdateCard(
                     update.versionName,
-                    update.changelog,
                     onInstall = { if (update.fromPlay) navigation.updateFromPlay() else uri.openUri(update.url) },
                     onLater = onUpdateLater,
                 )
@@ -313,16 +307,10 @@ private fun headline(h: MonthHeadline, format: MoneyFormat, state: WalletUiState
 }
 
 
-/** How many of the update's notes show before "Show all". */
-private const val COLLAPSED_CHANGELOG_ITEMS = 3
-
+/** A newer build: Play's store listing has what's new, so the card only says which version. */
 @Composable
-private fun UpdateCard(versionName: String, changelog: List<ChangelogEntry>, onInstall: () -> Unit, onLater: () -> Unit) {
-    val japanese = LocalConfiguration.current.locales[0]?.language == "ja"
-    val notes = remember(changelog, japanese) { changelog.flatMap { it.notesFor(japanese) } }
-    var expanded by remember(versionName) { mutableStateOf(false) }
+private fun UpdateCard(versionName: String, onInstall: () -> Unit, onLater: () -> Unit) {
     WalletPanel(Modifier.fillMaxWidth()) {
-      Column {
         Row(Modifier.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(WalletIcons.line(WalletIcons.download), contentDescription = null, Modifier.size(20.dp), tint = WalletTheme.colors.muted)
             Text(
@@ -333,21 +321,6 @@ private fun UpdateCard(versionName: String, changelog: List<ChangelogEntry>, onI
             TextButton(onClick = onLater) { Text(stringResource(R.string.feature_wallet_update_later), color = WalletTheme.colors.muted) }
             TextButton(onClick = onInstall) { Text(stringResource(R.string.feature_wallet_update_install)) }
         }
-        if (notes.isNotEmpty()) {
-            // Lined up under the message, past the icon.
-            Column(Modifier.padding(start = 48.dp, end = 16.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                val visible = if (expanded) notes else notes.take(COLLAPSED_CHANGELOG_ITEMS)
-                for (note in visible) {
-                    Text("• $note", style = MaterialTheme.typography.bodyMedium, color = WalletTheme.colors.muted)
-                }
-                if (notes.size > COLLAPSED_CHANGELOG_ITEMS) {
-                    TextButton(onClick = { expanded = !expanded }, contentPadding = PaddingValues(0.dp)) {
-                        Text(stringResource(if (expanded) R.string.feature_wallet_update_show_less else R.string.feature_wallet_update_show_all))
-                    }
-                }
-            }
-        }
-      }
     }
 }
 

@@ -6,11 +6,9 @@ import com.google.android.play.core.appupdate.testing.FakeAppUpdateManager
 import com.google.android.play.core.install.model.AppUpdateType
 import com.rudnam.wallet.core.data.repository.PlayStoreUpdates
 import com.rudnam.wallet.core.data.repository.ServerUpdateRepository
-import com.rudnam.wallet.core.model.ChangelogEntry
 import com.rudnam.wallet.core.network.Server
 import com.rudnam.wallet.core.network.WalletNetworkDataSource
 import com.rudnam.wallet.core.network.model.NetworkApk
-import com.rudnam.wallet.core.network.model.NetworkChangelogEntry
 import com.rudnam.wallet.core.network.model.NetworkDownloads
 import com.rudnam.wallet.core.testing.TestUserPreferences
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -26,7 +24,7 @@ import org.robolectric.annotation.Config
 import java.io.IOException
 import java.lang.reflect.Proxy
 
-/** What's new in an update: the server's notes newer than the installed build. */
+/** Which update is offered: the server's APK, or for a Play install, Play's build named after the server's. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
 class UpdateRepositoryTest {
@@ -71,45 +69,27 @@ class UpdateRepositoryTest {
         Shadows.shadowOf(context.packageManager).setInstallSourceInfo(context.packageName, "com.android.vending", "com.android.vending")
 
     @Test
-    fun `the APK's notes newer than the installed build come with it`() = runTest(UnconfinedTestDispatcher()) {
-        val downloads = Downloads(
-            NetworkApk(
-                "/download/wallet.apk", 42, "2.1.42",
-                changelog = listOf(
-                    NetworkChangelogEntry(42, "2.1.42", en = listOf("Show what's new"), ja = listOf("変更内容を表示")),
-                    NetworkChangelogEntry(41, "2.1.41", en = listOf("Faster sync")),
-                    NetworkChangelogEntry(40, "2.1.40", en = listOf("Already installed")),
-                ),
-            ),
-        )
+    fun `the server's newer APK is offered`() = runTest(UnconfinedTestDispatcher()) {
+        val downloads = Downloads(NetworkApk("/download/wallet.apk", 42, "2.1.42"))
 
         val update = repo(downloads, UnconfinedTestDispatcher(testScheduler)).check()
         assertNotNull(update)
         assertEquals(42, update!!.versionCode)
         assertEquals("2.1.42", update.versionName)
-        assertEquals(listOf(42, 41), update.changelog.map { it.versionCode })
         assertEquals(listOf<Int?>(40), downloads.asked)
     }
 
     @Test
-    fun `a Play Store update gets the server's notes up to Play's build`() = runTest(UnconfinedTestDispatcher()) {
+    fun `a Play Store update takes the server's name for the same build`() = runTest(UnconfinedTestDispatcher()) {
         fromPlayStore()
         play.setUpdateAvailable(42, AppUpdateType.IMMEDIATE)
-        val downloads = Downloads(
-            NetworkApk(
-                "/download/wallet.apk", 43, "2.1.43",
-                changelog = listOf(
-                    NetworkChangelogEntry(43, "2.1.43", en = listOf("Not on Play yet")),
-                    NetworkChangelogEntry(42, "2.1.42", en = listOf("On Play")),
-                ),
-            ),
-        )
+        val downloads = Downloads(NetworkApk("/download/wallet.apk", 42, "2.1.42"))
 
         val update = repo(downloads, UnconfinedTestDispatcher(testScheduler)).check()
         assertNotNull(update)
         assertEquals(42, update!!.versionCode)
         assertEquals(true, update.fromPlay)
-        assertEquals(listOf("On Play"), update.changelog.single().en)
+        assertEquals("2.1.42", update.versionName)
     }
 
     @Test
@@ -121,16 +101,6 @@ class UpdateRepositoryTest {
         val update = repo(downloads, UnconfinedTestDispatcher(testScheduler)).check()
         assertNotNull(update)
         assertEquals(42, update!!.versionCode)
-        assertEquals(emptyList<ChangelogEntry>(), update.changelog)
-    }
-
-    @Test
-    fun `notes are in Japanese when a release has them, else English`() {
-        val both = ChangelogEntry(42, "2.1.42", en = listOf("English"), ja = listOf("日本語"))
-        val englishOnly = ChangelogEntry(41, "2.1.41", en = listOf("Only English"))
-
-        assertEquals(listOf("日本語"), both.notesFor(japanese = true))
-        assertEquals(listOf("English"), both.notesFor(japanese = false))
-        assertEquals(listOf("Only English"), englishOnly.notesFor(japanese = true))
+        assertEquals("", update.versionName)
     }
 }

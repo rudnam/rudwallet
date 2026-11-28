@@ -80,7 +80,7 @@ interface WalletNetworkDataSource {
     /** Sends payment apps' notifications; the server records each payment once, however often it's sent. */
     suspend fun sendNotifications(notifications: List<NetworkIncomingNotification>)
 
-    /** The APK the server offers, if any, with its changelog newer than [since]. Needs no session. */
+    /** The APK the server offers, if any (its changelog left out past [since]). Needs no session. */
     suspend fun downloads(since: Int? = null): NetworkDownloads
 
     /** Confirmed records since [from], newest first: what the user usually does at each shop. */
