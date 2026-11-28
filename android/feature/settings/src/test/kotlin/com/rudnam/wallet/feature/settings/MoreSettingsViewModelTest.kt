@@ -73,7 +73,7 @@ class MoreSettingsViewModelTest {
         vm.state.first { it.tokens is Loadable.Ready }
         vm.create("  ")
         val made = vm.state.value.fresh!!
-        assertEquals("Claude", made.name)
+        assertEquals("AI assistant", made.name)
         assertEquals("wallet_secret", made.token)
         assertEquals(listOf(null), (vm.state.value.tokens as Loadable.Ready).value.map { it.token })
 

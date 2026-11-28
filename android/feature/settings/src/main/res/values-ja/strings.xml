@@ -14,7 +14,7 @@
     <string name="feature_settings_language">言語</string>
     <string name="feature_settings_currency">通貨</string>
     <string name="feature_settings_widgets">ホーム画面ウィジェット</string>
-    <string name="feature_settings_claude">Claude</string>
+    <string name="feature_settings_claude">AIアシスタント</string>
     <string name="feature_settings_auto_confirm_on">自動確定オン</string>
     <string name="feature_settings_demo">デモ</string>
     <string name="feature_settings_demo_detail">サンプルデータ（1日以内に削除）</string>
@@ -230,12 +230,13 @@
     <string name="feature_settings_first_account">最初の口座</string>
     <string name="feature_settings_card_rules_note">使ったことのあるカードは、その口座に記録されます。お店とカードで確認できます。</string>
     <string name="feature_settings_recent_notifications">最近の通知</string>
-    <string name="feature_settings_claude_demo_intro">ClaudeアプリやClaude Desktop、Claude Codeをつなぐと、Claudeがカテゴリのない記録を仕分けたり、支出についての質問に答えたりできます。</string>
-    <string name="feature_settings_claude_demo">Claudeの機能を使うにはアカウントが必要です。デモでは使えません。</string>
+    <string name="feature_settings_claude_demo_intro">Claude、ChatGPT、CursorなどMCPに対応したAIアシスタントをつなぐと、カテゴリのない記録を仕分けたり、支出についての質問に答えたりできます。</string>
+    <string name="feature_settings_claude_demo">AIアシスタントをつなぐにはアカウントが必要です。デモでは使えません。</string>
     <string name="feature_settings_disconnect_question">「%s」の接続を解除しますか？あなたのデータにアクセスできなくなります。</string>
-    <string name="feature_settings_claude_intro">Claudeは、カテゴリのない記録の整理や間違いの修正、支出についての質問への回答ができます。</string>
+    <string name="feature_settings_claude_intro">MCPに対応したAIアシスタント（Claude、ChatGPT、Cursorなど）は、カテゴリのない記録の整理や間違いの修正、支出についての質問への回答ができます。</string>
     <string name="feature_settings_claude_app">Claudeアプリ: 設定 › コネクタ › カスタムコネクタを追加 で、このアドレスを貼り付けて、ここで許可してください。</string>
-    <string name="feature_settings_claude_address">Claude用のアドレス</string>
+    <string name="feature_settings_claude_address">MCPサーバーのアドレス</string>
+    <string name="feature_settings_mcp_other">ほかのアプリ: このアドレスをリモートMCPサーバーとして追加します。アプリが自分でログインできない場合は、下でトークンを発行して Authorization: Bearer … ヘッダーで送ってください。</string>
     <string name="feature_settings_copy_token">このトークンを今コピーしてください。二度と表示されません。</string>
     <string name="feature_settings_new_connection">新しい接続</string>
     <string name="feature_settings_make_token">トークンを発行</string>

@@ -1,6 +1,6 @@
-// Claude: access tokens that let an MCP client (the Claude app, Claude
-// Desktop, Claude Code) connect to the wallet, to sort records and answer
-// questions about spending.
+// AI assistants: access tokens that let any MCP client (the Claude app,
+// Claude Desktop, Claude Code, ChatGPT, Cursor, …) connect to the wallet, to
+// sort records and answer questions about spending.
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, errorMessage, type MCPToken } from '../../api';
 import { Icon, icons } from '../../components/Icon';
@@ -15,9 +15,9 @@ export function ClaudeSettings() {
     return (
       <div className="card stack">
         <p className="small">
-          {t('Connect the Claude app, Claude Desktop or Claude Code to your wallet, and Claude can sort records that have no category and answer questions about your spending.')}
+          {t('Connect an AI assistant that supports MCP, such as Claude, ChatGPT or Cursor, and it can sort records that have no category and answer questions about your spending.')}
         </p>
-        <p className="notice small">{t('Claude needs an account of your own; it isn’t available in the demo.')}</p>
+        <p className="notice small">{t('Connecting an AI assistant needs an account of your own; it isn’t available in the demo.')}</p>
       </div>
     );
   }
@@ -42,7 +42,7 @@ function Connections() {
     e.preventDefault();
     setError('');
     try {
-      const t = await api.createMCPToken(name.trim() || 'Claude');
+      const t = await api.createMCPToken(name.trim() || 'AI assistant');
       setFresh(t);
       setName('');
       setTokens(await api.mcpTokens());
@@ -90,14 +90,20 @@ function Connections() {
 
   return (
     <div className="card stack">
-      <p className="small">{t('Claude can sort records with no category, fix mistakes and answer questions about your spending.')}</p>
+      <p className="small">{t('Any AI assistant that supports MCP (Claude, ChatGPT, Cursor and others) can sort records with no category, fix mistakes and answer questions about your spending.')}</p>
       <p className="small">
         {tx('{where}: Settings › Connectors › Add custom connector, paste this address, then allow it here.', {
           where: <strong>{t('In the Claude app')}</strong>,
         })}
       </p>
+      <p className="small">
+        {tx('{where}: add this address as a remote MCP server. If it can’t sign in by itself, make a token below and send it as the header {header}.', {
+          where: <strong>{t('In other apps')}</strong>,
+          header: <code>Authorization: Bearer …</code>,
+        })}
+      </p>
       <div className="address">
-        <span className="muted small">{t('Address for Claude')}</span>
+        <span className="muted small">{t('MCP server address')}</span>
         <code data-testid="mcp-url">{mcpURL}</code>
       </div>
 

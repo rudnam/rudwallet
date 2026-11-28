@@ -54,9 +54,9 @@ export const ja = {
   Settings: '設定',
   Wallet: 'ウォレット',
   'Add a note or tags': 'メモやタグを追加',
-  'Address for Claude': 'Claude用のアドレス',
   '{where}: Settings › Connectors › Add custom connector, paste this address, then allow it here.': '{where}: 設定 › コネクタ › カスタムコネクタを追加 で、このアドレスを貼り付けて、ここで許可してください。',
-  'Claude can sort records with no category, fix mistakes and answer questions about your spending.': 'Claudeは、カテゴリのない記録の整理や間違いの修正、支出についての質問への回答ができます。',
+  'Any AI assistant that supports MCP (Claude, ChatGPT, Cursor and others) can sort records with no category, fix mistakes and answer questions about your spending.':
+    'MCPに対応したAIアシスタント（Claude、ChatGPT、Cursorなど）は、カテゴリのない記録の整理や間違いの修正、支出についての質問への回答ができます。',
   'Forget a card, and its payments go to the account set in {notifications}.': 'カードを削除すると、その支払いは{notifications}で選んだ口座に記録されます。',
   'Confirm a payment once, and its shop\'s category and its card\'s account fill in by themselves next time. A shop\'s branches share its category.': '一度確定すると、次からはお店のカテゴリとカードの口座が自動で入ります。同じお店の別の店舗も同じカテゴリになります。',
   'No shops yet. Each one you confirm in Activity is added here.': 'まだお店はありません。明細で確定したお店がここに追加されます。',
@@ -113,9 +113,9 @@ export const ja = {
   'Try the demo': 'デモを試す',
   'Sample data, deleted within a day': 'サンプルデータ（1日以内に削除）',
   'End demo': 'デモを終了',
-  'Connect the Claude app, Claude Desktop or Claude Code to your wallet, and Claude can sort records that have no category and answer questions about your spending.':
-    'ClaudeアプリやClaude Desktop、Claude Codeをつなぐと、Claudeがカテゴリのない記録を仕分けたり、支出についての質問に答えたりできます。',
-  'Claude needs an account of your own; it isn’t available in the demo.': 'Claudeの機能を使うにはアカウントが必要です。デモでは使えません。',
+  'Connect an AI assistant that supports MCP, such as Claude, ChatGPT or Cursor, and it can sort records that have no category and answer questions about your spending.':
+    'Claude、ChatGPT、CursorなどMCPに対応したAIアシスタントをつなぐと、カテゴリのない記録を仕分けたり、支出についての質問に答えたりできます。',
+  'Connecting an AI assistant needs an account of your own; it isn’t available in the demo.': 'AIアシスタントをつなぐにはアカウントが必要です。デモでは使えません。',
 
   // Category icons
   Food: '食事',
@@ -823,7 +823,11 @@ export const ja = {
   'Recent notifications': '最近の通知',
   'Already recorded': '記録済みと照合',
 
-  // Settings › Claude
+  // Settings › AI assistants
+  'AI assistants': 'AIアシスタント',
+  'In other apps': 'ほかのアプリ',
+  '{where}: add this address as a remote MCP server. If it can’t sign in by itself, make a token below and send it as the header {header}.':
+    '{where}: このアドレスをリモートMCPサーバーとして追加します。アプリが自分でログインできない場合は、下でトークンを発行して {header} ヘッダーで送ってください。',
   Connected: '接続済み',
   Open: '開く',
   'Disconnect "{name}"? It can no longer reach your wallet.': '「{name}」の接続を解除しますか？あなたのデータにアクセスできなくなります。',
@@ -880,13 +884,13 @@ export const ja = {
   'Connect {app}': '{app}と接続',
   '{app} is asking to reach your wallet, signed in as {email}. It will be able to:': '{app}が、{email} でログイン中のRudWalletへのアクセスを求めています。次のことができるようになります:',
   'see your accounts, records, categories and budgets': '口座、記録、カテゴリ、予算を見る',
-  "It's read-only: it can't change anything in your wallet, or see your password or API key. You can disconnect it at any time in Settings → Claude.":
-    '読み取り専用です。ウォレットの内容を変更したり、パスワードやAPIキーを見たりすることはできません。設定 → Claude からいつでも接続を解除できます。',
+  "It's read-only: it can't change anything in your wallet, or see your password or API key. You can disconnect it at any time in Settings → AI assistants.":
+    '読み取り専用です。ウォレットの内容を変更したり、パスワードやAPIキーを見たりすることはできません。設定 → AIアシスタント からいつでも接続を解除できます。',
   'read-only': '読み取り専用',
   'see your accounts, records and categories': '口座、記録、カテゴリを見る',
   'change the category or account of records, and add categories': '記録のカテゴリや口座を変更し、カテゴリを追加する',
-  "It can't add or delete records, or see your password or API key. You can disconnect it at any time in Settings → Claude.":
-    '記録の追加や削除、パスワードやAPIキーの閲覧はできません。設定 → Claude でいつでも接続を解除できます。',
+  "It can't add or delete records, or see your password or API key. You can disconnect it at any time in Settings → AI assistants.":
+    '記録の追加や削除、パスワードやAPIキーの閲覧はできません。設定 → AIアシスタント でいつでも接続を解除できます。',
   "You'll go back to {host}.": '{host} に戻ります。',
   Deny: '拒否',
   Allow: '許可',
@@ -1017,7 +1021,7 @@ export const jaServer: Record<string, string> = {
   'a record can have at most {max} tags': '1件の記録に付けられるタグは{max}個までです',
   'enter a tag': 'タグを入力してください',
   "This sign-in link isn't valid. Go back to the app you were connecting and try again.": 'このログインリンクは無効です。接続しようとしていたアプリに戻って、もう一度お試しください。',
-  'you have {n} connections already; disconnect one in Settings → Claude first': '接続はすでに{n}個あります。先に 設定 → Claude で1つ解除してください',
+  'you have {n} connections already; disconnect one in Settings → AI assistants first': '接続はすでに{n}個あります。先に 設定 → AIアシスタント で1つ解除してください',
   // The browser's own, when the server can't be reached
   'Failed to fetch': 'サーバーに接続できませんでした',
 
