@@ -7,12 +7,15 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.unit.dp
 import com.rudnam.wallet.core.designsystem.theme.WalletTheme
 import com.rudnam.wallet.core.model.Category
 import com.rudnam.wallet.core.model.CategoryKind
 import com.rudnam.wallet.core.ui.CategoryPickerContent
+import com.rudnam.wallet.core.ui.CategoryPickerSheet
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -92,5 +95,37 @@ class CategoryPickerTest {
         compose.onNode(hasSetTextAction()).performTextInput("phar")
         compose.onNodeWithText("Pharmacy").performClick()
         assertEquals(id("Pharmacy"), picked()?.id)
+    }
+
+    @Test
+    fun `sheet keeps constant height and top inset when navigating subcategories`() {
+        compose.setContent {
+            WalletTheme {
+                CategoryPickerSheet(
+                    wallet = treeWallet,
+                    kind = CategoryKind.Expense,
+                    selectedId = null,
+                    onPick = {},
+                    onDismiss = {},
+                )
+            }
+        }
+        compose.waitForIdle()
+        val minTopPx = with(compose.density) { 48.dp.toPx() }
+        val initialTitle = compose.onNodeWithText("Choose a category").fetchSemanticsNode()
+        val initialBounds = initialTitle.parent!!.boundsInWindow
+        assertTrue("sheet should float below 48dp top padding", initialTitle.boundsInWindow.top >= minTopPx)
+
+        compose.onNodeWithText("Transport").performClick()
+        compose.waitForIdle()
+        val subpageBounds = compose.onNodeWithText("Choose a category").fetchSemanticsNode().parent!!.boundsInWindow
+        assertEquals(initialBounds.top, subpageBounds.top, 1f)
+        assertEquals(initialBounds.height, subpageBounds.height, 1f)
+
+        compose.onNodeWithContentDescription("Back").performClick()
+        compose.waitForIdle()
+        val backBounds = compose.onNodeWithText("Choose a category").fetchSemanticsNode().parent!!.boundsInWindow
+        assertEquals(initialBounds.top, backBounds.top, 1f)
+        assertEquals(initialBounds.height, backBounds.height, 1f)
     }
 }
