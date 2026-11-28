@@ -16,9 +16,11 @@ package mcp
 //     client exchanges at /oauth/token, with its PKCE verifier, for an access
 //     token (an hour) and a refresh token (renewed on every use).
 //
-// A client that asks for scope=read (e.g. RudDash, which only shows
+// A client that asks for scope=read alone (e.g. RudDash, which only shows
 // spending) gets a read-only connection: only tools marked readOnlyHint,
-// and the Connect page says so. Without a scope, access is full.
+// and the Connect page says so. Without a scope, or with scope=wallet beside
+// it, access is full: clients that ask for every scope the metadata lists
+// (Gemini) get "wallet read", and so full access.
 //
 // Each connection is a row in mcp_tokens, listed in Settings → Claude, where
 // disconnecting it revokes both tokens.
@@ -103,7 +105,7 @@ func (h *Handler) serverMetadata(w http.ResponseWriter, r *http.Request) {
 		"grant_types_supported":                 []string{"authorization_code", "refresh_token"},
 		"code_challenge_methods_supported":      []string{"S256"},
 		"token_endpoint_auth_methods_supported": []string{"none"},
-		"scopes_supported":                      []string{readScope},
+		"scopes_supported":                      []string{fullScope, readScope},
 	})
 }
 
@@ -228,13 +230,18 @@ func validChallenge(c string) bool {
 
 const badLink = "This sign-in link isn't valid. Go back to the app you were connecting and try again."
 
-// readScope asks for a read-only connection.
-const readScope = "read"
+// readScope asks for a read-only connection; fullScope for full access,
+// which is also what asking for no scope gets.
+const (
+	readScope = "read"
+	fullScope = "wallet"
+)
 
-// wantsReadOnly reads an OAuth scope parameter (space-separated). Unknown
-// scopes are ignored, so "read" anywhere in it means read-only.
+// wantsReadOnly reads an OAuth scope parameter (space-separated): "read"
+// without "wallet" means read-only. Unknown scopes are ignored.
 func wantsReadOnly(scope string) bool {
-	return slices.Contains(strings.Fields(scope), readScope)
+	s := strings.Fields(scope)
+	return slices.Contains(s, readScope) && !slices.Contains(s, fullScope)
 }
 
 // authorize is where a client sends the user. It checks the request and

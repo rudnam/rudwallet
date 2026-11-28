@@ -168,3 +168,44 @@ func TestListBudgets(t *testing.T) {
 		t.Error("bad month accepted")
 	}
 }
+
+// A client that asks for every scope the metadata lists (Gemini: "wallet
+// read") gets full access; "read" alone is what makes a connection read-only.
+func TestMCPAllScopesIsFullAccess(t *testing.T) {
+	ts := newTestServer(t)
+	alice := newClient(t, ts)
+	alice.signup("alice@example.com")
+	const callback = "https://gemini.example/callback"
+	_, as := oauthPost(t, ts.URL+"/oauth/register", map[string]any{"client_name": "Gemini", "redirect_uris": []string{callback}})
+	clientID := as["client_id"].(string)
+	verifier := strings.Repeat("g", 50)
+
+	resp, err := noRedirects.Get(ts.URL + "/oauth/authorize?" + url.Values{"response_type": {"code"}, "client_id": {clientID},
+		"redirect_uri": {callback}, "code_challenge": {pkce(verifier)}, "code_challenge_method": {"S256"}, "scope": {"wallet read"}}.Encode())
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	page, _ := url.ParseQuery(strings.TrimPrefix(resp.Header.Get("Location"), "/app/#/connect?"))
+	if page.Get("client_id") != clientID || page.Has("scope") {
+		t.Fatalf("connect page params %v", page)
+	}
+	var info map[string]any
+	q := "?" + url.Values{"client_id": {clientID}, "redirect_uri": {callback}, "scope": {"wallet read"}}.Encode()
+	if code := alice.do("GET", "/api/mcp/authorize"+q, nil, &info); code != 200 || info["read_only"] != nil {
+		t.Fatalf("describe: %d %v", code, info)
+	}
+	var decided map[string]string
+	alice.do("POST", "/api/mcp/authorize", map[string]any{"client_id": clientID, "redirect_uri": callback,
+		"code_challenge": pkce(verifier), "allow": true}, &decided)
+	back, _ := url.Parse(decided["redirect_to"])
+	code, tokens := oauthPost(t, ts.URL+"/oauth/token", url.Values{"grant_type": {"authorization_code"}, "client_id": {clientID},
+		"code": {back.Query().Get("code")}, "code_verifier": {verifier}, "redirect_uri": {callback}})
+	access, _ := tokens["access_token"].(string)
+	if code != 200 || access == "" || tokens["scope"] != nil {
+		t.Fatalf("exchange: %d %v", code, tokens)
+	}
+	if _, msg := tool(t, ts.URL, access, "create_category", map[string]any{"name": "Allowed", "kind": "expense"}); msg != "" {
+		t.Errorf("full access: %q", msg)
+	}
+}
