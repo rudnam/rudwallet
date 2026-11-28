@@ -769,6 +769,8 @@ export const api = {
   /** Moves that put categories where new wallets have them: each with the parent_id it would get (null: a main category). */
   regroupOffer: () => request<Category[]>('GET', '/api/categories/regroup?with_main=1'),
   regroup: (ids: number[]) => request<Category[]>('POST', '/api/categories/regroup', { ids }),
+  refreshOffer: () => request<Category[]>('GET', '/api/categories/refresh'),
+  refresh: (ids: number[]) => request<Category[]>('POST', '/api/categories/refresh', { ids }),
   createCategory: (c: Omit<Category, 'id'>) => request<Category>('POST', '/api/categories', c),
   updateCategory: (id: number, c: Omit<Category, 'id'>) => request<Category>('PUT', `/api/categories/${id}`, c),
   deleteCategory: (id: number) => request<void>('DELETE', `/api/categories/${id}`),

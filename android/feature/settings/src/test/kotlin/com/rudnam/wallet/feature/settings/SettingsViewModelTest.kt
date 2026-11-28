@@ -141,4 +141,14 @@ class SettingsViewModelTest {
         assertEquals(listOf(listOf(11L)), settings.regrouped)
         assertEquals(ChangeMessage.Saved, vm.messages.value.last())
     }
+
+    @Test
+    fun `an old wallet's categories get the names and icons a new one has`() = runTest {
+        settings.refreshOffer = listOf(SampleWallet.wallet.category(12)!!.copy(icon = "route"))
+        val vm = CategoriesViewModel(wallet, settings)
+        assertEquals(listOf(12L), vm.refresh.first { it.isNotEmpty() }.map { it.id })
+        vm.matchDefaults(emptyList(), emptyList(), listOf(12L))
+        assertEquals(listOf(listOf(12L)), settings.refreshed)
+        assertEquals(ChangeMessage.Saved, vm.messages.value.last())
+    }
 }

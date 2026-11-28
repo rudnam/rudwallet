@@ -193,6 +193,10 @@ class TestSettingsRepository : com.rudnam.wallet.core.data.repository.SettingsRe
     val regrouped = mutableListOf<List<Long>>()
     override suspend fun regroupOffer() = regroupOffer
     override suspend fun regroup(ids: List<Long>) = result.also { regrouped += ids }
+    var refreshOffer = emptyList<com.rudnam.wallet.core.model.Category>()
+    val refreshed = mutableListOf<List<Long>>()
+    override suspend fun refreshOffer() = refreshOffer
+    override suspend fun refresh(ids: List<Long>) = result.also { refreshed += ids }
     override suspend fun saveCategory(id: Long?, input: com.rudnam.wallet.core.model.CategoryInput) = result.also { categories += id to input }
     override suspend fun deleteCategory(id: Long) = result.also { deletedCategories += id }
 

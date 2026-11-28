@@ -227,3 +227,56 @@ func TestRegroup(t *testing.T) {
 		t.Errorf("offer afterwards %v, want %v", got, want)
 	}
 }
+
+// A wallet whose defaults have old names or icons is offered the ones a new
+// wallet has, and only the changes it agrees to are made.
+func TestRefreshDefaults(t *testing.T) {
+	ts := newTestServer(t)
+	c, bob := newClient(t, ts), newClient(t, ts)
+	c.signup("a@example.com")
+	bob.signup("b@example.com")
+	o := overview(t, c)
+	eating, water := categoryID(t, o, "Eating out"), categoryID(t, o, "Water")
+	offer := func() map[int64]string {
+		t.Helper()
+		var cats []wallet.Category
+		if code := c.do("GET", "/api/categories/refresh", nil, &cats); code != 200 {
+			t.Fatalf("offer: %d", code)
+		}
+		out := map[int64]string{}
+		for _, cat := range cats {
+			out[cat.ID] = cat.Name + " " + cat.Icon
+		}
+		return out
+	}
+	if got := offer(); len(got) != 0 {
+		t.Errorf("a new wallet is offered %v", got)
+	}
+	// As an older wallet has them: Eating out still Restaurants with an
+	// emoji, Water a light bulb.
+	for id, in := range map[int64]map[string]any{
+		eating: {"name": "Restaurants", "kind": "expense", "icon": "🍜", "color": "#d9534f"},
+		water:  {"name": "Water", "kind": "expense", "icon": "bills", "color": "#6d6fc4"},
+	} {
+		if code := c.do("PUT", fmt.Sprintf("/api/categories/%d", id), in, nil); code != 200 {
+			t.Fatalf("make it old: %d", code)
+		}
+	}
+	if got, want := offer(), map[int64]string{eating: "Eating out dining", water: "Water water"}; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("offer %v, want %v", got, want)
+	}
+	// Bob can't change Alice's categories.
+	var changed []wallet.Category
+	if code := bob.do("POST", "/api/categories/refresh", map[string]any{"ids": []int64{eating}}, &changed); code != 200 || len(changed) != 0 {
+		t.Errorf("another user's: %d %+v", code, changed)
+	}
+	if code := c.do("POST", "/api/categories/refresh", map[string]any{"ids": []int64{eating}}, &changed); code != 200 || len(changed) != 1 {
+		t.Fatalf("refresh: %d %+v", code, changed)
+	}
+	if id := categoryID(t, overview(t, c), "Eating out"); id != eating {
+		t.Errorf("Eating out is %d, want %d", id, eating)
+	}
+	if got, want := offer(), map[int64]string{water: "Water water"}; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("offer afterwards %v, want %v", got, want)
+	}
+}

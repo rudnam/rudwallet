@@ -48,10 +48,11 @@ interface CategoriesActions {
     fun edit(category: Category)
     /**
      * Matches the defaults a new wallet starts with: moves the offered
-     * categories in [moves] under their main category, then adds [adds],
+     * categories in [moves] under their main category, gives those in
+     * [updates] the name and icon new wallets have, then adds [adds],
      * default categories the user doesn't have.
      */
-    fun matchDefaults(moves: List<Long>, adds: List<Category>)
+    fun matchDefaults(moves: List<Long>, adds: List<Category>, updates: List<Long> = emptyList())
     fun setName(name: String)
     fun setKind(kind: CategoryKind)
     /** Puts the category under a main category, or with null makes it a main one. */
@@ -79,6 +80,10 @@ class CategoriesViewModel @Inject constructor(
     private val _regroup = MutableStateFlow<List<Category>>(emptyList())
     val regroup: StateFlow<List<Category>> = _regroup.asStateFlow()
 
+    /** The user's default categories whose name or icon isn't what new wallets have, each with the name and icon it would get. */
+    private val _refresh = MutableStateFlow<List<Category>>(emptyList())
+    val refresh: StateFlow<List<Category>> = _refresh.asStateFlow()
+
     private val _editor = MutableStateFlow<CategoryEditor?>(null)
     val editor: StateFlow<CategoryEditor?> = _editor.asStateFlow()
 
@@ -86,11 +91,12 @@ class CategoriesViewModel @Inject constructor(
     val messages: StateFlow<List<ChangeMessage>> = _messages.asStateFlow()
 
     init {
-        // Asked again whenever the categories change: one added, deleted or moved changes what's offered.
+        // Asked again whenever the categories change: one added, deleted, moved, renamed or given another icon changes what's offered.
         viewModelScope.launch {
-            wallet.wallet.filterNotNull().map { w -> w.categories.map { Triple(it.kind, it.name, it.parentId) } }.distinctUntilChanged().collect {
+            wallet.wallet.filterNotNull().map { w -> w.categories.map { listOf(it.kind, it.name, it.icon, it.parentId) } }.distinctUntilChanged().collect {
                 _missing.value = settings.missingCategories()
                 _regroup.value = settings.regroupOffer()
+                _refresh.value = settings.refreshOffer()
             }
         }
     }
@@ -114,12 +120,16 @@ class CategoriesViewModel @Inject constructor(
         )
     }
 
-    override fun matchDefaults(moves: List<Long>, adds: List<Category>) {
-        if (moves.isEmpty() && adds.isEmpty()) return
+    override fun matchDefaults(moves: List<Long>, adds: List<Category>, updates: List<Long>) {
+        if (moves.isEmpty() && adds.isEmpty() && updates.isEmpty()) return
         viewModelScope.launch {
             if (moves.isNotEmpty()) {
                 val moved = settings.regroup(moves)
                 if (moved != ChangeResult.Saved) return@launch report(moved, ChangeMessage.Saved)
+            }
+            if (updates.isNotEmpty()) {
+                val updated = settings.refresh(updates)
+                if (updated != ChangeResult.Saved) return@launch report(updated, ChangeMessage.Saved)
             }
             for (c in adds) {
                 val added = settings.saveCategory(null, CategoryInput(c.name, c.kind, c.icon, c.color, c.parentId))

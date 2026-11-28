@@ -94,6 +94,17 @@ func TestBroaderDefaults(t *testing.T) {
 	if g.CategoryID == nil || *g.CategoryID != 2 {
 		t.Errorf("Sold items in an older wallet: %+v", g)
 	}
+	withOther := append(old, Category{ID: 4, Name: "Other", Kind: "expense"})
+	g = ImportCategory{Kind: "expense"}
+	suggestNamed(withOther, &g, "Lent out")
+	if g.CategoryID == nil || *g.CategoryID != 4 {
+		t.Errorf("Lent out in an older wallet: %+v", g)
+	}
+	g = ImportCategory{Kind: "income"}
+	suggestNamed(old, &g, "Paid back to me")
+	if g.CategoryID == nil || *g.CategoryID != 2 {
+		t.Errorf("Paid back to me in an older wallet: %+v", g)
+	}
 	g = ImportCategory{Kind: "expense"}
 	suggestNamed(nil, &g, "Pets")
 	if g.CategoryID != nil || g.NewName != "Pets" {

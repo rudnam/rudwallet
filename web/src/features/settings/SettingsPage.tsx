@@ -493,16 +493,18 @@ function Categories() {
   const [editing, setEditing] = useState<Category | 'new' | { under: Category } | null>(null);
   const [missing, setMissing] = useState<Category[]>([]);
   const [regroup, setRegroup] = useState<Category[]>([]);
+  const [refresh, setRefresh] = useState<Category[]>([]);
   const [matching, setMatching] = useState(false);
   // The main category open, showing its subcategories as chips; one at a time.
   const [open, setOpen] = useState<number | null>(null);
   const [error, setError] = useState('');
-  const names = w.categories.map((c) => `${c.kind}:${c.name}:${c.parent_id ?? ''}`).join('|');
+  const names = w.categories.map((c) => `${c.kind}:${c.name}:${c.icon}:${c.parent_id ?? ''}`).join('|');
   useEffect(() => {
     api.missingCategories().then(setMissing, () => setMissing([]));
     api.regroupOffer().then(setRegroup, () => setRegroup([]));
+    api.refreshOffer().then(setRefresh, () => setRefresh([]));
   }, [names]);
-  const suggestions = missing.length + regroup.length;
+  const suggestions = missing.length + regroup.length + refresh.length;
 
   return (
     <>
@@ -601,6 +603,7 @@ function Categories() {
         <DefaultsDialog
           missing={missing}
           regroup={regroup}
+          refresh={refresh}
           onError={setError}
           onClose={() => setMatching(false)}
         />
@@ -611,12 +614,26 @@ function Categories() {
 
 /**
  * Matching the defaults a new wallet starts with: moving the categories it
- * keeps under a main category there, and adding the ones this wallet doesn't
- * have. All ticked to start with; Apply does the ticked ones.
+ * keeps under a main category there, giving them the names and icons it has,
+ * and adding the ones this wallet doesn't have. All ticked to start with;
+ * Apply does the ticked ones.
  */
-function DefaultsDialog({ missing, regroup, onError, onClose }: { missing: Category[]; regroup: Category[]; onError: (e: string) => void; onClose: () => void }) {
+function DefaultsDialog({
+  missing,
+  regroup,
+  refresh,
+  onError,
+  onClose,
+}: {
+  missing: Category[];
+  regroup: Category[];
+  refresh: Category[];
+  onError: (e: string) => void;
+  onClose: () => void;
+}) {
   const w = useWallet();
   const [moves, setMoves] = useState(() => new Set(regroup.map((c) => c.id)));
+  const [updates, setUpdates] = useState(() => new Set(refresh.map((c) => c.id)));
   const [adds, setAdds] = useState(() => new Set(missing.map((c) => `${c.kind}:${c.name}`)));
   const [busy, setBusy] = useState(false);
   const toggle = <T,>(set: Set<T>, v: T, on: boolean) => {
@@ -632,6 +649,7 @@ function DefaultsDialog({ missing, regroup, onError, onClose }: { missing: Categ
     onError('');
     try {
       if (moves.size > 0) await api.regroup([...moves]);
+      if (updates.size > 0) await api.refresh([...updates]);
       for (const c of missing.filter((x) => adds.has(`${x.kind}:${x.name}`))) {
         await api.createCategory({ name: c.name, kind: c.kind, icon: c.icon, color: c.color, parent_id: c.parent_id ?? null });
       }
@@ -662,6 +680,28 @@ function DefaultsDialog({ missing, regroup, onError, onClose }: { missing: Categ
             <p className="muted small">{t("A main category's budgets and totals then include its subcategories.")}</p>
           </fieldset>
         )}
+        {refresh.length > 0 && (
+          <fieldset className="stack tight">
+            <legend className="muted small">{t('Names and icons')}</legend>
+            {refresh.map((c) => {
+              const now = w.category(c.id);
+              return (
+                <label key={c.id} className="check with-icon">
+                  <input type="checkbox" checked={updates.has(c.id)} onChange={(e) => setUpdates(toggle(updates, c.id, e.target.checked))} />
+                  {/* The icon it has, then the one it would get. */}
+                  {now && now.icon !== c.icon && (
+                    <>
+                      <CategoryIcon icon={now.icon} name={now.name} color={now.color} size="small" />
+                      <span aria-hidden="true">→</span>
+                    </>
+                  )}
+                  <CategoryIcon icon={c.icon} name={c.name} color={c.color} size="small" />
+                  {now && now.name !== c.name ? t('{old} renamed {name}', { old: now.name, name: c.name }) : c.name}
+                </label>
+              );
+            })}
+          </fieldset>
+        )}
         {missing.length > 0 && (
           <fieldset className="stack tight">
             <legend className="muted small">{t('Add')}</legend>
@@ -680,7 +720,7 @@ function DefaultsDialog({ missing, regroup, onError, onClose }: { missing: Categ
             })}
           </fieldset>
         )}
-        <button type="submit" disabled={busy || (moves.size === 0 && adds.size === 0)}>
+        <button type="submit" disabled={busy || (moves.size === 0 && updates.size === 0 && adds.size === 0)}>
           {t('Apply')}
         </button>
       </form>

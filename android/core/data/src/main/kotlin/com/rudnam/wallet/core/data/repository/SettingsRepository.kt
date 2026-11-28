@@ -49,6 +49,12 @@ interface SettingsRepository {
     /** Puts the offered categories among [ids] under their main category. */
     suspend fun regroup(ids: List<Long>): ChangeResult
 
+    /** The user's default categories whose name or icon isn't what new wallets have, each with the name and icon it would get; none offline. */
+    suspend fun refreshOffer(): List<Category>
+
+    /** Gives the offered categories among [ids] the name and icon new wallets have. */
+    suspend fun refresh(ids: List<Long>): ChangeResult
+
     /** Adds a category ([id] null) or changes one. */
     suspend fun saveCategory(id: Long?, input: CategoryInput): ChangeResult
 
@@ -134,6 +140,21 @@ internal class ServerSettingsRepository @Inject constructor(
 
     override suspend fun regroup(ids: List<Long>) = change(io) {
         network.regroup(NetworkRegroupInput(ids))
+        reload()
+    }
+
+    override suspend fun refreshOffer(): List<Category> = withContext(io) {
+        try {
+            network.refreshOffer().map { it.asModel() }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    override suspend fun refresh(ids: List<Long>) = change(io) {
+        network.refresh(NetworkRegroupInput(ids))
         reload()
     }
 
