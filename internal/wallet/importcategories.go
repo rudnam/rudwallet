@@ -185,7 +185,8 @@ func findCategory(cats []Category, kind, name string) *int64 {
 var broaderDefaults = map[string]string{
 	"Insurance": "Taxes & Fees", "Family": "Shopping", "Bills & Utilities": "Housing",
 	"Side income": "Other income", "Investments": "Other income", "Refunds & rewards": "Other income",
-	"Gifts & benefits": "Other income",
+	"Gifts & benefits": "Other income", "Savings & transfers": "Other", "Loans & paybacks": "Other",
+	"Paybacks & borrowing": "Other income",
 }
 
 // broaderDefault is what holds a default in a wallet without it: its main
@@ -333,6 +334,7 @@ var budgetBakersCategories = map[string]map[string]string{
 		"financial expenses": "Bank & card fees", "taxes": "Taxes", "insurances": "Insurance",
 		"loan interest": "Taxes & Fees", "fines": "Taxes & Fees", "advisory": "Taxes & Fees",
 		"charges fees": "Bank & card fees", "child support": "Family support",
+		"investments": "Savings & transfers", "financial investments": "Investing", "savings": "Savings",
 
 		"others": "Other", "other": "Other", "missing": "Other",
 	},
