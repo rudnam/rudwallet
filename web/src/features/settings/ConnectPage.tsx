@@ -1,4 +1,4 @@
-// Connect: an MCP client such as a Claude connector asks to reach the
+// Connect: an MCP client (a Claude connector, ChatGPT, …) asks to reach the
 // wallet, and the signed-in user allows or denies it. The server sends the
 // browser here from /oauth/authorize (see internal/mcp/oauth.go) and, once
 // the user answers, back to the client.
@@ -77,7 +77,7 @@ export function ConnectPage({ route, email }: { route: Route; email: string }) {
                 <li>{t('see your accounts, records, categories and budgets')}</li>
               </ul>
               <p className="muted small">
-                {t("It's read-only: it can't change anything in your wallet, or see your password or API key. You can disconnect it at any time in Settings → Claude.")}
+                {t("It's read-only: it can't change anything in your wallet, or see your password or API key. You can disconnect it at any time in Settings → AI assistants.")}
               </p>
             </>
           ) : (
@@ -87,7 +87,7 @@ export function ConnectPage({ route, email }: { route: Route; email: string }) {
                 <li>{t('change the category or account of records, and add categories')}</li>
               </ul>
               <p className="muted small">
-                {t("It can't add or delete records, or see your password or API key. You can disconnect it at any time in Settings → Claude.")}
+                {t("It can't add or delete records, or see your password or API key. You can disconnect it at any time in Settings → AI assistants.")}
               </p>
             </>
           )}

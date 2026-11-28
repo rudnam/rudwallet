@@ -1,5 +1,5 @@
 // Settings: a short menu; each entry opens its own page (?section=…), with
-// a way back. Payment notifications, what they learned, Claude, accounts,
+// a way back. Payment notifications, what they learned, AI assistants, accounts,
 // categories, currency, and import.
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { categoryPath, inOrder, isSubcategory, subcategoriesOf } from '../../categories';
@@ -50,7 +50,8 @@ const sections: { id: string; label: Key; title: Key; glyph: string; group: Key;
   // Currency: only until the first record (Wallet's checklist links here); not in the list.
   { id: 'general', label: 'Currency', title: 'Currency', glyph: 'money', group: 'App', hidden: true },
   { id: 'widgets', label: 'Home screen widgets', title: 'Home screen widgets', glyph: 'phone', group: 'App', app: true },
-  { id: 'claude', label: 'Claude', title: 'Claude', glyph: 'spark', group: 'App' },
+  // 'claude' stays the id: links and older Android builds open it by that name.
+  { id: 'claude', label: 'AI assistants', title: 'AI assistants', glyph: 'spark', group: 'App' },
 ];
 const groups: Key[] = ['Money', 'Recording payments', 'App'];
 const appearanceNames: Record<Appearance, Key> = { auto: 'Automatic', light: 'Light', dark: 'Dark' };

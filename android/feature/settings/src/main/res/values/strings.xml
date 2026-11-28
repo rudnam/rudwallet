@@ -15,7 +15,7 @@
     <string name="feature_settings_language">Language</string>
     <string name="feature_settings_currency">Currency</string>
     <string name="feature_settings_widgets">Home screen widgets</string>
-    <string name="feature_settings_claude">Claude</string>
+    <string name="feature_settings_claude">AI assistants</string>
     <string name="feature_settings_auto_confirm_on">Auto-confirm on</string>
     <string name="feature_settings_demo">Demo</string>
     <string name="feature_settings_demo_detail">Sample data, deleted within a day</string>
@@ -233,12 +233,13 @@
     <string name="feature_settings_first_account">First account</string>
     <string name="feature_settings_card_rules_note">A card you’ve used before goes to its own account: see Shops and cards.</string>
     <string name="feature_settings_recent_notifications">Recent notifications</string>
-    <string name="feature_settings_claude_demo_intro">Connect the Claude app, Claude Desktop or Claude Code to your wallet, and Claude can sort records that have no category and answer questions about your spending.</string>
-    <string name="feature_settings_claude_demo">Claude needs an account of your own; it isn’t available in the demo.</string>
+    <string name="feature_settings_claude_demo_intro">Connect an AI assistant that supports MCP, such as Claude, ChatGPT or Cursor, and it can sort records that have no category and answer questions about your spending.</string>
+    <string name="feature_settings_claude_demo">Connecting an AI assistant needs an account of your own; it isn’t available in the demo.</string>
     <string name="feature_settings_disconnect_question">Disconnect “%s”? It can no longer reach your wallet.</string>
-    <string name="feature_settings_claude_intro">Claude can sort records with no category, fix mistakes and answer questions about your spending.</string>
+    <string name="feature_settings_claude_intro">Any AI assistant that supports MCP (Claude, ChatGPT, Cursor and others) can sort records with no category, fix mistakes and answer questions about your spending.</string>
     <string name="feature_settings_claude_app">In the Claude app: Settings › Connectors › Add custom connector, paste this address, then allow it here.</string>
-    <string name="feature_settings_claude_address">Address for Claude</string>
+    <string name="feature_settings_claude_address">MCP server address</string>
+    <string name="feature_settings_mcp_other">In other apps: add this address as a remote MCP server. If it can’t sign in by itself, make a token below and send it as the header Authorization: Bearer …</string>
     <string name="feature_settings_copy_token">Copy this token now. It won’t be shown again.</string>
     <string name="feature_settings_new_connection">New connection</string>
     <string name="feature_settings_make_token">Make a token</string>

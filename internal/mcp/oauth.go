@@ -22,7 +22,7 @@ package mcp
 // it, access is full: clients that ask for every scope the metadata lists
 // (Gemini) get "wallet read", and so full access.
 //
-// Each connection is a row in mcp_tokens, listed in Settings → Claude, where
+// Each connection is a row in mcp_tokens, listed in Settings → AI assistants, where
 // disconnecting it revokes both tokens.
 
 import (
@@ -349,7 +349,7 @@ func (h *Handler) decide(w http.ResponseWriter, r *http.Request) error {
 		}
 		code, err := h.store.CreateCode(r.Context(), account.UserFrom(r).ID, c.ID, redirectURI, in.CodeChallenge, wantsReadOnly(in.Scope))
 		if errors.Is(err, errTooMany) {
-			return httpx.Errorf(http.StatusConflict, "you have %d connections already; disconnect one in Settings → Claude first", maxTokens)
+			return httpx.Errorf(http.StatusConflict, "you have %d connections already; disconnect one in Settings → AI assistants first", maxTokens)
 		}
 		if err != nil {
 			return err

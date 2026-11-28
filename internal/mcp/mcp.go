@@ -1,10 +1,10 @@
-// Package mcp lets an MCP client (Claude Desktop, Claude Code, or any other)
-// connect to a user's wallet at /mcp, so Claude can look through their
+// Package mcp lets an MCP client (Claude, ChatGPT, Cursor, or any other)
+// connect to a user's wallet at /mcp, so an AI assistant can look through their
 // records and tidy them: sort uncategorised records, fix categories, add
 // categories. A client sends an access token as "Authorization: Bearer
-// <token>": one the user made in Settings → Claude, or one the client got by
+// <token>": one the user made in Settings → AI assistants, or one the client got by
 // having the user sign in and approve it (OAuth, see oauth.go), which is how
-// Claude's connectors work.
+// Claude's connectors and other remote MCP clients work.
 //
 // It speaks the Model Context Protocol's Streamable HTTP transport, the
 // simple way: every JSON-RPC request gets one JSON response, there are no
@@ -167,7 +167,7 @@ func (h *Handler) serve(w http.ResponseWriter, r *http.Request) {
 	if errors.Is(err, db.ErrNotFound) {
 		// Tells clients that can sign in (OAuth) where to start.
 		w.Header().Set("WWW-Authenticate", `Bearer realm="wallet", resource_metadata="`+h.origin(r)+resourceMetadataPath+`"`)
-		httpx.WriteError(w, http.StatusUnauthorized, "make an access token in the app's Settings → Claude, and send it as a bearer token")
+		httpx.WriteError(w, http.StatusUnauthorized, "make an access token in the app's Settings → AI assistants, and send it as a bearer token")
 		return
 	}
 	if err != nil {

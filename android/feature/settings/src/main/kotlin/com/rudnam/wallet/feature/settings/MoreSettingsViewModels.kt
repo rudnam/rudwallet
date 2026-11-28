@@ -162,7 +162,7 @@ class NotificationsViewModel @Inject constructor(
     }
 }
 
-/** What the Claude page's controls do. */
+/** What the AI assistants page's controls do. */
 interface ClaudeActions {
     fun create(name: String)
     fun askDisconnect(token: McpToken?)
@@ -203,7 +203,7 @@ class ClaudeViewModel @Inject constructor(
         if (_state.value.busy) return
         _state.update { it.copy(busy = true) }
         viewModelScope.launch {
-            when (val made = settings.createMcpToken(name.trim().ifEmpty { "Claude" })) {
+            when (val made = settings.createMcpToken(name.trim().ifEmpty { "AI assistant" })) {
                 is Fetched.Done -> {
                     _state.update { it.copy(fresh = made.value) }
                     load()

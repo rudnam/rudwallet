@@ -547,7 +547,7 @@ internal fun WidgetsScreen(canPin: Boolean, onPin: (String) -> Unit, navigation:
     }
 }
 
-// ---------- Claude ----------
+// ---------- AI assistants (MCP clients; "claude" is still the route) ----------
 
 /** Copies [text]; a token is marked sensitive, so Android doesn't show it in its copy preview. */
 private fun copy(context: Context, text: String, sensitive: Boolean) {
@@ -579,7 +579,7 @@ internal fun ClaudeDestination(navigation: SettingsNavigation, snackbar: Snackba
     }, navigation = navigation)
 }
 
-/** Connections that let Claude (the app, Claude Desktop, Claude Code) reach the wallet, to sort records and answer questions. */
+/** Connections that let an MCP client (Claude, ChatGPT, Cursor, …) reach the wallet, to sort records and answer questions. */
 @Composable
 internal fun ClaudeScreen(me: Me?, state: ClaudeUiState, actions: ClaudeActions, onCopy: (String, Boolean) -> Unit, navigation: SettingsNavigation) {
     SettingsPage(stringResource(R.string.feature_settings_claude), navigation) {
@@ -594,6 +594,7 @@ internal fun ClaudeScreen(me: Me?, state: ClaudeUiState, actions: ClaudeActions,
             WalletPanel(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(stringResource(R.string.feature_settings_claude_app), style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.feature_settings_mcp_other), style = MaterialTheme.typography.bodyMedium)
                     Text(stringResource(R.string.feature_settings_claude_address), style = MaterialTheme.typography.labelMedium, color = WalletTheme.colors.muted)
                     CopyRow(state.address, sensitive = false, onCopy)
                 }
