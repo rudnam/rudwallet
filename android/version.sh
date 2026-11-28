@@ -17,7 +17,8 @@ floor=$(sed -n 's/.*WALLET_VERSION_CODE") ?: "\([0-9]*\)".*/\1/p' app/build.grad
 [[ $floor =~ ^[0-9]+$ ]] || { echo "no versionCode floor found in app/build.gradle.kts" >&2; exit 1; }
 
 downloads=$(curl -fsS --retry 3 "$site/api/downloads") || { echo "couldn't ask $site which version it offers" >&2; exit 1; }
-published=$(grep -o '"version":[0-9]*' <<<"$downloads" | cut -d: -f2 || true)
+# The newest of every "version" in it: the APK's, and its changelog's.
+published=$(grep -o '"version":[0-9]*' <<<"$downloads" | cut -d: -f2 | sort -n | tail -n 1 || true)
 
 next=$(( ${published:-0} + 1 ))
 (( next > floor )) || next=$floor
