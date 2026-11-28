@@ -341,4 +341,18 @@ class OfflineFirstWalletRepositoryTest {
         assertEquals(ChangeResult.Offline, settings.deleteCategory(11))
         assertEquals(Fetched.Offline, settings.rules())
     }
+
+    @Test
+    fun `refresh preserves subcategory parentId and applies main category colour`() = runTest {
+        val network = FakeNetwork()
+        network.categories += com.rudnam.wallet.core.network.model.NetworkCategory(11, "Groceries", "expense", "grocery", "#e8833a", parentId = 10)
+        val repository = OfflineFirstWalletRepository(network, db.walletDao(), db.transactionDao(), db.budgetDao(), db.outboxDao(), WalletCache(db), StatsCache(), HabitsCache(), StandardTestDispatcher(testScheduler))
+
+        assertEquals(SyncResult.Done, repository.refresh(from, to))
+        val wallet = repository.wallet.first()!!
+        assertNull(wallet.category(10)?.parentId)
+        assertEquals(10L, wallet.category(11)?.parentId)
+        assertEquals(listOf(11L), wallet.subcategories(10).map { it.id })
+        assertEquals("#d9534f", wallet.category(11)?.color)
+    }
 }
