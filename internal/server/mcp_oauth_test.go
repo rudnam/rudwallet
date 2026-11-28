@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -67,7 +68,7 @@ func TestMCPSignIn(t *testing.T) {
 	_, body := get(t, ts.URL+"/.well-known/oauth-authorization-server")
 	json.Unmarshal([]byte(body), &as)
 	if as["issuer"] != ts.URL || as["registration_endpoint"] != ts.URL+"/oauth/register" ||
-		as["code_challenge_methods_supported"].([]any)[0] != "S256" {
+		as["code_challenge_methods_supported"].([]any)[0] != "S256" || fmt.Sprint(as["scopes_supported"]) != "[wallet read]" {
 		t.Fatalf("server metadata %s", body)
 	}
 
