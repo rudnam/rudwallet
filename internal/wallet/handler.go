@@ -56,6 +56,7 @@ func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) ht
 	route("POST /api/transactions/bulk", h.bulkTransactions)
 	route("POST /api/transactions/restore", h.restoreTransactions)
 	route("GET /api/transactions/duplicates", h.listSetAside)
+	route("GET /api/transactions/suggestions", h.reviewSuggestions)
 	route("PUT /api/transactions/{id}", h.updateTransaction)
 	route("DELETE /api/transactions/{id}", h.deleteTransaction)
 	route("GET /api/tags", h.listTags)

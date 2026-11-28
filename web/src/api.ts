@@ -808,6 +808,9 @@ export const api = {
   restoreTransactions: (ids: number[]) => request<RestoreResult>('POST', '/api/transactions/restore', { ids }),
   /** Possible duplicates set aside from notifications; restoreTransactions brings one back to review. */
   setAside: () => request<{ duplicates: SetAsideRecord[] }>('GET', '/api/transactions/duplicates'),
+  /** For each payment to review, the categories it most likely belongs in, the likeliest first. */
+  reviewSuggestions: () =>
+    request<{ suggestions: { transaction_id: number; category_ids: number[] }[] }>('GET', '/api/transactions/suggestions'),
 
   stats: (from: Date, to: Date, accountId?: number) => request<Stats>('GET', statsPath(from, to, accountId)),
 

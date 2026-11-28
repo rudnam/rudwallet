@@ -474,6 +474,9 @@ export const ja = {
   'Not a payment': '支払いではない',
   Payment: '支払い',
   'Confirmed {payee}': '{payee}を確定しました',
+  'Confirmed {payee} as {category}': '{payee}を{category}で確定しました',
+  'Confirm as {category}': '{category}で確定',
+  'Other category…': 'ほかのカテゴリ…',
   'Possible duplicate: you already have a record of this amount around this time.':
     '重複の可能性: 同じ時間帯に同じ金額の記録がすでにあります。',
   'Possible duplicate of a record you already have:': '重複の可能性: 次の記録がすでにあります。',
