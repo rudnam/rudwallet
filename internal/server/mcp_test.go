@@ -321,3 +321,62 @@ func TestMCP(t *testing.T) {
 }
 
 func itoa(n int64) string { b, _ := json.Marshal(n); return string(b) }
+
+// The budget tools add, change and delete the user's budgets, with limits as
+// decimal amounts, and never another user's.
+func TestBudgetTools(t *testing.T) {
+	ts := newTestServer(t)
+	c, bob := newClient(t, ts), newClient(t, ts)
+	c.signup("a@example.com")
+	bob.signup("b@example.com")
+	o := overview(t, c)
+	food, salary := categoryID(t, o, "Food & Drinks"), categoryID(t, o, "Salary")
+	var tok, bobTok mcpToken
+	c.do("POST", "/api/mcp/tokens", map[string]string{"name": "test"}, &tok)
+	bob.do("POST", "/api/mcp/tokens", map[string]string{"name": "test"}, &bobTok)
+
+	all, msg := tool(t, ts.URL, tok.Token, "create_budget", map[string]any{"name": "Everything", "amount": "200000"})
+	if msg != "" || all["category_id"] != nil || all["name"] != "Everything" {
+		t.Fatalf("create: %v %q", all, msg)
+	}
+	f, msg := tool(t, ts.URL, tok.Token, "create_budget", map[string]any{"name": "Food", "amount": "60000", "category_id": food})
+	if msg != "" || f["category_id"] != float64(food) {
+		t.Fatalf("create food: %v %q", f, msg)
+	}
+	for _, bad := range []map[string]any{
+		{"name": "Pay", "amount": "1000", "category_id": salary}, // an income category
+		{"name": "Zero", "amount": "0"},
+		{"name": "", "amount": "1000"},
+	} {
+		if _, msg := tool(t, ts.URL, tok.Token, "create_budget", bad); msg == "" {
+			t.Errorf("accepted %v", bad)
+		}
+	}
+	// Only what's given changes; null category_id makes it all spending.
+	id := f["id"]
+	if r, msg := tool(t, ts.URL, tok.Token, "update_budget", map[string]any{"budget_id": id, "amount": "55000"}); msg != "" || r["name"] != "Food" || r["category_id"] != float64(food) {
+		t.Errorf("update amount: %v %q", r, msg)
+	}
+	if r, msg := tool(t, ts.URL, tok.Token, "update_budget", map[string]any{"budget_id": id, "category_id": nil}); msg != "" || r["category_id"] != nil {
+		t.Errorf("update category: %v %q", r, msg)
+	}
+	var budgets []wallet.Budget
+	c.do("GET", "/api/budgets", nil, &budgets)
+	if len(budgets) != 2 || budgets[1].CategoryID != nil || budgets[1].Name != "Food" {
+		t.Errorf("budgets: %+v", budgets)
+	}
+	// Bob can't change or delete Alice's.
+	if _, msg := tool(t, ts.URL, bobTok.Token, "update_budget", map[string]any{"budget_id": id, "amount": "1"}); !strings.Contains(msg, "no such budget") {
+		t.Errorf("bob changed alice's budget: %q", msg)
+	}
+	if _, msg := tool(t, ts.URL, bobTok.Token, "delete_budget", map[string]any{"budget_id": id}); !strings.Contains(msg, "no such budget") {
+		t.Errorf("bob deleted alice's budget: %q", msg)
+	}
+	if r, msg := tool(t, ts.URL, tok.Token, "delete_budget", map[string]any{"budget_id": id}); msg != "" || r["deleted_budget_id"] != id {
+		t.Errorf("delete: %v %q", r, msg)
+	}
+	c.do("GET", "/api/budgets", nil, &budgets)
+	if len(budgets) != 1 {
+		t.Errorf("after delete: %+v", budgets)
+	}
+}
