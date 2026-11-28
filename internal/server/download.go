@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -22,11 +23,12 @@ const apkPath = "/download/wallet.apk"
 // left out if it can't be read.
 func downloads(file string) http.Handler {
 	type download struct {
-		URL         string    `json:"url"`
-		Size        int64     `json:"size"`
-		Updated     time.Time `json:"updated"`
-		Version     int64     `json:"version,omitempty"`
-		VersionName string    `json:"version_name,omitempty"`
+		URL         string           `json:"url"`
+		Size        int64            `json:"size"`
+		Updated     time.Time        `json:"updated"`
+		Version     int64            `json:"version,omitempty"`
+		VersionName string           `json:"version_name,omitempty"`
+		Changelog   []changelogEntry `json:"changelog,omitempty"`
 	}
 	var versions apkVersions
 	return httpx.HandlerFunc(func(w http.ResponseWriter, r *http.Request) error {
@@ -35,7 +37,24 @@ func downloads(file string) http.Handler {
 			return err
 		} else if info != nil {
 			v := versions.get(file, info)
-			android = &download{URL: apkPath, Size: info.Size(), Updated: info.ModTime().UTC(), Version: v.Code, VersionName: v.Name}
+			changelog := v.Changelog
+			if since, err := strconv.ParseInt(r.URL.Query().Get("since"), 10, 64); err == nil && since > 0 {
+				var filtered []changelogEntry
+				for _, e := range v.Changelog {
+					if e.Version > since {
+						filtered = append(filtered, e)
+					}
+				}
+				changelog = filtered
+			}
+			android = &download{
+				URL:         apkPath,
+				Size:        info.Size(),
+				Updated:     info.ModTime().UTC(),
+				Version:     v.Code,
+				VersionName: v.Name,
+				Changelog:   changelog,
+			}
 		}
 		httpx.WriteJSON(w, http.StatusOK, map[string]any{"android": android})
 		return nil

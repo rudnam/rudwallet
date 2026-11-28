@@ -3,22 +3,36 @@ package server
 import (
 	"archive/zip"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"io"
+	"io/fs"
+	"log/slog"
 	"unicode/utf16"
 )
 
-// apkVersion is the version an APK declares in its manifest: versionCode,
-// which Android compares to decide what's newer, and versionName, shown to
-// people.
-type apkVersion struct {
-	Code int64
-	Name string
+// changelogEntry is one release's user-facing notes, baked into
+// assets/changelog.json inside the APK.
+type changelogEntry struct {
+	Version     int64    `json:"version"`
+	VersionName string   `json:"version_name,omitempty"`
+	En          []string `json:"en,omitempty"`
+	Ja          []string `json:"ja,omitempty"`
 }
 
-// readAPKVersion reads the version from the APK at file. An APK's
-// AndroidManifest.xml is compiled to Android's binary XML, so this reads
-// just enough of that format to find the <manifest> element's attributes.
+// apkVersion is the version an APK declares in its manifest: versionCode,
+// which Android compares to decide what's newer, and versionName, shown to
+// people, plus any changelog baked into assets/changelog.json.
+type apkVersion struct {
+	Code      int64
+	Name      string
+	Changelog []changelogEntry
+}
+
+// readAPKVersion reads the version (and optional changelog) from the APK at
+// file. An APK's AndroidManifest.xml is compiled to Android's binary XML, so
+// this reads just enough of that format to find the <manifest> element's
+// attributes.
 func readAPKVersion(file string) (apkVersion, error) {
 	z, err := zip.OpenReader(file)
 	if err != nil {
@@ -34,7 +48,34 @@ func readAPKVersion(file string) (apkVersion, error) {
 	if err != nil {
 		return apkVersion{}, err
 	}
-	return parseManifestVersion(data)
+	v, err := parseManifestVersion(data)
+	if err != nil {
+		return apkVersion{}, err
+	}
+	v.Changelog = readAPKChangelog(z, file)
+	return v, nil
+}
+
+func readAPKChangelog(z *zip.ReadCloser, file string) []changelogEntry {
+	f, err := z.Open("assets/changelog.json")
+	if err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			slog.Warn("opening the APK's changelog", "file", file, "err", err)
+		}
+		return nil
+	}
+	defer f.Close()
+	data, err := io.ReadAll(io.LimitReader(f, 256<<10))
+	if err != nil {
+		slog.Warn("reading the APK's changelog", "file", file, "err", err)
+		return nil
+	}
+	var entries []changelogEntry
+	if err := json.Unmarshal(data, &entries); err != nil {
+		slog.Warn("parsing the APK's changelog", "file", file, "err", err)
+		return nil
+	}
+	return entries
 }
 
 // Android's binary XML (frameworks/base/libs/androidfw/include/androidfw/ResourceTypes.h).

@@ -155,7 +155,7 @@ internal interface WalletApi {
     suspend fun sendNotifications(@Body body: NetworkIncomingNotifications): Response<Unit>
 
     @GET("api/downloads")
-    suspend fun downloads(): NetworkDownloads
+    suspend fun downloads(@Query("since") since: Int? = null): NetworkDownloads
 
     @GET("api/me")
     suspend fun me(): NetworkMe
@@ -398,7 +398,7 @@ internal class RetrofitWalletNetwork @Inject constructor(retrofit: Retrofit, pri
 
     override suspend fun importICCard(body: NetworkICCardImport) = call { api.importICCard(body) }
 
-    override suspend fun downloads() = call { api.downloads() }
+    override suspend fun downloads(since: Int?) = call { api.downloads(since) }
 
     private fun Response<Unit>.orThrow() {
         if (!isSuccessful) throw HttpException(this)

@@ -155,11 +155,79 @@ func TestAndroidDownload(t *testing.T) {
 		Android struct {
 			Version     int64  `json:"version"`
 			VersionName string `json:"version_name"`
+			Changelog   []any  `json:"changelog"`
 		} `json:"android"`
 	}
 	_, body = get(t, ts.URL+"/api/downloads")
 	if err := json.Unmarshal([]byte(body), &versioned); err != nil ||
-		versioned.Android.Version != 4 || versioned.Android.VersionName != "2.1" {
+		versioned.Android.Version != 4 || versioned.Android.VersionName != "2.1" ||
+		len(versioned.Android.Changelog) != 0 {
 		t.Errorf("downloads with a real APK: %s", body)
+	}
+
+	// An APK with assets/changelog.json returns entries newer than ?since=.
+	writeAPK := func(changelogJSON string) {
+		var b bytes.Buffer
+		w := zip.NewWriter(&b)
+		if f, err := w.Create("AndroidManifest.xml"); err != nil {
+			t.Fatal(err)
+		} else if _, err := f.Write(manifest); err != nil {
+			t.Fatal(err)
+		}
+		if f, err := w.Create("assets/changelog.json"); err != nil {
+			t.Fatal(err)
+		} else if _, err := f.Write([]byte(changelogJSON)); err != nil {
+			t.Fatal(err)
+		}
+		if err := w.Close(); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(file, b.Bytes(), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	writeAPK(`[
+		{"version":4,"version_name":"2.1","en":["Show what's new"],"ja":["変更内容を表示"]},
+		{"version":3,"version_name":"2.0.3","en":["Faster ride alarm"]},
+		{"version":2,"version_name":"2.0.2","en":["Older fix"]}
+	]`)
+	type clResp struct {
+		Android struct {
+			Version   int64 `json:"version"`
+			Changelog []struct {
+				Version     int64    `json:"version"`
+				VersionName string   `json:"version_name"`
+				En          []string `json:"en"`
+				Ja          []string `json:"ja"`
+			} `json:"changelog"`
+		} `json:"android"`
+	}
+	var all, since2, since4 clResp
+	_, body = get(t, ts.URL+"/api/downloads")
+	if err := json.Unmarshal([]byte(body), &all); err != nil || len(all.Android.Changelog) != 3 {
+		t.Fatalf("all changelog entries: %s", body)
+	}
+	_, body = get(t, ts.URL+"/api/downloads?since=2")
+	if err := json.Unmarshal([]byte(body), &since2); err != nil ||
+		len(since2.Android.Changelog) != 2 ||
+		since2.Android.Changelog[0].Version != 4 ||
+		since2.Android.Changelog[1].Version != 3 ||
+		since2.Android.Changelog[0].Ja[0] != "変更内容を表示" {
+		t.Fatalf("since=2 changelog entries: %s", body)
+	}
+	_, body = get(t, ts.URL+"/api/downloads?since=4")
+	if err := json.Unmarshal([]byte(body), &since4); err != nil || len(since4.Android.Changelog) != 0 ||
+		strings.Contains(body, `"changelog"`) {
+		t.Fatalf("since=4 should omit changelog: %s", body)
+	}
+
+	// Malformed changelog.json doesn't break version detection.
+	writeAPK(`{not json`)
+	var broken clResp
+	_, body = get(t, ts.URL+"/api/downloads")
+	if err := json.Unmarshal([]byte(body), &broken); err != nil ||
+		broken.Android.Version != 4 || len(broken.Android.Changelog) != 0 {
+		t.Fatalf("broken changelog still returns version: %s", body)
 	}
 }

@@ -61,7 +61,9 @@ code=$(call -X POST "${auth[@]}" -H 'Content-Type: application/octet-stream' --d
   jq -r .versionCode)
 echo "Uploaded versionCode $code; releasing $name on $track ($status)"
 jq -n --arg t "$track" --arg n "$name" --arg c "$code" --arg s "$status" \
-  '{track: $t, releases: [{name: $n, versionCodes: [$c], status: $s}]}' |
+  --argjson notes "${PLAY_RELEASE_NOTES_JSON:-[]}" \
+  '($notes | if length > 0 then {releaseNotes: .} else {} end) as $rn |
+   {track: $t, releases: [({name: $n, versionCodes: [$c], status: $s} + $rn)]}' |
   call -X PUT "${auth[@]}" -H 'Content-Type: application/json' -d @- "$api/edits/$edit/tracks/$track" >/dev/null
 call -X POST "${auth[@]}" "$api/edits/$edit:commit" >/dev/null
 echo "Play Console: $name (versionCode $code) on $track, $status"

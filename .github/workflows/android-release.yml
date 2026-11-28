@@ -79,6 +79,7 @@ jobs:
     environment: android-release
     permissions:
       contents: write # the GitHub release
+      pull-requests: read
     outputs:
       tag: ${{ steps.keep.outputs.tag }}
     env:
@@ -123,6 +124,34 @@ jobs:
           base64 -d <<<"$KEYSTORE" > android/android.keystore
           printf 'Keystore password: %s\nKey password: %s\n' "$STORE_PASSWORD" "$KEY_PASSWORD" > android/signing-key.txt
 
+      - name: Build changelog
+        run: |
+          # `gh release list --json` has no body field, so read releases from the REST API
+          # (newest first), in the shape changelog.py expects.
+          gh api "repos/$GITHUB_REPOSITORY/releases?per_page=30" \
+            --jq '[.[] | select(.draft | not) | select(.prerelease | not) | {tagName: .tag_name, name, body}]' \
+            > "$RUNNER_TEMP/releases.json"
+          prev_tag=$(jq -r '[.[] | select(.tagName | test("^android-[0-9]+$"))][0].tagName // empty' "$RUNNER_TEMP/releases.json")
+          if [[ -n $prev_tag ]]; then
+            commits=$(gh api "repos/$GITHUB_REPOSITORY/compare/${prev_tag}...$SHA" --jq '.commits[].sha' 2>/dev/null || echo "$SHA")
+          else
+            commits=$SHA
+          fi
+          : > "$RUNNER_TEMP/prs-raw.jsonl"
+          for c in $commits; do
+            gh api "repos/$GITHUB_REPOSITORY/commits/$c/pulls" \
+              --jq '.[] | select(.merged_at != null) | {number, body}' >> "$RUNNER_TEMP/prs-raw.jsonl" || true
+          done
+          jq -s 'unique_by(.number)' "$RUNNER_TEMP/prs-raw.jsonl" > "$RUNNER_TEMP/prs.json"
+          mkdir -p android/app/src/main/assets
+          python3 android/changelog.py build \
+            --version "$WALLET_VERSION_CODE" \
+            --version-name "$WALLET_VERSION_NAME" \
+            --prs-file "$RUNNER_TEMP/prs.json" \
+            --releases-file "$RUNNER_TEMP/releases.json" \
+            --out-json android/app/src/main/assets/changelog.json \
+            --out-release-notes "$RUNNER_TEMP/release-notes.md"
+
       - name: Build
         run: ./android/build.sh
 
@@ -160,7 +189,7 @@ jobs:
           cp android/wallet.aab "rudwallet-$WALLET_VERSION_NAME.aab"
           gh release create "$tag" --target "$SHA" \
             --title "Android $WALLET_VERSION_NAME" \
-            --notes "versionCode $WALLET_VERSION_CODE, published on wallet.rudnam.com. The .aab goes to the Play Console (android-play.yml), on the track PLAY_TRACK names." \
+            --notes-file "$RUNNER_TEMP/release-notes.md" \
             "rudwallet-$WALLET_VERSION_NAME.apk" "rudwallet-$WALLET_VERSION_NAME.aab"
           echo "GitHub release: $tag" >> "$GITHUB_STEP_SUMMARY"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"

@@ -89,3 +89,6 @@ lint/tmp/
 # Android Profiling
 *.hprof
 
+
+# Generated at release time from PR and release notes.
+app/src/main/assets/changelog.json
