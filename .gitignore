@@ -28,3 +28,7 @@ android/*.idsig
 # Gradle and Kotlin state in the Android build and its included builds
 android/**/.gradle/
 android/**/.kotlin/
+
+# Python bytecode
+__pycache__/
+*.pyc

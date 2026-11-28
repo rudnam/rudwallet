@@ -57,5 +57,6 @@ jobs:
           name=$(gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json name --jq '.name | sub("^Android "; "")')
           mkdir -p "$RUNNER_TEMP/play"
           gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p '*.aab' -D "$RUNNER_TEMP/play"
-          ./android/play-upload.sh "$RUNNER_TEMP"/play/*.aab "$name"
+          notes=$(gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json body --jq .body | python3 android/changelog.py play-notes)
+          PLAY_RELEASE_NOTES_JSON=$notes ./android/play-upload.sh "$RUNNER_TEMP"/play/*.aab "$name"
           echo "Sent $TAG ($name) to the Play Console's ${PLAY_TRACK:-internal} track" >> "$GITHUB_STEP_SUMMARY"

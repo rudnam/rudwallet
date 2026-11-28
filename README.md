@@ -220,7 +220,7 @@ Follow `internal/wallet` or `internal/notify`; a feature is about five files:
 | POST | `/oauth/token` | – | Form-encoded. `grant_type=authorization_code` (with `code`, `code_verifier`, `redirect_uri`, `client_id`) or `refresh_token`. `{access_token, token_type, expires_in: 3600, refresh_token}`; each refresh replaces both tokens. |
 | GET | `/api/widget` | user | For the Android widgets. Query: `from`, `to` (RFC 3339). `{currency, currency_exponent, spent, balance, budget, budgets, review_count}` |
 | GET | `/`, `/app/` | – | The introduction page; the web app, which also answers every path under `/app/` |
-| GET | `/api/downloads` | – | `{android}`: `{url, size, updated, version, version_name}` of the APK, or `null` if there is none. `version` is the APK's `versionCode` (left out if it can't be read); the Android app compares it with its own to offer an update |
+| GET | `/api/downloads` | – | `{android}`: `{url, size, updated, version, version_name, changelog?}` of the APK, or `null` if there is none. `version` is the APK's `versionCode` (left out if it can't be read); the Android app compares it with its own to offer an update. `changelog` (left out when empty) lists what's new in each release from the APK's `assets/changelog.json`, newest first, only those newer than `?since=<versionCode>` when given |
 | GET | `/download/wallet.apk` | – | The Android app's APK (`ANDROID_APK`), or `404` |
 | GET | `/healthz` | – | `{status: "ok", version}` if the database is reachable, else `503` |
 
