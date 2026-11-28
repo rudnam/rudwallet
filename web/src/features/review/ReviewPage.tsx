@@ -30,16 +30,6 @@ export function ReviewPage({ compact = false }: { compact?: boolean }) {
   const toast = useToast();
   // Records that possible duplicates match, by ID.
   const [matches, setMatches] = useState<Map<number, Transaction>>(new Map());
-  // The likeliest categories for each payment, by record ID.
-  const [suggested, setSuggested] = useState<Map<number, number[]>>(new Map());
-
-  useEffect(() => {
-    if (!records || records.length === 0) return;
-    api.reviewSuggestions().then(
-      ({ suggestions }) => setSuggested(new Map(suggestions.map((s) => [s.transaction_id, s.category_ids]))),
-      () => {},
-    );
-  }, [records]);
 
   // A duplicate is flagged when it's within a day of the record it matches:
   // fetch the days around the flagged ones, with a day to spare in case the
@@ -140,7 +130,6 @@ export function ReviewPage({ compact = false }: { compact?: boolean }) {
               t={t}
               categoryId={categoryOf(t)}
               match={t.duplicate_of_id ? matches.get(t.duplicate_of_id) : undefined}
-              suggestions={suggested.get(t.id) ?? []}
               onPick={(id) => setPicked((p) => ({ ...p, [t.id]: id }))}
               onEdit={() => setOpen(t)}
               onDone={reload}
@@ -164,7 +153,6 @@ function ReviewItem({
   t,
   categoryId,
   match,
-  suggestions,
   onPick,
   onEdit,
   onDone,
@@ -173,8 +161,6 @@ function ReviewItem({
   categoryId: number | null;
   /** The record this may duplicate, once it's loaded. */
   match?: Transaction;
-  /** The likeliest categories, offered as one-tap chips while it has none. */
-  suggestions: number[];
   onPick: (id: number | null) => void;
   onEdit: () => void;
   onDone: () => void;
@@ -190,48 +176,27 @@ function ReviewItem({
   const when = new Date(t.occurred_at);
   const title = t.payee || tr('Payment');
 
-  // Confirms with the category shown, or with a suggestion tapped (which
-  // can be undone from the toast: one tap is easy to make by mistake).
-  async function confirm(suggestion?: number) {
+  async function confirm() {
     if (t.amount <= 0) {
       onEdit();
       return;
     }
     setBusy(true);
-    const fields = {
-      kind: t.kind,
-      amount: t.amount,
-      account_id: t.account_id,
-      to_account_id: t.to_account_id,
-      occurred_at: t.occurred_at,
-      payee: t.payee,
-      note: t.note,
-    };
     try {
       await api.updateTransaction(t.id, {
-        ...fields,
-        category_id: suggestion ?? categoryId,
+        kind: t.kind,
+        amount: t.amount,
+        account_id: t.account_id,
+        to_account_id: null,
+        category_id: categoryId,
+        occurred_at: t.occurred_at,
+        payee: t.payee,
+        note: t.note,
         status: 'confirmed',
-        ...(overriding && suggestion === undefined ? { remember } : {}),
+        ...(overriding ? { remember } : {}),
       });
       await w.refresh();
-      if (suggestion === undefined) {
-        toast(tr('Confirmed {payee}', { payee: title }));
-      } else {
-        const back = async () => {
-          try {
-            await api.updateTransaction(t.id, { ...fields, category_id: t.category_id, status: 'review' });
-            await w.refresh();
-            onDone();
-          } catch (err) {
-            toast(errorMessage(err));
-          }
-        };
-        toast(tr('Confirmed {payee} as {category}', { payee: title, category: w.category(suggestion)?.name ?? '' }), {
-          label: tr('Undo'),
-          run: back,
-        });
-      }
+      toast(tr('Confirmed {payee}', { payee: title }));
       onDone();
     } catch (err) {
       setError(errorMessage(err));
@@ -270,8 +235,6 @@ function ReviewItem({
   // Confirming needs a category (a transfer has none): the button waits
   // for one, as swiping and "Confirm all" do.
   const needsCategory = t.kind !== 'transfer' && categoryId === null;
-  // One tap files and confirms; not for a possible duplicate, which needs a look.
-  const chips = needsCategory && canConfirm ? suggestions.map((id) => w.category(id)).filter((c) => c !== undefined) : [];
   // The card that paid, where it says more than the account's name.
   const paidWith = t.source_label && t.source_label !== w.account(t.account_id)?.name ? t.source_label : w.account(t.account_id)?.name;
   const swipe = useSwipe(canConfirm && !needsCategory && !busy ? () => confirm() : undefined);
@@ -306,29 +269,16 @@ function ReviewItem({
             <span className="muted small">{paidWith}</span>
           </span>
           <span className="review-actions">
-            {chips.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                className="suggestion"
-                disabled={busy}
-                aria-label={tr('Confirm as {category}', { category: c.name })}
-                onClick={() => confirm(c.id)}
-              >
-                <CategoryIcon icon={c.icon} name={c.name} color={c.color} size="small" />
-                <span className="ellipsis">{c.name}</span>
-              </button>
-            ))}
             <button
               type="button"
-              className={needsCategory && chips.length === 0 ? 'chip-select attention' : 'chip-select'}
+              className={needsCategory ? 'chip-select attention' : 'chip-select'}
               aria-label={tr('Category for {name}', { name: title })}
               aria-haspopup="dialog"
               aria-describedby={catValId}
               onClick={() => setPicking(true)}
             >
               <span id={catValId} className="ellipsis">
-                {cat ? cat.name : chips.length > 0 ? tr('Other category…') : tr('Category')}
+                {cat ? cat.name : tr('Category')}
               </span>
             </button>
             {!needsCategory && (

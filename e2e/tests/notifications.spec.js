@@ -96,40 +96,30 @@ test('a possible duplicate is set aside automatically, and can be brought back',
   await expect(back.getByRole('button', { name: 'Confirm', exact: true })).toBeVisible();
 });
 
-test('a payment to check offers its likeliest categories, one tap to confirm', async ({ page }) => {
+test('a payment to check waits for a category before it can be confirmed', async ({ page }) => {
   await signUp(page);
-  const api = page.request;
-  const overview = await (await api.get('/api/wallet')).json();
-  const cat = (name) => overview.categories.find((c) => c.name === name).id;
-  const account_id = overview.accounts[0].id;
-  const ago = (h) => new Date(Date.now() - h * 3600_000).toISOString();
-  // Spending filed lately: mostly Shopping, Food & Drinks after it.
-  for (const [payee, category, h] of [['Uniqlo', 'Shopping', 30], ['Muji', 'Shopping', 29], ['Loft', 'Shopping', 28], ['Lawson', 'Food & Drinks', 27], ['Rent', 'Housing', 26]]) {
-    const res = await api.post('/api/transactions', { data: { kind: 'expense', amount: 1000, account_id, category_id: cat(category), occurred_at: ago(h), payee } });
-    expect(res.status()).toBe(201);
-  }
   const when = new Date(Date.now() - 60_000);
-  await sendNotifications(api, payPayCard({ merchant: 'IKEAオンライン', yen: 4994, when }), payPayCard({ merchant: 'Amazon.co.jp', yen: 1280, when: new Date(when.getTime() + 1000) }));
+  await sendNotifications(page.request, payPayCard({ merchant: 'IKEAオンライン', yen: 4994, when }), payPayCard({ merchant: 'Amazon.co.jp', yen: 1280, when: new Date(when.getTime() + 1000) }));
 
   await page.goto('/app/#/records');
   const section = page.getByRole('region', { name: 'Payments to review' });
+  // What the payments add up to, beside how many there are.
   await expect(section.getByRole('heading')).toHaveText('2 to check−¥6,274');
   const ikea = section.getByRole('listitem', { name: 'IKEAオンライン' });
-  // No category yet: no Confirm, the likeliest categories instead, and the shop's initial.
-  await expect(ikea.getByRole('button', { name: 'Confirm', exact: true })).toHaveCount(0);
-  await expect(ikea.getByRole('button', { name: /^Confirm as / })).toHaveText(['Shopping', 'Food & Drinks', 'Housing']);
-  await expect(ikea.getByLabel('Category for IKEAオンライン')).toHaveText('Other category…');
+  // No category yet: the shop's initial, and no Confirm.
   await expect(ikea.locator('.review-initial')).toHaveText('I');
+  await expect(ikea.getByRole('button', { name: 'Confirm', exact: true })).toHaveCount(0);
   for (const [width, height, name] of [[390, 844, 'phone'], [1280, 900, 'desktop']]) {
     await page.setViewportSize({ width, height });
     await section.screenshot({ path: test.info().outputPath(`to-check-${name}.png`) });
   }
 
-  // One tap files and confirms it; Undo puts it back.
-  await ikea.getByRole('button', { name: 'Confirm as Shopping' }).click();
-  await expect(page.getByText('Confirmed IKEAオンライン as Shopping')).toBeVisible();
+  await ikea.getByLabel('Category for IKEAオンライン').click();
+  const picker = page.getByRole('dialog', { name: 'Category for IKEAオンライン' });
+  await picker.getByRole('button', { name: /^Shopping/ }).click();
+  await picker.getByRole('button', { name: 'Furniture & home' }).click();
+  await expect(ikea.getByLabel('Category for IKEAオンライン')).toHaveText('Furniture & home');
+  await ikea.getByRole('button', { name: 'Confirm', exact: true }).click();
+  await expect(page.getByText('Confirmed IKEAオンライン')).toBeVisible();
   await expect(section.getByRole('heading')).toHaveText('1 to check−¥1,280');
-  await page.getByRole('button', { name: 'Undo' }).click();
-  await expect(section.getByRole('listitem', { name: 'IKEAオンライン' })).toBeVisible();
-  await expect(section.getByRole('heading')).toHaveText('2 to check−¥6,274');
 });
