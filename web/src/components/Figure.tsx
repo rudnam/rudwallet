@@ -55,6 +55,9 @@ export function Figure({
 }) {
   const w = useWallet();
   const value = useRolling(amount, animate);
+  if (w.hideAmounts) {
+    return <span className={`figure ${className}`.trim()}>••••</span>;
+  }
   return (
     <span className={`figure ${className}`.trim()}>
       {moneyParts(value, w.settings, signed).map((p, i) =>

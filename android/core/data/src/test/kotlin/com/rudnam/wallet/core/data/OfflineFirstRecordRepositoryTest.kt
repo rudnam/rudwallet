@@ -71,7 +71,7 @@ class OfflineFirstRecordRepositoryTest {
         override suspend fun updateRecurring(id: Long, input: com.rudnam.wallet.core.network.model.NetworkRecurringInput) = Unit
         override suspend fun deleteRecurring(id: Long) = Unit
         override suspend fun dismissRecurring(key: String) = Unit
-        override suspend fun downloads() = NetworkDownloads()
+        override suspend fun downloads(since: Int?) = NetworkDownloads()
         override suspend fun confirmedSince(from: Instant) = emptyList<NetworkTransaction>()
         override suspend fun search(
             from: Instant?, to: Instant?, accountId: Long?, categoryId: String?, query: String?, tag: String?, status: String?,

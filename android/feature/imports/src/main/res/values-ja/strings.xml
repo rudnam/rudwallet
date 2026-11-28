@@ -191,6 +191,9 @@
     <string name="feature_imports_ic_hint">Suica・PASMO・ICOCAなどをスマホの背面にかざす</string>
     <string name="feature_imports_budgetbakers_hint">BudgetBakers WalletのCSVエクスポート</string>
     <string name="feature_imports_how">入手方法</string>
+    <string name="feature_imports_find_service">サービスを検索</string>
+    <string name="feature_imports_show_all">すべて表示（%d件）</string>
+    <string name="feature_imports_show_fewer">折りたたむ</string>
     <string name="feature_imports_recent">最近のインポート</string>
     <plurals name="feature_imports_batch_added">
         <item quantity="other">%d件追加</item>

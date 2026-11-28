@@ -20,6 +20,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
@@ -148,6 +149,8 @@ internal fun ImportDestination(navigation: ImportsNavigation, snackbar: Snackbar
     )
 }
 
+private const val RECENT_PREVIEW = 3
+
 /**
  * Settings › Import: where records can come from (a file from PayPay, MUFG
  * or BudgetBakers, or a transit IC card), each one row with how to get it a
@@ -163,21 +166,36 @@ internal fun ImportScreen(
 ) {
     // Which source's how-to is open.
     var how by rememberSaveable { mutableStateOf<String?>(null) }
+    var query by rememberSaveable { mutableStateOf("") }
+    var showAllHistory by rememberSaveable { mutableStateOf(false) }
+    val allSources = listOf(
+        Triple(ImportSource.PayPay, R.string.feature_imports_paypay_hint, R.string.feature_imports_paypay_how),
+        Triple(ImportSource.Mufg, R.string.feature_imports_mufg_hint, R.string.feature_imports_mufg_how),
+        Triple(ImportSource.Vpass, R.string.feature_imports_vpass_hint, R.string.feature_imports_vpass_how),
+        Triple(ImportSource.IcCard, R.string.feature_imports_ic_hint, R.string.feature_imports_ic_how),
+        Triple(ImportSource.BudgetBakers, R.string.feature_imports_budgetbakers_hint, R.string.feature_imports_budgetbakers_how),
+    )
+    val q = query.trim()
+    val filteredSources = allSources.filter { (source, hint, _) ->
+        q.isEmpty() || sourceLabel(source).contains(q, ignoreCase = true) || stringResource(hint).contains(q, ignoreCase = true)
+    }
     ImportPage(stringResource(R.string.feature_imports_title), navigation) {
         item {
             Text(stringResource(R.string.feature_imports_sources_intro), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(horizontal = 4.dp))
         }
         item {
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text(stringResource(R.string.feature_imports_find_service)) },
+                singleLine = true,
+            )
+        }
+        item {
             WalletPanel(Modifier.fillMaxWidth()) {
                 Column {
-                    val sources = listOf(
-                        Triple(ImportSource.PayPay, R.string.feature_imports_paypay_hint, R.string.feature_imports_paypay_how),
-                        Triple(ImportSource.Mufg, R.string.feature_imports_mufg_hint, R.string.feature_imports_mufg_how),
-                        Triple(ImportSource.Vpass, R.string.feature_imports_vpass_hint, R.string.feature_imports_vpass_how),
-                        Triple(ImportSource.IcCard, R.string.feature_imports_ic_hint, R.string.feature_imports_ic_how),
-                        Triple(ImportSource.BudgetBakers, R.string.feature_imports_budgetbakers_hint, R.string.feature_imports_budgetbakers_how),
-                    )
-                    sources.forEachIndexed { i, (source, hint, text) ->
+                    filteredSources.forEachIndexed { i, (source, hint, text) ->
                         if (i > 0) HorizontalDivider(color = WalletTheme.colors.border)
                         Source(
                             name = sourceLabel(source),
@@ -193,16 +211,27 @@ internal fun ImportScreen(
             }
         }
         if (wallet != null && history.batches.isNotEmpty()) {
+            val visible = if (showAllHistory) history.batches else history.batches.take(RECENT_PREVIEW)
             item {
                 SectionHeader(stringResource(R.string.feature_imports_recent), Modifier.padding(top = 12.dp))
             }
             item {
                 WalletPanel(Modifier.fillMaxWidth()) {
                     Column {
-                        history.batches.forEachIndexed { i, b ->
+                        visible.forEachIndexed { i, b ->
                             if (i > 0) HorizontalDivider(color = WalletTheme.colors.border)
                             BatchRow(b, wallet, undoing = history.undoing == b.id, onUndo = actions?.let { a -> { a.undo(b) } })
                         }
+                    }
+                }
+            }
+            if (history.batches.size > RECENT_PREVIEW) {
+                item {
+                    TextButton(onClick = { showAllHistory = !showAllHistory }) {
+                        Text(
+                            if (showAllHistory) stringResource(R.string.feature_imports_show_fewer)
+                            else stringResource(R.string.feature_imports_show_all, history.batches.size),
+                        )
                     }
                 }
             }

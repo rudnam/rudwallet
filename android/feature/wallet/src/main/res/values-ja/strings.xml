@@ -2,6 +2,8 @@
 <resources>
     <string name="feature_wallet_title">ウォレット</string>
     <string name="feature_wallet_search">記録を検索</string>
+    <string name="feature_wallet_hide_amounts">金額を隠す</string>
+    <string name="feature_wallet_show_amounts">金額を表示</string>
     <string name="feature_wallet_add_record">記録を追加</string>
     <string name="feature_wallet_total_balance">総残高</string>
     <string name="feature_wallet_accounts">口座</string>
@@ -21,6 +23,8 @@
     <string name="feature_wallet_update_unnamed">RudWallet の新しいバージョンが利用できます。</string>
     <string name="feature_wallet_update_install">アップデート</string>
     <string name="feature_wallet_update_later">あとで</string>
+    <string name="feature_wallet_update_show_all">すべて見る</string>
+    <string name="feature_wallet_update_show_less">閉じる</string>
     <string name="feature_wallet_setup_title">はじめの準備</string>
     <string name="feature_wallet_setup_progress">%1$d / %2$d</string>
     <string name="feature_wallet_setup_hide">閉じる</string>

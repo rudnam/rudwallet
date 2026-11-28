@@ -97,6 +97,7 @@ object WalletIcons {
         "shield" to "M12 3l7.5 3v5.5c0 4.6-3.2 8.2-7.5 9.5-4.3-1.3-7.5-4.9-7.5-9.5V6z",
         "tag" to "M3.5 12.5V4h8.5l8.5 8.5-8.5 8.5zM8 8.5h.01",
         "laptop" to "M5 5.5h14v10H5zM2.5 18.5h19",
+        "delivery" to "M2.5 16.5V7h12v9.5M2.5 16.5H5M9 16.5h7M14.5 10h4l3 3.5v3H20M7 14.5a2 2 0 1 0 0 4 2 2 0 1 0 0-4M18 14.5a2 2 0 1 0 0 4 2 2 0 1 0 0-4",
     )
 
     /** Categories made before line icons stored an emoji; each maps to its closest glyph. */

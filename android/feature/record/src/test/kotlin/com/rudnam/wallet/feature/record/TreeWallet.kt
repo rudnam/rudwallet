@@ -17,7 +17,7 @@ internal val treeWallet: Wallet = run {
         "Other" to emptyList(),
     )
     val icons = mapOf(
-        "Food & Drinks" to "food", "Groceries" to "grocery", "Restaurants" to "food", "Cafés" to "coffee", "Delivery" to "other",
+        "Food & Drinks" to "food", "Groceries" to "grocery", "Restaurants" to "food", "Cafés" to "coffee", "Delivery" to "delivery",
         "Shopping" to "shopping", "Clothing" to "clothes", "Household" to "clean", "Electronics" to "laptop",
         "Housing" to "home", "Rent" to "home", "Bills & Utilities" to "bills", "Phone & Internet" to "phone",
         "Transport" to "transit", "Public transport" to "transit", "Taxi" to "car", "Car" to "car",

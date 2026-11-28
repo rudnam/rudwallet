@@ -33,8 +33,7 @@ class RecordSheetScreenshotTest {
     private val nothing = object : RecordActions {
         override fun kind(kind: TransactionKind) {}
         override fun press(key: PadKey) {}
-        override fun category(id: Long) {}
-        override fun pickCategory(id: Long) {}
+        override fun pickCategory(id: Long?) {}
         override fun allCategories(show: Boolean) {}
         override fun payee(payee: String) {}
         override fun account(id: Long) {}
@@ -43,7 +42,6 @@ class RecordSheetScreenshotTest {
         override fun note(note: String) {}
         override fun addTag(text: String) {}
         override fun removeTag(tag: String) {}
-        override fun extras() {}
         override fun save() {}
         override fun confirmChanges() {}
         override fun cancelChanges() {}
@@ -52,18 +50,13 @@ class RecordSheetScreenshotTest {
         override fun delete() {}
     }
 
-    private val expenses = SampleWallet.wallet.categories.filter { it.kind.apiName == "expense" }
-
-    private fun state(form: RecordForm, record: com.rudnam.wallet.core.model.Transaction? = null, extras: Boolean = false) = RecordUiState.Ready(
+    private fun state(form: RecordForm, record: com.rudnam.wallet.core.model.Transaction? = null) = RecordUiState.Ready(
         wallet = SampleWallet.wallet,
         form = form,
         record = record,
-        categories = if (form.kind == TransactionKind.Income) SampleWallet.wallet.categories.filter { it.kind.apiName == "income" } else expenses,
-        hasMoreCategories = false,
         recentPayees = if (record == null && form.payee.isEmpty()) listOf("Doutor", "Life Supermarket", "Ramen Taro") else emptyList(),
         payeeSuggestions = emptyList(),
         tagSuggestions = listOf("dinner", "trip"),
-        showExtras = extras,
         busy = false,
         problem = null,
         serverMessage = null,
@@ -96,18 +89,18 @@ class RecordSheetScreenshotTest {
     @Config(qualifiers = "w411dp-h1300dp-xxhdpi")
     fun review() {
         val record = SampleWallet.records.first { it.id == 20L }.copy(sourceLabel = "PayPay")
-        shot("review", state(RecordForm.from(record, 0), record, extras = true))
+        shot("review", state(RecordForm.from(record, 0), record))
     }
 
     private val tree = treeWallet
 
-    /** The boxes: the most used, subcategories among them (with their main category under the name), and All. */
+    /** A chosen subcategory shows its path in the Category field. */
     @Test
     fun suggestions() {
-        val shown = listOf("Cafés", "Groceries", "Restaurants", "Public transport", "Rent", "Food & Drinks", "Taxi").map { n -> tree.categories.first { it.name == n } }
+        val cafes = tree.categories.first { it.name == "Cafés" }
         shot(
             "suggestions",
-            state(newRecord.copy(categoryId = shown.first().id)).copy(wallet = tree, categories = shown, hasMoreCategories = true),
+            state(newRecord.copy(categoryId = cafes.id)).copy(wallet = tree),
         )
     }
 

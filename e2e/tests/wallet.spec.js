@@ -19,7 +19,10 @@ test('add, edit and delete a record', async ({ page }) => {
   await dialog.getByRole('radio', { name: 'Transfer' }).check();
   await expect(dialog.getByRole('radiogroup', { name: 'From' }).getByRole('radio', { name: 'Cash' })).toBeChecked();
   await dialog.getByRole('radio', { name: 'Expense' }).check();
-  await dialog.getByRole('radio', { name: 'Food & Drinks' }).check();
+  await dialog.getByRole('group', { name: 'Category' }).getByRole('button').click();
+  const picker = page.getByRole('dialog', { name: 'Choose a category' });
+  await picker.getByRole('button', { name: /^Food & Drinks/ }).click();
+  await picker.getByRole('button', { name: 'Food & Drinks (general)' }).click();
   await dialog.getByLabel('Payee').fill('Ramen Taro');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog).toBeHidden();
@@ -112,7 +115,10 @@ test('a new account, a transfer, and a budget that runs over', async ({ page }) 
   await page.getByRole('link', { name: 'Set a budget' }).click();
   await page.getByRole('button', { name: 'New budget' }).click();
   const b = page.getByRole('dialog', { name: 'New budget' });
-  await b.getByLabel('Category').selectOption({ label: 'Food & Drinks' });
+  await b.getByLabel('Category').click();
+  const bPicker = page.getByRole('dialog', { name: 'Category' });
+  await bPicker.getByRole('button', { name: /^Food & Drinks/ }).click();
+  await bPicker.getByRole('button', { name: 'All of Food & Drinks' }).click();
   await b.getByLabel('Monthly limit (JPY)').fill('1000');
   await b.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('list', { name: 'Budgets' })).toContainText('¥1,000 left');
@@ -120,7 +126,10 @@ test('a new account, a transfer, and a budget that runs over', async ({ page }) 
   await page.getByRole('button', { name: 'Add record' }).click();
   const lunch = page.getByRole('dialog', { name: 'New record' });
   await lunch.getByLabel('Amount (JPY)').fill('1200');
-  await lunch.getByRole('radio', { name: 'Food & Drinks' }).check();
+  await lunch.getByRole('group', { name: 'Category' }).getByRole('button').click();
+  const picker = page.getByRole('dialog', { name: 'Choose a category' });
+  await picker.getByRole('button', { name: /^Food & Drinks/ }).click();
+  await picker.getByRole('button', { name: 'Food & Drinks (general)' }).click();
   await lunch.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('list', { name: 'Budgets' })).toContainText('Over by ¥200');
 });
@@ -185,6 +194,7 @@ test('the currency can change until there are records', async ({ page }) => {
 test('import records exported from Wallet by BudgetBakers', async ({ page }) => {
   await signUp(page);
   await page.goto('/app/#/settings?section=import');
+  await page.getByRole('button', { name: /^BudgetBakers/ }).click();
   const now = new Date();
   const p = (n) => String(n).padStart(2, '0');
   const today = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())} 08:00:00`;
@@ -206,18 +216,21 @@ test('import records exported from Wallet by BudgetBakers', async ({ page }) => 
   await expect(page.getByText('You already have an account named Cash; its records go there.')).toBeVisible();
   await page.getByLabel('New account name').fill('Rakuten Savings');
   // BudgetBakers' categories are matched to the closest of the user's.
-  await expect(page.getByLabel('Category for Bar, cafe').locator('option:checked')).toHaveText('Eating out');
-  await expect(page.getByLabel('Category for Salary').locator('option:checked')).toHaveText('Salary');
-  await expect(page.getByLabel('Category for Coffee beans').locator('option:checked')).toHaveText('Coffee beans');
+  await expect(page.getByLabel('Category for Bar, cafe')).toHaveText('Eating out');
+  await expect(page.getByLabel('Category for Salary')).toHaveText('Salary');
+  await expect(page.getByLabel('Category for Coffee beans')).toHaveText('Coffee beans');
 
   // Several at once.
   await page.getByLabel('Choose Bar, cafe').check();
   await page.getByLabel('Choose Coffee beans').check();
   await expect(page.getByRole('region', { name: 'Chosen categories' })).toContainText('2 chosen');
-  // Groceries is a subcategory, indented under Food & Drinks.
-  await page.getByLabel('Set category for chosen').selectOption({ label: '\u00a0\u00a0\u00a0Groceries' });
-  await expect(page.getByLabel('Category for Coffee beans').locator('option:checked')).toHaveText('Groceries');
-  await expect(page.getByLabel('Category for Bar, cafe').locator('option:checked')).toHaveText('Groceries');
+  // Groceries is a subcategory under Food & Drinks.
+  await page.getByLabel('Set category for chosen').click();
+  const bulkPicker = page.getByRole('dialog', { name: 'Set category for chosen' });
+  await bulkPicker.getByRole('button', { name: /^Food & Drinks/ }).click();
+  await bulkPicker.getByRole('button', { name: 'Groceries' }).click();
+  await expect(page.getByLabel('Category for Coffee beans')).toHaveText('Groceries');
+  await expect(page.getByLabel('Category for Bar, cafe')).toHaveText('Groceries');
   await expect(page.getByLabel('Choose Bar, cafe')).not.toBeChecked();
 
   await page.getByRole('button', { name: 'Import 4 records' }).click();
@@ -287,7 +300,10 @@ test('a new user is walked through setting up, and daily adding remembers things
   await page.getByRole('button', { name: 'Add record' }).click();
   let rec = page.getByRole('dialog', { name: 'New record' });
   await rec.getByLabel('Amount (JPY)').fill('640');
-  await rec.getByRole('radio', { name: 'Food & Drinks' }).check();
+  await rec.getByRole('group', { name: 'Category' }).getByRole('button').click();
+  const picker = page.getByRole('dialog', { name: 'Choose a category' });
+  await picker.getByRole('button', { name: /^Food & Drinks/ }).click();
+  await picker.getByRole('button', { name: 'Food & Drinks (general)' }).click();
   await rec.getByLabel('Payee').fill('Matsuya');
   await rec.getByRole('radiogroup', { name: 'Account' }).getByRole('radio', { name: 'PayPay Card' }).check();
   await rec.getByRole('button', { name: 'Save' }).click();
@@ -300,7 +316,7 @@ test('a new user is walked through setting up, and daily adding remembers things
   await rec.getByLabel('Amount (JPY)').fill('720');
   await expect(rec.locator('#payees option[value="Matsuya"]')).toHaveCount(1);
   await rec.getByLabel('Payee').fill('Matsuya');
-  await expect(rec.getByRole('radio', { name: 'Food & Drinks' })).toBeChecked();
+  await expect(rec.getByRole('group', { name: 'Category' }).getByRole('button')).toContainText('Food & Drinks');
 
   // Hiding the checklist keeps it hidden.
   await page.keyboard.press('Escape');
@@ -335,12 +351,13 @@ test('import PayPay transaction history', async ({ page }) => {
   expect((await page.request.post('/api/transactions', { data: emailed })).status()).toBe(201);
 
   await page.goto('/app/#/settings?section=import');
+  await page.getByRole('button', { name: /^PayPay/ }).click();
   await page.getByLabel('PayPay CSV file').setInputFiles({ name: 'paypay.csv', mimeType: 'text/csv', buffer: Buffer.from(payPayCsv(day)) });
   await expect(page.getByText(/^3 payments/)).toBeVisible();
   await expect(page.getByLabel(/^PayPayカード/)).toHaveValue(String(card.id));
   await expect(page.getByLabel(/^PayPay残高/).locator('option:checked')).toHaveText('New account: PayPay');
   await expect(page.getByLabel(/^PayPay銀行/).locator('option:checked')).toHaveText('New account: PayPay銀行');
-  await expect(page.getByLabel('Category for ローソン').locator('option:checked')).toHaveText('Food & Drinks');
+  await expect(page.getByLabel('Category for ローソン')).toHaveText('Food & Drinks');
   // Before anything is recorded: what's new, and what's already there.
   await expect(page.getByText('2 new records to add')).toBeVisible();
   await expect(page.getByText('1 is already recorded another way (a notification, by hand, or another import)')).toBeVisible();
@@ -379,6 +396,11 @@ test('undo an import from the recent imports', async ({ page }) => {
   expect((await res.json()).imported).toBe(3);
 
   await page.goto('/app/#/settings?section=import');
+  // Service search filters the importable services list.
+  await page.getByRole('searchbox', { name: 'Find a service' }).fill('mufg');
+  await expect(page.getByRole('list', { name: 'Import services' }).getByRole('listitem')).toHaveCount(1);
+  await page.getByRole('searchbox', { name: 'Find a service' }).fill('');
+
   const recent = page.getByRole('list').filter({ hasText: '3 added' });
   await expect(recent).toContainText('PayPay');
   await page.screenshot({ path: test.info().outputPath('recent-imports.png'), fullPage: true });
@@ -403,6 +425,7 @@ test('leave PayPay points out of an import, and remember it', async ({ page }) =
   const upload = () => page.getByLabel('PayPay CSV file').setInputFiles({ name: 'paypay.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
 
   await page.goto('/app/#/settings?section=import');
+  await page.getByRole('button', { name: /^PayPay/ }).click();
   await upload();
   await page.getByLabel(/^PayPayポイント ·/).selectOption({ label: "Don't import" });
   // Counted again for the choice: the points' rows are left out.
@@ -454,6 +477,7 @@ test('import an MUFG statement, then reconcile cash', async ({ page }) => {
   expect((await api.post('/api/transactions', { data: charge })).status()).toBe(201);
 
   await page.goto('/app/#/settings?section=import');
+  await page.getByRole('button', { name: /^MUFG/ }).click();
   await page.getByLabel('MUFG CSV file').setInputFiles({ name: 'meisai.csv', mimeType: 'text/csv', buffer: mufgStatement });
   await expect(page.getByText(/^12 rows/)).toBeVisible();
   await expect(page.getByLabel(/^The MUFG account this statement is for/)).toHaveValue(String(mufg));
@@ -470,7 +494,10 @@ test('import an MUFG statement, then reconcile cash', async ({ page }) => {
   await expect(page.getByText(/^Rows worth −¥3,000 are already recorded in another account/)).toBeVisible();
   await expect(page.getByLabel("Update the bank account's balance to match the statement")).toBeChecked();
 
-  await page.getByLabel('Category for シービーエステクノ(カ').selectOption({ label: 'Salary' });
+  await page.getByLabel('Category for シービーエステクノ(カ').click();
+  const salaryPicker = page.getByRole('dialog', { name: 'Category for シービーエステクノ(カ' });
+  await salaryPicker.getByRole('button', { name: /^Salary/ }).click();
+  await salaryPicker.getByRole('button', { name: 'Salary (general)' }).click();
   await page.getByRole('button', { name: 'Import 11 rows' }).click();
   await expect(page.getByText(/^Imported 11 records, skipped 1 already recorded/)).toBeVisible();
   await expect(page.getByText(/^MUFG's starting balance was changed by \+¥7, to ¥7/)).toBeVisible();
@@ -506,13 +533,14 @@ test('import a Vpass statement', async ({ page }) => {
   expect((await api.post('/api/transactions', { data: notified })).status()).toBe(201);
 
   await page.goto('/app/#/settings?section=import');
+  await page.getByRole('button', { name: /^Vpass/ }).click();
   await page.getByLabel('Vpass CSV file').setInputFiles({ name: '202612.csv', mimeType: 'text/csv', buffer: vpassStatement });
   await expect(page.getByText(/^3 payments/)).toBeVisible();
   // The card, read from Shift_JIS, goes to the card account named like it.
   await expect(page.getByLabel(/^Amazonマスター/)).toHaveValue(String(amazon));
   await expect(page.getByText('2 new records to add')).toBeVisible();
   await expect(page.getByText('1 is already recorded another way (a notification, by hand, or another import)')).toBeVisible();
-  await expect(page.getByLabel('Category for ローソン').locator('option:checked')).toHaveText('Food & Drinks');
+  await expect(page.getByLabel('Category for ローソン')).toHaveText('Food & Drinks');
   // The statement gives days, not times: a row shows its day only.
   await expect(page.getByText('· Nov 9 · Amazon Mastercard')).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('vpass-review.png'), fullPage: true });
@@ -549,7 +577,10 @@ test('choose records to recategorise, move and delete them together', async ({ p
   await page.getByRole('checkbox', { name: /Bakery/ }).check();
   await page.getByRole('checkbox', { name: /Refund/ }).check();
   await expect(bar).toContainText('2 chosen');
-  await bar.getByLabel('Set category').selectOption({ label: 'Food & Drinks' });
+  await bar.getByLabel('Set category').click();
+  const recBulkPicker = page.getByRole('dialog', { name: 'Set category' });
+  await recBulkPicker.getByRole('button', { name: /^Food & Drinks/ }).click();
+  await recBulkPicker.getByRole('button', { name: 'Food & Drinks (general)' }).click();
   await expect(page.getByText('Recategorised 1 record. 1 didn’t fit and stayed as they were.')).toBeVisible();
   await expect(page.getByRole('checkbox', { name: /Bakery/ })).toBeChecked();
 
@@ -848,7 +879,10 @@ test.describe('on a touch screen', () => {
     expect(box.y + box.height).toBeGreaterThan(844 - 4);
 
     // Picking a category leaves the pad where it is.
-    await dialog.getByRole('radio', { name: 'Food & Drinks' }).check({ force: true });
+    await dialog.getByRole('group', { name: 'Category' }).getByRole('button').tap();
+    const picker = page.getByRole('dialog', { name: 'Choose a category' });
+    await picker.getByRole('button', { name: /^Food & Drinks/ }).tap();
+    await picker.getByRole('button', { name: 'Food & Drinks (general)' }).tap();
     await expect(pad).toBeVisible();
     expect((await pad.boundingBox()).y).toBe(box.y);
     await page.screenshot({ path: test.info().outputPath('phone-add-pad.png'), animations: 'disabled' });
@@ -999,4 +1033,24 @@ test('with a mouse, every account chip on the record form is in reach', async ({
   expect(chip.x + chip.width).toBeLessThanOrEqual(row.x + row.width + 1);
   await last.click();
   await expect(pick.getByRole('radio', { name: 'Travel Fund' })).toBeChecked();
+});
+
+test('amounts can be hidden and shown with the toggle', async ({ page }) => {
+  await signUp(page);
+  const { accounts } = await (await page.request.get('/api/wallet')).json();
+  expect((await page.request.post('/api/transactions', {
+    data: { kind: 'expense', amount: 1200, account_id: accounts[0].id, occurred_at: new Date().toISOString(), payee: 'Bakery' },
+  })).status()).toBe(201);
+  await page.reload();
+  await expect(page.locator('.hero-figure')).toHaveText(/−¥1,200/);
+
+  await page.getByRole('button', { name: 'Hide amounts' }).first().click();
+  await expect(page.locator('.hero-figure')).toHaveText('••••');
+  await expect(page.getByRole('list', { name: 'Latest records' })).toContainText('••••');
+
+  await page.reload();
+  await expect(page.locator('.hero-figure')).toHaveText('••••');
+
+  await page.getByRole('button', { name: 'Show amounts' }).first().click();
+  await expect(page.locator('.hero-figure')).toHaveText(/−¥1,200/);
 });

@@ -44,8 +44,13 @@ class MainActivityViewModel @Inject constructor(
     private val clock: Clock,
 ) : ViewModel() {
     val uiState: StateFlow<MainUiState> = combine(session.token, preferences.preferences) { token, prefs ->
-        MainUiState.Ready(signedIn = token != null, appearance = prefs.appearance)
+        MainUiState.Ready(signedIn = token != null, appearance = prefs.appearance, hideAmounts = prefs.hideAmounts)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), MainUiState.Loading)
+
+    fun toggleHideAmounts() {
+        val next = !((uiState.value as? MainUiState.Ready)?.hideAmounts ?: false)
+        viewModelScope.launch { preferences.setHideAmounts(next) }
+    }
 
     /** Records waiting for a check, for the Activity tab's badge. */
     val reviewCount: StateFlow<Int> = wallet.wallet.map { it?.reviewCount ?: 0 }
@@ -96,5 +101,5 @@ class MainActivityViewModel @Inject constructor(
 sealed interface MainUiState {
     data object Loading : MainUiState
 
-    data class Ready(val signedIn: Boolean, val appearance: Appearance) : MainUiState
+    data class Ready(val signedIn: Boolean, val appearance: Appearance, val hideAmounts: Boolean = false) : MainUiState
 }

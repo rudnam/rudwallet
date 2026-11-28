@@ -24,11 +24,6 @@ export function inOrder(all: Category[]): Category[] {
   return all.filter((c) => !isSubcategory(c, all)).flatMap((m) => [m, ...subcategoriesOf(m.id, all)]);
 }
 
-/** A menu option's label: a subcategory indented under its main category. */
-export function optionLabel(c: Category, all: Category[]): string {
-  return isSubcategory(c, all) ? `   ${c.name}` : c.name;
-}
-
 /** "Food & Drinks › Cafés" for a subcategory; a main category's own name. */
 export function categoryPath(id: number | null, all: Category[]): string | undefined {
   const c = all.find((x) => x.id === id);

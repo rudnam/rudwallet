@@ -194,7 +194,7 @@ button, a.button {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; white-space: nowrap;
   transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
 }
-button:hover:not(:disabled), a.button:hover { background: color-mix(in srgb, var(--accent) 88%, var(--text)); }
+button:hover:not(:disabled), a.button:hover { background-color: color-mix(in srgb, var(--accent) 88%, var(--text)); }
 button:active:not(:disabled) { transform: scale(0.98); }
 button:disabled { opacity: 0.5; cursor: default; }
 button.secondary, a.button.secondary { background: var(--surface); color: var(--text); border-color: var(--border); }
@@ -300,7 +300,7 @@ a.button.secondary:hover { background: var(--sunken); }
   .nav-link.on { background: var(--sunken); color: var(--text); font-weight: 600; }
   .nav-link.on .nav-icon { color: var(--text); }
   .count { position: static; margin-left: auto; box-shadow: none; }
-  .nav-foot { display: block; margin-top: auto; padding: 0 12px; font-size: var(--text-xs); color: var(--muted); }
+  .nav-foot { display: flex; align-items: center; gap: 8px; margin-top: auto; padding: 0 4px 0 12px; font-size: var(--text-xs); color: var(--muted); }
   .shell .page { max-width: 780px; width: 100%; padding: 40px 32px 96px; }
   .fab { display: none; }
 }
@@ -372,6 +372,7 @@ a.button.secondary:hover { background: var(--sunken); }
   width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border); display: grid; place-items: center;
   color: var(--text); background: none; padding: 0;
 }
+.icon-button:hover:not(:disabled) { background-color: var(--sunken); color: var(--text); }
 .icon-button .nav-icon { width: 18px; height: 18px; }
 .balance { display: flex; flex-direction: column; gap: 4px; }
 .balance-head { display: flex; justify-content: space-between; align-items: center; }
@@ -487,7 +488,7 @@ button.bar-row:active:not(:disabled) { transform: none; }
   padding: 0 7px; border-radius: var(--radius-full); font-size: var(--text-2xs); font-weight: 500; line-height: 1.6;
   background: var(--sunken); color: var(--muted); overflow-wrap: anywhere;
 }
-.bulk-actions select { min-width: 0; }
+.bulk-actions select, .bulk-actions .picker-trigger { min-width: 0; }
 .day-head { display: flex; justify-content: space-between; padding: 0 0 6px; color: var(--muted); font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.02em; }
 .day-head span:last-child { font-variant-numeric: tabular-nums; }
 .days { gap: 18px; }
@@ -567,7 +568,7 @@ li.record:hover:not(:disabled) { background: none; } /* a row to read, not to ta
 
 .confirm-all > .grow { min-width: 12rem; }
 .rule-row > .grow { min-width: 10rem; }
-.rule-row select { min-width: 0; max-width: 14rem; }
+.rule-row select, .rule-row .picker-trigger { width: auto; min-width: 0; max-width: 14rem; }
 .rule-row input.grow { min-width: 10rem; }
 
 
@@ -644,33 +645,21 @@ li.record:hover:not(:disabled) { background: none; } /* a row to read, not to ta
 .amount-field input::placeholder { color: color-mix(in srgb, var(--muted) 45%, transparent); }
 .amount-field { border-bottom: 0; padding-bottom: 4px; }
 
-/* Categories as tiles, the most used first; More shows the rest. */
-.category-pick { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
-.category-pick label, .category-more {
-  position: relative; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 2px 7px;
-  border: 1px solid transparent; border-radius: var(--radius-sm); background: none; color: var(--text); font-weight: 500; cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+/* Category row in the record form: opens the category picker. */
+.category-field {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0;
+  padding: 8px; border: 0; border-radius: var(--radius-xs); background: none;
+  color: var(--text); font: inherit; font-weight: 500; text-align: left; cursor: pointer;
+  justify-content: flex-start;
 }
-.category-pick label:hover, .category-more:hover:not(:disabled) { background: var(--sunken); }
-.category-pick label.on { background: none; border-color: transparent; }
-.category-pick .cat-icon { width: 50px; height: 50px; border-radius: var(--radius-sm); }
-.category-pick .cat-icon .glyph { width: 22px; height: 22px; }
-.category-pick label.on .cat-icon[style*='--cc'] { background: var(--cc); border-color: var(--cc); color: #ffffff; }
-.category-pick label.on .cat-icon:not([style*='--cc']) { background: var(--accent); color: var(--accent-text); }
-.category-pick label.on .category-name { font-weight: 600; }
-.category-pick input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.category-pick label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 1px; }
-.category-more .cat-icon { background: var(--sunken); color: var(--muted); }
-.category-more .glyph { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; }
-.category-name {
-  font-size: var(--text-xs); line-height: 1.25; text-align: center; overflow-wrap: anywhere;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-}
-/* Under a subcategory's name, its main category's, small; an empty line for a main one keeps the rows even. */
-.category-main { font-size: var(--text-2xs); line-height: 1.2; min-height: 1.2em; color: var(--muted); text-align: center; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.category-field.muted { color: var(--muted); font-weight: 400; }
+.category-field:hover:not(:disabled) { background: var(--sunken); }
+.category-field-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* The category picker: a row per category; one with a chevron opens its page of subcategories. Every row has one shape. */
 .picker-list { list-style: none; margin: 0; padding: 0; }
+.picker-extras { margin-bottom: 4px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+.picker-blank { width: 40px; height: 40px; flex: none; }
 .picker-list > li + li { border-top: 1px solid var(--border); }
 .picker-list > li > button {
   display: flex; align-items: center; gap: 10px; width: 100%; min-height: 56px; padding: 8px 10px;
@@ -690,11 +679,27 @@ li.record:hover:not(:disabled) { background: none; } /* a row to read, not to ta
 .picker-page { animation: picker-in 0.18s ease-out; }
 @keyframes picker-in { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .picker-page { animation: none; } }
+.picker-subhead { display: flex; align-items: center; gap: 6px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
 .picker-back {
-  display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; padding: 6px 8px 6px 2px;
-  border: 0; background: none; color: var(--muted); font: inherit; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0;
+  border: 0; border-radius: var(--radius-xs); background: none; color: var(--muted); font: inherit; cursor: pointer; flex: none;
 }
+.picker-back:hover:not(:disabled) { background: var(--sunken); color: var(--text); }
 .picker-back .glyph { width: 20px; height: 20px; }
+.picker-subhead-title { font-size: var(--text-md); font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker-trigger {
+  display: flex; align-items: center; gap: 8px; width: 100%; min-width: 0;
+  padding: 11px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--text); font: inherit; font-size: var(--text-md); font-weight: 400; text-align: left;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.picker-trigger:has(> .cat-icon.small) { padding-top: 8px; padding-bottom: 8px; padding-left: 10px; }
+.picker-trigger:hover:not(:disabled) { background: var(--surface); border-color: color-mix(in srgb, var(--muted) 50%, var(--border)); }
+.picker-trigger:active:not(:disabled) { transform: none; }
+.picker-trigger:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+.picker-trigger.placeholder { color: var(--muted); }
+.picker-trigger .picker-caret { width: 16px; height: 16px; margin-left: auto; color: var(--muted); flex: none; }
+@media (max-width: 560px) { .picker-trigger { font-size: 16px; } }
 
 /* The rest of a record: one box, a row per detail, label beside the value. */
 .details { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
@@ -730,12 +735,11 @@ li.record:hover:not(:disabled) { background: none; } /* a row to read, not to ta
   .dialog-actions button[type='submit'] { flex: 1; }
 }
 
-/* A tap-to-pick grid of categories. */
+/* A tap-to-pick group of chips. */
 .chip-pick { border: 0; margin: 0; padding: 0; min-width: 0; }
 .chip-pick legend { padding: 0; margin-bottom: 6px; font-weight: 500; font-size: var(--text-sm); }
 .chip-pick .chips { max-height: 168px; overflow-y: auto; }
 .chip-pick label { cursor: pointer; }
-.chip-pick .chip { padding-left: 5px; }
 .chip-pick label.on { background: var(--accent-soft); border-color: var(--accent); color: var(--text); font-weight: 600; }
 
 /* ---------- Settings ---------- */
@@ -856,17 +860,27 @@ button.chip.on { background: var(--accent-soft); border-color: var(--accent); fo
 .field .muted.small { font-weight: 400; }
 /* Filters read as chips: soft pills, not form fields. They stay native
    selects, so a phone still opens its own list to choose from. */
-.filters select, .filters input[type='search'] {
+.filters select, .filters .filter-trigger, .filters input[type='search'] {
   border-color: transparent; background-color: var(--sunken); border-radius: var(--radius-full); padding: 9px 16px; font-weight: 500;
 }
-.filters select {
+.filters select, .filters .filter-trigger {
   appearance: none; -webkit-appearance: none; padding-right: 36px; cursor: pointer;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236f6c63' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 14px center; background-size: 16px;
 }
-.filters select:hover, .filters input[type='search']:hover { border-color: var(--border); }
+.filters .filter-trigger {
+  width: 100%; min-width: 0; justify-content: flex-start; text-align: left; overflow: hidden;
+  color: var(--text); font-weight: 500; border: 1px solid transparent;
+}
+.filters .filter-trigger:active:not(:disabled) { transform: none; }
+.filters select:hover, .filters .filter-trigger:hover:not(:disabled), .filters input[type='search']:hover {
+  background-color: var(--sunken); border-color: var(--border);
+}
 /* A filter that's set stands out, so a narrowed list never looks like all of it. */
-.filters select.set { background-color: var(--accent-soft); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+.filters select.set, .filters .filter-trigger.set {
+  background-color: var(--accent-soft); color: var(--accent); border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.filters .filter-trigger.set:hover:not(:disabled) { background-color: var(--accent-soft); }
 .month-picker button.link:disabled { opacity: 0.3; }
 .range-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px 14px; }
 .range-picker label { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
@@ -952,7 +966,7 @@ button.chip.on { background: var(--accent-soft); border-color: var(--accent); fo
 .suggestion .grow { display: flex; flex-direction: column; gap: 1px; }
 @media (max-width: 560px) {
   .suggestion { grid-template-columns: auto 1fr; }
-  .suggestion select { grid-column: 1 / -1; }
+  .suggestion select, .suggestion .picker-trigger { grid-column: 1 / -1; }
 }
 /* An import's groups, each with its category; ticked ones can be set together. */
 .card.flush.mapper { overflow: clip; }
@@ -962,12 +976,12 @@ button.chip.on { background: var(--accent-soft); border-color: var(--accent); fo
 }
 .mapper-all { display: flex; align-items: center; gap: 12px; flex: 1 1 auto; cursor: pointer; }
 .mapper-all .bulk-count { font-weight: 600; font-variant-numeric: tabular-nums; }
-.mapper-bar select { flex: 0 1 220px; min-width: 0; }
+.mapper-bar select, .mapper-bar .picker-trigger { flex: 0 1 220px; min-width: 0; }
 .suggestion.pick { grid-template-columns: auto auto 1fr minmax(150px, 200px); }
 .mapper-more { display: block; width: 100%; padding: 12px 16px; border-top: 1px solid var(--border); text-align: center; }
 @media (max-width: 560px) {
   .suggestion.pick { grid-template-columns: auto auto 1fr; }
-  .mapper-bar select { flex: 1 1 100%; }
+  .mapper-bar select, .mapper-bar .picker-trigger { flex: 1 1 100%; }
 }
 
 /* A wide table (an import's rows) scrolls inside its card, not the page. */
@@ -1011,14 +1025,18 @@ button.wide .nav-icon { width: 18px; height: 18px; }
 }
 .review-title:hover:not(:disabled) { background: none; text-decoration: underline; text-underline-offset: 3px; }
 .review-actions { display: flex; align-items: center; gap: 8px; margin-top: 6px; max-width: 100%; }
-/* The category as a chip; orange while there's none. Still a select underneath. */
+/* The category as a chip; orange while there's none. */
 .chip-select {
   width: auto; min-width: 0; flex: 0 1 auto; max-width: 100%; text-overflow: ellipsis; height: 32px; padding: 0 28px 0 12px; border-radius: var(--radius-full); font-size: var(--text-xs); font-weight: 500;
-  border: 1px solid var(--border); background-color: var(--sunken); appearance: none; -webkit-appearance: none; cursor: pointer;
+  border: 1px solid var(--border); background-color: var(--sunken); color: var(--text); appearance: none; -webkit-appearance: none; cursor: pointer;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888c94' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 9px center; background-size: 13px;
 }
+button.chip-select { justify-content: flex-start; text-align: left; overflow: hidden; }
+button.chip-select:hover:not(:disabled) { background-color: var(--sunken); border-color: color-mix(in srgb, var(--muted) 50%, var(--border)); }
+button.chip-select:active:not(:disabled) { transform: none; }
 .chip-select.attention { color: var(--attention); background-color: var(--attention-soft); border-color: transparent; }
+button.chip-select.attention:hover:not(:disabled) { background-color: var(--attention-soft); border-color: color-mix(in srgb, var(--attention) 35%, transparent); }
 @media (max-width: 560px) { .chip-select { font-size: var(--text-xs); } }
 .small-button { padding: 6px 12px; font-size: var(--text-xs); border-radius: var(--radius-xs); flex: none; }
 .review-note { display: block; padding: 0 16px 12px 68px; margin: 0; }
@@ -1034,11 +1052,11 @@ button.wide .nav-icon { width: 18px; height: 18px; }
 .choice-list input { width: 18px; height: 18px; flex: none; margin: 0; }
 
 /* The three filters in one row: search, account, category. */
-.filters select, .filters input[type='search'] { padding-left: 14px; padding-right: 30px; font-size: var(--text-sm); }
+.filters select, .filters .filter-trigger, .filters input[type='search'] { padding-left: 14px; padding-right: 30px; font-size: var(--text-sm); }
 .filters input[type='search'] { padding-right: 12px; }
 @media (max-width: 560px) {
-  .filters select, .filters input[type='search'] { font-size: 15px; }
-  .filters select { padding-left: 12px; padding-right: 26px; background-position: right 8px center; }
+  .filters select, .filters .filter-trigger, .filters input[type='search'] { font-size: 15px; }
+  .filters select, .filters .filter-trigger { padding-left: 12px; padding-right: 26px; background-position: right 8px center; }
 }
 
 
@@ -1089,8 +1107,17 @@ button.wide .nav-icon { width: 18px; height: 18px; }
 .import-row-text { min-width: 0; overflow-wrap: anywhere; }
 .import-row-list .amount { flex: none; font-variant-numeric: tabular-nums; }
 .import-history { list-style: none; margin: 0; padding: 0; }
-.import-history li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); }
+.import-history li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 7px 0; border-top: 1px solid var(--border); }
 .import-history li:first-child { border-top: none; }
+.import-search { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.import-source-list { list-style: none; margin: 0; padding: 0; }
+.import-source-list > li + li { border-top: 1px solid var(--border); }
+.import-source-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 13px 16px;
+  border: 0; border-radius: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; font-weight: 400;
+}
+.import-source-row:hover:not(:disabled) { background-color: var(--sunken); }
+.import-empty { margin: 0; padding: 16px; }
 /* The import's buttons stay in view at the bottom while the review scrolls. */
 .import-actions { position: sticky; bottom: 0; background: var(--surface); padding: 10px 0; margin-bottom: -10px; border-top: 1px solid var(--border); z-index: 1; }
 /* On phones it stops above the tab bar, and leaves the new-record button room. */

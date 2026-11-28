@@ -1,6 +1,6 @@
 // Add, edit, or review a record.
 import { useEffect, useState, type FormEvent } from 'react';
-import { inOrder, isSubcategory } from '../categories';
+import { categoryPath } from '../categories';
 import { api, errorMessage, type Transaction, type TransactionInput, type TransactionKind } from '../api';
 import { t, type Key } from '../i18n';
 import { amountInput, currencySymbol, formatDay, formatTime, parseAmount, toLocalInput } from '../money';
@@ -30,16 +30,11 @@ type Habit = { category_id: number | null; account_id: number; kind: Transaction
 /** One field an edit changes, as the user reads it. */
 type Change = { field: string; from: string; to: string };
 
-/** How many categories the form offers before All. */
-const fewCategories = 7;
-
 /**
- * The last payees and category counts fetched, for the next form: a form
- * opens with them, and keeps the boxes in that order while it's open (the
- * counts it fetches are for the form after), so they never jump under the
- * pointer. Payees it fetches are suggested at once.
+ * The last payees fetched, for the next form: payees it fetches are suggested
+ * at once.
  */
-let knownHabits: { habits: Map<string, Habit>; use: Map<number, number> } | null = null;
+let knownHabits: Map<string, Habit> | null = null;
 
 /** How many recent payees are offered as one-tap chips on a new record. */
 const fewPayees = 4;
@@ -75,10 +70,7 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
   const [tags, setTags] = useState<string[]>(record?.tags ?? []);
   const [tagText, setTagText] = useState('');
   const [knownTags, setKnownTags] = useState<string[]>(() => api.seen.tags()?.map((x) => x.name) ?? []);
-  const [habits, setHabits] = useState<Map<string, Habit>>(() => knownHabits?.habits ?? new Map());
-  // How many recent records each category has, to show the most used first.
-  // Until known (the first form since the page loaded), the boxes wait, hidden.
-  const [use, setUse] = useState<Map<number, number> | null>(() => knownHabits?.use ?? null);
+  const [habits, setHabits] = useState<Map<string, Habit>>(() => knownHabits ?? new Map());
   const [picking, setPicking] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -92,7 +84,6 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
   const pad = quick && !typing;
   // The date shows as a chip until the user asks to change it.
   const [editingWhen, setEditingWhen] = useState(false);
-  const [extras, setExtras] = useState(false);
 
   // Suggest payees from the last few months; picking one fills in its category.
   useEffect(() => {
@@ -105,46 +96,23 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
     api.transactions({ from, status: 'confirmed' }).then(
       (list) => {
         const m = new Map<string, Habit>();
-        const counts = new Map<number, number>();
         for (const t of list) {
           if (t.payee && !m.has(t.payee)) m.set(t.payee, t);
-          if (t.category_id !== null) counts.set(t.category_id, (counts.get(t.category_id) ?? 0) + 1);
         }
-        // Payees as fresh as can be (one just added is suggested); the counts
-        // only if the form had none, so the boxes keep the order they opened in.
-        knownHabits = { habits: m, use: counts };
+        knownHabits = m;
         setHabits(m);
-        setUse((u) => u ?? counts);
       },
-      // Offline: the boxes in the list's order.
-      () => setUse((u) => u ?? new Map()),
+      () => {},
     );
     api.tags().then((list) => setKnownTags(list.map((x) => x.name)), () => {});
   }, []);
 
-  // The boxes: the most used categories, main ones and subcategories alike
-  // (each counts its own records), so the usual one is a tap away; unused ones
-  // in the list's order, main categories first. All opens the picker with
-  // every category; one picked there takes the last box.
-  const ofKind = inOrder(w.categories).filter((c) => c.kind === kind);
-  const ranked = ofKind
-    .map((c, i) => ({ c, i, sub: isSubcategory(c, w.categories) ? 1 : 0, n: use?.get(c.id) ?? 0 }))
-    .sort((a, b) => b.n - a.n || a.sub - b.sub || a.i - b.i)
-    .map((x) => x.c);
-  const roomy = ranked.length <= fewCategories + 1;
-  const few = roomy ? ranked : ranked.slice(0, fewCategories);
-  const chosen = ofKind.find((c) => c.id === categoryId);
-  const shownCategories = !chosen || few.includes(chosen) ? few : [...few.slice(0, -1), chosen];
+  const chosen = kind === 'transfer' ? undefined : w.category(categoryId);
   const duplicate = record?.duplicate_of_id ? record.duplicate_of_id : null;
 
   function changeKind(k: TransactionKind) {
     setKind(k);
     if (w.category(categoryId)?.kind !== k) setCategoryId(null);
-  }
-
-  /** A box tapped: it's chosen, or, tapped again, no category is. */
-  function chooseCategory(id: number) {
-    setCategoryId(categoryId === id ? null : id);
   }
 
   /** A key on the number pad: a digit, '000', the decimal point, or 'back'. */
@@ -281,11 +249,11 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
       ['Type', t(kindNames[before.kind]), t(kindNames[after.kind])],
       ['Amount', w.money(before.amount), w.money(after.amount)],
       ['Category', category(before.category_id), category(after.category_id)],
-      [after.kind === 'income' ? 'From whom' : 'Payee', text(before.payee), text(after.payee)],
       [transfer ? 'From' : 'Account', name(before.account_id), name(after.account_id)],
       ['To', name(before.to_account_id), name(after.to_account_id)],
       ['Date', when(before.occurred_at), when(after.occurred_at)],
       ['Note', text(before.note), text(after.note)],
+      [after.kind === 'income' ? 'From whom' : 'Payee', text(before.payee), text(after.payee)],
       ['Tags', tagList(before.tags), tagList(after.tags ?? before.tags)],
     ];
     return fields.filter(([, from, to]) => from !== to).map(([field, from, to]) => ({ field: t(field), from, to }));
@@ -334,8 +302,6 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
     </div>
   );
   const accountChips = accountPick(t('Account'), 'account', accountId, setAccountId);
-  // On the phone's quick sheet, note and tags wait behind one row until wanted.
-  const showExtras = !quick || extras || note !== '' || tags.length > 0;
 
   // Recent payees, offered while a new record has none yet.
   const recentPayees = !record && !payee ? [...habits.keys()].slice(0, fewPayees) : [];
@@ -370,14 +336,15 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
     );
   }
   return (
-    <Dialog title={title} onClose={onClose}>
-      <form
-        className="stack"
-        onSubmit={save}
-        // The phone's keyboard and the number pad never show together.
-        onFocus={(e) => setTyping(isTextField(e.target))}
-        onBlur={(e) => setTyping(isTextField(e.relatedTarget))}
-      >
+    <>
+      <Dialog title={title} onClose={onClose}>
+        <form
+          className="stack"
+          onSubmit={save}
+          // The phone's keyboard and the number pad never show together.
+          onFocus={(e) => setTyping(isTextField(e.target))}
+          onBlur={(e) => setTyping(isTextField(e.relatedTarget))}
+        >
         {reviewing && (
           <p className="notice small">
             {record.source_label
@@ -422,53 +389,6 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
             onChange={(e) => setAmount(e.target.value)}
           />
         </label>
-        {kind !== 'transfer' && (
-          <fieldset className="category-pick" aria-busy={use === null} style={use === null ? { visibility: 'hidden' } : undefined}>
-            <legend className="sr-only">{t('Category')}</legend>
-            {shownCategories.map((c) => {
-              const on = categoryId === c.id;
-              const main = isSubcategory(c, w.categories) ? w.category(c.parent_id ?? null) : undefined;
-              return (
-                <label key={c.id} className={on ? 'on' : ''}>
-                  <input
-                    type="radio"
-                    name="category"
-                    checked={on}
-                    // Clicks (arrow keys click too) do it all, the chosen box included.
-                    onChange={() => {}}
-                    onClick={() => chooseCategory(c.id)}
-                  />
-                  <CategoryIcon icon={c.icon} name={c.name} color={c.color} />
-                  <span className="category-name">{c.name}</span>
-                  {/* A subcategory says which main category it's under. */}
-                  <span className="category-main" aria-hidden="true">
-                    {main?.name ?? ''}
-                  </span>
-                </label>
-              );
-            })}
-            {!roomy && (
-              <button type="button" className="category-more" onClick={() => setPicking(true)}>
-                <span className="cat-icon" aria-hidden="true">
-                  <Icon d={icons.more} className="glyph" />
-                </span>
-                <span className="category-name">{t('All')}</span>
-              </button>
-            )}
-          </fieldset>
-        )}
-        {picking && (
-          <CategoryPicker
-            categories={w.categories}
-            kind={kind === 'transfer' ? undefined : kind}
-            selected={categoryId}
-            onPick={(c) => {
-              setCategoryId(c.id);
-              setPicking(false);
-            }}
-            onClose={() => setPicking(false)}
-          />
-        )}
         <div className="details">
           {kind === 'transfer' ? (
             <>
@@ -476,38 +396,22 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
               {accountPick(t('To'), 'to', toAccountId, setToAccountId)}
             </>
           ) : (
-            <label className="detail">
-              <span>{kind === 'income' ? t('From whom') : t('Payee')}</span>
-              <input
-                value={payee}
-                maxLength={500}
-                list="payees"
-                autoComplete="off"
-                placeholder={kind === 'income' ? t('Employer, friend…') : t('Shop or person')}
-                onChange={(e) => changePayee(e.target.value)}
-              />
-              <datalist id="payees">
-                {[...habits.keys()].map((p) => (
-                  <option key={p} value={p} />
-                ))}
-              </datalist>
-            </label>
+            <>
+              <div className="detail" role="group" aria-labelledby="record-category">
+                <span id="record-category">{t('Category')}</span>
+                <button
+                  type="button"
+                  className={chosen ? 'category-field' : 'category-field muted'}
+                  onClick={() => setPicking(true)}
+                >
+                  {chosen && <CategoryIcon icon={chosen.icon} name={chosen.name} color={chosen.color} size="small" />}
+                  <span className="category-field-name">{chosen ? categoryPath(chosen.id, w.categories) : t('Choose a category')}</span>
+                  <Icon d={icons.chevron} className="picker-caret" />
+                </button>
+              </div>
+              {accountChips}
+            </>
           )}
-          {recentPayees.length > 0 && kind !== 'transfer' && (
-            <div className="detail payee-suggest">
-              <span className="sr-only">{t('Recently paid')}</span>
-              <ul className="chips" aria-label={t('Recently paid')}>
-                {recentPayees.map((p) => (
-                  <li key={p}>
-                    <button type="button" className="chip" onClick={() => changePayee(p)}>
-                      {p}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {kind !== 'transfer' && accountChips}
           {editingWhen ? (
             <label className="detail">
               <span>{t('Date')}</span>
@@ -537,25 +441,48 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
               </button>
             </div>
           )}
-          {showExtras ? (
+          <label className="detail">
+            <span>{t('Note')}</span>
+            <input value={note} maxLength={500} placeholder={t('Optional')} onChange={(e) => setNote(e.target.value)} />
+          </label>
+          {kind !== 'transfer' && (
             <>
               <label className="detail">
-                <span>{t('Note')}</span>
-                <input value={note} maxLength={500} placeholder={t('Optional')} onChange={(e) => setNote(e.target.value)} />
+                <span>{kind === 'income' ? t('From whom') : t('Payee')}</span>
+                <input
+                  value={payee}
+                  maxLength={500}
+                  list="payees"
+                  autoComplete="off"
+                  placeholder={kind === 'income' ? t('Employer, friend…') : t('Shop or person')}
+                  onChange={(e) => changePayee(e.target.value)}
+                />
+                <datalist id="payees">
+                  {[...habits.keys()].map((p) => (
+                    <option key={p} value={p} />
+                  ))}
+                </datalist>
               </label>
-              <div className="detail">
-                <label htmlFor="record-tags">{t('Tags')}</label>
-                <TagField id="record-tags" tags={tags} onTags={setTags} text={tagText} onText={setTagText} suggestions={knownTags} />
-              </div>
+              {recentPayees.length > 0 && (
+                <div className="detail payee-suggest">
+                  <span className="sr-only">{t('Recently paid')}</span>
+                  <ul className="chips" aria-label={t('Recently paid')}>
+                    {recentPayees.map((p) => (
+                      <li key={p}>
+                        <button type="button" className="chip" onClick={() => changePayee(p)}>
+                          {p}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </>
-          ) : (
-            <div className="detail">
-              <span>{t('More')}</span>
-              <button type="button" className="chip when" onClick={() => setExtras(true)}>
-                {t('Add a note or tags')}
-              </button>
-            </div>
           )}
+          <div className="detail">
+            <label htmlFor="record-tags">{t('Tags')}</label>
+            <TagField id="record-tags" tags={tags} onTags={setTags} text={tagText} onText={setTagText} suggestions={knownTags} />
+          </div>
         </div>
         {error && (
           <p role="alert" className="error">
@@ -579,6 +506,17 @@ export function TransactionForm({ record, onClose, onSaved, draft }: Props) {
         )}
       </form>
     </Dialog>
+    {picking && (
+      <CategoryPicker
+        categories={w.categories}
+        kind={kind === 'transfer' ? undefined : kind}
+        selected={categoryId}
+        extras={[{ label: t('None'), selected: categoryId === null, onPick: () => setCategoryId(null) }]}
+        onPick={(c) => setCategoryId(c.id)}
+        onClose={() => setPicking(false)}
+      />
+    )}
+    </>
   );
 }
 

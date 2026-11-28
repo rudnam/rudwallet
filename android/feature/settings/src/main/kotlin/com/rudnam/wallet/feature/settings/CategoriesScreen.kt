@@ -100,6 +100,7 @@ private val glyphNames = mapOf(
     "shield" to R.string.feature_settings_glyph_shield,
     "tag" to R.string.feature_settings_glyph_tag,
     "laptop" to R.string.feature_settings_glyph_laptop,
+    "delivery" to R.string.feature_settings_glyph_delivery,
 )
 
 @Composable

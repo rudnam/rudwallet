@@ -1,9 +1,11 @@
 // Settings › Shops and cards: what confirming payments taught the app (each
 // shop's category, each card's account), to check, correct or forget, and
 // shops to add by hand before their first payment.
-import { useEffect, useState, type FormEvent } from 'react';
-import { inOrder, optionLabel } from '../../categories';
+import { useEffect, useId, useState, type FormEvent } from 'react';
+import { categoryPath } from '../../categories';
 import { api, errorMessage, type Category, type Rules } from '../../api';
+import { CategoryPicker } from '../../components/CategoryPicker';
+import { CategoryIcon, Icon, icons } from '../../components/Icon';
 import { href } from '../../router';
 import { useToast } from '../../toast';
 import { useWallet } from '../../wallet';
@@ -161,24 +163,36 @@ function CategorySelect({
   value: string;
   onChange: (id: string) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const valId = useId();
+  const selectedId = value ? Number(value) : null;
+  const current = selectedId !== null ? categories.find((c) => c.id === selectedId) : undefined;
   return (
-    <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>
-      {value === '' && <option value="">{t('Pick a category')}</option>}
-      <optgroup label={t('Expenses')}>
-        {inOrder(categories).filter((c) => c.kind === 'expense').map((c) => option(c, categories))}
-      </optgroup>
-      <optgroup label={t('Income')}>
-        {inOrder(categories).filter((c) => c.kind === 'income').map((c) => option(c, categories))}
-      </optgroup>
-    </select>
-  );
-}
-
-function option(c: Category, all: Category[]) {
-  return (
-    <option key={c.id} value={c.id}>
-      {optionLabel(c, all)}
-    </option>
+    <>
+      <button
+        type="button"
+        className={current ? 'picker-trigger' : 'picker-trigger placeholder'}
+        aria-label={label}
+        aria-haspopup="dialog"
+        aria-describedby={valId}
+        onClick={() => setOpen(true)}
+      >
+        {current && <CategoryIcon icon={current.icon} name={current.name} color={current.color} size="small" />}
+        <span id={valId} className="ellipsis grow">
+          {current ? (categoryPath(current.id, categories) ?? current.name) : t('Pick a category')}
+        </span>
+        <Icon d={icons.expand} className="picker-caret" />
+      </button>
+      {open && (
+        <CategoryPicker
+          categories={categories}
+          selected={selectedId}
+          title={label}
+          onPick={(c) => onChange(String(c.id))}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
   );
 }
 

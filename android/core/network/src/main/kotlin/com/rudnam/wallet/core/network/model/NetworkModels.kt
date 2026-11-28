@@ -1,5 +1,6 @@
 package com.rudnam.wallet.core.network.model
 
+import com.rudnam.wallet.core.model.ChangelogEntry
 import com.rudnam.wallet.core.model.Account
 import com.rudnam.wallet.core.model.AccountKind
 import com.rudnam.wallet.core.model.AccountInput
@@ -351,10 +352,21 @@ data class NetworkName(val name: String)
 data class NetworkDownloads(val android: NetworkApk? = null)
 
 @Serializable
+data class NetworkChangelogEntry(
+    val version: Int,
+    @SerialName("version_name") val versionName: String = "",
+    val en: List<String> = emptyList(),
+    val ja: List<String> = emptyList(),
+)
+
+fun NetworkChangelogEntry.asModel() = ChangelogEntry(version, versionName, en, ja)
+
+@Serializable
 data class NetworkApk(
     val url: String,
     val version: Int? = null,
     @SerialName("version_name") val versionName: String? = null,
+    val changelog: List<NetworkChangelogEntry> = emptyList(),
 )
 
 fun NetworkWallet.asModel() = Wallet(

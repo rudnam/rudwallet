@@ -46,6 +46,34 @@ class RecordFormTest {
     }
 
     @Test
+    fun `changes are listed in priority order`() {
+        val record = SampleWallet.records.first { it.id == 18L }
+        val input = RecordForm(
+            kind = TransactionKind.Expense,
+            amount = "1,500",
+            categoryId = 999L,
+            accountId = 999L,
+            occurredAt = record.occurredAt.plusSeconds(120),
+            payee = "Other Shop",
+            note = "New note",
+            tags = listOf("other"),
+        ).toInput(0, record)!!
+        val changes = describeChanges(record, input)
+        assertEquals(
+            listOf(
+                Change.Field.Amount,
+                Change.Field.Category,
+                Change.Field.Account,
+                Change.Field.Date,
+                Change.Field.Note,
+                Change.Field.Payee,
+                Change.Field.Tags,
+            ),
+            changes.map { it.field },
+        )
+    }
+
+    @Test
     fun `a transfer has no category or payee, and an amount is required`() {
         val form = RecordForm(occurredAt = SampleWallet.now, kind = TransactionKind.Transfer, amount = "10,000", categoryId = 10, payee = "x", accountId = 2, toAccountId = 3)
         val input = form.toInput(0, null)!!
