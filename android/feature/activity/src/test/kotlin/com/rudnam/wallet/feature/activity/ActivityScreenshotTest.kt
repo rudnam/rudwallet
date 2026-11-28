@@ -58,8 +58,15 @@ class ActivityScreenshotTest {
         override fun back() {}
     }
 
-    /** Two to check: one ready (a shop's category), one a possible duplicate of a record already there. */
+    /**
+     * Three to check: one at a new shop, waiting for a category; one ready (a shop's
+     * category); one a possible duplicate of a record already there.
+     */
     private val review = listOf(
+        ReviewItem(
+            SampleWallet.records.first { it.id == 19L }.copy(id = 33, status = TransactionStatus.Review, payee = "IKEA Online", amount = 4_994, categoryId = null, sourceLabel = "PayPay Card"),
+            categoryId = null, overriding = false, remember = false, match = null,
+        ),
         ReviewItem(
             SampleWallet.records.first { it.id == 19L }.copy(id = 31, status = TransactionStatus.Review, payee = "Doutor Kanda", sourceLabel = "Mastercard 1234"),
             categoryId = 13, overriding = false, remember = false, match = null,

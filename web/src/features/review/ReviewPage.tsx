@@ -71,6 +71,8 @@ export function ReviewPage({ compact = false }: { compact?: boolean }) {
   }
 
   const empty = records !== null && records.length === 0;
+  // What the payments waiting add up to: spending less refunds.
+  const waiting = (records ?? []).reduce((sum, t) => sum + (t.kind === 'income' ? t.amount : t.kind === 'expense' ? -t.amount : 0), 0);
   if (compact && (records === null || empty)) return null;
   return (
     <section className={compact ? 'stack to-check' : 'stack loose'} aria-label={compact ? t('Payments to review') : undefined}>
@@ -78,6 +80,7 @@ export function ReviewPage({ compact = false }: { compact?: boolean }) {
         <h2 className="to-check-head">
           <span className="attention-dot" aria-hidden="true" />
           {t('{n} to check', { n: records?.length ?? 0 })}
+          {waiting !== 0 && <span className="to-check-total muted">{w.money(waiting, true)}</span>}
         </h2>
       ) : (
         <header className="stack tight">
@@ -229,9 +232,12 @@ function ReviewItem({
   const matchedAt = match && new Date(match.occurred_at);
   const cat = w.category(categoryId);
   const canConfirm = t.amount > 0 && !t.duplicate_of_id;
+  // Confirming needs a category (a transfer has none): the button waits
+  // for one, as swiping and "Confirm all" do.
+  const needsCategory = t.kind !== 'transfer' && categoryId === null;
   // The card that paid, where it says more than the account's name.
   const paidWith = t.source_label && t.source_label !== w.account(t.account_id)?.name ? t.source_label : w.account(t.account_id)?.name;
-  const swipe = useSwipe(canConfirm && categoryId !== null && !busy ? confirm : undefined);
+  const swipe = useSwipe(canConfirm && !needsCategory && !busy ? () => confirm() : undefined);
   return (
     <li className="review-item" aria-label={title}>
       <div className="review-swipe">
@@ -239,8 +245,15 @@ function ReviewItem({
           <Icon d={icons.check} className="glyph" />
           {tr('Confirm')}
         </span>
-        <div className="review-row" {...swipe.handlers} style={swipe.style}>
-          <CategoryIcon icon={cat?.icon} name={cat?.name} color={cat?.color} payee={cat ? undefined : t.payee} />
+        <div className="review-row with-actions" {...swipe.handlers} style={swipe.style}>
+          {needsCategory ? (
+            // The shop's initial, so the row is recognisable before it has a category.
+            <span className="cat-icon review-initial" aria-hidden="true">
+              <span className="initial">{Array.from(title)[0]?.toUpperCase()}</span>
+            </span>
+          ) : (
+            <CategoryIcon icon={cat?.icon} name={cat?.name} color={cat?.color} payee={cat ? undefined : t.payee} />
+          )}
           <div className="grow review-main">
             <button type="button" className="review-title" onClick={onEdit}>
               {title}
@@ -248,29 +261,31 @@ function ReviewItem({
             <span className="review-when muted small">
               {formatDay(when)} {formatTime(when)}
             </span>
-            <span className="review-actions">
-              <button
-                type="button"
-                className={categoryId === null ? 'chip-select attention' : 'chip-select'}
-                aria-label={tr('Category for {name}', { name: title })}
-                aria-haspopup="dialog"
-                aria-describedby={catValId}
-                onClick={() => setPicking(true)}
-              >
-                <span id={catValId} className="ellipsis">
-                  {cat ? cat.name : tr('Category')}
-                </span>
-              </button>
-              <button type="button" className="small-button" disabled={busy} onClick={confirm}>
-                {tr('Confirm')}
-              </button>
-            </span>
           </div>
           <span className="record-side">
             <strong className={`amount ${t.kind}`}>
               {t.amount > 0 ? w.money(t.kind === 'income' ? t.amount : -t.amount, true) : tr('Amount?')}
             </strong>
             <span className="muted small">{paidWith}</span>
+          </span>
+          <span className="review-actions">
+            <button
+              type="button"
+              className={needsCategory ? 'chip-select attention' : 'chip-select'}
+              aria-label={tr('Category for {name}', { name: title })}
+              aria-haspopup="dialog"
+              aria-describedby={catValId}
+              onClick={() => setPicking(true)}
+            >
+              <span id={catValId} className="ellipsis">
+                {cat ? cat.name : tr('Category')}
+              </span>
+            </button>
+            {!needsCategory && (
+              <button type="button" className="small-button" disabled={busy} onClick={() => confirm()}>
+                {tr('Confirm')}
+              </button>
+            )}
           </span>
         </div>
       </div>
@@ -297,12 +312,18 @@ function ReviewItem({
       )}
       {overriding && (
         <label className="check small review-note">
-          <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
-          {tr('Use {category} for {payee} from now on, instead of {old}', {
-            category: w.category(categoryId)?.name ?? '',
-            payee: t.payee,
-            old: w.category(t.category_id)?.name ?? '',
-          })}
+          {/* Short on screen: the category is on the button above, and the shop is the row's title. */}
+          <input
+            type="checkbox"
+            checked={remember}
+            onChange={(e) => setRemember(e.target.checked)}
+            aria-label={tr('Use {category} for {payee} from now on, instead of {old}', {
+              category: w.category(categoryId)?.name ?? '',
+              payee: t.payee,
+              old: w.category(t.category_id)?.name ?? '',
+            })}
+          />
+          {tr('Remember for this shop')}
         </label>
       )}
       {error && (

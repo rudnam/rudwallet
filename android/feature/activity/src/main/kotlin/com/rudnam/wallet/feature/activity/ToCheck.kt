@@ -48,6 +48,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.rudnam.wallet.core.designsystem.component.ListLeadingSize
 import com.rudnam.wallet.core.designsystem.component.WalletPanel
 import com.rudnam.wallet.core.designsystem.component.rememberHaptics
 import com.rudnam.wallet.core.designsystem.icon.LineIcon
@@ -63,16 +64,27 @@ import java.time.Instant
 
 /**
  * "N to check": payments read from the phone's notifications, waiting for
- * the user, above the records. Pick a category and Confirm (or swipe right),
- * all at once when they're ready, or open one to change it. A possible
- * duplicate shows what it matches and can be deleted here.
+ * the user, above the records, with what they add up to. Pick a category and
+ * Confirm (or swipe right), all at once when they're ready, or open one to
+ * change it. A possible duplicate shows what it matches and can be deleted here.
  */
 internal fun LazyListScope.toCheck(state: ActivityUiState.Ready, format: MoneyFormat, actions: ActivityActions, navigation: ActivityNavigation, now: Instant) {
     item(key = "to-check", contentType = "to-check-head") {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Box(Modifier.size(8.dp).clip(CircleShape).background(WalletTheme.colors.attention))
-                Text(stringResource(R.string.feature_activity_to_check, state.toReview.size), Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.feature_activity_to_check, state.toReview.size), Modifier.weight(1f).semantics { heading() }, style = MaterialTheme.typography.titleMedium)
+                // What the payments waiting add up to: spending less refunds.
+                val waiting = state.toReview.sumOf {
+                    when (it.record.kind) {
+                        TransactionKind.Income -> it.record.amount
+                        TransactionKind.Expense -> -it.record.amount
+                        else -> 0L
+                    }
+                }
+                if (waiting != 0L) {
+                    Text(format.money(waiting, signed = true), style = MaterialTheme.typography.bodyMedium.figures(), color = WalletTheme.colors.muted, maxLines = 1)
+                }
             }
             val ready = state.ready
             if (ready.size > 1) {
@@ -127,6 +139,10 @@ private fun ReviewRow(
     )
     LaunchedEffect(swipe.targetValue) { if (swipe.targetValue == SwipeToDismissBoxValue.StartToEnd) haptics.threshold() }
     val title = t.payee.ifEmpty { stringResource(R.string.feature_activity_payment) }
+    // Confirming needs a category (a transfer has none): until there is one, the
+    // button under the amount picks it, so the step to take is the one shown.
+    val needsCategory = t.kind != TransactionKind.Transfer && item.categoryId == null
+    var picking by rememberSaveable { mutableStateOf(false) }
     WalletPanel(modifier.fillMaxWidth()) {
         SwipeToDismissBox(
             state = swipe,
@@ -147,7 +163,7 @@ private fun ReviewRow(
                 Modifier.fillMaxWidth().background(colors.surface).padding(start = 12.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                CategoryPicker(item, state, actions)
+                CategoryTile(item, state, title) { picking = true }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
                         title,
@@ -180,7 +196,15 @@ private fun ReviewRow(
                         color = if (t.kind == TransactionKind.Income) colors.positive else colors.text,
                         maxLines = 1,
                     )
-                    if (t.duplicateOfId == null) {
+                    if (t.duplicateOfId == null && needsCategory) {
+                        FilledTonalButton(
+                            onClick = { picking = true },
+                            enabled = !state.busy,
+                            modifier = Modifier.heightIn(min = 36.dp),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+                            colors = ButtonDefaults.filledTonalButtonColors(containerColor = colors.attentionSoft, contentColor = colors.attention),
+                        ) { Text(stringResource(R.string.feature_activity_category), maxLines = 1) }
+                    } else if (t.duplicateOfId == null) {
                         FilledTonalButton(
                             onClick = { if (t.amount > 0) actions.confirm(item) else navigation.openRecord(t) },
                             enabled = !state.busy && item.categoryId != null,
@@ -191,48 +215,60 @@ private fun ReviewRow(
                 }
             }
         }
+        if (picking) {
+            CategoryPickerSheet(
+                wallet = state.wallet,
+                kind = CategoryKind.entries.firstOrNull { it.apiName == t.kind.apiName },
+                selectedId = item.categoryId,
+                onPick = { actions.pickCategory(t.id, it.id) },
+                onDismiss = { picking = false },
+                title = stringResource(R.string.feature_activity_category_for, title),
+            )
+        }
         if (t.note.isNotEmpty()) Text(t.note, Modifier.padding(start = 72.dp, end = 16.dp, bottom = 8.dp), style = MaterialTheme.typography.bodySmall, color = colors.muted)
         if (t.duplicateOfId != null) Duplicate(item, state, format, actions, navigation)
         if (item.overriding) {
             Row(Modifier.padding(start = 60.dp, end = 16.dp, bottom = 8.dp).clickable { actions.setRemember(t.id, !item.remember) }, verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = item.remember, onCheckedChange = { actions.setRemember(t.id, it) })
-                Text(
-                    stringResource(
-                        R.string.feature_activity_remember,
-                        state.wallet.category(item.categoryId)?.name.orEmpty(),
-                        t.payee,
-                        state.wallet.category(t.categoryId)?.name.orEmpty(),
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
+                // Short on screen (the category is on the tile, the shop is the card's title);
+                // the whole sentence for TalkBack.
+                val whole = stringResource(
+                    R.string.feature_activity_remember,
+                    state.wallet.category(item.categoryId)?.name.orEmpty(),
+                    t.payee,
+                    state.wallet.category(t.categoryId)?.name.orEmpty(),
                 )
+                Checkbox(checked = item.remember, onCheckedChange = { actions.setRemember(t.id, it) }, modifier = Modifier.semantics { contentDescription = whole })
+                Text(stringResource(R.string.feature_activity_remember_short), style = MaterialTheme.typography.bodySmall)
             }
         }
     }
 }
 
-/** The card's category tile, which picks the category: a dashed question mark until there is one. */
+/**
+ * The card's category tile, which picks the category. Until there is one it
+ * shows the shop's initial, tinted as needing a look, so the card is
+ * recognisable before it has a category.
+ */
 @Composable
-private fun CategoryPicker(item: ReviewItem, state: ActivityUiState.Ready, actions: ActivityActions) {
-    var open by rememberSaveable { mutableStateOf(false) }
-    val t = item.record
+private fun CategoryTile(item: ReviewItem, state: ActivityUiState.Ready, title: String, onClick: () -> Unit) {
+    val colors = WalletTheme.colors
     val category = state.wallet.category(item.categoryId)
     val label = if (category == null) stringResource(R.string.feature_activity_choose_category)
     else stringResource(R.string.feature_activity_change_category, state.wallet.categoryPath(category.id) ?: category.name)
     Box(
         Modifier.size(48.dp).clip(MaterialTheme.shapes.small)
-            .clickable(role = Role.Button) { open = true }
+            .clickable(role = Role.Button, onClick = onClick)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
-    ) { CategoryIcon(category, waiting = category == null) }
-    if (open) {
-        CategoryPickerSheet(
-            wallet = state.wallet,
-            kind = CategoryKind.entries.firstOrNull { it.apiName == t.kind.apiName },
-            selectedId = item.categoryId,
-            onPick = { actions.pickCategory(t.id, it.id) },
-            onDismiss = { open = false },
-            title = stringResource(R.string.feature_activity_category_for, t.payee.ifEmpty { stringResource(R.string.feature_activity_payment) }),
-        )
+    ) {
+        if (category == null && item.record.kind != TransactionKind.Transfer) {
+            Box(
+                Modifier.size(ListLeadingSize).clip(MaterialTheme.shapes.small).background(colors.attentionSoft),
+                contentAlignment = Alignment.Center,
+            ) { Text(title.take(1).uppercase(), style = MaterialTheme.typography.titleSmall, color = colors.attention) }
+        } else {
+            CategoryIcon(category, waiting = category == null)
+        }
     }
 }
 

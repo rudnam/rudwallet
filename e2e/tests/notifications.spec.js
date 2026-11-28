@@ -86,6 +86,40 @@ test('a possible duplicate is set aside automatically, and can be brought back',
   await expect(page.getByText('No duplicates caught lately.')).toBeVisible();
   await page.goto('/app/#/review');
   const back = page.getByRole('listitem', { name: '大戸屋' });
-  await expect(back.getByRole('button', { name: 'Confirm', exact: true })).toBeVisible();
   await expect(back.getByRole('status')).toHaveCount(0);
+  // Confirm waits for a category.
+  await expect(back.getByRole('button', { name: 'Confirm', exact: true })).toHaveCount(0);
+  await back.getByLabel('Category for 大戸屋').click();
+  const picker = page.getByRole('dialog', { name: 'Category for 大戸屋' });
+  await picker.getByRole('button', { name: /^Food & Drinks/ }).click();
+  await picker.getByRole('button', { name: 'Eating out' }).click();
+  await expect(back.getByRole('button', { name: 'Confirm', exact: true })).toBeVisible();
+});
+
+test('a payment to check waits for a category before it can be confirmed', async ({ page }) => {
+  await signUp(page);
+  const when = new Date(Date.now() - 60_000);
+  await sendNotifications(page.request, payPayCard({ merchant: 'IKEAオンライン', yen: 4994, when }), payPayCard({ merchant: 'Amazon.co.jp', yen: 1280, when: new Date(when.getTime() + 1000) }));
+
+  await page.goto('/app/#/records');
+  const section = page.getByRole('region', { name: 'Payments to review' });
+  // What the payments add up to, beside how many there are.
+  await expect(section.getByRole('heading')).toHaveText('2 to check−¥6,274');
+  const ikea = section.getByRole('listitem', { name: 'IKEAオンライン' });
+  // No category yet: the shop's initial, and no Confirm.
+  await expect(ikea.locator('.review-initial')).toHaveText('I');
+  await expect(ikea.getByRole('button', { name: 'Confirm', exact: true })).toHaveCount(0);
+  for (const [width, height, name] of [[390, 844, 'phone'], [1280, 900, 'desktop']]) {
+    await page.setViewportSize({ width, height });
+    await section.screenshot({ path: test.info().outputPath(`to-check-${name}.png`) });
+  }
+
+  await ikea.getByLabel('Category for IKEAオンライン').click();
+  const picker = page.getByRole('dialog', { name: 'Category for IKEAオンライン' });
+  await picker.getByRole('button', { name: /^Shopping/ }).click();
+  await picker.getByRole('button', { name: 'Furniture & home' }).click();
+  await expect(ikea.getByLabel('Category for IKEAオンライン')).toHaveText('Furniture & home');
+  await ikea.getByRole('button', { name: 'Confirm', exact: true }).click();
+  await expect(page.getByText('Confirmed IKEAオンライン')).toBeVisible();
+  await expect(section.getByRole('heading')).toHaveText('1 to check−¥1,280');
 });
