@@ -1,0 +1,2 @@
+# e2e/compose.yml builds the browser image from this folder, but copies nothing from it.
+*

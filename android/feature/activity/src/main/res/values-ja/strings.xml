@@ -33,6 +33,7 @@
     <string name="feature_activity_duplicate">重複の可能性: 同じ時間帯に同じ金額の記録がすでにあります。</string>
     <string name="feature_activity_delete_duplicate">重複を削除</string>
     <string name="feature_activity_remember">今後%2$sは%3$sではなく%1$sにする</string>
+    <string name="feature_activity_remember_short">今後もこのお店に使う</string>
     <string name="feature_activity_choose_records">記録を選んでください</string>
     <string name="feature_activity_choose_none">選択を解除</string>
     <string name="feature_activity_choose_all">%d件すべて選択</string>

@@ -312,12 +312,18 @@ function ReviewItem({
       )}
       {overriding && (
         <label className="check small review-note">
-          <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
-          {tr('Use {category} for {payee} from now on, instead of {old}', {
-            category: w.category(categoryId)?.name ?? '',
-            payee: t.payee,
-            old: w.category(t.category_id)?.name ?? '',
-          })}
+          {/* Short on screen: the category is on the button above, and the shop is the row's title. */}
+          <input
+            type="checkbox"
+            checked={remember}
+            onChange={(e) => setRemember(e.target.checked)}
+            aria-label={tr('Use {category} for {payee} from now on, instead of {old}', {
+              category: w.category(categoryId)?.name ?? '',
+              payee: t.payee,
+              old: w.category(t.category_id)?.name ?? '',
+            })}
+          />
+          {tr('Remember for this shop')}
         </label>
       )}
       {error && (

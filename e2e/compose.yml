@@ -102,9 +102,17 @@ services:
     command: ["golangci-lint", "run", "./..."]
 
   # Playwright browser tests against the app. The image tag comes from
-  # @playwright/test's version in package.json (see verify.sh).
+  # @playwright/test's version in package.json (see verify.sh). Its only CJK
+  # font is a Chinese one (WenQuanYi), so Japanese screenshots came out in
+  # Chinese letterforms with no bold: add Noto Sans CJK, which Android uses.
+  # (.dockerignore keeps this folder out of the build.)
   e2e:
-    image: mcr.microsoft.com/playwright:v${PW_VERSION:?run through verify.sh}-noble
+    image: wallet-e2e:${PW_VERSION:?run through verify.sh}
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM mcr.microsoft.com/playwright:v${PW_VERSION}-noble
+        RUN apt-get update && apt-get install -y --no-install-recommends fonts-noto-cjk && rm -rf /var/lib/apt/lists/*
     profiles: [e2e]
     user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     working_dir: /e2e

@@ -229,16 +229,16 @@ private fun ReviewRow(
         if (t.duplicateOfId != null) Duplicate(item, state, format, actions, navigation)
         if (item.overriding) {
             Row(Modifier.padding(start = 60.dp, end = 16.dp, bottom = 8.dp).clickable { actions.setRemember(t.id, !item.remember) }, verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = item.remember, onCheckedChange = { actions.setRemember(t.id, it) })
-                Text(
-                    stringResource(
-                        R.string.feature_activity_remember,
-                        state.wallet.category(item.categoryId)?.name.orEmpty(),
-                        t.payee,
-                        state.wallet.category(t.categoryId)?.name.orEmpty(),
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
+                // Short on screen (the category is on the tile, the shop is the card's title);
+                // the whole sentence for TalkBack.
+                val whole = stringResource(
+                    R.string.feature_activity_remember,
+                    state.wallet.category(item.categoryId)?.name.orEmpty(),
+                    t.payee,
+                    state.wallet.category(t.categoryId)?.name.orEmpty(),
                 )
+                Checkbox(checked = item.remember, onCheckedChange = { actions.setRemember(t.id, it) }, modifier = Modifier.semantics { contentDescription = whole })
+                Text(stringResource(R.string.feature_activity_remember_short), style = MaterialTheme.typography.bodySmall)
             }
         }
     }
