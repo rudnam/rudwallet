@@ -1,5 +1,8 @@
 package com.rudnam.wallet.feature.record
 
+import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -35,12 +38,14 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SheetState
@@ -172,7 +177,7 @@ internal interface RecordActions {
  * The record sheet (docs/design, "add"): the amount on a docked number pad,
  * a category, Save, in three taps; the rest below for when it's wanted.
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalLayoutApi::class)
 @Composable
 internal fun RecordSheet(state: RecordUiState.Ready, actions: RecordActions, onDismiss: () -> Unit) {
     val density = LocalDensity.current
@@ -202,28 +207,42 @@ internal fun RecordSheet(state: RecordUiState.Ready, actions: RecordActions, onD
             if (!sheet.isVisible) onDismiss()
         }
     }
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        modifier = Modifier.statusBarsPadding().padding(top = 48.dp),
-        sheetState = sheet,
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        containerColor = WalletTheme.colors.surface,
-        contentWindowInsets = { WindowInsets(0) },
-        dragHandle = {
-            Box(
-                Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 6.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Box(
-                    Modifier
-                        .size(width = 36.dp, height = 4.dp)
-                        .clip(CircleShape)
-                        .background(WalletTheme.colors.muted.copy(alpha = 0.35f)),
-                )
-            }
-        },
+    val baseMotion = MaterialTheme.motionScheme
+    val snappySheetMotion = remember(baseMotion) {
+        object : MotionScheme by baseMotion {
+            override fun <T> defaultSpatialSpec(): FiniteAnimationSpec<T> =
+                spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 1400f)
+        }
+    }
+    MaterialTheme(
+        colorScheme = MaterialTheme.colorScheme,
+        motionScheme = snappySheetMotion,
+        shapes = MaterialTheme.shapes,
+        typography = MaterialTheme.typography,
     ) {
-        RecordSheetContent(state, actions, onClose = closeSheet)
+        ModalBottomSheet(
+            onDismissRequest = onDismiss,
+            modifier = Modifier.statusBarsPadding().padding(top = 48.dp),
+            sheetState = sheet,
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+            containerColor = WalletTheme.colors.surface,
+            contentWindowInsets = { WindowInsets(0) },
+            dragHandle = {
+                Box(
+                    Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 6.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(
+                        Modifier
+                            .size(width = 36.dp, height = 4.dp)
+                            .clip(CircleShape)
+                            .background(WalletTheme.colors.muted.copy(alpha = 0.35f)),
+                    )
+                }
+            },
+        ) {
+            RecordSheetContent(state, actions, onClose = closeSheet)
+        }
     }
     if (state.pickingCategory) {
         CategoryPickerSheet(
