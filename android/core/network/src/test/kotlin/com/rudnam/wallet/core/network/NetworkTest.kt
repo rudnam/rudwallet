@@ -37,9 +37,15 @@ class NetworkTest {
         val wallet = json.decodeFromString<NetworkWallet>(
             """{"settings":{"currency":"JPY","currency_exponent":0,"auto_confirm":true,"default_account_id":null,"new_field":1},
                "accounts":[{"id":1,"name":"Cash","kind":"cash","initial_balance":0,"balance":26450,"color":"#4f8a4c","archived":false}],
-               "categories":[],"review_count":2}""",
+               "categories":[
+                 {"id":10,"name":"Food & Drinks","kind":"expense","icon":"food","color":"#d9534f","parent_id":null},
+                 {"id":11,"name":"Groceries","kind":"expense","icon":"grocery","color":"#e8833a","parent_id":10}
+               ],"review_count":2}""",
         ).asModel()
         assertEquals(AccountKind.Cash, wallet.accounts.single().kind)
+        assertNull(wallet.category(10)?.parentId)
+        assertEquals(10L, wallet.category(11)?.parentId)
+        assertEquals(listOf(11L), wallet.subcategories(10).map { it.id })
         assertEquals(2, wallet.reviewCount)
 
         val record = json.decodeFromString<NetworkTransaction>(

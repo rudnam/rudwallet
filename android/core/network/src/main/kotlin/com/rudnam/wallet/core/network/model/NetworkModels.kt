@@ -360,7 +360,7 @@ data class NetworkApk(
 fun NetworkWallet.asModel() = Wallet(
     settings = WalletSettings(settings.currency, settings.currencyExponent, settings.autoConfirm, settings.defaultAccountId),
     accounts = accounts.map { Account(it.id, it.name, AccountKind.fromApi(it.kind), it.initialBalance, it.balance, it.color, it.archived) },
-    categories = categories.map { Category(it.id, it.name, CategoryKind.fromApi(it.kind), it.icon, it.color) },
+    categories = categories.map { it.asModel() },
     reviewCount = reviewCount,
 )
 
