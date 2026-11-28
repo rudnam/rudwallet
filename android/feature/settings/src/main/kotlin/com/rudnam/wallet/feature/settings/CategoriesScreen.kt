@@ -144,17 +144,18 @@ internal fun CategoriesDestination(navigation: SettingsNavigation, snackbar: Sna
     val wallet by viewModel.wallet.collectAsStateWithLifecycle()
     val missing by viewModel.missing.collectAsStateWithLifecycle()
     val regroup by viewModel.regroup.collectAsStateWithLifecycle()
+    val refresh by viewModel.refresh.collectAsStateWithLifecycle()
     val editor by viewModel.editor.collectAsStateWithLifecycle()
     val messages by viewModel.messages.collectAsStateWithLifecycle()
     ChangeMessages(messages, viewModel::messageShown, snackbar)
-    CategoriesScreen(wallet, missing, editor, viewModel, navigation, regroup)
+    CategoriesScreen(wallet, missing, editor, viewModel, navigation, regroup, refresh = refresh)
 }
 
 /**
  * What the money is spent on and earned from: a list for each kind, each
  * main category followed by its subcategories, indented. The defaults a new
- * wallet has and this one doesn't (missing, or not grouped like a new one's)
- * wait behind one row at the bottom.
+ * wallet has and this one doesn't (missing, not grouped like a new one's, or
+ * with an older name or icon) wait behind one row at the bottom.
  */
 @Composable
 internal fun CategoriesScreen(
@@ -165,6 +166,7 @@ internal fun CategoriesScreen(
     navigation: SettingsNavigation,
     regroup: List<Category> = emptyList(),
     matching: Boolean = false,
+    refresh: List<Category> = emptyList(),
 ) {
     var showDefaults by rememberSaveable { mutableStateOf(matching) }
     SettingsPage(
@@ -187,7 +189,7 @@ internal fun CategoriesScreen(
             for (kind in CategoryKind.entries) {
                 item(key = "list:$kind") { CategoryList(wallet, kind, actions) }
             }
-            val suggestions = missing.size + regroup.size
+            val suggestions = missing.size + regroup.size + refresh.size
             if (suggestions > 0) {
                 item(key = "defaults") {
                     WalletPanel(Modifier.fillMaxWidth()) {
@@ -215,9 +217,9 @@ internal fun CategoriesScreen(
     }
     if (editor != null) CategorySheet(editor, wallet, actions)
     if (showDefaults && wallet != null) {
-        DefaultsSheet(wallet, missing, regroup, onApply = { moves, adds ->
+        DefaultsSheet(wallet, missing, regroup, refresh, onApply = { moves, adds, updates ->
             showDefaults = false
-            actions.matchDefaults(moves, adds)
+            actions.matchDefaults(moves, adds, updates)
         }, onDismiss = { showDefaults = false })
     }
 }
@@ -312,14 +314,23 @@ private fun MainCategoryRow(wallet: Wallet, main: Category, open: Boolean, onTog
 
 /**
  * Matching the defaults a new wallet starts with: moving the categories it
- * keeps under a main category there, and adding the ones this wallet doesn't
- * have. All ticked to start with; Apply does the ticked ones.
+ * keeps under a main category there, giving them the names and icons it has,
+ * and adding the ones this wallet doesn't have. All ticked to start with;
+ * Apply does the ticked ones.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DefaultsSheet(wallet: Wallet, missing: List<Category>, regroup: List<Category>, onApply: (List<Long>, List<Category>) -> Unit, onDismiss: () -> Unit) {
+private fun DefaultsSheet(
+    wallet: Wallet,
+    missing: List<Category>,
+    regroup: List<Category>,
+    refresh: List<Category>,
+    onApply: (List<Long>, List<Category>, List<Long>) -> Unit,
+    onDismiss: () -> Unit,
+) {
     val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val moves = remember(regroup) { mutableStateListOf(*regroup.map { it.id }.toTypedArray()) }
+    val updates = remember(refresh) { mutableStateListOf(*refresh.map { it.id }.toTypedArray()) }
     val adds = remember(missing) { mutableStateListOf(*missing.map { "${it.kind}:${it.name}" }.toTypedArray()) }
     val colors = WalletTheme.colors
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheet, containerColor = colors.surface) {
@@ -341,6 +352,17 @@ private fun DefaultsSheet(wallet: Wallet, missing: List<Category>, regroup: List
                 }
                 Text(stringResource(R.string.feature_settings_regroup_note), style = MaterialTheme.typography.bodySmall, color = colors.muted)
             }
+            if (refresh.isNotEmpty()) {
+                SectionHeader(stringResource(R.string.feature_settings_defaults_refresh), Modifier.padding(top = 8.dp))
+                for (c in refresh) {
+                    val now = wallet.category(c.id)
+                    val label = if (now != null && now.name != c.name) stringResource(R.string.feature_settings_refresh_rename, now.name, c.name) else c.name
+                    // The icon it has, then the one it would get.
+                    CheckRow(c, label, c.id in updates, before = now?.takeIf { it.icon != c.icon }) { on ->
+                        if (on) updates += c.id else updates -= c.id
+                    }
+                }
+            }
             if (missing.isNotEmpty()) {
                 SectionHeader(stringResource(R.string.feature_settings_defaults_add), Modifier.padding(top = 8.dp))
                 for (c in missing) {
@@ -351,8 +373,8 @@ private fun DefaultsSheet(wallet: Wallet, missing: List<Category>, regroup: List
                 }
             }
             Button(
-                onClick = { onApply(moves.toList(), missing.filter { "${it.kind}:${it.name}" in adds }) },
-                enabled = moves.isNotEmpty() || adds.isNotEmpty(),
+                onClick = { onApply(moves.toList(), missing.filter { "${it.kind}:${it.name}" in adds }, updates.toList()) },
+                enabled = moves.isNotEmpty() || updates.isNotEmpty() || adds.isNotEmpty(),
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             ) { Text(stringResource(R.string.feature_settings_apply)) }
         }
@@ -360,13 +382,17 @@ private fun DefaultsSheet(wallet: Wallet, missing: List<Category>, regroup: List
 }
 
 @Composable
-private fun CheckRow(category: Category, text: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+private fun CheckRow(category: Category, text: String, checked: Boolean, before: Category? = null, onChange: (Boolean) -> Unit) {
     Row(
         Modifier.fillMaxWidth().toggleable(value = checked, role = Role.Checkbox, onValueChange = onChange).padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Checkbox(checked = checked, onCheckedChange = null)
+        if (before != null) {
+            CategoryIcon(before, Modifier.size(28.dp))
+            Text("→", style = MaterialTheme.typography.bodyMedium, color = WalletTheme.colors.muted)
+        }
         // The icon it has, or a default comes with.
         CategoryIcon(category, Modifier.size(28.dp))
         Text(text, style = MaterialTheme.typography.bodyMedium)

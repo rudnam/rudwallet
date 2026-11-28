@@ -169,6 +169,12 @@ interface WalletNetworkDataSource {
     /** Puts the offered categories among [input]'s ids under their main category. */
     suspend fun regroup(input: NetworkRegroupInput)
 
+    /** The user's default categories whose name or icon isn't what new wallets have, each with the name and icon it would get. */
+    suspend fun refreshOffer(): List<NetworkCategory>
+
+    /** Gives the offered categories among [input]'s ids the name and icon new wallets have. */
+    suspend fun refresh(input: NetworkRegroupInput)
+
     suspend fun createCategory(input: NetworkCategoryInput)
 
     suspend fun updateCategory(id: Long, input: NetworkCategoryInput)

@@ -65,7 +65,7 @@ class SettingsScreenshotTest {
         override fun create() {}
         override fun createUnder(parent: Category) {}
         override fun edit(category: Category) {}
-        override fun matchDefaults(moves: List<Long>, adds: List<Category>) {}
+        override fun matchDefaults(moves: List<Long>, adds: List<Category>, updates: List<Long>) {}
         override fun setName(name: String) {}
         override fun setKind(kind: CategoryKind) {}
         override fun setParent(parentId: Long?) {}
@@ -120,7 +120,7 @@ class SettingsScreenshotTest {
         CategoriesScreen(SampleWallet.wallet, listOf(Category(0, "Pets", CategoryKind.Expense, "pet", "#8a6d3b")), null, categories, navigation)
     }
 
-    /** An old wallet: Groceries beside Food & Drinks, offered to go under it, and Pets to add. */
+    /** An old wallet: Groceries beside Food & Drinks, offered to go under it, Transport offered a new icon, and Pets to add. */
     @Test
     fun matchDefaults() = shot("categories-defaults") {
         CategoriesScreen(
@@ -131,6 +131,7 @@ class SettingsScreenshotTest {
             navigation,
             regroup = listOf(SampleWallet.wallet.category(11)!!.copy(parentId = 10)),
             matching = true,
+            refresh = SampleWallet.wallet.categories.filter { it.name == "Transport" }.map { it.copy(icon = "route") },
         )
     }
 

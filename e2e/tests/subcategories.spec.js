@@ -95,6 +95,30 @@ test('a subcategory is made in Settings, picked under its main category, and cou
   await expect(page.getByRole('button', { name: /Doutor, −¥600/ })).toBeVisible();
 });
 
+// A wallet from before a default was renamed or given a new icon is
+// offered the name and icon a new one has.
+test('an old wallet gets the names and icons of the new defaults', async ({ page }) => {
+  await signUp(page);
+  const { categories } = await (await page.request.get('/api/wallet')).json();
+  // As an older wallet has them: Eating out still Restaurants, Water a light bulb.
+  for (const [name, old] of [['Eating out', { name: 'Restaurants' }], ['Water', { icon: 'bills' }]]) {
+    const c = categories.find((x) => x.name === name);
+    expect((await page.request.put(`/api/categories/${c.id}`, { data: { name: c.name, kind: c.kind, icon: c.icon, color: c.color, ...old } })).status()).toBe(200);
+  }
+  await page.goto('/app/#/settings?section=categories');
+  await page.getByRole('button', { name: /Match the new default categories/ }).click();
+  const offer = page.getByRole('dialog', { name: 'Match the new default categories' });
+  await expect(offer.getByRole('checkbox', { name: 'Restaurants renamed Eating out' })).toBeChecked();
+  await expect(offer.getByRole('checkbox', { name: 'Water' })).toBeChecked();
+  await page.screenshot({ path: test.info().outputPath('refresh-offer.png'), fullPage: true });
+  await offer.getByRole('button', { name: 'Apply' }).click();
+  await expect(offer).toBeHidden();
+  await expect(page.getByRole('button', { name: /Match the new default categories/ })).toHaveCount(0);
+  const after = (await (await page.request.get('/api/wallet')).json()).categories;
+  expect(after.find((x) => x.name === 'Eating out').icon).toBe('dining');
+  expect(after.find((x) => x.name === 'Water').icon).toBe('water');
+});
+
 // A wallet from before the defaults had subcategories is offered to group
 // them like a new one's.
 test('an old wallet groups its categories like a new one', async ({ page }) => {

@@ -209,6 +209,12 @@ internal interface WalletApi {
     @POST("api/categories/regroup")
     suspend fun regroup(@Body input: NetworkRegroupInput): Response<Unit>
 
+    @GET("api/categories/refresh")
+    suspend fun refreshOffer(): List<NetworkCategory>
+
+    @POST("api/categories/refresh")
+    suspend fun refresh(@Body input: NetworkRegroupInput): Response<Unit>
+
     @POST("api/categories")
     suspend fun createCategory(@Body input: NetworkCategoryInput): Response<Unit>
 
@@ -360,6 +366,10 @@ internal class RetrofitWalletNetwork @Inject constructor(retrofit: Retrofit, pri
     override suspend fun regroupOffer() = call { api.regroupOffer() }
 
     override suspend fun regroup(input: NetworkRegroupInput) = call { api.regroup(input).orThrow() }
+
+    override suspend fun refreshOffer() = call { api.refreshOffer() }
+
+    override suspend fun refresh(input: NetworkRegroupInput) = call { api.refresh(input).orThrow() }
 
     override suspend fun createCategory(input: NetworkCategoryInput) = call { api.createCategory(input).orThrow() }
 

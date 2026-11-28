@@ -64,6 +64,8 @@
     <string name="feature_settings_defaults_intro">New wallets start with these. Tick what you want; your other categories stay as they are.</string>
     <string name="feature_settings_defaults_move">Group</string>
     <string name="feature_settings_defaults_add">Add</string>
+    <string name="feature_settings_defaults_refresh">Names and icons</string>
+    <string name="feature_settings_refresh_rename">%1$s → %2$s</string>
     <string name="feature_settings_apply">Apply</string>
     <string name="feature_settings_add_subcategory_to">Add a subcategory to %s</string>
     <string name="feature_settings_open">Open</string>

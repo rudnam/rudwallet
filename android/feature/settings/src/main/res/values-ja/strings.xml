@@ -63,6 +63,8 @@
     <string name="feature_settings_defaults_intro">新しいウォレットはこれらで始まります。使いたいものにチェックしてください。ほかのカテゴリはそのままです。</string>
     <string name="feature_settings_defaults_move">まとめる</string>
     <string name="feature_settings_defaults_add">追加</string>
+    <string name="feature_settings_defaults_refresh">名前とアイコン</string>
+    <string name="feature_settings_refresh_rename">%1$s → %2$s</string>
     <string name="feature_settings_apply">適用</string>
     <string name="feature_settings_add_subcategory_to">%sにサブカテゴリを追加</string>
     <string name="feature_settings_open">開いています</string>

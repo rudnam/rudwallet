@@ -605,6 +605,8 @@ export const ja = {
   'New wallets start with these. Tick what you want; your other categories stay as they are.':
     '新しいウォレットはこれらで始まります。使いたいものにチェックしてください。ほかのカテゴリはそのままです。',
   Group: 'まとめる',
+  '{old} renamed {name}': '{old} → {name}',
+  'Names and icons': '名前とアイコン',
   Apply: '適用',
   "Subcategories wear their main category's colour.": 'サブカテゴリはメインカテゴリと同じ色になります。',
   Subcategory: 'サブカテゴリ',

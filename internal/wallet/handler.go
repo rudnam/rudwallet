@@ -47,6 +47,8 @@ func (h *Handler) Register(mux *http.ServeMux, requireUser func(http.Handler) ht
 	route("GET /api/categories/missing", h.missingCategories)
 	route("GET /api/categories/regroup", h.regroupOffer)
 	route("POST /api/categories/regroup", h.regroup)
+	route("GET /api/categories/refresh", h.refreshOffer)
+	route("POST /api/categories/refresh", h.refresh)
 	route("POST /api/categories", h.createCategory)
 	route("PUT /api/categories/{id}", h.updateCategory)
 	route("DELETE /api/categories/{id}", h.deleteCategory)
@@ -351,6 +353,33 @@ func (h *Handler) regroup(w http.ResponseWriter, r *http.Request) error {
 	cats, err := h.store.Regroup(r.Context(), userID(r), in.IDs)
 	if err != nil {
 		return err
+	}
+	httpx.WriteJSON(w, http.StatusOK, cats)
+	return nil
+}
+
+// refreshOffer lists the user's default categories whose name or icon isn't
+// what a new wallet has, with the name and icon each would get.
+func (h *Handler) refreshOffer(w http.ResponseWriter, r *http.Request) error {
+	cats, err := h.store.RefreshOffer(r.Context(), userID(r))
+	if err != nil {
+		return err
+	}
+	httpx.WriteJSON(w, http.StatusOK, cats)
+	return nil
+}
+
+// refresh makes the offered changes of the categories in ids.
+func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) error {
+	var in struct {
+		IDs []int64 `json:"ids"`
+	}
+	if err := httpx.ReadJSON(w, r, httpx.MaxBody, &in); err != nil {
+		return err
+	}
+	cats, err := h.store.Refresh(r.Context(), userID(r), in.IDs)
+	if err != nil {
+		return storeErr(err, "category")
 	}
 	httpx.WriteJSON(w, http.StatusOK, cats)
 	return nil
